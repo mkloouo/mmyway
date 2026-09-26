@@ -1,0 +1,50 @@
+{
+  "name": "mmyway-scaffold",
+  "version": "1.0.0",
+  "main": "expo-router/entry",
+  "dependencies": {
+    "@tanstack/react-query": "^5.104.0",
+    "drizzle-orm": "^0.45.3",
+    "expo": "~57.0.25",
+    "expo-constants": "~57.0.19",
+    "expo-crypto": "~57.0.3",
+    "expo-image-picker": "~57.0.20",
+    "expo-linking": "~57.0.11",
+    "expo-router": "~57.0.23",
+    "expo-secure-store": "~57.0.4",
+    "expo-sqlite": "~57.0.3",
+    "expo-status-bar": "~57.0.1",
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-screens": "~4.26.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
+    "@types/jest": "^30.0.0",
+    "@types/react": "~19.2.2",
+    "better-sqlite3": "^13.0.3",
+    "drizzle-kit": "^0.31.11",
+    "eslint": "^9.0.0",
+    "eslint-config-expo": "^57.0.2",
+    "jest": "^30.5.2",
+    "jest-expo": "^57.0.5",
+    "prettier": "^3.9.9",
+    "typescript": "~6.0.3"
+  },
+  "scripts": {
+    "start": "expo start",
+    "android:clean:dev": "APP_VARIANT=development npx expo prebuild -p android --clean",
+    "android:clean:pro": "APP_VARIANT=production npx expo prebuild -p android --clean",
+    "android:build:dev": "eas build -p android -e development --local",
+    "android:build:pro": "eas build -p android -e production --local",
+    "android:run:dev": "APP_VARIANT=development npx expo run:android --variant release",
+    "typecheck": "tsc --noEmit",
+    "lint": "expo lint",
+    "test": "jest",
+    "check": "tsc --noEmit && jest --ci",
+    "db:generate": "drizzle-kit generate",
+    "release": "node scripts/release.mjs"
+  },
+  "private": true
+}
