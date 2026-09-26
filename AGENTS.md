@@ -1,41 +1,45 @@
-This is an Expo/React Native mobile application. Prioritize mobile-first patterns, performance, and cross-platform compatibility.
+# mmyway
 
-## Expo has changed — do not trust your training data
-
-Expo ships breaking changes every SDK release. APIs you remember are likely renamed, moved, or removed. Before writing any code that touches an Expo, EAS, or React Native API:
-
-1. Read the major version of the `expo` package in `package.json`.
-2. Fetch the matching versioned docs: `https://docs.expo.dev/versions/v<major>.0.0/`
-3. For anything else, fetch https://docs.expo.dev/llms.txt — an index of all Expo docs with corrections to common LLM misconceptions. Follow its links to the specific page you need; never answer from memory.
+A personal Android app (`com.mkloouo.mmyway`) for the user's self-hosted Firefly III (FF3).
+Replaces a Telegram capture bot. Full context: `the planning brief`
+(read it before any feature work — this repo's CLAUDE.md only covers repo mechanics).
 
 ## Commands
 
-Use `bunx` instead of `npx` if the project uses bun (`bun.lock` present).
+- `npm start` — Expo dev server
+- `npm run typecheck` / `npm run lint` / `npm run test` / `npm run check` (all three)
+- `npm run db:generate` — regenerate Drizzle migrations after editing `src/db/schema.ts`
+- `npm run android:build:dev` / `npm run android:build:pro` — local EAS APK build
+- `npm run release -- X.Y.Z` — see `scripts/release.mjs --help`
 
-```bash
-npx expo install <package>  # ALWAYS use instead of npm/yarn/pnpm/bun add — resolves SDK-compatible versions
-npx expo start              # start the dev server
-npx expo lint               # lint
-npx tsc --noEmit            # typecheck
-npx expo-doctor             # diagnose dependency and config issues
-npx expo install --fix      # fix incompatible package versions
-```
+## Module layout
 
-Run lint and typecheck before declaring any task done.
-
-## Navigation & Routing
-
-- Use **Expo Router** for all navigation. Routes live in `src/app/` — every file there is a screen, `_layout.tsx` files define navigators. Keep non-route code (components, hooks, utils) outside `src/app/`.
-- Import `Link`, `router`, and `useLocalSearchParams` from `expo-router`.
-- Docs: https://docs.expo.dev/router/introduction.md
-
-## Building with EAS
-
-Use EAS to build, sign, and submit the app in the cloud (`eas build`, `eas submit`) and to ship over-the-air updates (`eas update`) — no local Xcode or Android Studio required. Run EAS CLI as `bunx eas-cli <command>` in Bun projects, or `npx eas-cli@latest <command>` otherwise; substitute that for bare `eas` in docs examples.
-Docs: https://docs.expo.dev/eas/index.md
+- `src/db/` — Drizzle schema + migrations. SQLite is the source of truth for the UI.
+- `src/api/ff3/` — hand-written FF3 client (fetch-based, no generated types — see note below).
+- `src/sync/` — outbox (queued writes) and reference-data pulls. Read `src/sync/outbox.ts`'s
+  header comment before changing replay order or retry semantics.
+- `src/lookup/` — user aliases + merchant→category/account/budget history, pure functions.
+- `src/suggest/` — ranks candidate values for an in-progress entry. Pure, offline, no tokens.
+- `src/receipt/` — provider chain (local OpenAI-compatible model, then Gemini) that turns a
+  photo into a draft. Never call a provider with a live key from a test — mock `fetch`.
+- `src/inbox/` — the capture → parsed → confirmed → synced state machine shared by manual
+  entries, receipts, and recurring-transaction reviews.
+- `app/` — expo-router screens. Deliberately plain UI — the entry UX is still an open design
+  question (brief §9 Q11); don't invest in polish here until that's settled.
 
 ## Rules
 
-- If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
-- Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
-- Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+- **Never run a live write against the user's real FF3 instance or a real Gemini/local-model
+  key from agent code.** Mock `fetch` in tests. This mirrors the rule in `~/Projects/my-finances/CLAUDE.md`.
+- **FF3 amounts are strings.** Never parse them to `number` for storage or arithmetic — use
+  `src/api/ff3/decimal.ts`.
+- **Categories are never hardcoded** — always read from `src/db/schema.ts`'s
+  `referenceCategories` table, synced from FF3. (The bot this app replaces hardcoded them in
+  5 places; don't repeat that.)
+- **Confirm is mandatory.** No code path may push a create/edit/delete to the outbox without
+  the inbox item having passed through the `confirmed` state.
+- `src/api/ff3/types.ts` and `src/db/migrations/**/*.sql` are generated/pinned — don't hand-edit
+  generated SQL migrations; edit `src/db/schema.ts` and run `npm run db:generate`.
+
+RTK Golden Rule, Sub-Agents clause, and full command reference live in `~/.claude/RTK.md`
+(global, loaded every session) — see there instead of duplicating it here.

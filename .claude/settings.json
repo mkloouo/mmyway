@@ -1,5 +1,11 @@
 {
   "enabledPlugins": {
     "expo@claude-plugins-official": true
+  },
+  "permissions": {
+    "deny": [
+      "Read(./src/api/ff3/types.ts)",
+      "Read(./src/db/migrations/**)"
+    ]
   }
 }
