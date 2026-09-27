@@ -20,6 +20,10 @@ export interface Draft {
   budgetId?: string;
   notes?: string;
   sharedWith?: string; // -> `mmyway-shared-<person>` tag, brief §9 Q12
+  // Field names the receipt provider couldn't confidently extract but still populated (design
+  // §6.3): the draft screen marks these rows amber with "check this" instead of trusting them
+  // silently. Never set outside src/receipt/toDraft.ts.
+  lowConfidenceFields?: string[];
 }
 
 // Which end of the split is the free-text payee differs by type (defect (1)): a withdrawal's

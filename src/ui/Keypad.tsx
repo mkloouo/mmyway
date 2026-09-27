@@ -33,17 +33,19 @@ function Key({ label, onPress, tone, disabled }: { label: string; onPress: () =>
 }
 
 export function Keypad({
-  onDigit, dateLabel, onDatePress, onNotePress, noteHasValue, saveLabel, onSave, saveDisabled, saving,
+  onDigit, dateLabel, onDatePress, onNotePress, noteHasValue, saveLabel, onSave, saveDisabled, saving, compact,
 }: {
   onDigit: (key: KeypadKey) => void;
-  dateLabel: string;
-  onDatePress: () => void;
-  onNotePress: () => void;
-  noteHasValue: boolean;
+  dateLabel?: string;
+  onDatePress?: () => void;
+  onNotePress?: () => void;
+  noteHasValue?: boolean;
   saveLabel: string;
   onSave: () => void;
-  saveDisabled: boolean;
-  saving: boolean;
+  saveDisabled?: boolean;
+  saving?: boolean;
+  /** Digits, backspace and a single confirm cell — no date/note cells (a sheet's amount edit). */
+  compact?: boolean;
 }) {
   return (
     <View>
@@ -51,8 +53,8 @@ export function Keypad({
         <View key={rowIndex} style={{ flexDirection: 'row' }}>
           {row.map((key) => <Key key={key} label={key} onPress={() => onDigit(key)} />)}
           {rowIndex === 0 && <Key label="⌫" onPress={() => onDigit('⌫')} />}
-          {rowIndex === 1 && <Key label={dateLabel} onPress={onDatePress} />}
-          {rowIndex === 2 && <Key label={noteHasValue ? 'Note ●' : 'Note'} onPress={onNotePress} />}
+          {rowIndex === 1 && (compact ? <View style={{ flex: 1, marginHorizontal: 4, marginVertical: 4 }} /> : <Key label={dateLabel!} onPress={onDatePress!} />)}
+          {rowIndex === 2 && (compact ? <View style={{ flex: 1, marginHorizontal: 4, marginVertical: 4 }} /> : <Key label={noteHasValue ? 'Note ●' : 'Note'} onPress={onNotePress!} />)}
           {rowIndex === 3 && <Key label={saveLabel} tone="accent" onPress={onSave} disabled={saveDisabled || saving} />}
         </View>
       ))}

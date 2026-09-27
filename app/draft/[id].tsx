@@ -1,169 +1,251 @@
+// Draft review (design §6.3) — one legible card for both a manual draft and a receipt.
 import { useEffect, useState } from 'react';
-import { View, Text, TextInput, Button, ScrollView, Switch } from 'react-native';
+import { Alert, Image, Pressable, Text, View } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { eq } from 'drizzle-orm';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
+import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useDb } from '../../src/providers/DbProvider';
-import { inboxItems, referenceAccounts, referenceCategories, referenceBudgets } from '../../src/db/schema';
+import { useTheme } from '../../src/ui/theme';
+import { Screen, AppBar, Card, Chip, Button, Money, StatusPill, Sheet, Row } from '../../src/ui/components';
+import { DetailRows, type DetailRowsValue } from '../../src/ui/DetailRows';
+import { PayeeSheet } from '../../src/ui/PayeeSheet';
+import { Keypad } from '../../src/ui/Keypad';
+import { currencyOf } from '../../src/ui/money';
+import { haptics } from '../../src/ui/haptics';
+import { inboxItems, referenceAccounts, referenceCategories, referenceBudgets, referenceCurrencies } from '../../src/db/schema';
 import { confirmInboxItem } from '../../src/inbox/createManualEntry';
-import { updateDraft } from '../../src/inbox/updateDraft';
-import { buildMerchantLookup } from '../../src/lookup/merchantLookup';
-import { rankCandidates } from '../../src/suggest/rank';
+import { updateDraft, deleteInboxItem } from '../../src/inbox/updateDraft';
+import { draftReadiness } from '../../src/inbox/readiness';
+import { applyDigit, type KeypadKey } from '../../src/capture/amountInput';
+import { buildEntryDate } from '../../src/capture/entryDate';
+import { buildMerchantLookup, type MerchantHistory } from '../../src/lookup/merchantLookup';
+import { matchAlias } from '../../src/lookup/aliases';
 import type { Draft } from '../../src/inbox/draft';
-
-function ChipPicker({ label, items, selectedId, onSelect }: { label: string; items: { id: string; name: string }[]; selectedId: string | null; onSelect: (id: string) => void }) {
-  return (
-    <View style={{ gap: 4 }}>
-      <Text style={{ fontWeight: 'bold' }}>{label}</Text>
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-        {items.map((item) => (
-          <Text
-            key={item.id}
-            onPress={() => onSelect(item.id)}
-            style={{ padding: 6, borderWidth: 1, borderColor: item.id === selectedId ? '#000' : '#ccc', fontWeight: item.id === selectedId ? 'bold' : 'normal' }}
-          >
-            {item.name}
-          </Text>
-        ))}
-      </View>
-    </View>
-  );
-}
 
 export default function DraftScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const db = useDb();
+  const t = useTheme();
+
   const { data: rows } = useLiveQuery(db.select().from(inboxItems).where(eq(inboxItems.id, id)));
-  const { data: accounts } = useLiveQuery(db.select().from(referenceAccounts));
+  const { data: accountRows } = useLiveQuery(db.select().from(referenceAccounts));
   const { data: categories } = useLiveQuery(db.select().from(referenceCategories));
   const { data: budgets } = useLiveQuery(db.select().from(referenceBudgets));
-  const assetAccounts = (accounts ?? []).filter((a) => a.type === 'asset');
+  const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
+  const assetAccounts = (accountRows ?? []).filter((a) => a.type === 'asset');
+
+  const [histories, setHistories] = useState<MerchantHistory[]>([]);
+  useEffect(() => { buildMerchantLookup(db).then((map) => setHistories([...map.values()])); }, [db]);
+
+  const [amountSheetOpen, setAmountSheetOpen] = useState(false);
+  const [payeeSheetOpen, setPayeeSheetOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [matchedFor, setMatchedFor] = useState<{ text: string; caption: string | null } | null>(null);
+
   const row = rows?.[0];
   const draft: Draft | null = row ? JSON.parse(row.draftJson) : null;
-
-  const [suggestions, setSuggestions] = useState<{ merchantKey: string; displayName: string; topCategory: string | null; topAccountName: string | null; topBudgetName: string | null }[]>([]);
-  const [confirming, setConfirming] = useState(false);
-
-  const payeeName = draft?.type === 'deposit' ? draft.sourceName : draft?.destinationName;
+  const readOnly = row ? row.state === 'confirmed' || row.state === 'synced' : false;
+  const payeeName = draft ? (draft.type === 'deposit' ? draft.sourceName : draft.destinationName) : undefined;
+  const isPayeeType = !!draft && draft.type !== 'transfer';
 
   useEffect(() => {
-    (async () => {
-      const histories = [...(await buildMerchantLookup(db)).values()];
-      const ranked = rankCandidates(histories, { merchantQuery: payeeName ?? undefined });
-      setSuggestions(
-        ranked.slice(0, 5).map((c) => {
-          const full = histories.find((h) => h.merchantKey === c.merchantKey)!;
-          return { merchantKey: full.merchantKey, displayName: full.displayName, topCategory: full.topCategory, topAccountName: full.topAccountName, topBudgetName: full.topBudgetName };
-        }),
-      );
-    })();
-  }, [db, payeeName]);
+    if (!isPayeeType || !payeeName?.trim()) return;
+    let cancelled = false;
+    matchAlias(db, 'payee', payeeName).then((match) => {
+      if (cancelled) return;
+      const caption = match.matched && match.alias.targetName !== payeeName ? `matched "${payeeName}" → ${match.alias.targetName}` : null;
+      setMatchedFor({ text: payeeName, caption });
+    });
+    return () => { cancelled = true; };
+  }, [db, isPayeeType, payeeName]);
+  const aliasCaption = isPayeeType && matchedFor && matchedFor.text === payeeName ? matchedFor.caption : null;
 
-  if (!draft || !row) return <Text>Loading…</Text>;
-
-  const readOnly = row.state === 'confirmed' || row.state === 'synced';
-
-  async function patch(fields: Partial<Draft>) {
-    await updateDraft(db, id, fields);
+  if (!row || !draft) {
+    return (
+      <Screen>
+        <AppBar title="Review" left={<CloseButton />} />
+      </Screen>
+    );
   }
 
-  function applySuggestion(s: (typeof suggestions)[number]) {
-    const account = assetAccounts.find((a) => a.name === s.topAccountName);
-    const budget = (budgets ?? []).find((b) => b.name === s.topBudgetName);
-    patch({
-      categoryName: s.topCategory ?? draft!.categoryName,
-      budgetId: budget?.id ?? draft!.budgetId,
-      ...(draft!.type === 'withdrawal' ? { sourceId: account?.id ?? draft!.sourceId } : {}),
-      ...(draft!.type === 'deposit' ? { destinationId: account?.id ?? draft!.destinationId } : {}),
+  const currency = currencyOf(currencies ?? [], draft.currencyCode);
+  const readiness = draftReadiness(draft);
+
+  function patch(fields: Partial<Draft>) {
+    updateDraft(db, id, fields);
+  }
+
+  function handleDetailChange(change: Partial<DetailRowsValue>) {
+    const draftPatch: Partial<Draft> = {};
+    if ('categoryName' in change) draftPatch.categoryName = change.categoryName ?? undefined;
+    if ('sourceAccountId' in change) draftPatch.sourceId = change.sourceAccountId ?? undefined;
+    if ('destinationAccountId' in change) draftPatch.destinationId = change.destinationAccountId ?? undefined;
+    if ('budgetId' in change) draftPatch.budgetId = change.budgetId ?? undefined;
+    if ('notes' in change) draftPatch.notes = change.notes ?? undefined;
+    if ('sharedWith' in change) draftPatch.sharedWith = change.sharedWith ?? undefined;
+    patch(draftPatch);
+  }
+
+  function openDatePicker() {
+    DateTimePickerAndroid.open({
+      value: new Date(draft!.date),
+      mode: 'date',
+      onChange: (event: { type: string }, picked?: Date) => {
+        if (event.type === 'set' && picked) patch({ date: buildEntryDate(picked, new Date(draft!.date)).toISOString() });
+      },
     });
   }
 
+  async function handleConfirm() {
+    if (confirming || !readiness.ready) {
+      if (!readiness.ready) haptics.warn();
+      return;
+    }
+    setConfirming(true);
+    try {
+      await confirmInboxItem(db, id);
+      haptics.tick();
+      router.back();
+    } finally {
+      setConfirming(false);
+    }
+  }
+
+  function handleDeleteDraft() {
+    setMenuOpen(false);
+    Alert.alert('Delete this draft?', 'This cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => { await deleteInboxItem(db, id); router.back(); } },
+    ]);
+  }
+
+  const detailValue: DetailRowsValue = {
+    type: draft.type,
+    categoryName: draft.categoryName ?? null,
+    sourceAccountId: draft.sourceId ?? null,
+    destinationAccountId: draft.destinationId ?? null,
+    budgetId: draft.budgetId ?? null,
+    dateLabel: new Date(draft.date).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
+    notes: draft.notes ?? null,
+    sharedWith: draft.sharedWith ?? null,
+  };
+
+  const itemCount = row.kind === 'receipt' && draft.notes ? draft.notes.split('\n').filter(Boolean).length : 0;
+
   return (
-    <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
-      <Text style={{ fontSize: 18, fontWeight: 'bold' }}>{draft.type} · {row.state}</Text>
-
-      <TextInput
-        placeholder="Amount" value={draft.amount} editable={!readOnly}
-        onChangeText={(v) => patch({ amount: v })} keyboardType="decimal-pad" style={{ borderWidth: 1, padding: 8 }}
-      />
-      <TextInput
-        placeholder="Currency" value={draft.currencyCode} editable={!readOnly}
-        onChangeText={(v) => patch({ currencyCode: v })} style={{ borderWidth: 1, padding: 8 }}
-      />
-      <TextInput
-        placeholder="Description" value={draft.description} editable={!readOnly}
-        onChangeText={(v) => patch({ description: v })} style={{ borderWidth: 1, padding: 8 }}
-      />
-
-      {draft.type !== 'transfer' && (
-        <View style={{ gap: 4 }}>
-          <TextInput
-            placeholder={draft.type === 'withdrawal' ? 'Payee' : 'Payer'}
-            value={payeeName ?? ''}
-            editable={!readOnly}
-            onChangeText={(v) => patch(draft.type === 'withdrawal' ? { destinationName: v } : { sourceName: v })}
-            style={{ borderWidth: 1, padding: 8 }}
-          />
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Switch
-              value={draft.isNewPayee} disabled={readOnly}
-              onValueChange={(v) => patch(
-                draft.type === 'withdrawal'
-                  ? { isNewPayee: v, destinationId: v ? undefined : draft.destinationId }
-                  : { isNewPayee: v, sourceId: v ? undefined : draft.sourceId },
-              )}
-            />
-            <Text style={{ fontWeight: draft.isNewPayee ? 'bold' : 'normal' }}>
-              {draft.isNewPayee ? 'New payee' : 'Matched existing payee'}
-            </Text>
-          </View>
-        </View>
-      )}
-
-      {(draft.type === 'withdrawal' || draft.type === 'transfer') && (
-        <ChipPicker label="Source account" items={assetAccounts} selectedId={draft.sourceId ?? null} onSelect={(v) => patch({ sourceId: v })} />
-      )}
-      {(draft.type === 'deposit' || draft.type === 'transfer') && (
-        <ChipPicker label="Destination account" items={assetAccounts} selectedId={draft.destinationId ?? null} onSelect={(v) => patch({ destinationId: v })} />
-      )}
-
-      <ChipPicker label="Category" items={(categories ?? []).map((c) => ({ id: c.name, name: c.name }))} selectedId={draft.categoryName ?? null} onSelect={(v) => patch({ categoryName: v })} />
-      <ChipPicker label="Budget" items={budgets ?? []} selectedId={draft.budgetId ?? null} onSelect={(v) => patch({ budgetId: v })} />
-
-      {suggestions.length > 0 && !readOnly && (
-        <View style={{ gap: 4 }}>
-          <Text style={{ fontWeight: 'bold' }}>Suggestions</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-            {suggestions.map((s) => (
-              <Text key={s.merchantKey} onPress={() => applySuggestion(s)} style={{ padding: 6, borderWidth: 1, borderColor: '#888' }}>
-                {s.displayName}: {s.topCategory ?? '–'} / {s.topAccountName ?? '–'}
-              </Text>
-            ))}
-          </View>
-        </View>
-      )}
-
-      <TextInput placeholder="Notes" value={draft.notes ?? ''} editable={!readOnly} onChangeText={(v) => patch({ notes: v })} style={{ borderWidth: 1, padding: 8 }} />
-      <TextInput placeholder="Shared with" value={draft.sharedWith ?? ''} editable={!readOnly} onChangeText={(v) => patch({ sharedWith: v })} style={{ borderWidth: 1, padding: 8 }} />
-      <TextInput placeholder="Foreign amount" value={draft.foreignAmount ?? ''} editable={!readOnly} onChangeText={(v) => patch({ foreignAmount: v })} keyboardType="decimal-pad" style={{ borderWidth: 1, padding: 8 }} />
-      <TextInput placeholder="Foreign currency" value={draft.foreignCurrencyCode ?? ''} editable={!readOnly} onChangeText={(v) => patch({ foreignCurrencyCode: v })} style={{ borderWidth: 1, padding: 8 }} />
-
-      {!readOnly && (
-        <Button
-          title="Confirm"
-          disabled={confirming}
-          onPress={async () => {
-            if (confirming) return;
-            setConfirming(true);
-            try {
-              await confirmInboxItem(db, id);
-              router.back();
-            } finally {
-              setConfirming(false);
-            }
-          }}
+    <Screen>
+      <View style={{ flex: 1 }}>
+        <AppBar
+          title="Review"
+          left={<CloseButton />}
+          right={(
+            <Pressable onPress={() => setMenuOpen(true)} accessibilityRole="button" accessibilityLabel="More">
+              <Text style={[t.type.heading, { color: t.color.text }]}>⋯</Text>
+            </Pressable>
+          )}
         />
-      )}
-    </ScrollView>
+
+        <View style={{ alignItems: 'center', paddingVertical: t.space.lg }}>
+          <Pressable onPress={() => !readOnly && setAmountSheetOpen(true)} disabled={readOnly}>
+            <Money amount={draft.amount} currency={currency} type={draft.type} size="title" />
+          </Pressable>
+          {draft.type !== 'transfer' && (
+            <Pressable onPress={() => !readOnly && setPayeeSheetOpen(true)} disabled={readOnly}>
+              <Text style={[t.type.heading, { color: t.color.text, marginTop: t.space.xs }]}>{payeeName || '—'}</Text>
+            </Pressable>
+          )}
+          {!!aliasCaption && (
+            <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]}>{aliasCaption}</Text>
+          )}
+          {draft.isNewPayee && draft.type !== 'transfer' && (
+            <View style={{ marginTop: t.space.sm }}>
+              <Chip label="⚑ New payee — will be created in FF3" tone="warn" />
+            </View>
+          )}
+        </View>
+
+        <View style={{ gap: t.space.md, flex: 1 }}>
+          <DetailRows
+            value={detailValue}
+            onChange={handleDetailChange}
+            onDatePress={openDatePicker}
+            readOnly={readOnly}
+            accounts={assetAccounts}
+            categories={categories ?? []}
+            budgets={budgets ?? []}
+          />
+
+          {row.kind === 'receipt' && (
+            <Card style={{ marginHorizontal: t.space.lg, flexDirection: 'row', alignItems: 'center', gap: t.space.md }}>
+              {!!row.receiptImagePath && (
+                <Image source={{ uri: row.receiptImagePath }} style={{ width: 44, height: 44, borderRadius: t.radius.sm }} />
+              )}
+              <Text style={[t.type.body, { color: t.color.textMuted }]}>
+                {itemCount > 0 ? `${itemCount} item${itemCount === 1 ? '' : 's'}` : 'Receipt'}
+              </Text>
+            </Card>
+          )}
+        </View>
+
+        {readOnly ? (
+          <View style={{ alignItems: 'center', padding: t.space.lg }}>
+            <StatusPill state={row.state === 'synced' ? 'ok' : 'queued'} label={row.state === 'synced' ? 'Synced' : 'Queued'} />
+          </View>
+        ) : (
+          <View style={{ padding: t.space.lg, gap: t.space.sm }}>
+            {readiness.missing.length > 0 && (
+              <Text style={[t.type.label, { color: t.color.warn, textAlign: 'center' }]}>Missing: {readiness.missing.join(', ')}</Text>
+            )}
+            <Button title={confirming ? 'Confirming…' : 'Confirm'} onPress={handleConfirm} disabled={confirming || !readiness.ready} size="lg" />
+          </View>
+        )}
+      </View>
+
+      <Sheet visible={amountSheetOpen} onClose={() => setAmountSheetOpen(false)} title="Amount">
+        <Money amount={draft.amount} currency={currency} type={draft.type} size="display" />
+        <Keypad
+          compact
+          onDigit={(key: KeypadKey) => patch({ amount: applyDigit(draft.amount, key, currency.decimalPlaces) })}
+          saveLabel="Done"
+          onSave={() => setAmountSheetOpen(false)}
+        />
+      </Sheet>
+
+      <PayeeSheet
+        visible={payeeSheetOpen}
+        onClose={() => setPayeeSheetOpen(false)}
+        histories={histories}
+        payeeLabel={draft.type === 'deposit' ? 'payer' : 'payee'}
+        onSelect={(h) => {
+          patch(draft.type === 'deposit' ? { sourceName: h.displayName, isNewPayee: false } : { destinationName: h.displayName, isNewPayee: false });
+        }}
+        onCreateNew={(text) => {
+          patch(draft.type === 'deposit' ? { sourceName: text, isNewPayee: true } : { destinationName: text, isNewPayee: true });
+        }}
+      />
+
+      <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title="Draft">
+        {readOnly && !!row.ff3GroupId && (
+          <Row
+            first
+            label="Open in Activity"
+            chevron
+            onPress={() => { setMenuOpen(false); router.push(`/transactions/${row.ff3GroupId}`); }}
+          />
+        )}
+        <Row first={!readOnly || !row.ff3GroupId} label="Delete draft" tone="danger" onPress={handleDeleteDraft} />
+      </Sheet>
+    </Screen>
+  );
+}
+
+function CloseButton() {
+  const t = useTheme();
+  return (
+    <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Close">
+      <Text style={[t.type.heading, { color: t.color.text }]}>✕</Text>
+    </Pressable>
   );
 }

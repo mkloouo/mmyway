@@ -8,6 +8,12 @@ import { DbProvider } from '../src/providers/DbProvider';
 import { useSync } from '../src/sync/useSync';
 import { useTheme } from '../src/ui/theme';
 import { Button } from '../src/ui/components';
+import { useSharedImages } from '../src/receipt/useSharedImages';
+
+function ShareIntentBridge() {
+  useSharedImages();
+  return null;
+}
 
 function SyncOnResume() {
   const { syncNow } = useSync(); // mounting the query already covers "sync on app open"
@@ -38,6 +44,7 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <DbProvider>
           <SyncOnResume />
+          <ShareIntentBridge />
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="capture" options={{ presentation: 'modal' }} />

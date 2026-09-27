@@ -38,6 +38,18 @@ export async function buildReceiptDraftReference(db: OutboxDb): Promise<ReceiptD
   };
 }
 
+// Fields the provider still populated despite an overall confidence below threshold (design
+// §6.3). Currency and category aren't listed here — an untrusted currency or an unrecognized
+// category is already blanked outright, rather than shown-but-flagged.
+function lowConfidenceFields(extraction: ReceiptExtraction): string[] | undefined {
+  if (extraction.confidence >= LOW_CONFIDENCE_THRESHOLD) return undefined;
+  const fields: string[] = [];
+  if (extraction.amount) fields.push('amount');
+  if (extraction.merchant) fields.push('payee');
+  if (extraction.date) fields.push('date');
+  return fields.length > 0 ? fields : undefined;
+}
+
 // Maps a receipt extraction onto a draft. Never throws on a field it doesn't recognize —
 // normalizeExtraction (src/receipt/providers/local.ts) already dropped anything unexpected;
 // this only has to cope with values it can't trust (unsynced currency, low confidence).
@@ -67,6 +79,7 @@ export function receiptToDraft(extraction: ReceiptExtraction, reference: Receipt
     categoryName: category,
     sourceId,
     notes,
+    lowConfidenceFields: lowConfidenceFields(extraction),
   };
 }
 
@@ -94,8 +107,9 @@ export async function parseReceiptItem(db: OutboxDb, itemId: string, imageBase64
 }
 
 // Lazy require, not a module-scope import — same reasoning as outbox.ts's attach_receipt
-// branch: this file is imported by toDraft.test.ts and must stay Jest-safe.
-async function readReceiptImageBase64(path: string): Promise<string> {
+// branch: this file is imported by toDraft.test.ts and must stay Jest-safe. Exported for
+// src/receipt/useSharedImages.ts, which needs the same base64 read for a shared image's path.
+export async function readReceiptImageBase64(path: string): Promise<string> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { readAsStringAsync, EncodingType } = require('expo-file-system/legacy');
   return readAsStringAsync(path, { encoding: EncodingType.Base64 });

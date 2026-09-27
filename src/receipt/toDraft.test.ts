@@ -52,4 +52,22 @@ describe('receiptToDraft', () => {
     const draft = receiptToDraft(extraction, reference);
     expect(draft.categoryName).toBeUndefined();
   });
+
+  it('flags the fields it still populated despite low confidence', () => {
+    const extraction = normalizeExtraction({
+      amount: '42.50', currency: 'PLN', merchant: 'Żabka', date: '2026-09-15', category: null,
+      items: [], confidence: 0.2, payment_method: 'unknown',
+    });
+    const draft = receiptToDraft(extraction, reference);
+    expect(draft.lowConfidenceFields).toEqual(['amount', 'payee', 'date']);
+  });
+
+  it('leaves lowConfidenceFields unset for a confident extraction', () => {
+    const extraction = normalizeExtraction({
+      amount: '42.50', currency: 'PLN', merchant: 'Żabka', date: '2026-09-15', category: 'Groceries',
+      items: [], confidence: 0.9, payment_method: 'cash',
+    });
+    const draft = receiptToDraft(extraction, reference);
+    expect(draft.lowConfidenceFields).toBeUndefined();
+  });
 });
