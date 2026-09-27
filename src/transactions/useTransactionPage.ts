@@ -64,9 +64,14 @@ export function useTransactionPage(
   // search or paging past the first 100 rows all silently returned the same rows.
   const { data } = useLiveQuery(where ? base.where(where) : base, [filterKey, limit]);
 
-  const rows = data ?? [];
-  const atEnd = rows.length <= limit;
-  const visible = atEnd ? rows : rows.slice(0, limit);
+  // `limit + 1` rows are read to learn whether there's more; the extra one is dropped here.
+  // Memoized on the query result: slicing on every render handed groupByDay a new array each time,
+  // so every render regrouped every row into new objects and no list row could skip re-rendering.
+  const atEnd = (data?.length ?? 0) <= limit;
+  const visible = useMemo(() => {
+    const rows = data ?? [];
+    return rows.length <= limit ? rows : rows.slice(0, limit);
+  }, [data, limit]);
 
   // Same render-time-adjustment pattern: new data means the page load this component is waiting
   // on has landed (a local SQLite read, effectively instant), so the spinner clears immediately.

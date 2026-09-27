@@ -1,5 +1,5 @@
 // Activity (design §6.4) — balances, grouped-by-day history with totals, paging, search.
-import { useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, SectionList, Text, View } from 'react-native';
 import { useNavigation } from 'expo-router';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
@@ -25,6 +25,7 @@ import { cachedRowFromGroup } from '../../src/sync/referenceData';
 import { enqueueOperation } from '../../src/sync/outbox';
 import { generateId } from '../../src/utils/id';
 import { inArray } from 'drizzle-orm';
+import { haptics } from '../../src/ui/haptics';
 
 const FILTERS: { label: string; type: ActivityTypeFilter }[] = [
   { label: 'All', type: 'all' },
@@ -34,6 +35,11 @@ const FILTERS: { label: string; type: ActivityTypeFilter }[] = [
 ];
 
 const STALE_MS = 24 * 60 * 60 * 1000;
+const REMOTE_SECTION_KEY = 'ff3-search';
+
+type ActivityItem = CachedTransactionRow | QueuedRow | RemoteResultRow;
+interface DisplaySection { key: string; totals: { currencyCode: string; amount: string }[]; data: ActivityItem[] }
+type Currencies = (typeof referenceCurrencies.$inferSelect)[];
 
 interface QueuedRow {
   queued: true;
@@ -104,7 +110,7 @@ export default function ActivityScreen() {
   const db = useDb();
   const t = useTheme();
   const navigation = useNavigation();
-  const listRef = useRef<SectionList<CachedTransactionRow | QueuedRow | RemoteResultRow, DisplaySection>>(null);
+  const listRef = useRef<SectionList<ActivityItem, DisplaySection>>(null);
 
   const [type, setType] = useState<ActivityTypeFilter>('all');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -134,13 +140,13 @@ export default function ActivityScreen() {
   // Multi-select (long-press a row): bulk delete, each as its own conflict-checked outbox delete.
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const selecting = selectedIds.size > 0;
-  function toggleSelected(groupId: string) {
+  const toggleSelected = useCallback((groupId: string) => {
     setSelectedIds((cur) => {
       const next = new Set(cur);
       if (next.has(groupId)) next.delete(groupId); else next.add(groupId);
       return next;
     });
-  }
+  }, []);
   async function deleteSelected() {
     const ids = [...selectedIds];
     if (!await confirmDestructive(`Delete ${ids.length} transaction${ids.length === 1 ? '' : 's'}?`, 'Delete', 'They are deleted in Firefly III too.')) return;
@@ -153,12 +159,12 @@ export default function ActivityScreen() {
   }
 
   // A FF3 search result isn't in the local cache; store the copy we already have, then open it.
-  async function openRemote(item: RemoteResultRow) {
+  const openRemote = useCallback(async (item: RemoteResultRow) => {
     const row = cachedRowFromGroup(item.group, new Date().toISOString());
     if (!row) return;
     await db.insert(cachedTransactions).values(row).onConflictDoUpdate({ target: cachedTransactions.groupId, set: row });
     navigateOnce(`/transactions/${item.groupId}`);
-  }
+  }, [db]);
 
   // Once local search runs out of cached rows to page through, FF3's own search covers what
   // hasn't been pulled into cachedTransactions yet — kept as a separate section rather than
@@ -197,41 +203,80 @@ export default function ActivityScreen() {
     : fetchedSearch?.query === remoteQuery ? fetchedSearch
     : { status: 'loading', query: remoteQuery };
 
-  const queuedRows: QueuedRow[] = (outbox ?? [])
-    .filter((op) => op.kind === 'create_transaction' && op.status === 'pending')
-    .map((op): QueuedRow | null => {
-      const payload = JSON.parse(op.payloadJson) as CreateTransactionPayload;
-      const split = payload.splits[0];
-      if (!split) return null;
-      return {
-        queued: true, groupId: op.id, inboxItemId: op.inboxItemId, description: split.description, amount: split.amount,
-        currencyCode: split.currency_code ?? '', type: split.type,
-        sourceName: split.source_name ?? null, destinationName: split.destination_name ?? null,
-        categoryName: split.category_name ?? null,
-      };
-    })
-    .filter((r): r is QueuedRow => !!r);
+  // Everything read from the outbox, parsed once per outbox change rather than on every render —
+  // a selection tap re-renders this screen, and re-parsing every queued payload each time was
+  // part of why multi-select lagged.
+  const { queuedRows, pendingDeletes } = useMemo(() => {
+    const ops = outbox ?? [];
+    const queued: QueuedRow[] = ops
+      .filter((op) => op.kind === 'create_transaction' && op.status === 'pending')
+      .map((op): QueuedRow | null => {
+        const payload = JSON.parse(op.payloadJson) as CreateTransactionPayload;
+        const split = payload.splits[0];
+        if (!split) return null;
+        return {
+          queued: true, groupId: op.id, inboxItemId: op.inboxItemId, description: split.description, amount: split.amount,
+          currencyCode: split.currency_code ?? '', type: split.type,
+          sourceName: split.source_name ?? null, destinationName: split.destination_name ?? null,
+          categoryName: split.category_name ?? null,
+        };
+      })
+      .filter((r): r is QueuedRow => !!r);
+    // A queued delete takes the row out right away — it used to sit there, unchanged, until a
+    // pull-to-refresh after the delete had gone through.
+    const deletes = new Set(ops
+      .filter((op) => op.kind === 'delete_transaction' && op.status !== 'failed')
+      .map((op) => { try { return (JSON.parse(op.payloadJson) as { groupId?: string }).groupId; } catch { return undefined; } })
+      .filter((id): id is string => !!id));
+    return { queuedRows: queued, pendingDeletes: deletes };
+  }, [outbox]);
 
-  const REMOTE_SECTION_KEY = 'ff3-search';
-  interface DisplaySection { key: string; totals: { currencyCode: string; amount: string }[]; data: (CachedTransactionRow | QueuedRow | RemoteResultRow)[] }
-  const todayKey = localDayKey(new Date());
-  // A queued delete takes the row out right away — it used to sit there, unchanged, until a
-  // pull-to-refresh after the delete had gone through.
-  const pendingDeletes = new Set((outbox ?? [])
-    .filter((op) => op.kind === 'delete_transaction' && op.status !== 'failed')
-    .map((op) => { try { return (JSON.parse(op.payloadJson) as { groupId?: string }).groupId; } catch { return undefined; } })
-    .filter((id): id is string => !!id));
-  const displaySections: DisplaySection[] = sections
-    .map((s): DisplaySection => ({ key: s.key, totals: s.totals, data: s.data.filter((row) => !pendingDeletes.has(row.groupId)) }))
-    .filter((s) => s.data.length > 0);
-  if (queuedRows.length > 0) {
-    const idx = displaySections.findIndex((s) => s.key === todayKey);
-    if (idx >= 0) displaySections[idx] = { ...displaySections[idx]!, data: [...queuedRows, ...displaySections[idx]!.data] };
-    else displaySections.unshift({ key: todayKey, totals: [], data: queuedRows });
-  }
-  if (remoteSearch.status === 'done' && remoteSearch.rows.length > 0) {
-    displaySections.push({ key: REMOTE_SECTION_KEY, totals: [], data: remoteSearch.rows });
-  }
+  const remoteRows = remoteSearch.status === 'done' ? remoteSearch.rows : null;
+  const displaySections = useMemo(() => {
+    const todayKey = localDayKey(new Date());
+    const result: DisplaySection[] = sections
+      .map((s): DisplaySection => ({
+        key: s.key,
+        totals: s.totals,
+        data: s.data.filter((row) => !pendingDeletes.has(row.groupId)),
+      }))
+      .filter((s) => s.data.length > 0);
+    if (queuedRows.length > 0) {
+      const idx = result.findIndex((s) => s.key === todayKey);
+      if (idx >= 0) result[idx] = { ...result[idx]!, data: [...queuedRows, ...result[idx]!.data] };
+      else result.unshift({ key: todayKey, totals: [], data: queuedRows });
+    }
+    if (remoteRows && remoteRows.length > 0) {
+      result.push({ key: REMOTE_SECTION_KEY, totals: [], data: remoteRows });
+    }
+    return result;
+  }, [sections, pendingDeletes, queuedRows, remoteRows]);
+
+  // Rows get callbacks that only change when selection mode starts or ends (when every row
+  // re-renders anyway), so a memoized row re-renders only when its own selected state changes —
+  // not every row on every tap.
+  const onRowPress = useCallback((item: ActivityItem) => {
+    // A queued entry isn't in FF3 yet: open it as its Inbox draft, where a still-waiting one can
+    // be cancelled.
+    if ('queued' in item) { if (item.inboxItemId) navigateOnce(`/draft/${item.inboxItemId}`); return; }
+    if (selecting) { toggleSelected(item.groupId); return; }
+    if ('remote' in item) { void openRemote(item); return; }
+    navigateOnce(`/transactions/${item.groupId}`);
+  }, [selecting, toggleSelected, openRemote]);
+  const onRowLongPress = useCallback((item: ActivityItem) => {
+    void haptics.tick();
+    toggleSelected(item.groupId);
+  }, [toggleSelected]);
+  const renderItem = useCallback(({ item }: { item: ActivityItem }) => (
+    <ActivityRow
+      item={item}
+      selecting={selecting}
+      selected={selectedIds.has(item.groupId)}
+      currencies={currencies}
+      onPress={onRowPress}
+      onLongPress={onRowLongPress}
+    />
+  ), [selecting, selectedIds, currencies, onRowPress, onRowLongPress]);
 
   function scrollToTop() {
     if (displaySections.length > 0) listRef.current?.scrollToLocation({ sectionIndex: 0, itemIndex: 0, animated: true, viewOffset: 0 });
@@ -331,7 +376,7 @@ export default function ActivityScreen() {
         )}
 
         {hasResults && (
-          <SectionList<CachedTransactionRow | QueuedRow | RemoteResultRow, DisplaySection>
+          <SectionList<ActivityItem, DisplaySection>
             // A new filter is a new list: without the remount a list scrolled deep into All kept
             // its offset over the much shorter Income list, so onEndReached fired over and over
             // and the list paged (and scrolled) by itself.
@@ -355,45 +400,7 @@ export default function ActivityScreen() {
                 ) : undefined}
               />
             )}
-            renderItem={({ item }) => {
-              const queued = 'queued' in item;
-              // A remote-search row isn't cached locally yet, so there's nothing for the detail
-              // screen (which only reads cachedTransactions) to open.
-              const remote = 'remote' in item;
-              const description = item.description || (item.type === 'withdrawal' ? item.destinationName : item.sourceName) || '—';
-              const accountLeg = item.type === 'deposit' ? item.sourceName : item.destinationName;
-              const dotColor = item.categoryName ? categoryColor(item.categoryName, t.dark) : (item.type === 'transfer' ? t.color.transfer : t.color.textFaint);
-              return (
-                <Pressable
-                  onPress={() => {
-                    // A queued entry isn't in FF3 yet: open it as its Inbox draft, where a
-                    // still-waiting one can be cancelled.
-                    if (queued) { if (item.inboxItemId) navigateOnce(`/draft/${item.inboxItemId}`); return; }
-                    if (selecting) { toggleSelected(item.groupId); return; }
-                    if (remote) { void openRemote(item); return; }
-                    navigateOnce(`/transactions/${item.groupId}`);
-                  }}
-                  onLongPress={queued || remote ? undefined : () => toggleSelected(item.groupId)}
-                  style={({ pressed }) => ({
-                    flexDirection: 'row', alignItems: 'center', gap: t.space.sm,
-                    paddingHorizontal: t.space.lg, paddingVertical: t.space.sm, opacity: pressed ? 0.6 : 1,
-                    backgroundColor: selectedIds.has(item.groupId) ? t.color.accentSoft : undefined,
-                  })}
-                >
-                  {selecting && !queued && !remote
-                    ? <Ionicons name={selectedIds.has(item.groupId) ? 'checkmark-circle' : 'ellipse-outline'} size={20} color={selectedIds.has(item.groupId) ? t.color.accent : t.color.textFaint} />
-                    : <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor }} />}
-                  <View style={{ flex: 1 }}>
-                    <Text style={[t.type.body, { color: t.color.text }]} numberOfLines={1}>{description}</Text>
-                    <Text style={[t.type.label, { color: t.color.textMuted }]} numberOfLines={1}>
-                      {[item.categoryName, accountLeg].filter(Boolean).join(' · ') || (queued ? 'Queued' : '—')}
-                    </Text>
-                  </View>
-                  {queued && <Chip label="Queued" tone="warn" />}
-                  <Money amount={item.amount} currency={currencyOf(currencies ?? [], item.currencyCode)} type={item.type} />
-                </Pressable>
-              );
-            }}
+            renderItem={renderItem}
             ListFooterComponent={(
               <>
                 {!reachedRealEnd && (
@@ -435,3 +442,49 @@ export default function ActivityScreen() {
     </Screen>
   );
 }
+
+const ActivityRow = memo(function ActivityRow({
+  item, selecting, selected, currencies, onPress, onLongPress,
+}: {
+  item: ActivityItem;
+  selecting: boolean;
+  selected: boolean;
+  currencies: Currencies | undefined;
+  onPress: (item: ActivityItem) => void;
+  onLongPress: (item: ActivityItem) => void;
+}) {
+  const t = useTheme();
+  const queued = 'queued' in item;
+  // A remote-search row isn't cached locally yet, so there's nothing for the detail screen
+  // (which only reads cachedTransactions) to open.
+  const remote = 'remote' in item;
+  const description = item.description || (item.type === 'withdrawal' ? item.destinationName : item.sourceName) || '—';
+  const accountLeg = item.type === 'deposit' ? item.sourceName : item.destinationName;
+  const dotColor = item.categoryName ? categoryColor(item.categoryName, t.dark) : (item.type === 'transfer' ? t.color.transfer : t.color.textFaint);
+  const selectable = !queued && !remote;
+  return (
+    <Pressable
+      onPress={() => onPress(item)}
+      onLongPress={selectable ? () => onLongPress(item) : undefined}
+      // 500ms by default, which felt like the long-press hadn't registered.
+      delayLongPress={300}
+      style={({ pressed }) => ({
+        flexDirection: 'row', alignItems: 'center', gap: t.space.sm,
+        paddingHorizontal: t.space.lg, paddingVertical: t.space.sm, opacity: pressed ? 0.6 : 1,
+        backgroundColor: selected ? t.color.accentSoft : undefined,
+      })}
+    >
+      {selecting && selectable
+        ? <Ionicons name={selected ? 'checkmark-circle' : 'ellipse-outline'} size={20} color={selected ? t.color.accent : t.color.textFaint} />
+        : <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor }} />}
+      <View style={{ flex: 1 }}>
+        <Text style={[t.type.body, { color: t.color.text }]} numberOfLines={1}>{description}</Text>
+        <Text style={[t.type.label, { color: t.color.textMuted }]} numberOfLines={1}>
+          {[item.categoryName, accountLeg].filter(Boolean).join(' · ') || (queued ? 'Queued' : '—')}
+        </Text>
+      </View>
+      {queued && <Chip label="Queued" tone="warn" />}
+      <Money amount={item.amount} currency={currencyOf(currencies ?? [], item.currencyCode)} type={item.type} />
+    </Pressable>
+  );
+});
