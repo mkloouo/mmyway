@@ -23,7 +23,7 @@ function Key({ label, onPress, tone, disabled }: { label: string; onPress: () =>
       })}
     >
       <Text
-        style={[t.type.heading, { color: isAccent ? (t.dark ? '#0F1013' : '#FFFFFF') : t.color.text, textAlign: 'center' }]}
+        style={[t.type.heading, { color: isAccent ? t.color.onAccent : t.color.text, textAlign: 'center' }]}
         numberOfLines={1}
       >
         {label}

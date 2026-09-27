@@ -13,12 +13,16 @@ export interface Palette {
   border: string;
   accent: string;
   accentSoft: string;
+  /** Text/icon color for content placed on an accent-filled surface (a primary button, the FAB). */
+  onAccent: string;
   income: string;
   transfer: string;
   warn: string;
   warnSoft: string;
   danger: string;
   dangerSoft: string;
+  /** Text/icon color for content placed on a danger-filled surface (a swipe-to-delete reveal). */
+  onDanger: string;
   scrim: string;
 }
 
@@ -32,12 +36,14 @@ const light: Palette = {
   border: '#E3E3DF',
   accent: '#4C5BD4',
   accentSoft: '#E7E9FB',
+  onAccent: '#FFFFFF',
   income: '#2E8B57',
   transfer: '#3B82F6',
   warn: '#B45309',
   warnSoft: '#FDF0DC',
   danger: '#C2413A',
   dangerSoft: '#FBE9E7',
+  onDanger: '#FFFFFF',
   scrim: 'rgba(0, 0, 0, 0.40)',
 };
 
@@ -51,12 +57,14 @@ const dark: Palette = {
   border: '#2C3037',
   accent: '#8B95F7',
   accentSoft: '#262B4A',
+  onAccent: '#0F1013',
   income: '#4ADE80',
   transfer: '#60A5FA',
   warn: '#FBBF24',
   warnSoft: '#3A2C10',
   danger: '#F87171',
   dangerSoft: '#3A1E1C',
+  onDanger: '#FFFFFF',
   scrim: 'rgba(0, 0, 0, 0.60)',
 };
 

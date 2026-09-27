@@ -130,7 +130,7 @@ export function Button({
     : variant === 'danger' ? t.color.dangerSoft
     : variant === 'secondary' ? t.color.surfaceAlt
     : 'transparent';
-  const label = variant === 'primary' ? (t.dark ? '#0F1013' : '#FFFFFF')
+  const label = variant === 'primary' ? t.color.onAccent
     : variant === 'danger' ? t.color.danger
     : variant === 'ghost' ? t.color.accent
     : t.color.text;

@@ -26,12 +26,12 @@ export function SwipeableCard({
       rightThreshold={64}
       renderLeftActions={onConfirm ? () => (
         <View style={{ backgroundColor: t.color.accent, justifyContent: 'center', paddingHorizontal: t.space.xl }}>
-          <Text style={{ color: t.dark ? '#0F1013' : '#FFFFFF', fontWeight: '700' }}>✓ Confirm</Text>
+          <Text style={{ color: t.color.onAccent, fontWeight: '700' }}>✓ Confirm</Text>
         </View>
       ) : undefined}
       renderRightActions={onDelete ? () => (
         <View style={{ backgroundColor: t.color.danger, justifyContent: 'center', alignItems: 'flex-end', paddingHorizontal: t.space.xl }}>
-          <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>✕ Delete</Text>
+          <Text style={{ color: t.color.onDanger, fontWeight: '700' }}>✕ Delete</Text>
         </View>
       ) : undefined}
       onSwipeableOpen={(direction) => {

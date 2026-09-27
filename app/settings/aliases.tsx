@@ -116,7 +116,7 @@ export default function AliasesScreen() {
           backgroundColor: t.color.accent, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.7 : 1, elevation: 3,
         })}
       >
-        <Text style={[t.type.title, { color: t.dark ? '#0F1013' : '#FFFFFF' }]}>＋</Text>
+        <Text style={[t.type.title, { color: t.color.onAccent }]}>＋</Text>
       </Pressable>
 
       <Sheet

@@ -71,7 +71,7 @@ export default function AccountsScreen() {
                   alignItems: 'center', justifyContent: 'center',
                 }}
               >
-                {hasEnvelopeMarker(editing.notes) && <Text style={{ color: t.dark ? '#0F1013' : '#FFFFFF', fontSize: 14 }}>✓</Text>}
+                {hasEnvelopeMarker(editing.notes) && <Text style={{ color: t.color.onAccent, fontSize: 14 }}>✓</Text>}
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[t.type.body, { color: t.color.text }]}>Cash envelope</Text>

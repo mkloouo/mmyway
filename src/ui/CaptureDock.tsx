@@ -36,8 +36,8 @@ export function CaptureDock() {
           backgroundColor: t.color.accent, opacity: pressed ? 0.6 : 1, elevation: 3,
         })}
       >
-        <Ionicons name="add" size={20} color={t.dark ? '#0F1013' : '#FFFFFF'} />
-        <Text style={[t.type.heading, { color: t.dark ? '#0F1013' : '#FFFFFF' }]}>Add</Text>
+        <Ionicons name="add" size={20} color={t.color.onAccent} />
+        <Text style={[t.type.heading, { color: t.color.onAccent }]}>Add</Text>
       </Pressable>
     </View>
   );
