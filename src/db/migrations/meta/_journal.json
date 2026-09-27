@@ -15,6 +15,13 @@
       "when": 1790471228021,
       "tag": "0001_mysterious_christian_walker",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1790472853978,
+      "tag": "0002_cool_major_mapleleaf",
+      "breakpoints": true
     }
   ]
 }

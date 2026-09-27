@@ -75,6 +75,11 @@ export const outboxOperations = sqliteTable('outbox_operations', {
   sequence: integer('sequence').notNull(), // strictly increasing, defines replay order
 });
 
+export const appSettings = sqliteTable('app_settings', {
+  key: text('key').primaryKey(),
+  value: text('value').notNull(),
+});
+
 export const aliases = sqliteTable('aliases', {
   id: text('id').primaryKey(),
   kind: text('kind').notNull(), // payee | account | budget | currency

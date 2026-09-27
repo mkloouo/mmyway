@@ -8,8 +8,10 @@ import journal from './migrations/meta/_journal.json';
 import m0000 from './migrations/0000_petite_prism.sql';
 // eslint-disable-next-line import/no-unresolved -- inlined as a string by babel-plugin-inline-import
 import m0001 from './migrations/0001_mysterious_christian_walker.sql';
+// eslint-disable-next-line import/no-unresolved -- inlined as a string by babel-plugin-inline-import
+import m0002 from './migrations/0002_cool_major_mapleleaf.sql';
 
 export default {
   journal,
-  migrations: { m0000, m0001 },
+  migrations: { m0000, m0001, m0002 },
 };
