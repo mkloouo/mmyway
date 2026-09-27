@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { View, TextInput, FlatList, Text } from 'react-native';
+import { router } from 'expo-router';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { useDb } from '../../src/providers/DbProvider';
 import { cachedTransactions } from '../../src/db/schema';
@@ -21,7 +22,9 @@ export default function TransactionsScreen() {
         keyExtractor={(row) => row.groupId}
         renderItem={({ item }) => (
           <View style={{ paddingVertical: 8, borderBottomWidth: 1, borderColor: '#ddd' }}>
-            <Text>{item.date.slice(0, 10)} · {item.description} · {item.amount} {item.currencyCode}</Text>
+            <Text onPress={() => router.push(`/transactions/${item.groupId}`)}>
+              {item.date.slice(0, 10)} · {item.description} · {item.amount} {item.currencyCode}
+            </Text>
           </View>
         )}
       />

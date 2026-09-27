@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { View, Text, TextInput, Button } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as Crypto from 'expo-crypto';
 import { useDb } from '../src/providers/DbProvider';
 import { inboxItems } from '../src/db/schema';
 import { findDuplicateReceiptItem } from '../src/inbox/draft';
 import { parseReceiptItem } from '../src/receipt/toDraft';
+import { enqueueOperation } from '../src/sync/outbox';
 import { generateId } from '../src/utils/id';
 import type { Draft } from '../src/inbox/draft';
 
@@ -25,6 +26,7 @@ async function pickImage(source: 'camera' | 'gallery') {
 
 export default function ReceiptScreen() {
   const db = useDb();
+  const { attachToJournalId } = useLocalSearchParams<{ attachToJournalId?: string }>();
   const [hint, setHint] = useState('');
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -36,6 +38,18 @@ export default function ReceiptScreen() {
     try {
       const asset = await pickImage(source);
       if (!asset?.base64) return;
+
+      // C2: attaching to an already-synced transaction reuses Task 5's attach_receipt
+      // operation directly — no inbox item, no parsing, just the upload.
+      if (attachToJournalId) {
+        await enqueueOperation(db, {
+          id: generateId(),
+          kind: 'attach_receipt',
+          payload: { transactionJournalId: attachToJournalId, receiptImagePath: asset.uri },
+        });
+        router.back();
+        return;
+      }
 
       const hash = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, asset.base64);
       const duplicate = await findDuplicateReceiptItem(db, hash);
@@ -66,8 +80,10 @@ export default function ReceiptScreen() {
 
   return (
     <View style={{ flex: 1, padding: 16, gap: 12 }}>
-      <Text style={{ fontSize: 20, fontWeight: 'bold' }}>Receipt</Text>
-      <TextInput placeholder="Hint for the provider (optional)" value={hint} onChangeText={setHint} style={{ borderWidth: 1, padding: 8 }} />
+      <Text style={{ fontSize: 20, fontWeight: 'bold' }}>{attachToJournalId ? 'Attach receipt' : 'Receipt'}</Text>
+      {!attachToJournalId && (
+        <TextInput placeholder="Hint for the provider (optional)" value={hint} onChangeText={setHint} style={{ borderWidth: 1, padding: 8 }} />
+      )}
       <Button title="Take photo" onPress={() => capture('camera')} disabled={busy} />
       <Button title="Choose from gallery" onPress={() => capture('gallery')} disabled={busy} />
       {status && <Text>{status}</Text>}
