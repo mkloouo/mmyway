@@ -2,8 +2,12 @@ import { createTestDb } from '../db/testDb';
 import { runSync } from './runSync';
 import { enqueueOperation } from './outbox';
 import { getClient } from '../api/ff3/session';
+import { readStoredCredentials, probeAbout } from '../api/ff3/auth';
+import { readHosts } from '../api/ff3/hosts';
 
 jest.mock('../api/ff3/session', () => ({ getClient: jest.fn() }));
+jest.mock('../api/ff3/auth', () => ({ readStoredCredentials: jest.fn(), probeAbout: jest.fn() }));
+jest.mock('../api/ff3/hosts', () => ({ ...jest.requireActual('../api/ff3/hosts'), readHosts: jest.fn() }));
 
 function buildClient(opts: { failCreate?: boolean } = {}) {
   const request = jest.fn(async (path: string, init?: RequestInit) => {
@@ -55,5 +59,22 @@ describe('runSync', () => {
 
     expect(summary.failedAt).toBe('op-1');
     expect(summary.replaySucceeded).toBe(0);
+  });
+
+  it('a sync with two configured FF3 addresses, the first dead, still syncs via the second', async () => {
+    const client = buildClient();
+    (getClient as jest.Mock).mockResolvedValue(client);
+    (readStoredCredentials as jest.Mock).mockResolvedValue({ host: 'https://dead.example.com', apiToken: 'tok' });
+    (readHosts as jest.Mock).mockResolvedValue(['https://dead.example.com', 'https://alive.example.com']);
+    (probeAbout as jest.Mock).mockImplementation(async (host: string) => (
+      host === 'https://alive.example.com' ? { ok: true, apiVersion: '6.3.2' } : { ok: false, reason: 'invalid_host' }
+    ));
+    const db = createTestDb();
+
+    const summary = await runSync(db as any);
+
+    expect(summary.ff3Reachable).toBe(true);
+    expect(summary.ff3.winner).toBe('https://alive.example.com');
+    expect(summary.error).toBeNull();
   });
 });

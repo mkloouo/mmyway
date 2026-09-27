@@ -1,8 +1,30 @@
-// Everything the old grey box on Inbox showed, moved behind the sync pill (design §6.1).
+// Everything the old grey box on Inbox showed, moved behind the sync pill (design §6.1), now
+// listing every configured address with its own dot (§6.6) — "why is it offline" is answerable
+// here without opening Settings.
 import { Text, View } from 'react-native';
 import { Sheet, Row, Button } from './components';
 import { useTheme } from './theme';
 import type { SyncSummary } from '../sync/runSync';
+import type { ServerReachability } from '../sync/reachability';
+
+function AddressRows({ label, report }: { label: string; report: ServerReachability }) {
+  const t = useTheme();
+  if (report.results.length === 0) {
+    return <Row label={label} value="none configured" tone="warn" />;
+  }
+  return (
+    <View>
+      <Row label={label} value={report.winner ? 'reachable' : 'unreachable'} tone={report.winner ? 'default' : 'warn'} />
+      {report.results.map((r) => (
+        <View key={r.address} style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm, paddingLeft: t.space.lg, paddingVertical: t.space.xs }}>
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: r.ok ? t.color.income : t.color.textFaint }} />
+          <Text style={[t.type.label, { color: t.color.textMuted, flex: 1 }]} numberOfLines={1}>{r.address}</Text>
+          {report.winner === r.address && <Text style={[t.type.label, { color: t.color.accent }]}>in use</Text>}
+        </View>
+      ))}
+    </View>
+  );
+}
 
 export function SyncSheet({
   visible, onClose, summary, status, pendingOutboxCount, onSyncNow,
@@ -26,16 +48,15 @@ export function SyncSheet({
       footer={<Button title={syncing ? 'Syncing…' : 'Sync now'} onPress={onSyncNow} disabled={syncing} />}
     >
       <View>
-        <Row
-          first
-          label="Firefly III"
-          value={!signedIn ? 'not signed in' : summary?.ff3Reachable ? 'reachable' : 'unreachable'}
-          tone={!signedIn || !summary?.ff3Reachable ? 'warn' : 'default'}
-        />
-        {Object.entries(summary?.providersReachable ?? {}).map(([name, ok]) => (
-          <Row key={name} label={name} value={ok ? 'up' : 'down'} tone={ok ? 'default' : 'warn'} />
+        {!signedIn ? (
+          <Row first label="Firefly III" value="not signed in" tone="warn" />
+        ) : (
+          <AddressRows label="Firefly III" report={summary!.ff3} />
+        )}
+        {Object.entries(summary?.providers ?? {}).map(([name, report]) => (
+          <AddressRows key={name} label={name} report={report} />
         ))}
-        {Object.keys(summary?.providersReachable ?? {}).length === 0 && (
+        {signedIn && Object.keys(summary?.providers ?? {}).length === 0 && (
           <Row label="Receipt providers" value="none configured" tone="warn" />
         )}
         <Row label="Pending outbox" value={String(pendingOutboxCount)} tone={pendingOutboxCount > 0 ? 'warn' : 'default'} />

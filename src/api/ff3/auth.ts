@@ -1,10 +1,11 @@
 import * as SecureStore from 'expo-secure-store';
 import { createFF3Client, classifyProbeError, type FF3Client } from './client';
+import { readHosts, writeHosts } from './hosts';
 import type { SystemInfo, CurrencyRead, AuthErrorReason } from './types';
 
 const MIN_API_VERSION = [6, 3, 2] as const;
-const HOST_KEY = 'ff3_host';
-const TOKEN_KEY = 'ff3_api_token';
+const LEGACY_HOST_KEY = 'ff3_host';
+export const TOKEN_KEY = 'ff3_api_token';
 
 export type SignInResult =
   | { ok: true; client: FF3Client; apiVersion: string; defaultCurrencyCode: string }
@@ -55,6 +56,9 @@ export async function probeAbout(
   return { ok: true, apiVersion: body.data.api_version };
 }
 
+// Signing in starts a fresh address list with the one the user entered — one token covers every
+// FF3 address (they are routes to the same instance), but a new sign-in is a new instance.
+// Additional addresses for this instance are added afterward via the Addresses sheet.
 export async function signIn(host: string, apiToken: string): Promise<SignInResult> {
   const baseUrl = host.trim().replace(/\/+$/, '');
   const token = apiToken.trim();
@@ -64,7 +68,7 @@ export async function signIn(host: string, apiToken: string): Promise<SignInResu
   const client = createFF3Client({ baseUrl, apiToken: token });
   const currency = await client.request<{ data: CurrencyRead }>('/v1/currencies/primary');
 
-  await SecureStore.setItemAsync(HOST_KEY, baseUrl);
+  await writeHosts([baseUrl]);
   await SecureStore.setItemAsync(TOKEN_KEY, token);
 
   return {
@@ -75,16 +79,20 @@ export async function signIn(host: string, apiToken: string): Promise<SignInResu
   };
 }
 
+/**
+ * Back-compat shape for simple callers that just need "a" configured host (is anything set up
+ * at all) — the first address in the list, not necessarily the one that last answered. Multi-
+ * address resolution (src/api/ff3/session.ts, src/sync/reachability.ts) reads `readHosts()`
+ * directly instead.
+ */
 export async function readStoredCredentials(): Promise<{ host: string; apiToken: string } | null> {
-  const [host, apiToken] = await Promise.all([
-    SecureStore.getItemAsync(HOST_KEY),
-    SecureStore.getItemAsync(TOKEN_KEY),
-  ]);
-  if (!host || !apiToken) return null;
-  return { host, apiToken };
+  const [hosts, apiToken] = await Promise.all([readHosts(), SecureStore.getItemAsync(TOKEN_KEY)]);
+  if (hosts.length === 0 || !apiToken) return null;
+  return { host: hosts[0]!, apiToken };
 }
 
 export async function signOut(): Promise<void> {
-  await SecureStore.deleteItemAsync(HOST_KEY);
+  await writeHosts([]);
+  await SecureStore.deleteItemAsync(LEGACY_HOST_KEY);
   await SecureStore.deleteItemAsync(TOKEN_KEY);
 }
