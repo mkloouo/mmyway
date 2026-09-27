@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
-import { referenceAccounts, referenceCategories, referenceCurrencies, inboxItems } from '../db/schema';
-import { getDefaultSourceAccountId } from '../settings/appSettings';
+import { referenceCategories, referenceCurrencies, inboxItems } from '../db/schema';
+import { getDefaultSourceAccountId, getCashAccountId } from '../settings/appSettings';
 import { transition } from '../inbox/state';
 import { buildChain } from './buildChain';
 import { runProviderChain } from './chain';
@@ -20,20 +20,18 @@ export interface ReceiptDraftReference {
 }
 
 export async function buildReceiptDraftReference(db: OutboxDb): Promise<ReceiptDraftReference> {
-  const [categories, currencies, accounts, defaultAccountId] = await Promise.all([
+  const [categories, currencies, defaultAccountId, cashAccountId] = await Promise.all([
     db.select().from(referenceCategories),
     db.select().from(referenceCurrencies),
-    db.select().from(referenceAccounts),
     getDefaultSourceAccountId(db),
+    getCashAccountId(db),
   ]);
-  const assetAccounts = accounts.filter((a) => a.type === 'asset');
   return {
     categoryNames: categories.map((c) => c.name),
     currencyCodes: currencies.map((c) => c.code),
-    // ponytail: no dedicated "is this the cash account" flag exists yet — name match plus the
-    // user's configured default account. Add a dedicated per-account role setting if this
-    // heuristic picks the wrong account often enough to matter.
-    cashAccountId: assetAccounts.find((a) => /cash/i.test(a.name))?.id,
+    // Falls back to leaving the source blank — never a guess — when nothing is configured
+    // (design §6.6's DEFAULTS row: "Cash payments use ␣").
+    cashAccountId: cashAccountId ?? undefined,
     cardAccountId: defaultAccountId ?? undefined,
   };
 }

@@ -12,15 +12,17 @@ import type { FF3Client } from '../api/ff3/client';
 import { FF3RequestError } from '../api/ff3/client';
 import { outboxOperations, cachedTransactions, inboxItems } from '../db/schema';
 import * as schema from '../db/schema';
-import type { TransactionSplit, TransactionRead } from '../api/ff3/types';
+import type { TransactionSplit, TransactionRead, AccountRead } from '../api/ff3/types';
 import { generateId } from '../utils/id';
+import { setEnvelopeMarker } from '../accounts/envelopeMarker';
 
 export type OutboxKind =
   | 'create_transaction'
   | 'update_transaction'
   | 'delete_transaction'
   | 'attach_receipt'
-  | 'recurring_review';
+  | 'recurring_review'
+  | 'update_account';
 
 export interface CreateTransactionPayload {
   clientId: string; // becomes the duplicate-hash guard
@@ -44,6 +46,11 @@ export interface AttachReceiptPayload {
   receiptImagePath: string; // file:// uri; read lazily at replay time, never held in memory across app restarts
 }
 
+export interface UpdateAccountPayload {
+  accountId: string;
+  setEnvelopeMarker: boolean; // the desired on/off state; the notes text itself is read fresh at replay
+}
+
 // Both the expo-sqlite and better-sqlite3 Drizzle instances (src/db/client.ts, src/db/testDb.ts)
 // extend BaseSQLiteDatabase<'sync', ...> — only TRunResult differs, which nothing here touches.
 export type OutboxDb = BaseSQLiteDatabase<'sync', any, typeof schema>;
@@ -52,7 +59,7 @@ export interface NewOutboxOperation {
   id: string;
   inboxItemId?: string;
   kind: OutboxKind;
-  payload: CreateTransactionPayload | UpdateTransactionPayload | DeleteTransactionPayload | AttachReceiptPayload | Record<string, unknown>;
+  payload: CreateTransactionPayload | UpdateTransactionPayload | DeleteTransactionPayload | AttachReceiptPayload | UpdateAccountPayload | Record<string, unknown>;
 }
 
 export interface ReplayResult {
@@ -166,6 +173,17 @@ export async function replayOutbox(db: OutboxDb, client: FF3Client, opts: { onCo
           }
         }
         await client.request(`/v1/transactions/${p.groupId}`, { method: 'DELETE' });
+      } else if (row.kind === 'update_account') {
+        // Read-modify-write at replay time, not a snapshot taken when the box was ticked: the
+        // account's notes may have been edited in FF3's web UI meanwhile, and this must not
+        // clobber it — only the mmyway-envelope line changes (design §6.6).
+        const p = payload as UpdateAccountPayload;
+        const current = await client.request<{ data: AccountRead }>(`/v1/accounts/${p.accountId}`);
+        const currentNotes = (current.data.attributes as { notes?: string | null }).notes ?? null;
+        await client.request(`/v1/accounts/${p.accountId}`, {
+          method: 'PUT',
+          body: JSON.stringify({ notes: setEnvelopeMarker(currentNotes, p.setEnvelopeMarker) }),
+        });
       }
 
       await db.update(outboxOperations).set({ status: 'done' }).where(eq(outboxOperations.id, row.id));

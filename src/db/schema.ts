@@ -8,6 +8,7 @@ export const referenceAccounts = sqliteTable('reference_accounts', {
   active: integer('active', { mode: 'boolean' }).notNull().default(true),
   currentBalance: text('current_balance'), // decimal string, as of the last pull
   currentBalanceDate: text('current_balance_date'),
+  notes: text('notes'), // carries the `mmyway-envelope` marker line among the user's own text
   syncedAt: text('synced_at').notNull(),
 });
 

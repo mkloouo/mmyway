@@ -1,5 +1,7 @@
-import { receiptToDraft, type ReceiptDraftReference } from './toDraft';
+import { receiptToDraft, buildReceiptDraftReference, type ReceiptDraftReference } from './toDraft';
 import { normalizeExtraction } from './providers/local';
+import { createTestDb } from '../db/testDb';
+import { setCashAccountId, setDefaultSourceAccountId } from '../settings/appSettings';
 
 const reference: ReceiptDraftReference = {
   categoryNames: ['Groceries', 'Food'],
@@ -69,5 +71,40 @@ describe('receiptToDraft', () => {
     });
     const draft = receiptToDraft(extraction, reference);
     expect(draft.lowConfidenceFields).toBeUndefined();
+  });
+});
+
+describe('buildReceiptDraftReference', () => {
+  it('a cash receipt uses the configured cash account, not a name match', async () => {
+    const db = createTestDb();
+    await setCashAccountId(db as any, 'acc-cash-drawer');
+
+    const reference = await buildReceiptDraftReference(db as any);
+    expect(reference.cashAccountId).toBe('acc-cash-drawer');
+
+    const extraction = normalizeExtraction({
+      amount: '10.00', currency: 'PLN', merchant: 'Test', date: '2026-09-15', category: null,
+      items: [], confidence: 0.9, payment_method: 'cash',
+    });
+    expect(receiptToDraft(extraction, reference).sourceId).toBe('acc-cash-drawer');
+  });
+
+  it('falls back to leaving the cash source blank, never a guess, when nothing is configured', async () => {
+    const db = createTestDb();
+    const reference = await buildReceiptDraftReference(db as any);
+    expect(reference.cashAccountId).toBeUndefined();
+
+    const extraction = normalizeExtraction({
+      amount: '10.00', currency: 'PLN', merchant: 'Test', date: '2026-09-15', category: null,
+      items: [], confidence: 0.9, payment_method: 'cash',
+    });
+    expect(receiptToDraft(extraction, reference).sourceId).toBeUndefined();
+  });
+
+  it('a card receipt still uses the default source account', async () => {
+    const db = createTestDb();
+    await setDefaultSourceAccountId(db as any, 'acc-card-default');
+    const reference = await buildReceiptDraftReference(db as any);
+    expect(reference.cardAccountId).toBe('acc-card-default');
   });
 });

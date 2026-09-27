@@ -16,11 +16,12 @@ export async function pullReferenceData(db: OutboxDb, client: FF3Client): Promis
   for (const account of accounts.data) {
     // AccountRead (src/api/ff3/types.ts, pinned) doesn't declare these — narrowed with a local
     // cast at the read site, as recurringReview.ts already does for the group's updated_at.
-    const balance = account.attributes as { current_balance?: string; current_balance_date?: string };
+    const extra = account.attributes as { current_balance?: string; current_balance_date?: string; notes?: string | null };
     const row = {
       id: account.id, name: account.attributes.name, type: account.attributes.type,
       currencyCode: account.attributes.currency_code, active: account.attributes.active,
-      currentBalance: balance.current_balance ?? null, currentBalanceDate: balance.current_balance_date ?? null,
+      currentBalance: extra.current_balance ?? null, currentBalanceDate: extra.current_balance_date ?? null,
+      notes: extra.notes ?? null,
       syncedAt: now,
     };
     await db.insert(referenceAccounts).values(row).onConflictDoUpdate({ target: referenceAccounts.id, set: row });

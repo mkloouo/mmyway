@@ -1,0 +1,1 @@
+ALTER TABLE `reference_accounts` ADD `notes` text;

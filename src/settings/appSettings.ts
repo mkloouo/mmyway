@@ -7,6 +7,7 @@ import type { OutboxDb } from '../sync/outbox';
 const KEYS = {
   defaultSourceAccountId: 'default_source_account_id',
   defaultCurrencyCode: 'default_currency_code',
+  cashAccountId: 'cash_account_id',
   localModelBaseUrl: 'local_model_base_url',
   localModelBaseUrls: 'local_model_base_urls',
   localModelActiveUrl: 'local_model_active_url',
@@ -27,6 +28,11 @@ async function setSetting(db: OutboxDb, key: string, value: string): Promise<voi
 
 export const getDefaultSourceAccountId = (db: OutboxDb) => getSetting(db, KEYS.defaultSourceAccountId);
 export const setDefaultSourceAccountId = (db: OutboxDb, value: string) => setSetting(db, KEYS.defaultSourceAccountId, value);
+
+// Which asset account a cash receipt's source is (design §6.6) — a dedicated setting, not the
+// `/cash/i` name match buildReceiptDraftReference used to fall back on.
+export const getCashAccountId = (db: OutboxDb) => getSetting(db, KEYS.cashAccountId);
+export const setCashAccountId = (db: OutboxDb, value: string) => setSetting(db, KEYS.cashAccountId, value);
 
 export const getDefaultCurrencyCode = (db: OutboxDb) => getSetting(db, KEYS.defaultCurrencyCode);
 export const setDefaultCurrencyCode = (db: OutboxDb, value: string) => setSetting(db, KEYS.defaultCurrencyCode, value);

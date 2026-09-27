@@ -107,4 +107,29 @@ describe('replayOutbox', () => {
     const attachOps = (await db.select().from(outboxOperations)).filter((op) => op.kind === 'attach_receipt');
     expect(attachOps).toHaveLength(1);
   });
+
+  it('update_account re-reads the account at replay and keeps the server\'s other note lines', async () => {
+    const db = createTestDb();
+    await enqueueOperation(db, { id: 'op-1', kind: 'update_account', payload: { accountId: 'acc-1', setEnvelopeMarker: true } });
+
+    let putBody: string | undefined;
+    const client = {
+      request: jest.fn(async (path: string, init?: RequestInit) => {
+        if (path === '/v1/accounts/acc-1' && (!init || init.method === undefined)) {
+          // GET: the server's notes changed since the checkbox was ticked (someone edited it in the web UI)
+          return { data: { id: 'acc-1', attributes: { name: 'Cash', type: 'asset', currency_code: 'PLN', active: true, notes: 'Edited in the web UI just now' } } };
+        }
+        if (path === '/v1/accounts/acc-1' && init?.method === 'PUT') {
+          putBody = init.body as string;
+          return {};
+        }
+        throw new Error(`no handler for ${path} ${init?.method}`);
+      }),
+    };
+
+    const result = await replayOutbox(db as any, client as any);
+
+    expect(result.succeeded).toEqual(['op-1']);
+    expect(JSON.parse(putBody!)).toEqual({ notes: 'Edited in the web UI just now\nmmyway-envelope' });
+  });
 });
