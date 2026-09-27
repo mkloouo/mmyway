@@ -1,0 +1,33 @@
+// The keypad's reducer (design §6.2). Builds a decimal string digit by digit — never through
+// `parseFloat` (AGENTS.md). `current` and the return value are always a valid decimal-string
+// prefix: no sign (the type carries that), at most one `.`, fraction capped at `decimalPlaces`.
+export type KeypadKey = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '00' | ',' | '.' | '⌫';
+
+export function applyDigit(current: string, key: KeypadKey, decimalPlaces: number): string {
+  if (key === '⌫') {
+    if (current === '') return '';
+    const next = current.slice(0, -1);
+    return next === '' ? '0' : next;
+  }
+
+  const hasPoint = current.includes('.');
+  const [whole = '0', fraction = ''] = current.split('.');
+
+  if (key === ',' || key === '.') {
+    if (hasPoint || decimalPlaces === 0) return current;
+    return `${whole}.`;
+  }
+
+  if (!/^\d+$/.test(key)) return current; // defensive: unknown key
+  const digits = key; // '0'-'9' or the double-zero key '00'
+
+  if (!hasPoint) {
+    // Leading zeros collapse: "0" + "5" -> "5", but "0" + "00" stays "0".
+    if (/^0+$/.test(digits)) return whole === '0' ? '0' : whole + digits;
+    return whole === '0' ? digits : whole + digits;
+  }
+
+  const room = decimalPlaces - fraction.length;
+  if (room <= 0) return current;
+  return `${whole}.${fraction}${digits.slice(0, room)}`;
+}

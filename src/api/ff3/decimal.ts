@@ -29,3 +29,18 @@ export function addDecimal(a: string, b: string): string {
 export function isNegative(a: string): boolean {
   return a.trim().startsWith('-');
 }
+
+/**
+ * `a / b` to `precision` fractional digits, truncated — exact BigInt division, never a float.
+ * Display only (the FX implied-rate caption, design §6.2): never feed the result back into a
+ * transaction payload. Returns `'0'` for a zero or unparsed denominator rather than throwing.
+ */
+export function divideDecimal(a: string, b: string, precision: number): string {
+  const numerator = toMinorUnits(a);
+  const denominator = toMinorUnits(b);
+  if (denominator.minor === 0n) return '0';
+  const scaleDiff = denominator.scale - numerator.scale + precision;
+  const scaledNumerator = scaleDiff >= 0 ? numerator.minor * 10n ** BigInt(scaleDiff) : numerator.minor;
+  const scaledDenominator = scaleDiff >= 0 ? denominator.minor : denominator.minor * 10n ** BigInt(-scaleDiff);
+  return fromMinorUnits(scaledNumerator / scaledDenominator, precision);
+}
