@@ -25,6 +25,7 @@ import { confirmDestructive } from '../../src/ui/confirm';
 import { transition } from '../../src/inbox/state';
 import { approveRecurringReview, editRecurringReview, deleteRecurringReview } from '../../src/sync/recurringReview';
 import { discardOperation } from '../../src/sync/outbox';
+import { requestSync } from '../../src/sync/syncTrigger';
 import { parseDecimalInput } from '../../src/api/ff3/decimal';
 import { reportErrors } from '../../src/ui/reportError';
 import { useSync, useSignedIn } from '../../src/sync/useSync';
@@ -300,6 +301,8 @@ export default function InboxScreen() {
     await db.update(inboxItems)
       .set({ state: transition('error', 'retry'), errorMessage: null, updatedAt: new Date().toISOString() })
       .where(eq(inboxItems.id, id));
+    // A retried receipt is re-read by the sync; don't make it wait for the next app resume.
+    requestSync();
   }
   async function discardError(id: string) {
     if (!await confirmDestructive('Discard this item?', 'Discard', 'It is removed from the Inbox and never sent.')) return;

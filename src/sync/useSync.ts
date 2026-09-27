@@ -5,9 +5,9 @@ import { readStoredCredentials } from '../api/ff3/auth';
 import { getClient } from '../api/ff3/session';
 import { pullOlderTransactions } from './referenceData';
 import { runSync } from './runSync';
+import { SYNC_QUERY_KEY } from './syncTrigger';
 import { logLine } from '../utils/log';
 
-const SYNC_QUERY_KEY = ['sync'];
 const SIGNED_IN_QUERY_KEY = ['signedIn'];
 
 export function useSync() {

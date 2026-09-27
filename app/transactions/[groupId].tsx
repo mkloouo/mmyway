@@ -58,7 +58,8 @@ export default function TransactionDetailScreen() {
 
   const conflictOp = (outbox ?? []).find((op) => {
     if (op.status !== 'failed' || op.lastError !== 'conflict') return false;
-    if (op.kind !== 'update_transaction' && op.kind !== 'delete_transaction') return false;
+    // recurring_review is an update too (the reviewed tag, plus any corrections) and conflicts the same way.
+    if (op.kind !== 'update_transaction' && op.kind !== 'delete_transaction' && op.kind !== 'recurring_review') return false;
     return JSON.parse(op.payloadJson).groupId === groupId;
   });
 
