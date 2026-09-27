@@ -9,9 +9,20 @@ module.exports = {
     version: '0.1.0',
     orientation: 'portrait',
     icon: './assets/icon.png',
-    userInterfaceStyle: 'light',
+    userInterfaceStyle: 'automatic',
     scheme: 'mmyway',
-    plugins: ['expo-router'],
+    plugins: [
+      'expo-router',
+      [
+        'expo-share-intent',
+        {
+          iosActivationRules: { NSExtensionActivationSupportsImageWithMaxCount: 10 },
+          androidIntentFilters: ['image/*'],
+          disableAndroid: false,
+          disableIOS: true,
+        },
+      ],
+    ],
     android: {
       package: IS_DEV ? `${BASE_BUNDLE_ID}.dev` : BASE_BUNDLE_ID,
       permissions: ['android.permission.CAMERA'],

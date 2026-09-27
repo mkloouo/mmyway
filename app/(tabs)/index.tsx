@@ -2,12 +2,12 @@ import { useState } from 'react';
 import { View, Text, Button, FlatList, Switch } from 'react-native';
 import { router, Link } from 'expo-router';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
-import { useDb } from '../src/providers/DbProvider';
-import { useInboxItems } from '../src/inbox/useInboxItems';
-import { outboxOperations } from '../src/db/schema';
-import { useSync } from '../src/sync/useSync';
-import { confirmInboxItem } from '../src/inbox/createManualEntry';
-import { deleteInboxItem } from '../src/inbox/updateDraft';
+import { useDb } from '../../src/providers/DbProvider';
+import { useInboxItems } from '../../src/inbox/useInboxItems';
+import { outboxOperations } from '../../src/db/schema';
+import { useSync } from '../../src/sync/useSync';
+import { confirmInboxItem } from '../../src/inbox/createManualEntry';
+import { deleteInboxItem } from '../../src/inbox/updateDraft';
 
 const CONFIRMABLE_STATES = new Set(['captured', 'parsed']);
 
@@ -46,7 +46,7 @@ export default function InboxScreen() {
       <View style={{ flexDirection: 'row', gap: 12 }}>
         <Link href="/entry">Capture</Link>
         <Link href="/receipt">Receipt</Link>
-        <Link href="/transactions">Transactions</Link>
+        <Link href="/activity">Transactions</Link>
         <Link href="/recurring">Recurring</Link>
         <Link href="/settings">Settings</Link>
         <Link href="/settings/aliases">Aliases</Link>
