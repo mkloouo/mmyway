@@ -4,7 +4,7 @@ import { cachedTransactions, referenceAccounts } from '../db/schema';
 
 function fakeClient(pages: unknown[][]) {
   let call = 0;
-  return { request: jest.fn(async () => ({ data: pages[call++] ?? [] })) };
+  return { request: jest.fn(async (_path: string) => ({ data: pages[call++] ?? [] })) };
 }
 
 function journalGroup(id: string, overrides: Record<string, unknown> = {}) {
@@ -82,6 +82,23 @@ describe('pullRecentTransactions', () => {
 
     const rows = await db.select().from(cachedTransactions);
     expect(rows[0]!.updatedAt).toBe('2026-09-20T12:00:00Z');
+  });
+
+  it('backfills three months when nothing is cached, then only a short catch-up window', async () => {
+    const db = createTestDb();
+    const today = new Date();
+    const threeMonthsBack = new Date();
+    threeMonthsBack.setMonth(threeMonthsBack.getMonth() - 3);
+
+    const first = fakeClient([[journalGroup('g1', { date: today.toISOString().slice(0, 10) })]]);
+    await pullRecentTransactions(db as any, first as any, '2026-09-27T00:00:00Z');
+    expect(first.request.mock.calls[0]![0]).toContain(`start=${threeMonthsBack.toISOString().slice(0, 10)}`);
+
+    const catchUp = new Date(today);
+    catchUp.setDate(catchUp.getDate() - 14);
+    const second = fakeClient([[]]);
+    await pullRecentTransactions(db as any, second as any, '2026-09-28T00:00:00Z');
+    expect(second.request.mock.calls[0]![0]).toContain(`start=${catchUp.toISOString().slice(0, 10)}`);
   });
 
   it('pages past 20 pages when the history window has more than 2000 transactions', async () => {
