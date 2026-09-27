@@ -14,3 +14,10 @@ describe('selectAssetAccounts', () => {
     expect(selectAssetAccounts(rows, { includeInactive: true }).map((a) => a.id)).toEqual(['4', '2', '1']);
   });
 });
+
+describe('FF3 account order', () => {
+  it('sorts by FF3 order first, then name; unordered accounts go last', () => {
+    expect(selectAssetAccounts(rows, { order: { '1': 1, '4': 2 } }).map((a) => a.id)).toEqual(['1', '4']);
+    expect(selectAssetAccounts(rows, { includeInactive: true, order: { '2': 1 } }).map((a) => a.id)).toEqual(['2', '4', '1']);
+  });
+});

@@ -3,6 +3,7 @@ import { and, asc, eq, gte, inArray, lt } from 'drizzle-orm';
 import { outboxOperations, referenceAccounts, referenceBudgets, referenceCategories, referenceCurrencies } from '../db/schema';
 import { setEnvelopeMarker } from '../accounts/envelopeMarker';
 import type { OutboxDb, UpdateAccountPayload } from './outbox';
+import { getAccountOrder, setAccountOrder } from '../settings/appSettings';
 
 /**
  * The pull only upserts, so an account, category, budget or currency deleted in FF3 stayed in
@@ -29,8 +30,11 @@ export async function reapplyQueuedAccountEdits(db: OutboxDb): Promise<void> {
   const ops = await db.select().from(outboxOperations)
     .where(and(eq(outboxOperations.kind, 'update_account'), inArray(outboxOperations.status, ['pending', 'failed', 'in_flight'])))
     .orderBy(asc(outboxOperations.sequence));
+  const order = await getAccountOrder(db);
+  let orderChanged = false;
   for (const op of ops) {
     const p = JSON.parse(op.payloadJson) as UpdateAccountPayload;
+    if (p.order !== undefined) { order[p.accountId] = p.order; orderChanged = true; }
     const [account] = await db.select().from(referenceAccounts).where(eq(referenceAccounts.id, p.accountId));
     if (!account) continue;
     const patch: { active?: boolean; notes?: string } = {};
@@ -38,4 +42,5 @@ export async function reapplyQueuedAccountEdits(db: OutboxDb): Promise<void> {
     if (p.setEnvelopeMarker !== undefined) patch.notes = setEnvelopeMarker(account.notes, p.setEnvelopeMarker);
     if (Object.keys(patch).length > 0) await db.update(referenceAccounts).set(patch).where(eq(referenceAccounts.id, p.accountId));
   }
+  if (orderChanged) await setAccountOrder(db, order);
 }

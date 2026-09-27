@@ -15,6 +15,18 @@ export function CaptureDock() {
       }}
     >
       <Pressable
+        onPress={() => navigateOnce({ pathname: '/receipt', params: { source: 'gallery' } })}
+        accessibilityRole="button"
+        accessibilityLabel="Receipt from the gallery"
+        style={({ pressed }) => ({
+          width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
+          backgroundColor: t.color.surface, borderWidth: 1, borderColor: t.color.border,
+          opacity: pressed ? 0.6 : 1, elevation: 3,
+        })}
+      >
+        <Ionicons name="images" size={20} color={t.color.text} />
+      </Pressable>
+      <Pressable
         onPress={() => navigateOnce('/receipt')}
         accessibilityRole="button"
         accessibilityLabel="Capture a receipt"

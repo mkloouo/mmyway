@@ -54,6 +54,7 @@ export interface UpdateAccountPayload {
   accountId: string;
   setEnvelopeMarker?: boolean; // the desired on/off state; the notes text itself is read fresh at replay
   active?: boolean; // FF3's account `active` flag
+  order?: number; // FF3's account `order` (position among the user's asset accounts)
 }
 
 // Both the expo-sqlite and better-sqlite3 Drizzle instances (src/db/client.ts, src/db/testDb.ts)
@@ -215,6 +216,7 @@ export async function replayOutbox(db: OutboxDb, client: FF3Client, opts: { onCo
         result.succeeded.push(row.id);
         continue;
       }
+      if (outcome === 'returned') continue; // back in the Inbox for the user; not a failure
       if (outcome === 'conflict') result.conflicted.push(row.id);
       result.failedAt = row.id;
       return result; // never advance past a failed operation
@@ -224,11 +226,52 @@ export async function replayOutbox(db: OutboxDb, client: FF3Client, opts: { onCo
 
 type OutboxRow = typeof outboxOperations.$inferSelect;
 
-async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: { onConflict?: ConflictHandler }): Promise<'done' | 'conflict' | 'failed'> {
+/**
+ * What a queued create points at that FF3 no longer has, per the last reference pull: an account,
+ * a category or a budget deleted there since the entry was confirmed. A reference table that is
+ * empty (never synced) proves nothing and is skipped.
+ */
+async function missingReferences(db: OutboxDb, splits: TransactionSplit[]): Promise<string[]> {
+  const [accounts, categories, budgets] = await Promise.all([
+    db.select({ id: schema.referenceAccounts.id }).from(schema.referenceAccounts),
+    db.select({ name: schema.referenceCategories.name }).from(schema.referenceCategories),
+    db.select({ id: schema.referenceBudgets.id }).from(schema.referenceBudgets),
+  ]);
+  const accountIds = new Set(accounts.map((a) => a.id));
+  const categoryNames = new Set(categories.map((c) => c.name.toLowerCase()));
+  const budgetIds = new Set(budgets.map((b) => b.id));
+  const problems: string[] = [];
+  for (const split of splits) {
+    for (const [end, id] of [['source', split.source_id], ['destination', split.destination_id]] as const) {
+      if (id && accountIds.size > 0 && !accountIds.has(String(id))) problems.push(`The ${end} account no longer exists in Firefly III — pick another.`);
+    }
+    if (split.category_name && categoryNames.size > 0 && !categoryNames.has(split.category_name.toLowerCase())) {
+      problems.push(`The category "${split.category_name}" no longer exists in Firefly III — pick another.`);
+    }
+    if (split.budget_id && budgetIds.size > 0 && !budgetIds.has(String(split.budget_id))) problems.push('The budget no longer exists in Firefly III — pick another.');
+  }
+  return problems;
+}
+
+async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: { onConflict?: ConflictHandler }): Promise<'done' | 'conflict' | 'failed' | 'returned'> {
   const payload = JSON.parse(row.payloadJson);
   try {
     if (row.kind === 'create_transaction') {
       const p = payload as CreateTransactionPayload;
+      const missing = await missingReferences(db, p.splits);
+      if (missing.length > 0 && row.inboxItemId) {
+        // Sending it anyway either fails (a deleted account: a 422 that blocks the queue) or
+        // quietly re-creates the thing (FF3 makes a new category from an unknown name). Hand the
+        // entry back as a draft that says what to pick again; the rest of the queue carries on.
+        const [item] = await db.select({ kind: inboxItems.kind }).from(inboxItems).where(eq(inboxItems.id, row.inboxItemId));
+        db.transaction((tx) => {
+          tx.update(inboxItems)
+            .set({ state: item?.kind === 'receipt' ? 'parsed' : 'captured', errorMessage: missing.join(' '), updatedAt: new Date().toISOString() })
+            .where(eq(inboxItems.id, row.inboxItemId!)).run();
+          tx.delete(outboxOperations).where(eq(outboxOperations.id, row.id)).run();
+        });
+        return 'returned';
+      }
       const reference = internalReferenceFor(p.clientId);
       let created: TransactionRead;
       try {

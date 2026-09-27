@@ -6,7 +6,7 @@ import { useLiveQuery } from '../../src/db/useLiveQuery';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, AppBar, SectionHeader, Card, Chip, Money, EmptyState, Sheet, Row } from '../../src/ui/components';
+import { Screen, AppBar, SectionHeader, Card, Chip, Money, EmptyState, Sheet, Row, Button } from '../../src/ui/components';
 import { CaptureDock } from '../../src/ui/CaptureDock';
 import { currencyOf, formatMoney } from '../../src/ui/money';
 import { categoryColor } from '../../src/ui/categoryColor';
@@ -19,6 +19,11 @@ import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import type { CreateTransactionPayload } from '../../src/sync/outbox';
 import type { TransactionRead } from '../../src/api/ff3/types';
 import { navigateOnce } from '../../src/ui/navigateOnce';
+import { confirmDestructive } from '../../src/ui/confirm';
+import { cachedRowFromGroup } from '../../src/sync/referenceData';
+import { enqueueOperation } from '../../src/sync/outbox';
+import { generateId } from '../../src/utils/id';
+import { inArray } from 'drizzle-orm';
 
 const FILTERS: { label: string; type: ActivityTypeFilter }[] = [
   { label: 'All', type: 'all' },
@@ -44,6 +49,8 @@ interface QueuedRow {
 
 interface RemoteResultRow {
   remote: true;
+  /** The full FF3 answer, cached on tap so the detail screen (which reads the cache) can open it. */
+  group: TransactionRead;
   groupId: string;
   description: string;
   amount: string;
@@ -59,6 +66,7 @@ function mapRemoteResult(group: TransactionRead): RemoteResultRow | null {
   if (!journal) return null;
   return {
     remote: true,
+    group,
     groupId: group.id,
     description: journal.description,
     amount: journal.amount,
@@ -87,7 +95,8 @@ function dayTitle(key: string): string {
   if (key === localDayKey(now)) return 'TODAY';
   if (key === localDayKey(yesterday)) return 'YESTERDAY';
   const [y, m, d] = key.split('-').map(Number);
-  return new Date(y!, m! - 1, d!).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }).toUpperCase();
+  // Always with the year: scrolling back past January otherwise gave two identical "14 SEP"s.
+  return new Date(y!, m! - 1, d!).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }).toUpperCase();
 }
 
 export default function ActivityScreen() {
@@ -120,6 +129,35 @@ export default function ActivityScreen() {
   // A pull-to-refresh is the user asking "check again" — `exhausted` otherwise only ever latches
   // forward for the lifetime of this screen.
   const pull = usePullToRefresh(resetExhausted);
+
+  // Multi-select (long-press a row): bulk delete, each as its own conflict-checked outbox delete.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const selecting = selectedIds.size > 0;
+  function toggleSelected(groupId: string) {
+    setSelectedIds((cur) => {
+      const next = new Set(cur);
+      if (next.has(groupId)) next.delete(groupId); else next.add(groupId);
+      return next;
+    });
+  }
+  async function deleteSelected() {
+    const ids = [...selectedIds];
+    if (!await confirmDestructive(`Delete ${ids.length} transaction${ids.length === 1 ? '' : 's'}?`, 'Delete', 'They are deleted in Firefly III too.')) return;
+    const rows = await db.select({ groupId: cachedTransactions.groupId, updatedAt: cachedTransactions.updatedAt })
+      .from(cachedTransactions).where(inArray(cachedTransactions.groupId, ids));
+    for (const row of rows) {
+      await enqueueOperation(db, { id: generateId(), kind: 'delete_transaction', payload: { groupId: row.groupId, expectedUpdatedAt: row.updatedAt } });
+    }
+    setSelectedIds(new Set());
+  }
+
+  // A FF3 search result isn't in the local cache; store the copy we already have, then open it.
+  async function openRemote(item: RemoteResultRow) {
+    const row = cachedRowFromGroup(item.group, new Date().toISOString());
+    if (!row) return;
+    await db.insert(cachedTransactions).values(row).onConflictDoUpdate({ target: cachedTransactions.groupId, set: row });
+    navigateOnce(`/transactions/${item.groupId}`);
+  }
 
   // Once local search runs out of cached rows to page through, FF3's own search covers what
   // hasn't been pulled into cachedTransactions yet — kept as a separate section rather than
@@ -214,7 +252,15 @@ export default function ActivityScreen() {
       <View style={{ flex: 1 }}>
         {/* Search takes the app bar's place rather than adding a row below it, so opening it
             does not shove the balances and the list down the screen. */}
-        {searchOpen ? (
+        {selecting ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm, paddingHorizontal: t.space.lg, paddingVertical: t.space.md }}>
+            <Pressable onPress={() => setSelectedIds(new Set())} accessibilityRole="button" accessibilityLabel="Cancel selection">
+              <Ionicons name="close" size={24} color={t.color.text} />
+            </Pressable>
+            <Text style={[t.type.title, { color: t.color.text, flex: 1 }]}>{selectedIds.size} selected</Text>
+            <Button title="Delete" variant="danger" onPress={deleteSelected} />
+          </View>
+        ) : searchOpen ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm, paddingHorizontal: t.space.lg, paddingVertical: t.space.md }}>
             <TextInput
               value={search}
@@ -333,14 +379,20 @@ export default function ActivityScreen() {
                     // A queued entry isn't in FF3 yet: open it as its Inbox draft, where a
                     // still-waiting one can be cancelled.
                     if (queued) { if (item.inboxItemId) navigateOnce(`/draft/${item.inboxItemId}`); return; }
-                    if (!remote) navigateOnce(`/transactions/${item.groupId}`);
+                    if (selecting) { toggleSelected(item.groupId); return; }
+                    if (remote) { void openRemote(item); return; }
+                    navigateOnce(`/transactions/${item.groupId}`);
                   }}
+                  onLongPress={queued || remote ? undefined : () => toggleSelected(item.groupId)}
                   style={({ pressed }) => ({
                     flexDirection: 'row', alignItems: 'center', gap: t.space.sm,
                     paddingHorizontal: t.space.lg, paddingVertical: t.space.sm, opacity: pressed ? 0.6 : 1,
+                    backgroundColor: selectedIds.has(item.groupId) ? t.color.accentSoft : undefined,
                   })}
                 >
-                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor }} />
+                  {selecting && !queued && !remote
+                    ? <Ionicons name={selectedIds.has(item.groupId) ? 'checkmark-circle' : 'ellipse-outline'} size={20} color={selectedIds.has(item.groupId) ? t.color.accent : t.color.textFaint} />
+                    : <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor }} />}
                   <View style={{ flex: 1 }}>
                     <Text style={[t.type.body, { color: t.color.text }]} numberOfLines={1}>{description}</Text>
                     <Text style={[t.type.label, { color: t.color.textMuted }]} numberOfLines={1}>

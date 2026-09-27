@@ -73,3 +73,18 @@ describe('normalizeExtraction', () => {
     expect(result.paymentMethod).toBe('unknown');
   });
 });
+
+describe('the bot schema\'s answer shape', () => {
+  it('maps word confidence, numeric amounts and prices, and null items', () => {
+    const r = normalizeExtraction({
+      amount: 42.5, currency: 'PLN', merchant: 'Biedronka', date: '2026-09-27', time: '20:54', category: 'Groceries',
+      items: [{ title: 'Mleko', count: 0.75, price: 3.49 }], confidence: 'high', payment_method: 'card', card_network: 'visa',
+    });
+    expect(r).toMatchObject({ amount: '42.5', confidence: 0.9, items: [{ title: 'Mleko', count: 0.75, price: '3.49' }], cardNetwork: 'visa' });
+    expect(r.notAReceipt).toBeUndefined();
+    expect(normalizeExtraction({ confidence: 'medium', items: null }).items).toEqual([]);
+  });
+  it('flags "none" confidence as not a receipt', () => {
+    expect(normalizeExtraction({ confidence: 'none', payment_method: 'unknown', card_network: null }).notAReceipt).toBe(true);
+  });
+});

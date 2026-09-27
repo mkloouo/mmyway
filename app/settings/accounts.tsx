@@ -1,6 +1,7 @@
 // Asset accounts and the cash-envelope marker (design §6.6).
 import { useState } from 'react';
-import { FlatList, Pressable, Text, View } from 'react-native';
+import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { eq } from 'drizzle-orm';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
@@ -8,7 +9,8 @@ import { Screen, AppBar, Card, Row, Sheet, Chip, Button } from '../../src/ui/com
 import { referenceAccounts } from '../../src/db/schema';
 import { hasEnvelopeMarker, setEnvelopeMarker } from '../../src/accounts/envelopeMarker';
 import { useAssetAccounts, type ReferenceAccountRow } from '../../src/accounts/useAssetAccounts';
-import { setAccountActive } from '../../src/accounts/accountActions';
+import { setAccountActive, reorderAccounts } from '../../src/accounts/accountActions';
+import { filterAccounts } from '../../src/accounts/filterAccounts';
 import { enqueueOperation } from '../../src/sync/outbox';
 import { generateId } from '../../src/utils/id';
 
@@ -17,10 +19,20 @@ type AccountRow = ReferenceAccountRow;
 export default function AccountsScreen() {
   const db = useDb();
   const t = useTheme();
+  // In FF3's own order — the order every account picker in the app uses, set with Reorder.
   const allAccounts = useAssetAccounts({ includeInactive: true }) ?? [];
-  // Active accounts first, since that's the ones almost every visit is here for.
-  const assetAccounts = [...allAccounts].sort((a, b) => Number(b.active) - Number(a.active) || a.name.localeCompare(b.name));
   const [editing, setEditing] = useState<AccountRow | null>(null);
+  const [search, setSearch] = useState('');
+  const [reordering, setReordering] = useState(false);
+  const visible = reordering ? allAccounts : filterAccounts(allAccounts, search);
+
+  async function move(index: number, delta: -1 | 1) {
+    const target = index + delta;
+    if (target < 0 || target >= allAccounts.length) return;
+    const ids = allAccounts.map((a) => a.id);
+    [ids[index], ids[target]] = [ids[target]!, ids[index]!];
+    await reorderAccounts(db, ids);
+  }
 
   async function toggleEnvelope(account: AccountRow) {
     const next = !hasEnvelopeMarker(account.notes);
@@ -38,18 +50,51 @@ export default function AccountsScreen() {
 
   return (
     <Screen bottom>
-      <AppBar title="Accounts" />
+      <AppBar
+        title="Accounts"
+        right={(
+          <Button title={reordering ? 'Done' : 'Reorder'} variant="ghost" onPress={() => { setReordering((r) => !r); setSearch(''); }} />
+        )}
+      />
+      {reordering ? (
+        <Text style={[t.type.label, { color: t.color.textMuted, paddingHorizontal: t.space.lg }]}>
+          Move accounts up or down. The order is saved to Firefly III and used by every account picker.
+        </Text>
+      ) : (
+        <View style={{ paddingHorizontal: t.space.lg }}>
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            placeholder="Search accounts"
+            placeholderTextColor={t.color.textFaint}
+            autoCapitalize="none"
+            style={{ borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm, paddingHorizontal: t.space.md, paddingVertical: t.space.sm, color: t.color.text }}
+          />
+        </View>
+      )}
       <FlatList
-        data={assetAccounts}
+        data={visible}
         keyExtractor={(a) => a.id}
+        keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ padding: t.space.lg, gap: t.space.sm }}
-        renderItem={({ item }) => (
-          <Card onPress={() => setEditing(item)} style={item.active ? undefined : { opacity: 0.5 }}>
+        renderItem={({ item, index }) => (
+          <Card onPress={reordering ? undefined : () => setEditing(item)} style={item.active ? undefined : { opacity: 0.5 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
               <Text style={[t.type.body, { color: t.color.text, flex: 1 }]} numberOfLines={1}>{item.name}</Text>
               {!item.active && <Chip label="Inactive" />}
               {hasEnvelopeMarker(item.notes) && <Chip label="Envelope" />}
-              <Text style={[t.type.body, { color: t.color.textFaint }]}>›</Text>
+              {reordering ? (
+                <View style={{ flexDirection: 'row', gap: t.space.xs }}>
+                  <Pressable onPress={() => move(index, -1)} disabled={index === 0} accessibilityRole="button" accessibilityLabel={`Move ${item.name} up`} hitSlop={8}>
+                    <Ionicons name="chevron-up" size={22} color={index === 0 ? t.color.textFaint : t.color.accent} />
+                  </Pressable>
+                  <Pressable onPress={() => move(index, 1)} disabled={index === visible.length - 1} accessibilityRole="button" accessibilityLabel={`Move ${item.name} down`} hitSlop={8}>
+                    <Ionicons name="chevron-down" size={22} color={index === visible.length - 1 ? t.color.textFaint : t.color.accent} />
+                  </Pressable>
+                </View>
+              ) : (
+                <Text style={[t.type.body, { color: t.color.textFaint }]}>›</Text>
+              )}
             </View>
           </Card>
         )}

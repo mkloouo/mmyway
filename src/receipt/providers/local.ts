@@ -1,27 +1,11 @@
 import { parseDecimalInput } from '../../api/ff3/decimal';
 import type { ReceiptExtraction, ReceiptProvider } from '../types';
-
-const RECEIPT_JSON_SCHEMA = {
-  type: 'object',
-  properties: {
-    amount: { type: ['string', 'null'] },
-    currency: { type: ['string', 'null'] },
-    merchant: { type: ['string', 'null'] },
-    date: { type: ['string', 'null'] },
-    time: { type: ['string', 'null'] },
-    category: { type: ['string', 'null'] },
-    items: { type: 'array', items: { type: 'object', properties: { title: { type: 'string' }, count: { type: 'number' }, price: { type: 'string' } }, required: ['title', 'count', 'price'] } },
-    confidence: { type: 'number' },
-    payment_method: { type: 'string', enum: ['cash', 'card', 'unknown'] },
-    card_network: { type: ['string', 'null'] },
-  },
-  required: ['amount', 'currency', 'merchant', 'date', 'category', 'items', 'confidence', 'payment_method'],
-} as const;
+import { receiptJsonSchema, receiptPrompt } from '../prompt';
 
 export function createLocalProvider(config: { baseUrl: string; model: string; timeoutMs?: number }): ReceiptProvider {
   return {
     name: 'local',
-    async extract({ imageBase64, hint, categoryNames }) {
+    async extract({ imageBase64, hint, categoryNames, currencyCodes = [] }) {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), config.timeoutMs ?? 20000);
       try {
@@ -32,19 +16,13 @@ export function createLocalProvider(config: { baseUrl: string; model: string; ti
           body: JSON.stringify({
             model: config.model,
             messages: [
-              {
-                role: 'system',
-                content: `Extract structured data from this receipt photo. Known categories: ${categoryNames.join(', ')}. If the merchant doesn't clearly match a known category, leave category null rather than guessing.`,
-              },
+              { role: 'system', content: receiptPrompt(hint) },
               {
                 role: 'user',
-                content: [
-                  { type: 'text', text: hint ?? '' },
-                  { type: 'image_url', image_url: { url: `data:${imageMimeType(imageBase64)};base64,${imageBase64}` } },
-                ],
+                content: [{ type: 'image_url', image_url: { url: `data:${imageMimeType(imageBase64)};base64,${imageBase64}` } }],
               },
             ],
-            response_format: { type: 'json_schema', json_schema: { name: 'receipt', schema: RECEIPT_JSON_SCHEMA, strict: true } },
+            response_format: { type: 'json_schema', json_schema: { name: 'receipt', schema: receiptJsonSchema(categoryNames, currencyCodes), strict: false } },
           }),
         });
         if (!response.ok) throw new Error(`local provider HTTP ${response.status}`);
@@ -76,6 +54,19 @@ function amountOf(value: unknown): string | null {
   return parsed.ok ? parsed.value : null;
 }
 
+// The schema asks for a word; older models (and the tests) answer a number.
+const CONFIDENCE_WORDS: Record<string, number> = { high: 0.9, medium: 0.6, low: 0.3, none: 0 };
+function confidenceOf(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return Math.min(1, Math.max(0, value));
+  if (typeof value === 'string' && value.toLowerCase() in CONFIDENCE_WORDS) return CONFIDENCE_WORDS[value.toLowerCase()]!;
+  return 0;
+}
+
+/** confidence "none": the model says the picture isn't a receipt at all. */
+export function isNotAReceipt(raw: unknown): boolean {
+  return !!raw && typeof raw === 'object' && (raw as { confidence?: unknown }).confidence === 'none';
+}
+
 function matching(value: unknown, pattern: RegExp): string | null {
   return typeof value === 'string' && pattern.test(value) ? value : null;
 }
@@ -104,9 +95,10 @@ function normalizeExtraction(raw: any): ReceiptExtraction {
       const count = typeof item.count === 'number' && Number.isFinite(item.count) ? item.count : 1;
       return price === null ? [] : [{ title: item.title, count, price }];
     }),
-    confidence: typeof value.confidence === 'number' ? Math.min(1, Math.max(0, value.confidence)) : 0,
+    confidence: confidenceOf(value.confidence),
     paymentMethod: value.payment_method === 'cash' || value.payment_method === 'card' ? value.payment_method : 'unknown',
     cardNetwork: textOf(value.card_network),
+    notAReceipt: isNotAReceipt(value) || undefined,
   };
 }
 

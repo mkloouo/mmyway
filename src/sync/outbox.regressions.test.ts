@@ -264,3 +264,28 @@ describe('receipt photo cleanup', () => {
     expect(paths).toEqual({ old: null, recent: 'file:///x/receipts/recent.jpg', 'old-queued': 'file:///x/receipts/q.jpg' });
   });
 });
+
+describe('references deleted in FF3', () => {
+  it('hands a create back to the Inbox when its category is gone, and keeps the queue moving', async () => {
+    const db = createTestDb();
+    const { referenceCategories, referenceAccounts } = jest.requireActual('../db/schema');
+    await db.insert(referenceAccounts).values({ id: '1', name: 'Cash', type: 'asset', currencyCode: 'PLN', active: true, syncedAt: 's' });
+    await db.insert(referenceCategories).values({ id: 'c1', name: 'Groceries', syncedAt: 's' });
+    const { inboxItemId } = await createManualEntry(db as any, {
+      type: 'withdrawal', amount: '1', currencyCode: 'PLN', date: '2026-09-27T10:00:00Z', description: 'x',
+      merchantRawInput: 'x', forceNewPayee: true, sourceId: '1', categoryName: 'Deleted in web',
+    });
+    await confirmInboxItem(db as any, inboxItemId);
+    await enqueueOperation(db, { id: 'next', kind: 'update_account', payload: { accountId: '1', active: true } });
+    const client = { request: jest.fn(async () => ({})) };
+
+    const result = await replayOutbox(db as any, client as any);
+
+    expect(result.failedAt).toBeNull();
+    expect(result.succeeded).toEqual(['next']);
+    const [item] = await db.select().from(inboxItems).where(eq(inboxItems.id, inboxItemId));
+    expect(item).toMatchObject({ state: 'captured' });
+    expect(item?.errorMessage).toContain('"Deleted in web" no longer exists');
+    expect(client.request).toHaveBeenCalledTimes(1); // only the account update was sent
+  });
+});

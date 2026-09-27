@@ -57,14 +57,40 @@ export function SectionHeader({ title, action }: { title: string; action?: React
   );
 }
 
-export function Card({ children, style, onPress }: { children: ReactNode; style?: StyleProp<ViewStyle>; onPress?: () => void }) {
+export function Card({
+  children, style, onPress, onLongPress, selected,
+}: {
+  children: ReactNode;
+  style?: StyleProp<ViewStyle>;
+  onPress?: () => void;
+  /** Starts multi-select on the lists that support it (Inbox, Activity). */
+  onLongPress?: () => void;
+  selected?: boolean;
+}) {
   const t = useTheme();
   const body = (
-    <View style={[{ backgroundColor: t.color.surface, borderRadius: t.radius.md, borderWidth: 1, borderColor: t.color.border, padding: t.space.lg }, style]}>
+    <View
+      style={[
+        { backgroundColor: t.color.surface, borderRadius: t.radius.md, borderWidth: 1, borderColor: t.color.border, padding: t.space.lg },
+        selected ? { borderColor: t.color.accent, borderWidth: 2, backgroundColor: t.color.accentSoft } : null,
+        style,
+      ]}
+    >
       {children}
     </View>
   );
-  return onPress ? <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>{body}</Pressable> : body;
+  return onPress || onLongPress
+    ? (
+      <Pressable
+        onPress={onPress}
+        onLongPress={onLongPress}
+        accessibilityState={selected !== undefined ? { selected } : undefined}
+        style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+      >
+        {body}
+      </Pressable>
+    )
+    : body;
 }
 
 /** A label/value line. Rows stack inside a Card and draw their own hairline separator. */

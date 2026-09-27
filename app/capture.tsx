@@ -6,14 +6,17 @@ import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useLiveQuery } from '../src/db/useLiveQuery';
 import { useDb } from '../src/providers/DbProvider';
 import { useTheme } from '../src/ui/theme';
-import { Screen, Chip, Button, Sheet, Toast } from '../src/ui/components';
+import { Screen, Chip, Button, Sheet, Toast, Row } from '../src/ui/components';
 import { Keypad } from '../src/ui/Keypad';
 import { PayeeSheet } from '../src/ui/PayeeSheet';
 import { AccountPickerSheet, type AccountPickerAccount } from '../src/ui/AccountPickerSheet';
 import { currencyOf, formatAmountInput } from '../src/ui/money';
 import { categoryColor } from '../src/ui/categoryColor';
 import { haptics } from '../src/ui/haptics';
-import { referenceCategories, referenceBudgets, referenceCurrencies } from '../src/db/schema';
+import { eq } from 'drizzle-orm';
+import { inboxItems, referenceCategories, referenceBudgets, referenceCurrencies } from '../src/db/schema';
+import { askPhotoSource, pickPhoto } from '../src/receipt/pickPhoto';
+import { persistReceiptImage } from '../src/receipt/imageFiles';
 import { useAssetAccounts } from '../src/accounts/useAssetAccounts';
 import { applyDigit, type KeypadKey } from '../src/capture/amountInput';
 import { buildEntryDate, yesterday } from '../src/capture/entryDate';
@@ -85,6 +88,14 @@ export default function CaptureScreen() {
   const [notes, setNotes] = useState('');
   const [sharedWith, setSharedWith] = useState('');
   const [foreignAmount, setForeignAmount] = useState('');
+  // A receipt photo for a typed entry: uploaded to FF3 once the transaction exists.
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  async function attachPhoto() {
+    const source = await askPhotoSource();
+    if (!source) return;
+    const photo = await pickPhoto(source);
+    if (photo) setPhotoUri(photo.uri);
+  }
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useToast();
   const [snackbar, setSnackbar] = useState<SnackbarEntry | null>(null);
@@ -241,6 +252,10 @@ export default function CaptureScreen() {
       await reportErrors('Save', async () => {
         const input = buildManualEntryInput(formState, assetAccounts);
         const { inboxItemId } = await createManualEntry(db, input);
+        if (photoUri) {
+          await db.update(inboxItems).set({ receiptImagePath: persistReceiptImage(photoUri) }).where(eq(inboxItems.id, inboxItemId));
+          setPhotoUri(null);
+        }
         const label = merchantRawInput || description || labelForType(type);
         haptics.tick();
         if (andConfirm) {
@@ -268,7 +283,7 @@ export default function CaptureScreen() {
 
   const currency = currencyOf(currencies ?? [], effectiveCurrencyCode ?? '');
   const summaryParts = [merchantRawInput, categoryName].filter(Boolean);
-  const detailsParts = [description, notes, sharedWith && `Shared with ${sharedWith}`].filter(Boolean);
+  const detailsParts = [description, notes, sharedWith && `Shared with ${sharedWith}`, photoUri && 'Photo'].filter(Boolean);
   const detailsLabel = detailsParts.length > 0 ? detailsParts.join(' · ') : 'Details';
 
   return (
@@ -506,6 +521,8 @@ export default function CaptureScreen() {
           placeholderTextColor={t.color.textFaint}
           style={{ borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm, padding: t.space.md, color: t.color.text }}
         />
+        <Row first label="Receipt photo" value={photoUri ? 'Attached ✓' : 'Attach'} chevron onPress={attachPhoto} />
+        {!!photoUri && <Button title="Remove photo" variant="ghost" onPress={() => setPhotoUri(null)} />}
       </Sheet>
     </Screen>
   );

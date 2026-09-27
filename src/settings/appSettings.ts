@@ -18,6 +18,7 @@ const KEYS = {
   ff3ActiveHost: 'ff3_active_host',
   lastSyncedAt: 'last_synced_at',
   useServerTime: 'use_server_time',
+  accountOrder: 'account_order',
 } as const;
 
 async function getSetting(db: OutboxDb, key: string): Promise<string | null> {
@@ -88,3 +89,24 @@ export async function getUseServerTime(db: OutboxDb): Promise<boolean> {
   return (await getSetting(db, KEYS.useServerTime)) === '1';
 }
 export const setUseServerTime = (db: OutboxDb, value: boolean) => setSetting(db, KEYS.useServerTime, value ? '1' : '0');
+
+/** The settings key accountOrder lives under, for a live query of it (src/accounts/useAssetAccounts.ts). */
+export const ACCOUNT_ORDER_KEY = KEYS.accountOrder;
+
+/**
+ * FF3's own account order (the `order` attribute, set by dragging accounts in FF3 or by
+ * Settings → Accounts → Reorder), cached as { accountId: order }. Kept here rather than as a
+ * reference_accounts column so no schema migration is needed.
+ */
+export function parseAccountOrder(raw: string | null | undefined): Record<string, number> {
+  try {
+    const parsed = raw ? JSON.parse(raw) : {};
+    return parsed && typeof parsed === 'object' ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+export async function getAccountOrder(db: OutboxDb): Promise<Record<string, number>> {
+  return parseAccountOrder(await getSetting(db, KEYS.accountOrder));
+}
+export const setAccountOrder = (db: OutboxDb, order: Record<string, number>) => setSetting(db, KEYS.accountOrder, JSON.stringify(order));

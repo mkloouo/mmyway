@@ -121,7 +121,7 @@ export async function confirmInboxItem(db: OutboxDb, inboxItemId: string): Promi
   // One transaction: a failure between the two writes used to leave the item `confirmed` with no
   // operation behind it — out of the Inbox, never sent, and visible nowhere.
   db.transaction((tx) => {
-    tx.update(inboxItems).set({ state: nextState, updatedAt: new Date().toISOString() }).where(eq(inboxItems.id, inboxItemId)).run();
+    tx.update(inboxItems).set({ state: nextState, errorMessage: null, updatedAt: new Date().toISOString() }).where(eq(inboxItems.id, inboxItemId)).run();
     enqueueOperationSync(tx, {
       id: outboxOperationId,
       inboxItemId,

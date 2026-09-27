@@ -37,7 +37,9 @@ export function SwipeableCard({
       // `direction` is the way the row MOVED: a swipe to the right reveals the left actions
       // (✓ Confirm) and reports RIGHT. This used to test LEFT, so a right swipe ran Delete (only
       // its confirm dialog stopped it) and a left swipe tried to confirm.
-      onSwipeableOpen={(direction) => {
+      // WillOpen, not Open: it fires the moment the finger lifts past the threshold, instead of
+      // after the row has finished animating fully open.
+      onSwipeableWillOpen={(direction) => {
         if (direction === SwipeDirection.RIGHT) {
           if (!confirmEnabled) {
             onRefused?.();

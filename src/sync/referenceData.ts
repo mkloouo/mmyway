@@ -4,6 +4,7 @@ import type { AccountRead, CategoryRead, BudgetRead, CurrencyRead, TransactionRe
 import { referenceAccounts, referenceCategories, referenceBudgets, referenceCurrencies, cachedTransactions, outboxOperations } from '../db/schema';
 import type { OutboxDb } from './outbox';
 import { logLine } from '../utils/log';
+import { setAccountOrder } from '../settings/appSettings';
 
 const PAGE_SIZE = 100;
 
@@ -62,6 +63,13 @@ export async function pullReferenceData(db: OutboxDb, client: FF3Client): Promis
         .onConflictDoUpdate({ target: referenceCurrencies.code, set: { symbol: currency.attributes.symbol, decimalPlaces: currency.attributes.decimal_places, syncedAt: now } }).run();
     }
   });
+
+  const order: Record<string, number> = {};
+  for (const account of accountsByType.flat()) {
+    const value = (account.attributes as { order?: number | null }).order;
+    if (typeof value === 'number') order[account.id] = value;
+  }
+  await setAccountOrder(db, order);
 
   await pullRecentTransactions(db, client, now);
 }

@@ -8,7 +8,7 @@ export function isUnreachable(err: unknown): boolean {
 
 export async function runProviderChain(
   providers: ReceiptProvider[],
-  input: { imageBase64: string; hint?: string; categoryNames: string[] },
+  input: { imageBase64: string; hint?: string; categoryNames: string[]; currencyCodes?: string[] },
 ): Promise<ReceiptChainResult> {
   const errors: string[] = [];
   let anyAnswered = false;

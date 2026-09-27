@@ -119,11 +119,16 @@ export async function parseReceiptItem(db: OutboxDb, itemId: string, imageBase64
   }
 
   const reference = await buildReceiptDraftReference(db);
-  const result = await runProviderChain(providers, { imageBase64, hint, categoryNames: reference.categoryNames });
+  const result = await runProviderChain(providers, { imageBase64, hint, categoryNames: reference.categoryNames, currencyCodes: reference.currencyCodes });
   if (!result.ok) {
     logLine('warn', `receipt ${itemId}: ${result.reason} — ${result.errors.join('; ')}`);
     if (result.reason === 'all_providers_unreachable') return 'waiting';
     await markReceiptError(db, itemId, `Could not read this receipt (${result.errors.join('; ')})`);
+    return 'failed';
+  }
+
+  if (result.extraction.notAReceipt) {
+    await markReceiptError(db, itemId, `${result.providerName} says this picture isn't a receipt. Retry, or discard it.`);
     return 'failed';
   }
 

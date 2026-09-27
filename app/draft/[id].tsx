@@ -1,6 +1,6 @@
 // Draft review (design §6.3) — one legible card for both a manual draft and a receipt.
 import { useEffect, useState } from 'react';
-import { Alert, Image, Modal, Pressable, Text, View } from 'react-native';
+import { Alert, Image, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { eq } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
@@ -16,6 +16,8 @@ import { haptics } from '../../src/ui/haptics';
 import { inboxItems, outboxOperations, referenceCategories, referenceBudgets, referenceCurrencies } from '../../src/db/schema';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { confirmInboxItem, undoConfirm } from '../../src/inbox/createManualEntry';
+import { askPhotoSource, pickPhoto } from '../../src/receipt/pickPhoto';
+import { persistReceiptImage } from '../../src/receipt/imageFiles';
 import { updateDraft, deleteInboxItem } from '../../src/inbox/updateDraft';
 import { draftReadiness } from '../../src/inbox/readiness';
 import { applyDigit, type KeypadKey } from '../../src/capture/amountInput';
@@ -41,6 +43,15 @@ export default function DraftScreen() {
   // rule as Undo: only while it is `pending`, never once sending started.
   const { data: ops } = useLiveQuery(db.select().from(outboxOperations).where(eq(outboxOperations.inboxItemId, id)), [id]);
   const pendingCreate = (ops ?? []).find((op) => op.kind === 'create_transaction' && op.status === 'pending') ?? null;
+  // Any entry can carry a photo: it is uploaded to FF3 right after the transaction is created
+  // (src/sync/outbox.ts queues the upload when the create lands).
+  async function attachPhoto() {
+    const source = await askPhotoSource();
+    if (!source) return;
+    const photo = await pickPhoto(source);
+    if (!photo) return;
+    await db.update(inboxItems).set({ receiptImagePath: persistReceiptImage(photo.uri), updatedAt: new Date().toISOString() }).where(eq(inboxItems.id, id));
+  }
   async function cancelSending() {
     if (!pendingCreate) return;
     // A receipt goes back to `parsed`: as `captured` the next sync would re-read the photo
@@ -183,7 +194,12 @@ export default function DraftScreen() {
           )}
         </View>
 
-        <View style={{ gap: t.space.md, flex: 1 }}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ gap: t.space.md, paddingBottom: t.space.lg }}>
+          {!!row.errorMessage && !readOnly && (
+            <View style={{ marginHorizontal: t.space.lg, padding: t.space.md, borderRadius: t.radius.sm, backgroundColor: t.color.warnSoft }}>
+              <Text style={[t.type.label, { color: t.color.warn }]}>{row.errorMessage}</Text>
+            </View>
+          )}
           <DetailRows
             value={detailValue}
             onChange={handleDetailChange}
@@ -195,7 +211,12 @@ export default function DraftScreen() {
             budgets={budgets ?? []}
           />
 
-          {row.kind === 'receipt' && (
+          {row.kind !== 'receipt' && !row.receiptImagePath && row.state !== 'synced' && (
+            <Card style={{ marginHorizontal: t.space.lg }}>
+              <Row first label="Receipt photo" value="Attach" chevron onPress={attachPhoto} />
+            </Card>
+          )}
+          {(row.kind === 'receipt' || !!row.receiptImagePath) && (
             <Card style={{ marginHorizontal: t.space.lg, gap: t.space.sm }}>
               {row.receiptImagePath ? (
                 <Pressable onPress={() => setPhotoOpen(true)} accessibilityRole="imagebutton" accessibilityLabel="Show the receipt photo">
@@ -209,7 +230,7 @@ export default function DraftScreen() {
               </Text>
             </Card>
           )}
-        </View>
+        </ScrollView>
 
         {readOnly ? (
           <View style={{ alignItems: 'center', padding: t.space.lg, gap: t.space.md }}>

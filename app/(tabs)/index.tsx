@@ -1,6 +1,6 @@
 // Inbox (design §6.1) — the approval queue. Only ever holds unfinished work; confirmed/synced
 // items leave every section (see src/inbox/useInboxSections.ts).
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, SectionList, Text, TextInput, View } from 'react-native';
 import { eq } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
@@ -41,26 +41,37 @@ function metaLine(parts: (string | null | undefined)[]): string {
   return parts.filter((p): p is string => !!p).join(' · ');
 }
 
+// No swiping while selecting: a stray swipe mid-selection would confirm or delete one card.
+function MaybeSwipeable({ disabled, children, ...props }: { disabled: boolean } & Parameters<typeof SwipeableCard>[0]) {
+  return disabled ? <>{children}</> : <SwipeableCard {...props}>{children}</SwipeableCard>;
+}
+
+const UNDO_WINDOW_MS = 5000; // matches the Snackbar's visible time
+
 function ConfirmCard({
-  item, currencies, onOpen, onConfirm, onDelete,
+  item, currencies, onOpen, onConfirm, onDelete, selection,
 }: {
   item: InboxItemRow;
   currencies: { code: string; symbol: string; decimalPlaces: number }[];
   onOpen: () => void;
   onConfirm: () => void;
   onDelete: () => void;
+  /** Multi-select: `active` while any card is selected; a tap toggles instead of opening. */
+  selection: { active: boolean; selected: boolean; toggle: () => void };
 }) {
   const t = useTheme();
+  const cardStyle = { marginHorizontal: t.space.lg, marginBottom: t.space.sm };
+  const press = selection.active ? selection.toggle : onOpen;
 
   if (item.kind === 'receipt' && item.state === 'captured') {
     return (
-      <SwipeableCard onDelete={onDelete}>
-        <Card onPress={onOpen} style={{ marginHorizontal: t.space.lg, marginBottom: t.space.sm }}>
+      <MaybeSwipeable disabled={selection.active} onDelete={onDelete}>
+        <Card onPress={press} onLongPress={selection.toggle} selected={selection.selected} style={cardStyle}>
           <Pulse active>
             <Text style={[t.type.body, { color: t.color.textMuted }]}>▦ Reading receipt…</Text>
           </Pulse>
         </Card>
-      </SwipeableCard>
+      </MaybeSwipeable>
     );
   }
 
@@ -79,10 +90,12 @@ function ConfirmCard({
   if (draft.isNewPayee && !isTransfer) badges.push({ label: 'New payee', tone: 'warn' });
   if (!readiness.ready) badges.push({ label: `Needs ${readiness.missing.join(', ')}`, tone: 'warn' });
   if (draft.sharedWith) badges.push({ label: `Shared with ${draft.sharedWith}` });
+  // Handed back by the outbox: something it points at was deleted in FF3 (src/sync/outbox.ts).
+  if (item.errorMessage) badges.push({ label: item.errorMessage, tone: 'warn' });
 
   return (
-    <SwipeableCard onConfirm={onConfirm} onDelete={onDelete} confirmEnabled={readiness.ready} onRefused={haptics.warn}>
-      <Card onPress={onOpen} style={{ marginHorizontal: t.space.lg, marginBottom: t.space.sm }}>
+    <MaybeSwipeable disabled={selection.active} onConfirm={onConfirm} onDelete={onDelete} confirmEnabled={readiness.ready} onRefused={haptics.warn}>
+      <Card onPress={press} onLongPress={selection.toggle} selected={selection.selected} style={cardStyle}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
           <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor }} />
           <Text style={[t.type.heading, { color: t.color.text, flex: 1 }]} numberOfLines={1}>{payeeName}</Text>
@@ -94,7 +107,7 @@ function ConfirmCard({
             {badges.map((b) => <Chip key={b.label} label={b.label} tone={b.tone} />)}
           </View>
         )}
-        {readiness.ready && (
+        {readiness.ready && !selection.active && (
           <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: t.space.sm }}>
             <Pressable
               onPress={onConfirm}
@@ -110,7 +123,7 @@ function ConfirmCard({
           </View>
         )}
       </Card>
-    </SwipeableCard>
+    </MaybeSwipeable>
   );
 }
 
@@ -245,6 +258,47 @@ export default function InboxScreen() {
   const [editingReview, setEditingReview] = useState<{ id: string; amount: string; currencyCode: string; accountId: string | null } | null>(null);
   const [savingReview, setSavingReview] = useState(false);
 
+  // Multi-select (long-press a card): bulk confirm or delete.
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const selecting = selectedIds.size > 0;
+  function toggleSelected(id: string) {
+    haptics.tick();
+    setSelectedIds((cur) => {
+      const next = new Set(cur);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  // A swiped-away draft disappears at once and is only really deleted after its Undo window —
+  // the swipe used to stop on a confirmation dialog.
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
+  const deleteTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  useEffect(() => {
+    const timers = deleteTimers.current;
+    // Leaving the screen commits whatever is still waiting.
+    return () => { for (const [id, timer] of timers) { clearTimeout(timer); void deleteInboxItem(db, id); } timers.clear(); };
+  }, [db]);
+  function deleteWithUndo(ids: string[]) {
+    setHiddenIds((cur) => new Set([...cur, ...ids]));
+    for (const id of ids) {
+      deleteTimers.current.set(id, setTimeout(() => {
+        deleteTimers.current.delete(id);
+        void deleteInboxItem(db, id);
+      }, UNDO_WINDOW_MS));
+    }
+    haptics.tick();
+    setSnackbar({
+      id: generateId(),
+      message: ids.length > 1 ? `Deleted ${ids.length}` : 'Deleted',
+      actionLabel: 'Undo',
+      onAction: () => {
+        for (const id of ids) { clearTimeout(deleteTimers.current.get(id)); deleteTimers.current.delete(id); }
+        setHiddenIds((cur) => new Set([...cur].filter((id) => !ids.includes(id))));
+      },
+    });
+  }
+
   function showConfirmedSnackbar(batch: { id: string; result: ConfirmResult }[]) {
     setSnackbar({
       id: generateId(),
@@ -268,7 +322,8 @@ export default function InboxScreen() {
     }, (message) => setSnackbar({ id: generateId(), message }));
   }
 
-  const readyToConfirm = toConfirm.filter((item) => {
+  const visibleToConfirm = toConfirm.filter((item) => !hiddenIds.has(item.id));
+  const readyToConfirm = visibleToConfirm.filter((item) => {
     if (item.kind === 'receipt' && item.state === 'captured') return false;
     return draftReadiness(JSON.parse(item.draftJson)).ready;
   });
@@ -309,11 +364,20 @@ export default function InboxScreen() {
     if (!await confirmDestructive('Discard this item?', 'Discard', 'It is removed from the Inbox and never sent.')) return;
     await deleteInboxItem(db, id);
   }
-  // Both the card's ✕ and a completed left-swipe land here, so the confirmation covers both —
-  // the swipe used to delete outright, with no confirm and no undo.
-  async function discardDraft(id: string) {
-    if (!await confirmDestructive('Delete this entry?', 'Delete')) return;
-    await deleteInboxItem(db, id);
+  async function deleteSelected() {
+    const ids = [...selectedIds];
+    setSelectedIds(new Set());
+    deleteWithUndo(ids);
+  }
+  async function confirmSelected() {
+    const ready = visibleToConfirm.filter((item) => selectedIds.has(item.id) && !(item.kind === 'receipt' && item.state === 'captured') && draftReadiness(JSON.parse(item.draftJson)).ready);
+    setSelectedIds(new Set());
+    if (ready.length === 0) { haptics.warn(); return; }
+    const batch: { id: string; result: ConfirmResult }[] = [];
+    await reportErrors('Confirm', async () => {
+      for (const item of ready) batch.push({ id: item.id, result: await confirmInboxItem(db, item.id) });
+    }, (message) => setSnackbar({ id: generateId(), message }));
+    if (batch.length > 0) { haptics.tick(); showConfirmedSnackbar(batch); }
   }
   async function discardReview(id: string) {
     if (!await confirmDestructive('Delete this recurring review?', 'Delete', 'The recurring transaction itself stays in Firefly III.')) return;
@@ -357,7 +421,7 @@ export default function InboxScreen() {
 
   const allSections: { key: SectionKey; title: string; data: SectionRow[] }[] = [
     { key: 'attention', title: 'NEEDS ATTENTION', data: needsAttention },
-    { key: 'confirm', title: 'TO CONFIRM', data: toConfirm },
+    { key: 'confirm', title: 'TO CONFIRM', data: visibleToConfirm },
     { key: 'review', title: 'TO REVIEW', data: toReview },
   ];
   const sections = allSections.filter((s) => s.data.length > 0);
@@ -388,6 +452,16 @@ export default function InboxScreen() {
   return (
     <Screen>
       <View style={{ flex: 1 }}>
+        {selecting ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm, paddingHorizontal: t.space.lg, paddingVertical: t.space.md }}>
+            <Pressable onPress={() => setSelectedIds(new Set())} accessibilityRole="button" accessibilityLabel="Cancel selection">
+              <Ionicons name="close" size={24} color={t.color.text} />
+            </Pressable>
+            <Text style={[t.type.title, { color: t.color.text, flex: 1 }]}>{selectedIds.size} selected</Text>
+            <Button title="Confirm" variant="secondary" onPress={confirmSelected} />
+            <Button title="Delete" variant="danger" onPress={deleteSelected} />
+          </View>
+        ) : (
         <AppBar
           title={dateTitle}
           subtitle={subtitleParts.length > 0 ? subtitleParts.join(' · ') : undefined}
@@ -397,6 +471,7 @@ export default function InboxScreen() {
             </Pressable>
           )}
         />
+        )}
         {!!showOfflineBanner && (
           <View style={{ backgroundColor: t.color.warnSoft, paddingHorizontal: t.space.lg, paddingVertical: t.space.sm }}>
             <Text style={[t.type.label, { color: t.color.warn }]}>⚑ Offline — {pendingOutboxCount} queued, will send later</Text>
@@ -482,7 +557,8 @@ export default function InboxScreen() {
                 currencies={currencies ?? []}
                 onOpen={() => navigateOnce(`/draft/${row.id}`)}
                 onConfirm={() => confirmSingle(row)}
-                onDelete={() => discardDraft(row.id)}
+                onDelete={() => deleteWithUndo([row.id])}
+                selection={{ active: selecting, selected: selectedIds.has(row.id), toggle: () => toggleSelected(row.id) }}
               />
             );
           }}

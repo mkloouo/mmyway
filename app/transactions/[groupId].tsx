@@ -23,6 +23,8 @@ import { generateId } from '../../src/utils/id';
 import type { TransactionSplit } from '../../src/api/ff3/types';
 
 const SHARED_TAG_PREFIX = 'mmyway-shared-';
+// The words the rest of the app uses (capture's type chips), not FF3's "Withdrawal"/"Deposit".
+const TYPE_LABELS: Record<string, string> = { withdrawal: 'Expense', deposit: 'Income', transfer: 'Transfer' };
 
 function sharedWithFromTags(tagsJson: string): string | null {
   try {
@@ -208,7 +210,7 @@ export default function TransactionDetailScreen() {
     <Screen bottom>
       <View style={{ flex: 1 }}>
         <AppBar
-          title={row.type[0]!.toUpperCase() + row.type.slice(1)}
+          title={TYPE_LABELS[row.type] ?? row.type}
           subtitle={`synced ${relativeTime(row.syncedAt)}`}
           left={<CloseButton />}
           right={(
@@ -218,11 +220,14 @@ export default function TransactionDetailScreen() {
           )}
         />
 
-        <View style={{ alignItems: 'center', paddingVertical: t.space.lg }}>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ gap: t.space.md, paddingBottom: t.space.lg }}>
+        {/* The description can be a long legal name ("TOP-PHARMA spółka z o.o. sp.k. …"): padded,
+            centred and capped at two lines instead of running into both screen edges. */}
+        <View style={{ alignItems: 'center', paddingVertical: t.space.lg, paddingHorizontal: t.space.xl }}>
           <Pressable onPress={() => setAmountSheetOpen(true)}>
             <Money amount={effectiveAmount} currency={currency} type={row.type as 'withdrawal' | 'deposit' | 'transfer'} size="title" />
           </Pressable>
-          <Text style={[t.type.heading, { color: t.color.text, marginTop: t.space.xs }]}>{row.description}</Text>
+          <Text style={[t.type.heading, { color: t.color.text, marginTop: t.space.xs, textAlign: 'center' }]} numberOfLines={2}>{row.description}</Text>
         </View>
 
         <View style={{ gap: t.space.md }}>
@@ -240,6 +245,7 @@ export default function TransactionDetailScreen() {
             <Row first label="Receipt" value="Attach receipt" chevron onPress={() => router.push({ pathname: '/receipt', params: { attachToJournalId: row.journalId } })} />
           </Card>
         </View>
+        </ScrollView>
 
         <View style={{ padding: t.space.lg }}>
           <Button title={saving ? 'Saving…' : 'Save'} onPress={onSave} disabled={saving} size="lg" />

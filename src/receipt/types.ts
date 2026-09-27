@@ -9,11 +9,13 @@ export interface ReceiptExtraction {
   confidence: number; // 0..1
   paymentMethod: 'cash' | 'card' | 'unknown';
   cardNetwork: string | null;
+  /** The model reported confidence "none": not a receipt, nothing to extract. */
+  notAReceipt?: boolean;
 }
 
 export interface ReceiptProvider {
   name: string;
-  extract(input: { imageBase64: string; hint?: string; categoryNames: string[] }): Promise<ReceiptExtraction>;
+  extract(input: { imageBase64: string; hint?: string; categoryNames: string[]; currencyCodes?: string[] }): Promise<ReceiptExtraction>;
 }
 
 export type ReceiptChainResult = {
