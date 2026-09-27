@@ -1,7 +1,7 @@
 // Transaction detail (design §6.5) — the same editing vocabulary as the draft screen: hero
 // amount + DetailRows, one picker implementation for both.
 import { useState } from 'react';
-import { Alert, Pressable, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { eq } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
@@ -11,7 +11,8 @@ import { useTheme } from '../../src/ui/theme';
 import { Screen, AppBar, Card, Button, Money, Row, Sheet } from '../../src/ui/components';
 import { DetailRows, type DetailRowsValue } from '../../src/ui/DetailRows';
 import { Keypad } from '../../src/ui/Keypad';
-import { currencyOf } from '../../src/ui/money';
+import { currencyOf, formatMoney } from '../../src/ui/money';
+import { conflictFields } from '../../src/transactions/conflictDiff';
 import { relativeTime } from '../../src/ui/relativeTime';
 import { applyDigit, type KeypadKey } from '../../src/capture/amountInput';
 import { buildEntryDate } from '../../src/capture/entryDate';
@@ -150,28 +151,44 @@ export default function TransactionDetailScreen() {
 
   if (conflictOp) {
     const pending = JSON.parse(conflictOp.payloadJson) as UpdateTransactionPayload;
+    const isDelete = conflictOp.kind === 'delete_transaction';
+    const fields = isDelete ? [] : conflictFields(pending.changes ?? {}, row, {
+      accountName: (accountId) => allAssetAccounts.find((a) => a.id === accountId)?.name,
+      budgetName: (budgetId) => (budgets ?? []).find((b) => b.id === budgetId)?.name,
+      money: (amount) => formatMoney(amount, currency),
+    });
     return (
       <Screen bottom>
         <AppBar title="Conflict" left={<CloseButton />} />
-        <View style={{ padding: t.space.lg, gap: t.space.md }}>
-          <Card>
-            <Text style={[t.type.heading, { color: t.color.text }]}>On the server</Text>
-            <Money amount={row.amount} currency={currency} type={row.type as 'withdrawal' | 'deposit' | 'transfer'} size="heading" />
-            <Text style={[t.type.body, { color: t.color.textMuted }]}>{row.description}</Text>
-          </Card>
-          <Card>
-            <Text style={[t.type.heading, { color: t.color.text }]}>Your queued change</Text>
-            {conflictOp.kind === 'delete_transaction' ? (
-              <Text style={[t.type.body, { color: t.color.danger }]}>Delete this transaction</Text>
-            ) : (
-              Object.entries(pending.changes ?? {}).map(([key, value]) => (
-                <Text key={key} style={[t.type.body, { color: t.color.textMuted }]}>{key}: {JSON.stringify(value)}</Text>
-              ))
-            )}
-          </Card>
-          <Button title="Keep mine (retry against the new version)" onPress={keepMine} />
-          <Button title="Use the server's" variant="danger" onPress={discardMine} />
-        </View>
+        <ScrollView contentContainerStyle={{ padding: t.space.lg, gap: t.space.md }}>
+          <Text style={[t.type.body, { color: t.color.textMuted }]}>
+            {row.description} was changed in Firefly III {relativeTime(row.updatedAt)} after you edited it here.
+            {isDelete ? ' You asked to delete it.' : ' Compare the fields your change touches:'}
+          </Text>
+          {!isDelete && (
+            <Card>
+              <View style={{ flexDirection: 'row', paddingBottom: t.space.sm }}>
+                <Text style={[t.type.caption, { color: t.color.textMuted, flex: 1 }]}>FIELD</Text>
+                <Text style={[t.type.caption, { color: t.color.textMuted, flex: 2 }]}>FIREFLY III</Text>
+                <Text style={[t.type.caption, { color: t.color.textMuted, flex: 2 }]}>YOURS</Text>
+              </View>
+              {fields.map((f) => (
+                <View key={f.label} style={{ flexDirection: 'row', paddingVertical: t.space.sm, borderTopWidth: 1, borderTopColor: t.color.border }}>
+                  <Text style={[t.type.label, { color: t.color.textMuted, flex: 1 }]}>{f.label}</Text>
+                  <Text style={[t.type.body, { color: t.color.text, flex: 2 }]}>{f.server}</Text>
+                  <Text style={[t.type.body, { color: f.differs ? t.color.accent : t.color.text, flex: 2, fontWeight: f.differs ? '600' : '400' }]}>{f.mine}</Text>
+                </View>
+              ))}
+              {fields.every((f) => !f.differs) && (
+                <Text style={[t.type.label, { color: t.color.textMuted, paddingTop: t.space.sm }]}>
+                  Your change matches the server on these fields — something else was edited there. Keeping yours is safe.
+                </Text>
+              )}
+            </Card>
+          )}
+          <Button title={isDelete ? 'Delete it anyway' : 'Keep mine (apply over the server copy)'} onPress={keepMine} />
+          <Button title={isDelete ? 'Keep the transaction' : "Use the server's (drop my change)"} variant="danger" onPress={discardMine} />
+        </ScrollView>
       </Screen>
     );
   }

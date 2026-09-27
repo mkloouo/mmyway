@@ -33,7 +33,7 @@ Seven gaps remain; three of them only need the UI to use what the data layer now
 - [x] **(UI) Conflict screen ignores recurring reviews.** `app/transactions/[groupId].tsx:58` looks only for `update_transaction` and `delete_transaction`, so a `recurring_review` conflict can't be resolved. Add that kind to the filter.
 - [ ] **Retry backoff.** A failing op is retried on every sync with no delay. Needs a `next_attempt_at` column on `outbox_operations`, then `npm run db:generate` and a new entry in `src/db/migrations.ts`. Blocked in the agent session because generating migrations was denied.
 - [ ] **Sync when the network returns.** Brief §5.4 asks for it; nothing listens for connectivity. Needs `@react-native-community/netinfo`, calling `requestSync()` on reconnect.
-- [ ] **Transactions deleted in FF3's web UI stay cached.** The transaction pull only upserts, so they stay in Activity and payee history. Fix in `pullTransactionsInRange` (`src/sync/referenceData.ts`): after paging a closed date window, delete cached rows in that window that FF3 didn't return. Deletes made in the app already remove the row.
+- [x] **Transactions deleted in FF3's web UI stay cached.** The transaction pull only upserts, so they stay in Activity and payee history. Fix in `pullTransactionsInRange` (`src/sync/referenceData.ts`): after paging a closed date window, delete cached rows in that window that FF3 didn't return. Deletes made in the app already remove the row.
 - [x] **(UI) Retry on an errored receipt should sync.** `retryError` in the Inbox resets the item to `captured` but waits for the next resume; call `requestSync()` from `src/sync/syncTrigger.ts`.
 - [ ] **Background sync** (Android WorkManager via `expo-background-task`), listed as nice-to-have in the brief.
 

@@ -2,7 +2,6 @@
 // items leave every section (see src/inbox/useInboxSections.ts).
 import { useState } from 'react';
 import { Pressable, SectionList, Text, TextInput, View } from 'react-native';
-import { router } from 'expo-router';
 import { eq } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -28,11 +27,12 @@ import { discardOperation } from '../../src/sync/outbox';
 import { requestSync } from '../../src/sync/syncTrigger';
 import { parseDecimalInput } from '../../src/api/ff3/decimal';
 import { reportErrors } from '../../src/ui/reportError';
-import { useSync, useSignedIn } from '../../src/sync/useSync';
+import { useSync, useSignedIn, usePullToRefresh } from '../../src/sync/useSync';
 import { inboxItems, outboxOperations, referenceCurrencies, cachedTransactions } from '../../src/db/schema';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { generateId } from '../../src/utils/id';
 import type { Draft } from '../../src/inbox/draft';
+import { navigateOnce } from '../../src/ui/navigateOnce';
 
 type SectionKey = 'attention' | 'confirm' | 'review';
 type SectionRow = AttentionItem | InboxItemRow;
@@ -223,6 +223,7 @@ export default function InboxScreen() {
   // Just "has anything ever synced" — .limit(1) instead of loading the whole cached table.
   const { data: cachedTxProbe } = useLiveQuery(db.select({ id: cachedTransactions.groupId }).from(cachedTransactions).limit(1));
   const { status, summary, syncNow } = useSync();
+  const pull = usePullToRefresh();
 
   const assetAccounts = useAssetAccounts() ?? [];
   const pendingOutboxCount = (outbox ?? []).filter((op) => op.status === 'pending' || op.status === 'failed').length;
@@ -327,7 +328,7 @@ export default function InboxScreen() {
     await discardOperation(db, opId);
   }
   function resolveConflict(groupId: string) {
-    router.push(`/transactions/${groupId}`);
+    navigateOnce(`/transactions/${groupId}`);
   }
 
   function startEditReview(item: InboxItemRow) {
@@ -407,8 +408,8 @@ export default function InboxScreen() {
         <SectionList
           sections={sections}
           keyExtractor={(row) => row.id}
-          refreshing={status === 'syncing'}
-          onRefresh={syncNow}
+          refreshing={pull.refreshing}
+          onRefresh={pull.onRefresh}
           contentContainerStyle={{ paddingBottom: 140 }}
           ListEmptyComponent={(
             <>
@@ -417,7 +418,7 @@ export default function InboxScreen() {
                   glyph="⚡"
                   title="Connect Firefly III"
                   hint="Sign in to start capturing entries."
-                  action={<Button title="Go to Settings" onPress={() => router.push('/settings')} />}
+                  action={<Button title="Go to Settings" onPress={() => navigateOnce('/settings')} />}
                 />
               )}
               {hasCredentials === true && hasSyncedBefore === false && (
@@ -430,8 +431,8 @@ export default function InboxScreen() {
                   hint="Nothing waiting to confirm."
                   action={(
                     <View style={{ flexDirection: 'row', gap: t.space.md }}>
-                      <Button title="＋ Add" onPress={() => router.push('/capture')} />
-                      <Button title="📷" variant="secondary" onPress={() => router.push('/receipt')} />
+                      <Button title="＋ Add" onPress={() => navigateOnce('/capture')} />
+                      <Button title="📷" variant="secondary" onPress={() => navigateOnce('/receipt')} />
                     </View>
                   )}
                 />
@@ -479,7 +480,7 @@ export default function InboxScreen() {
               <ConfirmCard
                 item={row}
                 currencies={currencies ?? []}
-                onOpen={() => router.push(`/draft/${row.id}`)}
+                onOpen={() => navigateOnce(`/draft/${row.id}`)}
                 onConfirm={() => confirmSingle(row)}
                 onDelete={() => discardDraft(row.id)}
               />

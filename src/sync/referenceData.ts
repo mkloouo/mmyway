@@ -1,7 +1,7 @@
-import { desc } from 'drizzle-orm';
+import { and, desc, gte, inArray, lte, sql } from 'drizzle-orm';
 import type { FF3Client } from '../api/ff3/client';
 import type { AccountRead, CategoryRead, BudgetRead, CurrencyRead, TransactionRead } from '../api/ff3/types';
-import { referenceAccounts, referenceCategories, referenceBudgets, referenceCurrencies, cachedTransactions } from '../db/schema';
+import { referenceAccounts, referenceCategories, referenceBudgets, referenceCurrencies, cachedTransactions, outboxOperations } from '../db/schema';
 import type { OutboxDb } from './outbox';
 import { logLine } from '../utils/log';
 
@@ -95,12 +95,50 @@ async function windowStart(db: OutboxDb): Promise<string> {
   return dateOnly(start);
 }
 
+export type CachedTransactionInsert = typeof cachedTransactions.$inferInsert;
+
+/** One cached row per FF3 transaction group. Also used by the outbox to store the server's copy on a conflict. */
+export function cachedRowFromGroup(group: TransactionRead, syncedAt: string): CachedTransactionInsert | null {
+  // Only the first split is cached — cachedTransactions is keyed by groupId (one row per
+  // group), matching src/sync/recurringReview.ts's existing single-journal assumption.
+  const journal = group.attributes.transactions[0];
+  if (!journal) return null;
+
+  return {
+    groupId: group.id,
+    journalId: journal.transaction_journal_id,
+    type: journal.type,
+    date: journal.date,
+    amount: journal.amount,
+    // Read responses always populate currency_code; TransactionSplit only marks it optional
+    // because the same type also covers write payloads, which can omit it.
+    currencyCode: journal.currency_code!,
+    foreignAmount: journal.foreign_amount ?? null,
+    foreignCurrencyCode: journal.foreign_currency_code ?? null,
+    description: journal.description,
+    sourceName: journal.source_name ?? null,
+    destinationName: journal.destination_name ?? null,
+    categoryName: journal.category_name ?? null,
+    // TransactionSplit has no budget_name field (only budget_id) — left null until
+    // src/api/ff3/types.ts (generated/pinned) grows one.
+    budgetName: null as string | null,
+    tagsJson: JSON.stringify(journal.tags ?? []),
+    notes: journal.notes ?? null,
+    // FF3 puts updated_at on the group's attributes, not on each split — journal.updated_at
+    // is undefined against real API responses despite what TransactionSplit's type claims
+    // (confirmed on a real device sync: NOT NULL constraint failed: cached_transactions.updated_at).
+    updatedAt: (group.attributes as { updated_at?: string }).updated_at ?? journal.updated_at ?? syncedAt,
+    syncedAt,
+  };
+}
+
 // Shared by pullRecentTransactions (catch-up window) and pullOlderTransactions (scrolling past
 // the local cache) — both just page a date range into cachedTransactions. `endDate` is omitted
 // for the catch-up window (it always runs to today) and set for the older-history pull, so each
 // scroll only re-walks its own chunk instead of the whole history back to today every time.
 async function pullTransactionsInRange(db: OutboxDb, client: FF3Client, startDate: string, syncedAt: string, endDate?: string): Promise<void> {
   const endParam = endDate ? `&end=${endDate}` : '';
+  const seen = new Set<string>();
   // Pages until the requested history window is covered — no upper page bound, so a long real
   // history is never silently truncated.
   for (let page = 1; ; page++) {
@@ -108,46 +146,43 @@ async function pullTransactionsInRange(db: OutboxDb, client: FF3Client, startDat
       `/v1/transactions?start=${startDate}${endParam}&limit=100&page=${page}`,
     );
     if (response.data.length === 0) break;
+    for (const group of response.data) seen.add(group.id);
 
     // One transaction per page, for the same reason as pullReferenceData's.
     db.transaction((tx) => {
       for (const group of response.data) {
-        // Only the first split is cached — cachedTransactions is keyed by groupId (one row per
-        // group), matching src/sync/recurringReview.ts's existing single-journal assumption.
-        const journal = group.attributes.transactions[0];
-        if (!journal) continue;
-
-        const row = {
-          groupId: group.id,
-          journalId: journal.transaction_journal_id,
-          type: journal.type,
-          date: journal.date,
-          amount: journal.amount,
-          // Read responses always populate currency_code; TransactionSplit only marks it optional
-          // because the same type also covers write payloads, which can omit it.
-          currencyCode: journal.currency_code!,
-          foreignAmount: journal.foreign_amount ?? null,
-          foreignCurrencyCode: journal.foreign_currency_code ?? null,
-          description: journal.description,
-          sourceName: journal.source_name ?? null,
-          destinationName: journal.destination_name ?? null,
-          categoryName: journal.category_name ?? null,
-          // TransactionSplit has no budget_name field (only budget_id) — left null until
-          // src/api/ff3/types.ts (generated/pinned) grows one.
-          budgetName: null as string | null,
-          tagsJson: JSON.stringify(journal.tags ?? []),
-          notes: journal.notes ?? null,
-          // FF3 puts updated_at on the group's attributes, not on each split — journal.updated_at
-          // is undefined against real API responses despite what TransactionSplit's type claims
-          // (confirmed on a real device sync: NOT NULL constraint failed: cached_transactions.updated_at).
-          updatedAt: (group.attributes as { updated_at?: string }).updated_at ?? journal.updated_at ?? syncedAt,
-          syncedAt,
-        };
+        const row = cachedRowFromGroup(group, syncedAt);
+        if (!row) continue;
         tx.insert(cachedTransactions).values(row).onConflictDoUpdate({ target: cachedTransactions.groupId, set: row }).run();
       }
     });
 
     if (response.data.length < 100) break;
+  }
+
+  await pruneDeletedInWindow(db, seen, startDate, endDate ?? dateOnly(new Date()));
+}
+
+/**
+ * The window above was read completely, so a cached row dated inside it that FF3 did not return
+ * was deleted in FF3 (its web UI, another client). Pulls only upsert, so it used to stay in
+ * Activity and payee history for good. Rows an outbox op still refers to are left for that op to
+ * settle; only reached when every page came back (a failed request throws before this).
+ */
+async function pruneDeletedInWindow(db: OutboxDb, seen: Set<string>, startDate: string, endDate: string): Promise<void> {
+  const inWindow = await db.select({ groupId: cachedTransactions.groupId }).from(cachedTransactions)
+    .where(and(
+      gte(sql`substr(${cachedTransactions.date}, 1, 10)`, startDate),
+      lte(sql`substr(${cachedTransactions.date}, 1, 10)`, endDate),
+    ));
+  const gone = inWindow.map((r) => r.groupId).filter((id) => !seen.has(id));
+  if (gone.length === 0) return;
+  const queued = new Set((await db.select({ payloadJson: outboxOperations.payloadJson }).from(outboxOperations))
+    .map((op) => { try { return (JSON.parse(op.payloadJson) as { groupId?: string }).groupId; } catch { return undefined; } })
+    .filter((id): id is string => !!id));
+  const removable = gone.filter((id) => !queued.has(id));
+  for (let i = 0; i < removable.length; i += 500) {
+    await db.delete(cachedTransactions).where(inArray(cachedTransactions.groupId, removable.slice(i, i + 500)));
   }
 }
 

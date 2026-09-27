@@ -1,6 +1,6 @@
 // Draft review (design §6.3) — one legible card for both a manual draft and a receipt.
 import { useEffect, useState } from 'react';
-import { Alert, Image, Pressable, Text, View } from 'react-native';
+import { Alert, Image, Modal, Pressable, Text, View } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { eq } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
@@ -13,9 +13,9 @@ import { PayeeSheet } from '../../src/ui/PayeeSheet';
 import { Keypad } from '../../src/ui/Keypad';
 import { currencyOf } from '../../src/ui/money';
 import { haptics } from '../../src/ui/haptics';
-import { inboxItems, referenceCategories, referenceBudgets, referenceCurrencies } from '../../src/db/schema';
+import { inboxItems, outboxOperations, referenceCategories, referenceBudgets, referenceCurrencies } from '../../src/db/schema';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
-import { confirmInboxItem } from '../../src/inbox/createManualEntry';
+import { confirmInboxItem, undoConfirm } from '../../src/inbox/createManualEntry';
 import { updateDraft, deleteInboxItem } from '../../src/inbox/updateDraft';
 import { draftReadiness } from '../../src/inbox/readiness';
 import { applyDigit, type KeypadKey } from '../../src/capture/amountInput';
@@ -23,6 +23,7 @@ import { buildEntryDate } from '../../src/capture/entryDate';
 import { buildMerchantLookup, type MerchantHistory } from '../../src/lookup/merchantLookup';
 import { matchAlias } from '../../src/lookup/aliases';
 import type { Draft } from '../../src/inbox/draft';
+import { navigateOnce } from '../../src/ui/navigateOnce';
 
 export default function DraftScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -36,6 +37,17 @@ export default function DraftScreen() {
   const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
 
   const row = rows?.[0];
+  // A confirmed entry whose create is still waiting in the queue can be taken back — the same
+  // rule as Undo: only while it is `pending`, never once sending started.
+  const { data: ops } = useLiveQuery(db.select().from(outboxOperations).where(eq(outboxOperations.inboxItemId, id)), [id]);
+  const pendingCreate = (ops ?? []).find((op) => op.kind === 'create_transaction' && op.status === 'pending') ?? null;
+  async function cancelSending() {
+    if (!pendingCreate) return;
+    // A receipt goes back to `parsed`: as `captured` the next sync would re-read the photo
+    // and overwrite the reviewed draft.
+    const outcome = await undoConfirm(db, id, { outboxOperationId: pendingCreate.id, previousState: row?.kind === 'receipt' ? 'parsed' : 'captured' });
+    if (outcome === 'already_sent') Alert.alert('Already sent', 'It reached Firefly III before it could be cancelled.');
+  }
   const draft: Draft | null = row ? JSON.parse(row.draftJson) : null;
 
   const [histories, setHistories] = useState<MerchantHistory[]>([]);
@@ -47,6 +59,7 @@ export default function DraftScreen() {
   const [amountSheetOpen, setAmountSheetOpen] = useState(false);
   const [payeeSheetOpen, setPayeeSheetOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [photoOpen, setPhotoOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [matchedFor, setMatchedFor] = useState<{ text: string; caption: string | null } | null>(null);
 
@@ -183,9 +196,13 @@ export default function DraftScreen() {
           />
 
           {row.kind === 'receipt' && (
-            <Card style={{ marginHorizontal: t.space.lg, flexDirection: 'row', alignItems: 'center', gap: t.space.md }}>
-              {!!row.receiptImagePath && (
-                <Image source={{ uri: row.receiptImagePath }} style={{ width: 44, height: 44, borderRadius: t.radius.sm }} />
+            <Card style={{ marginHorizontal: t.space.lg, gap: t.space.sm }}>
+              {row.receiptImagePath ? (
+                <Pressable onPress={() => setPhotoOpen(true)} accessibilityRole="imagebutton" accessibilityLabel="Show the receipt photo">
+                  <Image source={{ uri: row.receiptImagePath }} resizeMode="cover" style={{ width: '100%', height: 140, borderRadius: t.radius.sm, backgroundColor: t.color.surfaceAlt }} />
+                </Pressable>
+              ) : (
+                <Text style={[t.type.label, { color: t.color.textFaint }]}>The photo is in Firefly III (no copy kept on this phone).</Text>
               )}
               <Text style={[t.type.body, { color: t.color.textMuted }]}>
                 {itemCount > 0 ? `${itemCount} item${itemCount === 1 ? '' : 's'}` : 'Receipt'}
@@ -195,8 +212,11 @@ export default function DraftScreen() {
         </View>
 
         {readOnly ? (
-          <View style={{ alignItems: 'center', padding: t.space.lg }}>
+          <View style={{ alignItems: 'center', padding: t.space.lg, gap: t.space.md }}>
             <StatusPill state={row.state === 'synced' ? 'ok' : 'queued'} label={row.state === 'synced' ? 'Synced' : 'Queued'} />
+            {!!pendingCreate && (
+              <Button title="Cancel sending" variant="secondary" onPress={cancelSending} />
+            )}
           </View>
         ) : (
           <View style={{ padding: t.space.lg, gap: t.space.sm }}>
@@ -237,11 +257,16 @@ export default function DraftScreen() {
             first
             label="Open in Activity"
             chevron
-            onPress={() => { setMenuOpen(false); router.push(`/transactions/${row.ff3GroupId}`); }}
+            onPress={() => { setMenuOpen(false); navigateOnce(`/transactions/${row.ff3GroupId}`); }}
           />
         )}
         <Row first={!readOnly || !row.ff3GroupId} label="Delete draft" tone="danger" onPress={handleDeleteDraft} />
       </Sheet>
+      <Modal visible={photoOpen && !!row.receiptImagePath} transparent animationType="fade" onRequestClose={() => setPhotoOpen(false)}>
+        <Pressable style={{ flex: 1, backgroundColor: t.color.photoBackdrop, justifyContent: 'center' }} onPress={() => setPhotoOpen(false)} accessibilityLabel="Close the photo">
+          {!!row.receiptImagePath && <Image source={{ uri: row.receiptImagePath }} resizeMode="contain" style={{ width: '100%', height: '100%' }} />}
+        </Pressable>
+      </Modal>
     </Screen>
   );
 }

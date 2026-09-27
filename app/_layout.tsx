@@ -20,14 +20,22 @@ function ShareIntentBridge() {
   return null;
 }
 
+// Mounting the sync query covers app launch. A resume only re-syncs when the last full sync is
+// old — every app switch used to trigger a full fetch. Pull-to-refresh and Sync now are the
+// manual way to fetch sooner; writes push themselves (src/sync/syncTrigger.ts).
+const RESUME_SYNC_AFTER_MS = 30 * 60 * 1000;
+
 function SyncOnResume() {
-  const { syncNow } = useSync(); // mounting the query already covers "sync on app open"
+  const { syncNow, summary } = useSync();
+  const lastSyncedAt = summary?.lastSyncedAt ?? null;
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') syncNow();
+      if (state !== 'active') return;
+      const age = lastSyncedAt ? Date.now() - new Date(lastSyncedAt).getTime() : Infinity;
+      if (age > RESUME_SYNC_AFTER_MS) syncNow();
     });
     return () => subscription.remove();
-  }, [syncNow]);
+  }, [syncNow, lastSyncedAt]);
   return null;
 }
 

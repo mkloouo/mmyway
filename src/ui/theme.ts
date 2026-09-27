@@ -24,6 +24,8 @@ export interface Palette {
   /** Text/icon color for content placed on a danger-filled surface (a swipe-to-delete reveal). */
   onDanger: string;
   scrim: string;
+  /** Behind a full-screen photo (a receipt): black in both schemes, so the image reads true. */
+  photoBackdrop: string;
 }
 
 const light: Palette = {
@@ -45,6 +47,7 @@ const light: Palette = {
   dangerSoft: '#FBE9E7',
   onDanger: '#FFFFFF',
   scrim: 'rgba(0, 0, 0, 0.40)',
+  photoBackdrop: '#000000',
 };
 
 const dark: Palette = {
@@ -66,6 +69,7 @@ const dark: Palette = {
   dangerSoft: '#3A1E1C',
   onDanger: '#FFFFFF',
   scrim: 'rgba(0, 0, 0, 0.60)',
+  photoBackdrop: '#000000',
 };
 
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, xxxl: 32 } as const;

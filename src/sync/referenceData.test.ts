@@ -1,6 +1,7 @@
 import { createTestDb } from '../db/testDb';
 import { pullRecentTransactions, pullOlderTransactions, pullReferenceData } from './referenceData';
 import { cachedTransactions, referenceAccounts } from '../db/schema';
+import { enqueueOperation } from './outbox';
 
 // `totals` overrides meta.pagination.total per call index — real FF3 responses always carry it,
 // and pullOlderTransactions' anyTransactionsBefore probe reads it to tell a quiet chunk from the
@@ -238,5 +239,21 @@ describe('pullReferenceData', () => {
 
     const [account] = await db.select().from(referenceAccounts);
     expect(account).toMatchObject({ currentBalance: '280.00', currentBalanceDate: '2026-09-28' });
+  });
+});
+
+describe('transactions deleted in FF3', () => {
+  it('drops a cached row inside the pulled window that FF3 no longer returns, keeping ones an op still needs', async () => {
+    const today = new Date().toISOString().slice(0, 10);
+    const db = createTestDb();
+    const seed = fakeClient([[journalGroup('kept', { date: today }), journalGroup('deleted-in-web', { date: today }), journalGroup('queued-edit', { date: today })]]);
+    await pullRecentTransactions(db as any, seed as any, `${today}T00:00:00Z`);
+    await enqueueOperation(db, { id: 'op', kind: 'update_transaction', payload: { groupId: 'queued-edit', transactionJournalId: 'j', expectedUpdatedAt: 'x', changes: {} } });
+
+    // Next sync: FF3 only returns `kept` for the same window.
+    await pullRecentTransactions(db as any, fakeClient([[journalGroup('kept', { date: today })]]) as any, `${today}T01:00:00Z`);
+
+    const ids = (await db.select().from(cachedTransactions)).map((r) => r.groupId).sort();
+    expect(ids).toEqual(['kept', 'queued-edit']);
   });
 });

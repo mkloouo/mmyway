@@ -1,8 +1,8 @@
 // The whole component kit (design §4). Ten primitives, no styling outside this file:
 // a screen that needs a new look adds a variant here rather than inlining styles.
-import { useEffect, useMemo, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
-  Animated, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, View,
+  Animated, Keyboard, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View,
   type StyleProp, type ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -262,37 +262,55 @@ export function Sheet({
 }) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
+  const keyboardHeight = useKeyboardHeight();
   const bodyPadding = { paddingHorizontal: t.space.lg, paddingBottom: t.space.lg, gap: t.space.md };
   // `animationType="slide"` slid the scrim in with the panel, which read as a moving backdrop.
   // `elevation` with only the top corners rounded makes Android draw the shadow as a full opaque
-  // rect, which showed as white squares outside the cutouts. Neither is worth keeping.
+  // rect. Neither is worth keeping.
+  //
+  // The scrim is an absolute fill *behind* the panel, not a flex sibling above it: as a sibling
+  // it stopped where the panel's box began, so the transparent corners outside the rounded top
+  // showed the undimmed screen — the white squares.
+  //
+  // Keyboard: Android draws this app edge to edge, and an edge-to-edge window is not resized for
+  // the keyboard (adjustResize no longer applies), so a text field low in a sheet sat under it.
+  // The panel lifts itself by the keyboard's reported height instead — on both platforms, so
+  // there is no KeyboardAvoidingView to double it up.
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      {/* The manifest's windowSoftInputMode defaults to adjustResize, which already shrinks this
-          Modal's window for the keyboard — adding "padding" here on top of that pushed the panel
-          up a second time and covered the list. iOS has no such resize, so it still needs it. */}
-      <KeyboardAvoidingView behavior={Platform.OS === 'android' ? undefined : 'padding'} style={{ flex: 1, justifyContent: 'flex-end' }}>
-        <Pressable style={{ flex: 1, backgroundColor: t.color.scrim }} onPress={onClose} accessibilityLabel="Close" />
+      <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+        <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: t.color.scrim }]} onPress={onClose} accessibilityLabel="Close" />
         <View
           style={{
             // A `scroll={false}` body hands us a flex: 1 FlatList that needs a resolved height to
             // fill, not just a ceiling — `maxHeight` alone leaves it collapsed to 0.
-            [scroll ? 'maxHeight' : 'height']: '80%',
+            [scroll ? 'maxHeight' : 'height']: '85%',
             backgroundColor: t.color.surface, overflow: 'hidden',
             borderTopLeftRadius: t.radius.lg, borderTopRightRadius: t.radius.lg,
-            paddingBottom: t.space.xxl + insets.bottom,
+            paddingBottom: keyboardHeight > 0 ? keyboardHeight + t.space.md : t.space.xxl + insets.bottom,
           }}
         >
           <View style={{ alignSelf: 'center', width: 36, height: 4, borderRadius: 2, backgroundColor: t.color.border, marginVertical: t.space.md }} />
           <Text style={[t.type.heading, { color: t.color.text, paddingHorizontal: t.space.lg, paddingBottom: t.space.md }]}>{title}</Text>
           {scroll
-            ? <ScrollView contentContainerStyle={bodyPadding}>{children}</ScrollView>
+            ? <ScrollView contentContainerStyle={bodyPadding} keyboardShouldPersistTaps="handled">{children}</ScrollView>
             : <View style={[bodyPadding, { flex: 1 }]}>{children}</View>}
           {!!footer && <View style={{ paddingHorizontal: t.space.lg, paddingTop: t.space.md }}>{footer}</View>}
         </View>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
+}
+
+/** The on-screen keyboard's height while it is shown, 0 otherwise. */
+export function useKeyboardHeight(): number {
+  const [height, setHeight] = useState(0);
+  useEffect(() => {
+    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', (e) => setHeight(e.endCoordinates.height));
+    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setHeight(0));
+    return () => { show.remove(); hide.remove(); };
+  }, []);
+  return height;
 }
 
 /**

@@ -1,13 +1,16 @@
 import { QueryClient } from '@tanstack/react-query';
-import { registerSyncHandler, SYNC_QUERY_KEY } from '../sync/syncTrigger';
+import { registerSyncHandler } from '../sync/syncTrigger';
+import { runSync } from '../sync/runSync';
+import { getDb } from '../db/client';
 
 export const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 60_000 } },
 });
 
-// Queued writes ask for a sync (src/sync/syncTrigger.ts). cancelRefetch: false joins a sync that
-// is already running instead of abandoning it — runSync can't be aborted, and its own lock
-// (src/sync/runSync.ts) would make a second call wait for the first anyway.
+// A queued write asks for a push (src/sync/syncTrigger.ts): the outbox replay alone, not a full
+// fetch. It goes straight to runSync rather than through the React Query sync query, so a write
+// never starts a reference pull or spins a list's refresh indicator; the queue's own live rows
+// (Inbox, the status pill's Queued count) show it draining.
 registerSyncHandler(() => {
-  void queryClient.refetchQueries({ queryKey: SYNC_QUERY_KEY }, { cancelRefetch: false });
+  void runSync(getDb(), 'push');
 });

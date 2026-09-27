@@ -7,7 +7,7 @@
 //   sending; a mismatch is a conflict, not an overwrite (Review Focus: conflicting edits).
 // - Each op is claimed (-> in_flight) just before it is sent; a finished op is deleted.
 // - A failure stops replay at that operation — later operations must not run out of order.
-import { and, asc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, lt, sql } from 'drizzle-orm';
 import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 import type { FF3Client } from '../api/ff3/client';
 import { FF3RequestError } from '../api/ff3/client';
@@ -18,6 +18,7 @@ import { generateId } from '../utils/id';
 import { setEnvelopeMarker } from '../accounts/envelopeMarker';
 import { requestSync } from './syncTrigger';
 import { deletePersistedReceiptImage } from '../receipt/imageFiles';
+import { cachedRowFromGroup } from './referenceData';
 
 export type OutboxKind =
   | 'create_transaction'
@@ -79,7 +80,7 @@ async function conflictingUpdatedAt(db: OutboxDb, groupId: string, expectedUpdat
   return current && current.updatedAt !== expectedUpdatedAt ? current.updatedAt : null;
 }
 
-type ServerCopy = { status: 'present'; updatedAt: string | null } | { status: 'gone' };
+type ServerCopy = { status: 'present'; updatedAt: string | null; group: TransactionRead | null } | { status: 'gone' };
 
 // The cache check above is only as fresh as the last pull, and pulls only re-read a short
 // window — an edit to an older transaction in FF3's web UI would never show up there. So an
@@ -88,7 +89,7 @@ async function serverCopy(client: FF3Client, groupId: string): Promise<ServerCop
   try {
     const response = await client.request<{ data?: TransactionRead }>(`/v1/transactions/${groupId}`);
     const updatedAt = (response?.data?.attributes as { updated_at?: string } | undefined)?.updated_at ?? null;
-    return { status: 'present', updatedAt };
+    return { status: 'present', updatedAt, group: response?.data ?? null };
   } catch (err) {
     if (err instanceof FF3RequestError && err.status === 404) return { status: 'gone' };
     throw err;
@@ -300,11 +301,10 @@ async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: 
         headers: { 'Content-Type': 'application/octet-stream' },
       });
       await db.delete(outboxOperations).where(eq(outboxOperations.id, row.id));
-      // Uploaded: FF3 has the image now, so the device copy can go.
-      if (row.inboxItemId) {
-        await db.update(inboxItems).set({ receiptImagePath: null }).where(eq(inboxItems.id, row.inboxItemId));
-      }
-      deletePersistedReceiptImage(p.receiptImagePath);
+      // The device copy stays for a while after upload so the draft can still show it;
+      // pruneUploadedReceiptImages removes it later. An image attached to an already-synced
+      // transaction (no inbox item) has nothing to show it, so that one goes now.
+      if (!row.inboxItemId) deletePersistedReceiptImage(p.receiptImagePath);
       return 'done';
     }
 
@@ -328,7 +328,18 @@ async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: 
         return 'done';
       }
       if (p.expectedUpdatedAt && server.updatedAt && server.updatedAt !== p.expectedUpdatedAt) {
-        await db.update(cachedTransactions).set({ updatedAt: server.updatedAt }).where(eq(cachedTransactions.groupId, p.groupId));
+        // Store the server's whole current copy, not just its timestamp: the conflict screen
+        // compares it field by field with the queued change, and a stale cached row made both
+        // sides look the same.
+        const fresh = server.group ? cachedRowFromGroup(server.group, new Date().toISOString()) : null;
+        try {
+          if (!fresh) throw new Error('no server copy to store');
+          await db.insert(cachedTransactions).values(fresh).onConflictDoUpdate({ target: cachedTransactions.groupId, set: fresh });
+        } catch {
+          // An incomplete copy (a field the cache requires is missing) must not turn a conflict
+          // into a failure — keep at least the new timestamp.
+          await db.update(cachedTransactions).set({ updatedAt: server.updatedAt }).where(eq(cachedTransactions.groupId, p.groupId));
+        }
         opts.onConflict?.({ id: row.id, payload: p }, server.updatedAt);
         await markConflict(db, row.id);
         return 'conflict';
@@ -372,12 +383,28 @@ async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: 
 
     throw new Error(`unknown outbox operation kind: ${row.kind}`);
   } catch (err) {
-    const message = err instanceof FF3RequestError ? `${err.status}: ${err.body}` : err instanceof Error ? err.message : String(err);
+    const message = err instanceof FF3RequestError ? describeFF3Error(err) : err instanceof Error ? err.message : String(err);
     await db.update(outboxOperations)
       .set({ status: 'failed', attempts: row.attempts + 1, lastError: message })
       .where(eq(outboxOperations.id, row.id));
     return 'failed';
   }
+}
+
+/**
+ * What the Inbox's failed-operation card shows: FF3's own message and first field error instead of
+ * the raw JSON body (`401: {"message":"Unauthenticated.","exception":…}`).
+ */
+export function describeFF3Error(err: FF3RequestError): string {
+  try {
+    const body = JSON.parse(err.body) as { message?: string; errors?: Record<string, string[]> };
+    const field = body.errors ? Object.values(body.errors).flat()[0] : undefined;
+    const text = [body.message, field].filter((part, i, all) => !!part && all.indexOf(part) === i).join(' — ');
+    if (text) return `${text} (${err.status})`;
+  } catch {
+    // not JSON: an HTML error page or empty body
+  }
+  return err.body && err.body.length < 200 && !err.body.trimStart().startsWith('<') ? `${err.body} (${err.status})` : `Firefly III answered ${err.status}`;
 }
 
 function receiptFilename(path: string): string {
@@ -400,5 +427,25 @@ export async function discardOperation(db: OutboxDb, opId: string): Promise<void
     await db.update(inboxItems)
       .set({ state: 'captured', updatedAt: new Date().toISOString() })
       .where(eq(inboxItems.id, op.inboxItemId));
+  }
+}
+
+/** How long a receipt photo stays on the device after its transaction synced. */
+const KEEP_UPLOADED_RECEIPTS_DAYS = 30;
+
+/**
+ * Frees the space of receipt photos whose transaction synced over a month ago (about a
+ * megabyte each, several a day). Only for items with no queued upload left, so nothing FF3
+ * still needs is removed.
+ */
+export async function pruneUploadedReceiptImages(db: OutboxDb, now: Date = new Date()): Promise<void> {
+  const cutoff = new Date(now.getTime() - KEEP_UPLOADED_RECEIPTS_DAYS * 86_400_000).toISOString();
+  const old = await db.select({ id: inboxItems.id, path: inboxItems.receiptImagePath }).from(inboxItems)
+    .where(and(eq(inboxItems.state, 'synced'), isNotNull(inboxItems.receiptImagePath), lt(inboxItems.updatedAt, cutoff)));
+  for (const item of old) {
+    const [queued] = await db.select({ id: outboxOperations.id }).from(outboxOperations).where(eq(outboxOperations.inboxItemId, item.id)).limit(1);
+    if (queued) continue;
+    deletePersistedReceiptImage(item.path);
+    await db.update(inboxItems).set({ receiptImagePath: null }).where(eq(inboxItems.id, item.id));
   }
 }

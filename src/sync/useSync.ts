@@ -77,3 +77,19 @@ export function useSignedIn(): boolean | null {
   });
   return data ?? null;
 }
+
+/**
+ * The spinner a list shows for a pull-to-refresh — only for a sync the user pulled for, not for
+ * every sync (the status pill already says "Syncing…"). `before` runs first on each pull
+ * (Activity uses it to re-check older history).
+ */
+export function usePullToRefresh(before?: () => void) {
+  const { syncNow } = useSync();
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(() => {
+    before?.();
+    setRefreshing(true);
+    void syncNow().finally(() => setRefreshing(false));
+  }, [syncNow, before]);
+  return { refreshing, onRefresh };
+}

@@ -34,8 +34,11 @@ export function SwipeableCard({
           <Text style={{ color: t.color.onDanger, fontWeight: '700' }}>✕ Delete</Text>
         </View>
       ) : undefined}
+      // `direction` is the way the row MOVED: a swipe to the right reveals the left actions
+      // (✓ Confirm) and reports RIGHT. This used to test LEFT, so a right swipe ran Delete (only
+      // its confirm dialog stopped it) and a left swipe tried to confirm.
       onSwipeableOpen={(direction) => {
-        if (direction === SwipeDirection.LEFT) {
+        if (direction === SwipeDirection.RIGHT) {
           if (!confirmEnabled) {
             onRefused?.();
           } else {

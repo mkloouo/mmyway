@@ -1,7 +1,7 @@
 // Activity (design §6.4) — balances, grouped-by-day history with totals, paging, search.
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, SectionList, Text, TextInput, View } from 'react-native';
-import { router, useNavigation } from 'expo-router';
+import { useNavigation } from 'expo-router';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useDb } from '../../src/providers/DbProvider';
@@ -12,12 +12,13 @@ import { currencyOf, formatMoney } from '../../src/ui/money';
 import { categoryColor } from '../../src/ui/categoryColor';
 import { relativeTime } from '../../src/ui/relativeTime';
 import { useTransactionPage, type ActivityTypeFilter, type CachedTransactionRow } from '../../src/transactions/useTransactionPage';
-import { useSync, useLoadOlderHistory } from '../../src/sync/useSync';
+import { useLoadOlderHistory, usePullToRefresh } from '../../src/sync/useSync';
 import { getClient } from '../../src/api/ff3/session';
 import { referenceCurrencies, outboxOperations, cachedTransactions } from '../../src/db/schema';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import type { CreateTransactionPayload } from '../../src/sync/outbox';
 import type { TransactionRead } from '../../src/api/ff3/types';
+import { navigateOnce } from '../../src/ui/navigateOnce';
 
 const FILTERS: { label: string; type: ActivityTypeFilter }[] = [
   { label: 'All', type: 'all' },
@@ -31,6 +32,7 @@ const STALE_MS = 24 * 60 * 60 * 1000;
 interface QueuedRow {
   queued: true;
   groupId: string;
+  inboxItemId: string | null;
   description: string;
   amount: string;
   currencyCode: string;
@@ -105,7 +107,6 @@ export default function ActivityScreen() {
   const { data: outbox } = useLiveQuery(db.select().from(outboxOperations));
   // Just "has anything ever synced" — .limit(1) instead of loading the whole cached table.
   const { data: cachedTxProbe } = useLiveQuery(db.select({ id: cachedTransactions.groupId }).from(cachedTransactions).limit(1));
-  const { status, syncNow } = useSync();
 
   const { sections, loadMore, loadingMore, atEnd } = useTransactionPage({ search, type, accountName: accountFilter });
   const { loadOlder, loadingOlder, exhausted, reset: resetExhausted } = useLoadOlderHistory();
@@ -118,10 +119,7 @@ export default function ActivityScreen() {
   const reachedRealEnd = atEnd && exhausted;
   // A pull-to-refresh is the user asking "check again" — `exhausted` otherwise only ever latches
   // forward for the lifetime of this screen.
-  function handleRefresh() {
-    resetExhausted();
-    syncNow();
-  }
+  const pull = usePullToRefresh(resetExhausted);
 
   // Once local search runs out of cached rows to page through, FF3's own search covers what
   // hasn't been pulled into cachedTransactions yet — kept as a separate section rather than
@@ -167,7 +165,7 @@ export default function ActivityScreen() {
       const split = payload.splits[0];
       if (!split) return null;
       return {
-        queued: true, groupId: op.id, description: split.description, amount: split.amount,
+        queued: true, groupId: op.id, inboxItemId: op.inboxItemId, description: split.description, amount: split.amount,
         currencyCode: split.currency_code ?? '', type: split.type,
         sourceName: split.source_name ?? null, destinationName: split.destination_name ?? null,
         categoryName: split.category_name ?? null,
@@ -178,7 +176,15 @@ export default function ActivityScreen() {
   const REMOTE_SECTION_KEY = 'ff3-search';
   interface DisplaySection { key: string; totals: { currencyCode: string; amount: string }[]; data: (CachedTransactionRow | QueuedRow | RemoteResultRow)[] }
   const todayKey = localDayKey(new Date());
-  const displaySections: DisplaySection[] = sections.map((s): DisplaySection => ({ key: s.key, totals: s.totals, data: s.data }));
+  // A queued delete takes the row out right away — it used to sit there, unchanged, until a
+  // pull-to-refresh after the delete had gone through.
+  const pendingDeletes = new Set((outbox ?? [])
+    .filter((op) => op.kind === 'delete_transaction' && op.status !== 'failed')
+    .map((op) => { try { return (JSON.parse(op.payloadJson) as { groupId?: string }).groupId; } catch { return undefined; } })
+    .filter((id): id is string => !!id));
+  const displaySections: DisplaySection[] = sections
+    .map((s): DisplaySection => ({ key: s.key, totals: s.totals, data: s.data.filter((row) => !pendingDeletes.has(row.groupId)) }))
+    .filter((s) => s.data.length > 0);
   if (queuedRows.length > 0) {
     const idx = displaySections.findIndex((s) => s.key === todayKey);
     if (idx >= 0) displaySections[idx] = { ...displaySections[idx]!, data: [...queuedRows, ...displaySections[idx]!.data] };
@@ -290,12 +296,16 @@ export default function ActivityScreen() {
 
         {hasResults && (
           <SectionList<CachedTransactionRow | QueuedRow | RemoteResultRow, DisplaySection>
+            // A new filter is a new list: without the remount a list scrolled deep into All kept
+            // its offset over the much shorter Income list, so onEndReached fired over and over
+            // and the list paged (and scrolled) by itself.
+            key={`${type}:${accountFilter ?? ''}:${search.trim()}`}
             ref={listRef}
             style={{ flex: 1 }}
             sections={displaySections}
             keyExtractor={(row) => row.groupId}
-            refreshing={status === 'syncing'}
-            onRefresh={handleRefresh}
+            refreshing={pull.refreshing}
+            onRefresh={pull.onRefresh}
             onEndReached={handleEndReached}
             onEndReachedThreshold={0.4}
             contentContainerStyle={{ paddingBottom: 140 }}
@@ -319,7 +329,12 @@ export default function ActivityScreen() {
               const dotColor = item.categoryName ? categoryColor(item.categoryName, t.dark) : (item.type === 'transfer' ? t.color.transfer : t.color.textFaint);
               return (
                 <Pressable
-                  onPress={() => !queued && !remote && router.push(`/transactions/${item.groupId}`)}
+                  onPress={() => {
+                    // A queued entry isn't in FF3 yet: open it as its Inbox draft, where a
+                    // still-waiting one can be cancelled.
+                    if (queued) { if (item.inboxItemId) navigateOnce(`/draft/${item.inboxItemId}`); return; }
+                    if (!remote) navigateOnce(`/transactions/${item.groupId}`);
+                  }}
                   style={({ pressed }) => ({
                     flexDirection: 'row', alignItems: 'center', gap: t.space.sm,
                     paddingHorizontal: t.space.lg, paddingVertical: t.space.sm, opacity: pressed ? 0.6 : 1,
@@ -373,7 +388,7 @@ export default function ActivityScreen() {
       </View>
 
       <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title="Activity">
-        <Row first label="Count cash" chevron onPress={() => { setMenuOpen(false); router.push('/count'); }} />
+        <Row first label="Count cash" chevron onPress={() => { setMenuOpen(false); navigateOnce('/count'); }} />
       </Sheet>
     </Screen>
   );

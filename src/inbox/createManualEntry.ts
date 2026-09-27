@@ -4,7 +4,7 @@ import { matchAlias } from '../lookup/aliases';
 import { transition, type InboxState } from './state';
 import { draftToTransactionPayload, type Draft } from './draft';
 import { enqueueOperationSync } from '../sync/outbox';
-import { requestSync } from '../sync/syncTrigger';
+import { requestSync, SYNC_DELAY } from '../sync/syncTrigger';
 import type { OutboxDb } from '../sync/outbox';
 import { generateId } from '../utils/id';
 
@@ -129,7 +129,7 @@ export async function confirmInboxItem(db: OutboxDb, inboxItemId: string): Promi
       payload: draftToTransactionPayload(inboxItemId, draft),
     });
   });
-  requestSync();
+  requestSync(SYNC_DELAY.afterConfirm);
   return { outboxOperationId, previousState };
 }
 

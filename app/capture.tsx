@@ -19,7 +19,7 @@ import { applyDigit, type KeypadKey } from '../src/capture/amountInput';
 import { buildEntryDate, yesterday } from '../src/capture/entryDate';
 import { buildManualEntryInput, type CaptureFormState } from '../src/capture/buildManualEntryInput';
 import { useCaptureDefaults } from '../src/capture/useCaptureDefaults';
-import { createManualEntry, confirmInboxItem } from '../src/inbox/createManualEntry';
+import { createManualEntry, confirmInboxItem, undoConfirm } from '../src/inbox/createManualEntry';
 import { draftReadiness } from '../src/inbox/readiness';
 import { buildMerchantLookup, type MerchantHistory } from '../src/lookup/merchantLookup';
 import { matchAlias } from '../src/lookup/aliases';
@@ -27,6 +27,7 @@ import { rankCandidates } from '../src/suggest/rank';
 import { divideDecimal, isNegative, parseDecimalInput } from '../src/api/ff3/decimal';
 import { reportErrors } from '../src/ui/reportError';
 import { useToast } from '../src/ui/useToast';
+import { Snackbar, type SnackbarEntry } from '../src/ui/Snackbar';
 import type { Draft } from '../src/inbox/draft';
 
 // A ScrollView defaults to flexGrow/flexShrink 1, so a row of chips would otherwise stretch or
@@ -38,6 +39,10 @@ const TYPES: { type: Draft['type']; label: string }[] = [
   { type: 'deposit', label: 'Income' },
   { type: 'transfer', label: 'Transfer' },
 ];
+
+function isDirtyAmount(amount: string): boolean {
+  return !/^0*[.,]?0*$/.test(amount);
+}
 
 function labelForType(t: Draft['type']): string {
   return TYPES.find((x) => x.type === t)!.label;
@@ -82,6 +87,8 @@ export default function CaptureScreen() {
   const [foreignAmount, setForeignAmount] = useState('');
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useToast();
+  const [snackbar, setSnackbar] = useState<SnackbarEntry | null>(null);
+  const dismissSnackbar = useCallback(() => setSnackbar(null), []);
 
   const [payeeSheetOpen, setPayeeSheetOpen] = useState(false);
   const [accountSheetTarget, setAccountSheetTarget] = useState<'source' | 'destination' | null>(null);
@@ -132,6 +139,10 @@ export default function CaptureScreen() {
   const foreignAmountResult = showFx && foreignAmount.trim() ? parseDecimalInput(foreignAmount) : null;
   const foreignAmountInvalid = !!foreignAmountResult && !foreignAmountResult.ok;
   const parsedForeignAmount = foreignAmountResult?.ok ? foreignAmountResult.value : '';
+  // The account's currency differs from the entry's: FF3 needs the account-currency figure (it
+  // becomes the transaction amount), so an empty conversion field can't be saved — it would book
+  // the typed number in the account's currency.
+  const fxMissing = showFx && isDirtyAmount(amount) && !parsedForeignAmount;
   const impliedRate = showFx && parsedForeignAmount && amount !== '0'
     ? divideDecimal(parsedForeignAmount, amount, 2)
     : null;
@@ -220,7 +231,7 @@ export default function CaptureScreen() {
   }
 
   async function handleSave(andConfirm: boolean) {
-    if (saving || foreignAmountInvalid) return;
+    if (saving || foreignAmountInvalid || fxMissing) return;
     if (andConfirm && !readiness.ready) {
       haptics.warn();
       return;
@@ -230,9 +241,23 @@ export default function CaptureScreen() {
       await reportErrors('Save', async () => {
         const input = buildManualEntryInput(formState, assetAccounts);
         const { inboxItemId } = await createManualEntry(db, input);
-        if (andConfirm) await confirmInboxItem(db, inboxItemId);
+        const label = merchantRawInput || description || labelForType(type);
         haptics.tick();
-        setToast(`Saved · ${merchantRawInput || description || labelForType(type)}`);
+        if (andConfirm) {
+          const confirmed = await confirmInboxItem(db, inboxItemId);
+          // Same Undo the Inbox gives a confirm: the entry stays unsent while this is on screen.
+          setSnackbar({
+            id: inboxItemId,
+            message: `Confirmed · ${label}`,
+            actionLabel: 'Undo',
+            onAction: async () => {
+              const outcome = await undoConfirm(db, inboxItemId, confirmed);
+              setToast(outcome === 'undone' ? 'Undone — it is back in the Inbox' : 'Already sent');
+            },
+          });
+        } else {
+          setToast(`Saved · ${label}`);
+        }
         setAmount('0');
         setForeignAmount('');
       }, setToast);
@@ -304,6 +329,11 @@ export default function CaptureScreen() {
             {foreignAmountInvalid && (
               <Text style={[t.type.label, { color: t.color.danger, marginTop: t.space.xs }]}>Invalid amount</Text>
             )}
+            {fxMissing && (
+              <Text style={[t.type.label, { color: t.color.warn, marginTop: t.space.xs }]}>
+                Enter what the {accountCurrencyCode} account paid
+              </Text>
+            )}
           </View>
         )}
 
@@ -315,6 +345,11 @@ export default function CaptureScreen() {
               </Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={rowScroll} contentContainerStyle={{ paddingHorizontal: t.space.lg, gap: t.space.sm, paddingTop: t.space.xs }}>
                 <Chip label="🔍" accessibilityLabel={`Search ${type === 'deposit' ? 'payers' : 'payees'}`} onPress={() => setPayeeSheetOpen(true)} />
+                {/* A payee picked from search (or typed as new) isn't necessarily among the top
+                    suggestions; show it, selected, so the row says what was chosen. */}
+                {!!merchantRawInput && !rankedPayees.some((h) => h.displayName === merchantRawInput) && (
+                  <Chip label={merchantRawInput} selected onPress={() => setPayeeSheetOpen(true)} />
+                )}
                 {rankedPayees.map((h) => (
                   <Chip key={h.merchantKey} label={h.displayName} selected={merchantRawInput === h.displayName} onPress={() => applyPayeeHistory(h)} />
                 ))}
@@ -327,19 +362,19 @@ export default function CaptureScreen() {
               <View>
                 <Text style={[t.type.label, { color: t.color.textFaint, paddingHorizontal: t.space.lg }]}>From</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={rowScroll} contentContainerStyle={{ paddingHorizontal: t.space.lg, gap: t.space.sm, paddingTop: t.space.xs }}>
+                  <Chip label="🔍" accessibilityLabel="Search source accounts" onPress={() => setAccountSheetTarget('source')} />
                   {topChips(assetAccounts, effectiveSourceId).map((a) => (
                     <Chip key={a.id} label={a.name} selected={effectiveSourceId === a.id} onPress={() => setSourceId(a.id)} />
                   ))}
-                  <Chip label="🔍" accessibilityLabel="Search source accounts" onPress={() => setAccountSheetTarget('source')} />
                 </ScrollView>
               </View>
               <View>
                 <Text style={[t.type.label, { color: t.color.textFaint, paddingHorizontal: t.space.lg }]}>To</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={rowScroll} contentContainerStyle={{ paddingHorizontal: t.space.lg, gap: t.space.sm, paddingTop: t.space.xs }}>
+                  <Chip label="🔍" accessibilityLabel="Search destination accounts" onPress={() => setAccountSheetTarget('destination')} />
                   {topChips(assetAccounts.filter((a) => a.id !== effectiveSourceId), destinationId).map((a) => (
                     <Chip key={a.id} label={a.name} selected={destinationId === a.id} onPress={() => setDestinationId(a.id)} />
                   ))}
-                  <Chip label="🔍" accessibilityLabel="Search destination accounts" onPress={() => setAccountSheetTarget('destination')} />
                   <Chip label={detailsLabel} selected={detailsParts.length > 0} onPress={() => setMoreSheetOpen(true)} />
                 </ScrollView>
               </View>
@@ -351,6 +386,7 @@ export default function CaptureScreen() {
                   {type === 'deposit' ? 'To' : 'From'}
                 </Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={rowScroll} contentContainerStyle={{ paddingHorizontal: t.space.lg, gap: t.space.sm, paddingTop: t.space.xs }}>
+                  <Chip label="🔍" accessibilityLabel="Search accounts" onPress={() => setAccountSheetTarget(type === 'withdrawal' ? 'source' : 'destination')} />
                   {topChips(assetAccounts, type === 'withdrawal' ? effectiveSourceId : destinationId).map((a) => (
                     <Chip
                       key={a.id}
@@ -359,7 +395,6 @@ export default function CaptureScreen() {
                       onPress={() => (type === 'withdrawal' ? setSourceId(a.id) : setDestinationId(a.id))}
                     />
                   ))}
-                  <Chip label="🔍" accessibilityLabel="Search accounts" onPress={() => setAccountSheetTarget(type === 'withdrawal' ? 'source' : 'destination')} />
                 </ScrollView>
               </View>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={rowScroll} contentContainerStyle={{ paddingHorizontal: t.space.lg, gap: t.space.sm }}>
@@ -386,14 +421,15 @@ export default function CaptureScreen() {
           noteHasValue={!!notes}
           saveLabel="Save & ✓"
           onSave={() => handleSave(true)}
-          saveDisabled={!readiness.ready || foreignAmountInvalid}
+          saveDisabled={!readiness.ready || foreignAmountInvalid || fxMissing}
           saving={saving}
         />
-        <Pressable onPress={() => handleSave(false)} disabled={saving || foreignAmountInvalid} style={{ alignItems: 'center', paddingVertical: t.space.md }}>
-          <Text style={[t.type.body, { color: t.color.accent, fontWeight: '600', opacity: saving || foreignAmountInvalid ? 0.4 : 1 }]}>Save to inbox</Text>
+        <Pressable onPress={() => handleSave(false)} disabled={saving || foreignAmountInvalid || fxMissing} style={{ alignItems: 'center', paddingVertical: t.space.md }}>
+          <Text style={[t.type.body, { color: t.color.accent, fontWeight: '600', opacity: saving || foreignAmountInvalid || fxMissing ? 0.4 : 1 }]}>Save to inbox</Text>
         </Pressable>
 
         <Toast message={toast} />
+        <Snackbar entry={snackbar} onDismiss={dismissSnackbar} bottom={t.space.lg} />
       </View>
 
       <Sheet visible={dateSheetOpen} onClose={() => setDateSheetOpen(false)} title="Date">

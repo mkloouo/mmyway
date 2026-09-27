@@ -12,7 +12,7 @@ export interface SnackbarEntry {
   onAction?: () => void;
 }
 
-export function Snackbar({ entry, onDismiss }: { entry: SnackbarEntry | null; onDismiss: () => void }) {
+export function Snackbar({ entry, onDismiss, bottom = 88 }: { entry: SnackbarEntry | null; onDismiss: () => void; bottom?: number }) {
   const t = useTheme();
 
   useEffect(() => {
@@ -26,7 +26,7 @@ export function Snackbar({ entry, onDismiss }: { entry: SnackbarEntry | null; on
   return (
     <View
       style={{
-        position: 'absolute', left: t.space.lg, right: t.space.lg, bottom: 88,
+        position: 'absolute', left: t.space.lg, right: t.space.lg, bottom,
         flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
         backgroundColor: t.dark ? t.color.surfaceAlt : t.color.text,
         borderRadius: t.radius.md, paddingHorizontal: t.space.lg, paddingVertical: t.space.md,

@@ -3,7 +3,21 @@
 // prefix: no sign (the type carries that), at most one `.`, fraction capped at `decimalPlaces`.
 export type KeypadKey = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '00' | ',' | '.' | '⌫';
 
-export function applyDigit(current: string, key: KeypadKey, decimalPlaces: number): string {
+/**
+ * FF3 returns amounts with twelve fraction digits ("12.000000000000"). Editing one on the keypad
+ * appended nothing (the fraction was already past the currency's scale) and backspace had to eat
+ * ten zeros before anything visible changed. Trailing zeros past the scale are dropped first —
+ * lossless, the value is unchanged; a real non-zero digit past the scale is kept.
+ */
+export function trimToScale(amount: string, decimalPlaces: number): string {
+  const [whole = '0', fraction] = amount.split('.');
+  if (fraction === undefined || fraction.length <= decimalPlaces) return amount;
+  const kept = fraction.replace(/0+$/, '');
+  return kept ? `${whole}.${kept}` : whole;
+}
+
+export function applyDigit(rawCurrent: string, key: KeypadKey, decimalPlaces: number): string {
+  const current = trimToScale(rawCurrent, decimalPlaces);
   if (key === '⌫') {
     if (current === '') return '';
     const next = current.slice(0, -1);

@@ -1,4 +1,4 @@
-import { applyDigit } from './amountInput';
+import { applyDigit, trimToScale } from './amountInput';
 
 describe('applyDigit', () => {
   it('collapses leading zeros', () => {
@@ -43,5 +43,19 @@ describe('applyDigit', () => {
 
   it('a fresh double-zero on an untouched amount stays at "0"', () => {
     expect(applyDigit('0', '00', 2)).toBe('0');
+  });
+});
+
+describe('FF3-scale amounts', () => {
+  it('trims FF3 twelve-digit zeros so the keypad can edit the value', () => {
+    expect(trimToScale('12.000000000000', 2)).toBe('12');
+    expect(trimToScale('12.500000000000', 2)).toBe('12.5');
+    expect(trimToScale('12.34', 2)).toBe('12.34');
+    expect(trimToScale('0.123456789000', 2)).toBe('0.123456789'); // never rounds a real digit away
+  });
+  it('typing and backspace act on the visible value', () => {
+    expect(applyDigit('12.000000000000', '5', 2)).toBe('125');
+    expect(applyDigit('12.000000000000', '⌫', 2)).toBe('1');
+    expect(applyDigit('12.500000000000', '0', 2)).toBe('12.50');
   });
 });

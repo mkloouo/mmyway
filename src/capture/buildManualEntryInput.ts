@@ -29,12 +29,22 @@ export function buildManualEntryInput(state: CaptureFormState, accounts: { id: s
   const sourceAccount = accounts.find((a) => a.id === state.sourceId);
   const destinationAccount = accounts.find((a) => a.id === state.destinationId);
 
+  // The keypad can leave a bare trailing separator ("12."), which the capture screen now
+  // echoes back as the user types — FF3 must not see it.
+  const typedAmount = state.amount.replace(/\.$/, '');
+  // FX: the screen's `foreignAmount` is what the account's own currency moved (the "converts to
+  // ___ EUR" field), `foreignCurrencyCode` that account's currency. FF3 books `amount` in the
+  // account's currency and ignores a mismatched currency_code, so sending the typed amount as
+  // `amount` booked "123.12 PLN, 1000 EUR" as 123.12 EUR. The account-currency figure is the
+  // amount; what was typed is the foreign side.
+  const fx = state.foreignAmount && state.foreignCurrencyCode
+    ? { amount: state.foreignAmount, currencyCode: state.foreignCurrencyCode, foreignAmount: typedAmount, foreignCurrencyCode: state.currencyCode }
+    : null;
+
   return {
     type: state.type,
-    // The keypad can leave a bare trailing separator ("12."), which the capture screen now
-    // echoes back as the user types — FF3 must not see it.
-    amount: state.amount.replace(/\.$/, ''),
-    currencyCode: state.currencyCode,
+    amount: fx ? fx.amount : typedAmount,
+    currencyCode: fx ? fx.currencyCode : state.currencyCode,
     date: state.date.toISOString(),
     description: state.description || state.merchantRawInput || state.type,
     merchantRawInput: needsPayee ? state.merchantRawInput : undefined,
@@ -46,8 +56,8 @@ export function buildManualEntryInput(state: CaptureFormState, accounts: { id: s
     categoryName: state.categoryName ?? undefined,
     budgetId: state.budgetId ?? undefined,
     notes: state.notes || undefined,
-    foreignAmount: state.foreignAmount || undefined,
-    foreignCurrencyCode: state.foreignAmount ? state.foreignCurrencyCode ?? undefined : undefined,
+    foreignAmount: fx?.foreignAmount,
+    foreignCurrencyCode: fx?.foreignCurrencyCode,
     sharedWith: state.sharedWith || undefined,
   };
 }

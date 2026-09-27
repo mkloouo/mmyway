@@ -12,7 +12,7 @@ import {
 } from '../settings/appSettings';
 import { probeReachability, type ServerReachability } from './reachability';
 import { pullReferenceData, pullRecentTransactions } from './referenceData';
-import { replayOutbox, recoverInFlight, type OutboxDb } from './outbox';
+import { replayOutbox, recoverInFlight, pruneUploadedReceiptImages, type OutboxDb } from './outbox';
 import { pruneReferenceData, reapplyQueuedAccountEdits } from './referenceHygiene';
 import { pullUnreviewedRecurring } from './recurringReview';
 import { retryPendingReceipts } from '../receipt/toDraft';
@@ -45,20 +45,32 @@ function anyOk(report: ServerReachability): boolean {
   return report.results.some((r) => r.ok);
 }
 
-let inFlight: Promise<SyncSummary> | null = null;
+export type SyncMode = 'full' | 'push';
+
+let inFlight: { mode: SyncMode; promise: Promise<SyncSummary> } | null = null;
 let recovered = false;
 
 /**
- * One sync at a time, process-wide: a call while one is running gets the running one's result.
- * Every trigger (app open, resume, pull-to-refresh, "Retry now", a just-queued write) funnels
- * through here, so two outbox replays can never run side by side.
+ * One sync at a time, process-wide. Every trigger funnels through here, so two outbox replays can
+ * never run side by side.
+ *
+ * - full (app launch, pull-to-refresh, Sync now, a stale resume): probe servers, pull reference
+ *   data, replay the queue, pull recurring reviews, retry receipts.
+ * - push (right after a write): replay the queue and, if anything landed, re-read the short
+ *   catch-up window so Activity shows it. No reference pull — writes no longer cost a full fetch.
+ *
+ * A call while one runs joins it, except a full asked for during a push, which runs next.
  */
-export function runSync(db: OutboxDb): Promise<SyncSummary> {
-  if (!inFlight) inFlight = doSync(db).finally(() => { inFlight = null; });
-  return inFlight;
+export function runSync(db: OutboxDb, mode: SyncMode = 'full'): Promise<SyncSummary> {
+  if (inFlight && (inFlight.mode === 'full' || mode === 'push')) return inFlight.promise;
+  const previous = inFlight?.promise;
+  const promise = (previous ? previous.catch(() => undefined).then(() => doSync(db, mode)) : doSync(db, mode))
+    .finally(() => { if (inFlight?.promise === promise) inFlight = null; });
+  inFlight = { mode, promise };
+  return promise;
 }
 
-async function doSync(db: OutboxDb): Promise<SyncSummary> {
+async function doSync(db: OutboxDb, mode: SyncMode): Promise<SyncSummary> {
   const [credentials, ff3Hosts, ff3ActiveHost, localModelBaseUrls, localModelActiveUrl, lastSyncedAt] = await Promise.all([
     readStoredCredentials(), readHosts(), getFf3ActiveHost(db), getLocalModelBaseUrls(db), getLocalModelActiveUrl(db), getLastSyncedAt(db),
   ]);
@@ -76,9 +88,10 @@ async function doSync(db: OutboxDb): Promise<SyncSummary> {
       recovered = true;
     }
 
+    const full = mode === 'full';
     const reachability = await probeReachability({
       ff3: { addresses: ff3Hosts, apiToken: credentials.apiToken, remembered: ff3ActiveHost },
-      providers: localModelBaseUrls.length > 0 ? { local: { addresses: localModelBaseUrls, remembered: localModelActiveUrl } } : {},
+      providers: full && localModelBaseUrls.length > 0 ? { local: { addresses: localModelBaseUrls, remembered: localModelActiveUrl } } : {},
     });
     summary.ff3 = reachability.ff3;
     summary.ff3Reachable = anyOk(reachability.ff3);
@@ -96,17 +109,19 @@ async function doSync(db: OutboxDb): Promise<SyncSummary> {
       // which may point at an address that is no longer reachable.
       const client = clientFor(winner, credentials.apiToken);
 
-      const pullStartedAt = new Date().toISOString();
-      await pullReferenceData(db, client);
-      await pruneReferenceData(db, pullStartedAt);
-      await reapplyQueuedAccountEdits(db);
+      if (full) {
+        const pullStartedAt = new Date().toISOString();
+        await pullReferenceData(db, client);
+        await pruneReferenceData(db, pullStartedAt);
+        await reapplyQueuedAccountEdits(db);
+      }
 
       const replay = await replayOutbox(db, client);
       summary.replaySucceeded = replay.succeeded.length;
       summary.replayConflicted = replay.conflicted.length;
       summary.failedAt = replay.failedAt;
 
-      summary.recurringCreated = await pullUnreviewedRecurring(db, client, { since: lastSyncedAt });
+      if (full) summary.recurringCreated = await pullUnreviewedRecurring(db, client, { since: lastSyncedAt });
 
       if (replay.succeeded.length > 0) {
         await pullRecentTransactions(db, client, new Date().toISOString());
@@ -115,9 +130,12 @@ async function doSync(db: OutboxDb): Promise<SyncSummary> {
 
     // Independent of FF3 (brief §5.4: a draft can be parsed now and sent later) — a receipt
     // reader can be reachable while Firefly III is not.
-    summary.receiptsParsed = await retryPendingReceipts(db);
+    if (full) {
+      summary.receiptsParsed = await retryPendingReceipts(db);
+      await pruneUploadedReceiptImages(db);
+    }
 
-    if (winner) {
+    if (winner && full) {
       summary.lastSyncedAt = new Date().toISOString();
       await setLastSyncedAt(db, summary.lastSyncedAt);
     }

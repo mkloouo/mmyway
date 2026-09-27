@@ -1,12 +1,12 @@
 // The cash count — the envelope sweep (design §6.9, decision C of §11). Counts every marked
 // cash envelope in one pass; one confirm creates one adjustment per envelope that differs.
 import { useEffect, useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { useLiveQuery } from '../src/db/useLiveQuery';
 import { useDb } from '../src/providers/DbProvider';
 import { useTheme } from '../src/ui/theme';
-import { Screen, AppBar, Card, Row, Chip, Button, Sheet, Money, EmptyState } from '../src/ui/components';
+import { Screen, AppBar, Card, Row, Chip, Button, Sheet, Money, EmptyState, useKeyboardHeight } from '../src/ui/components';
 import { currencyOf } from '../src/ui/money';
 import { parseDecimalInput } from '../src/api/ff3/decimal';
 import { relativeTime } from '../src/ui/relativeTime';
@@ -58,6 +58,8 @@ async function createAndConfirmAdjustment(
 export default function CountScreen() {
   const db = useDb();
   const t = useTheme();
+  // Edge to edge, the window isn't resized for the keyboard; the lower envelopes need the room.
+  const keyboardHeight = useKeyboardHeight();
 
   const { data: accountRows } = useLiveQuery(db.select().from(referenceAccounts));
   const { data: categories } = useLiveQuery(db.select().from(referenceCategories));
@@ -180,7 +182,7 @@ export default function CountScreen() {
             action={<Button title="Go to accounts" onPress={() => router.push('/settings/accounts')} />}
           />
         ) : (
-          <View style={{ padding: t.space.lg, gap: t.space.sm, flex: 1 }}>
+          <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: t.space.lg, gap: t.space.sm, paddingBottom: t.space.lg + keyboardHeight }} keyboardShouldPersistTaps="handled">
             {envelopeAccounts.map((a) => {
               const currency = currencyOf(currencies ?? [], a.currencyCode);
               const counted = counts[a.id] ?? '';
@@ -227,7 +229,7 @@ export default function CountScreen() {
                 </Card>
               );
             })}
-          </View>
+          </ScrollView>
         )}
 
         {envelopeAccounts.length > 0 && (

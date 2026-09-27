@@ -1,8 +1,8 @@
 // Floating over Inbox and Activity, never Settings (design §5).
 import { Pressable, Text, View } from 'react-native';
-import { router } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTheme } from './theme';
+import { navigateOnce } from './navigateOnce';
 
 export function CaptureDock() {
   const t = useTheme();
@@ -15,7 +15,7 @@ export function CaptureDock() {
       }}
     >
       <Pressable
-        onPress={() => router.push('/receipt')}
+        onPress={() => navigateOnce('/receipt')}
         accessibilityRole="button"
         accessibilityLabel="Capture a receipt"
         style={({ pressed }) => ({
@@ -27,7 +27,7 @@ export function CaptureDock() {
         <Ionicons name="camera" size={20} color={t.color.text} />
       </Pressable>
       <Pressable
-        onPress={() => router.push('/capture')}
+        onPress={() => navigateOnce('/capture')}
         accessibilityRole="button"
         accessibilityLabel="Add an entry"
         style={({ pressed }) => ({

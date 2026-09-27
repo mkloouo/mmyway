@@ -216,3 +216,51 @@ describe('receipt upload', () => {
     jest.dontMock('expo-file-system');
   });
 });
+
+describe('error text', () => {
+  it('shows FF3 messages, not raw JSON', () => {
+    const { describeFF3Error: d } = jest.requireActual('./outbox');
+    expect(d(new FF3RequestError(401, '{"message":"Unauthenticated.","exception":"AuthenticationException"}'))).toBe('Unauthenticated. (401)');
+    expect(d(new FF3RequestError(422, '{"message":"The given data was invalid.","errors":{"transactions.0.amount":["The amount must be more than zero."]}}')))
+      .toBe('The given data was invalid. — The amount must be more than zero. (422)');
+    expect(d(new FF3RequestError(502, '<html>Bad gateway</html>'))).toBe('Firefly III answered 502');
+  });
+});
+
+describe('conflict details', () => {
+  it('stores the server\'s current copy so the conflict screen can compare it', async () => {
+    const db = createTestDb();
+    await db.insert(cachedTransactions).values({ groupId: 'g1', journalId: 'j1', type: 'withdrawal', date: '2026-01-01', amount: '10.00', currencyCode: 'PLN', description: 'old', tagsJson: '[]', updatedAt: 'v1', syncedAt: 's' });
+    await enqueueOperation(db, { id: 'op-1', kind: 'update_transaction', payload: { groupId: 'g1', transactionJournalId: 'j1', expectedUpdatedAt: 'v1', changes: { notes: 'mine' } } });
+    const serverGroup = {
+      id: 'g1',
+      attributes: {
+        updated_at: 'v2',
+        transactions: [{ transaction_journal_id: 'j1', type: 'withdrawal', date: '2026-01-01', amount: '15.000000000000', currency_code: 'PLN', description: 'edited in web', notes: 'theirs', tags: [] }],
+      },
+    };
+    const client = { request: jest.fn(async () => ({ data: serverGroup })) };
+    await replayOutbox(db as any, client as any);
+    const [row] = await db.select().from(cachedTransactions);
+    expect(row).toMatchObject({ updatedAt: 'v2', amount: '15.000000000000', description: 'edited in web', notes: 'theirs' });
+  });
+});
+
+describe('receipt photo cleanup', () => {
+  it('drops the device copy only for receipts synced over 30 days ago with nothing left to upload', async () => {
+    const { pruneUploadedReceiptImages } = jest.requireActual('./outbox');
+    const db = createTestDb();
+    const base = { kind: 'receipt', draftJson: '{}', createdAt: 'c' };
+    await db.insert(inboxItems).values([
+      { ...base, id: 'old', state: 'synced', receiptImagePath: 'file:///x/receipts/old.jpg', updatedAt: '2026-08-01T00:00:00Z' },
+      { ...base, id: 'recent', state: 'synced', receiptImagePath: 'file:///x/receipts/recent.jpg', updatedAt: '2026-09-20T00:00:00Z' },
+      { ...base, id: 'old-queued', state: 'synced', receiptImagePath: 'file:///x/receipts/q.jpg', updatedAt: '2026-08-01T00:00:00Z' },
+    ]);
+    await enqueueOperation(db, { id: 'up', inboxItemId: 'old-queued', kind: 'attach_receipt', payload: {} });
+
+    await pruneUploadedReceiptImages(db, new Date('2026-09-27T00:00:00Z'));
+
+    const paths = Object.fromEntries((await db.select().from(inboxItems)).map((i) => [i.id, i.receiptImagePath]));
+    expect(paths).toEqual({ old: null, recent: 'file:///x/receipts/recent.jpg', 'old-queued': 'file:///x/receipts/q.jpg' });
+  });
+});

@@ -46,14 +46,17 @@ describe('buildManualEntryInput', () => {
     expect(buildManualEntryInput({ ...base, description: 'Weekly shop' }, accounts).description).toBe('Weekly shop');
   });
 
-  it('only sends a foreign currency alongside a foreign amount', () => {
-    const withForeign = buildManualEntryInput({ ...base, foreignAmount: '5.00', foreignCurrencyCode: 'EUR' }, accounts);
-    expect(withForeign.foreignAmount).toBe('5.00');
-    expect(withForeign.foreignCurrencyCode).toBe('EUR');
+  it('FX: books the account-currency figure as the amount and the typed one as foreign', () => {
+    // 123.12 PLN typed, paid from a EUR account that moved 1000 EUR.
+    const input = buildManualEntryInput({ ...base, amount: '123.12', currencyCode: 'PLN', foreignAmount: '1000', foreignCurrencyCode: 'EUR' }, accounts);
+    expect(input).toMatchObject({ amount: '1000', currencyCode: 'EUR', foreignAmount: '123.12', foreignCurrencyCode: 'PLN' });
+  });
 
-    const withoutForeign = buildManualEntryInput({ ...base, foreignAmount: '', foreignCurrencyCode: 'EUR' }, accounts);
-    expect(withoutForeign.foreignAmount).toBeUndefined();
-    expect(withoutForeign.foreignCurrencyCode).toBeUndefined();
+  it('sends no foreign side without a foreign amount', () => {
+    const input = buildManualEntryInput({ ...base, foreignAmount: '', foreignCurrencyCode: 'EUR' }, accounts);
+    expect(input).toMatchObject({ amount: '22.41', currencyCode: 'PLN' });
+    expect(input.foreignAmount).toBeUndefined();
+    expect(input.foreignCurrencyCode).toBeUndefined();
   });
 
   it('serialises the date as ISO', () => {
