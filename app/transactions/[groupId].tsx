@@ -24,6 +24,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getClient } from '../../src/api/ff3/session';
 import { fetchJournalAttachments, queuedAttachments } from '../../src/receipt/journalAttachments';
 import type { TransactionSplit } from '../../src/api/ff3/types';
+import { pendingEdits } from '../../src/transactions/pendingEdits';
 
 const SHARED_TAG_PREFIX = 'mmyway-shared-';
 // The words the rest of the app uses (capture's type chips), not FF3's "Withdrawal"/"Deposit".
@@ -88,6 +89,11 @@ export default function TransactionDetailScreen() {
   });
 
   const currency = currencyOf(currencies ?? [], row.currencyCode);
+  // An edit saved earlier but not yet in FF3: shown as the current values (under this screen's
+  // own unsaved `changes`), so reopening a just-saved transaction doesn't show the old ones.
+  // Save still sends only this screen's `changes`; the queued edit replays first.
+  const pendingEdit = pendingEdits(outbox ?? []).byGroup.get(row.groupId);
+  const shown: Partial<TransactionSplit> = { ...pendingEdit?.changes, ...changes };
 
   // Receipt thumbnails: photos on the phone first (still waiting to upload, or the one this was
   // captured from), then what FF3 holds, fetched with the API token like any request. Once the
@@ -100,15 +106,15 @@ export default function TransactionDetailScreen() {
     ...localPaths.map((uri) => ({ key: uri, source: { uri } })),
     ...remoteImages.map((a) => ({ key: a.id, source: a.imageSource! })),
   ];
-  const effectiveAmount = changes.amount ?? row.amount;
-  const effectiveSourceId = changes.source_id ?? allAssetAccounts.find((a) => a.name === row.sourceName)?.id ?? null;
-  const effectiveDestinationId = changes.destination_id ?? allAssetAccounts.find((a) => a.name === row.destinationName)?.id ?? null;
-  const effectiveBudgetId = changes.budget_id ?? (budgets ?? []).find((b) => b.name === row.budgetName)?.id ?? null;
-  const effectiveCategoryName = changes.category_name ?? row.categoryName ?? null;
-  const effectiveDate = changes.date ? new Date(changes.date) : new Date(row.date);
-  const effectiveNotes = changes.notes ?? row.notes ?? null;
-  const effectiveSharedWith = changes.tags
-    ? changes.tags.find((tag) => tag.startsWith(SHARED_TAG_PREFIX))?.slice(SHARED_TAG_PREFIX.length) ?? null
+  const effectiveAmount = shown.amount ?? row.amount;
+  const effectiveSourceId = shown.source_id ?? allAssetAccounts.find((a) => a.name === row.sourceName)?.id ?? null;
+  const effectiveDestinationId = shown.destination_id ?? allAssetAccounts.find((a) => a.name === row.destinationName)?.id ?? null;
+  const effectiveBudgetId = shown.budget_id ?? (budgets ?? []).find((b) => b.name === row.budgetName)?.id ?? null;
+  const effectiveCategoryName = shown.category_name ?? row.categoryName ?? null;
+  const effectiveDate = shown.date ? new Date(shown.date) : new Date(row.date);
+  const effectiveNotes = shown.notes ?? row.notes ?? null;
+  const effectiveSharedWith = shown.tags
+    ? shown.tags.find((tag) => tag.startsWith(SHARED_TAG_PREFIX))?.slice(SHARED_TAG_PREFIX.length) ?? null
     : sharedWithFromTags(row.tagsJson);
 
   function handleDetailChange(change: Partial<DetailRowsValue>) {
@@ -120,8 +126,10 @@ export default function TransactionDetailScreen() {
       if ('budgetId' in change) next.budget_id = change.budgetId ?? undefined;
       if ('notes' in change) next.notes = change.notes ?? undefined;
       if ('sharedWith' in change) {
-        let existingTags: string[] = [];
-        try { existingTags = JSON.parse(row!.tagsJson); } catch { existingTags = []; }
+        let existingTags: string[] = pendingEdit?.changes.tags ?? [];
+        if (!pendingEdit?.changes.tags) {
+          try { existingTags = JSON.parse(row!.tagsJson); } catch { existingTags = []; }
+        }
         const withoutShared = existingTags.filter((tag) => !tag.startsWith(SHARED_TAG_PREFIX));
         next.tags = change.sharedWith ? [...withoutShared, `${SHARED_TAG_PREFIX}${change.sharedWith}`] : withoutShared;
       }
@@ -244,7 +252,7 @@ export default function TransactionDetailScreen() {
       <View style={{ flex: 1 }}>
         <AppBar
           title={TYPE_LABELS[row.type] ?? row.type}
-          subtitle={`synced ${relativeTime(row.syncedAt)}`}
+          subtitle={pendingEdit ? (pendingEdit.status === 'queued' ? 'changes queued' : 'changes not sent') : `synced ${relativeTime(row.syncedAt)}`}
           left={<CloseButton />}
           right={(
             <Pressable onPress={() => setMenuOpen(true)} accessibilityRole="button" accessibilityLabel="More">
@@ -314,7 +322,7 @@ export default function TransactionDetailScreen() {
         <Money amount={effectiveAmount} currency={currency} type={row.type as 'withdrawal' | 'deposit' | 'transfer'} size="display" />
         <Keypad
           compact
-          onDigit={(key: KeypadKey) => setChanges((prev) => ({ ...prev, amount: applyDigit(prev.amount ?? row.amount, key, currency.decimalPlaces) }))}
+          onDigit={(key: KeypadKey) => setChanges((prev) => ({ ...prev, amount: applyDigit(prev.amount ?? pendingEdit?.changes.amount ?? row.amount, key, currency.decimalPlaces) }))}
           saveLabel="Done"
           onSave={() => setAmountSheetOpen(false)}
         />

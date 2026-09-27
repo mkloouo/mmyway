@@ -26,6 +26,7 @@ import { enqueueOperation } from '../../src/sync/outbox';
 import { generateId } from '../../src/utils/id';
 import { inArray } from 'drizzle-orm';
 import { haptics } from '../../src/ui/haptics';
+import { pendingEdits, applyPendingEdit, type PendingEditStatus } from '../../src/transactions/pendingEdits';
 
 const FILTERS: { label: string; type: ActivityTypeFilter }[] = [
   { label: 'All', type: 'all' },
@@ -36,8 +37,11 @@ const FILTERS: { label: string; type: ActivityTypeFilter }[] = [
 
 const STALE_MS = 24 * 60 * 60 * 1000;
 const REMOTE_SECTION_KEY = 'ff3-search';
+const PENDING_LABELS: Record<PendingEditStatus, string> = { queued: 'Queued', failed: 'Not sent', conflict: 'Conflict' };
 
-type ActivityItem = CachedTransactionRow | QueuedRow | RemoteResultRow;
+/** A cached row, plus the state of any edit to it that is saved here but not yet in FF3. */
+type ActivityCachedRow = CachedTransactionRow & { pendingStatus?: PendingEditStatus };
+type ActivityItem = ActivityCachedRow | QueuedRow | RemoteResultRow;
 interface DisplaySection { key: string; totals: { currencyCode: string; amount: string }[]; data: ActivityItem[] }
 type Currencies = (typeof referenceCurrencies.$inferSelect)[];
 
@@ -206,10 +210,10 @@ export default function ActivityScreen() {
   // Everything read from the outbox, parsed once per outbox change rather than on every render —
   // a selection tap re-renders this screen, and re-parsing every queued payload each time was
   // part of why multi-select lagged.
-  const { queuedRows, pendingDeletes } = useMemo(() => {
+  const { queuedRows, pendingDeletes, edits } = useMemo(() => {
     const ops = outbox ?? [];
     const queued: QueuedRow[] = ops
-      .filter((op) => op.kind === 'create_transaction' && op.status === 'pending')
+      .filter((op) => op.kind === 'create_transaction' && (op.status === 'pending' || op.status === 'in_flight'))
       .map((op): QueuedRow | null => {
         const payload = JSON.parse(op.payloadJson) as CreateTransactionPayload;
         const split = payload.splits[0];
@@ -228,7 +232,7 @@ export default function ActivityScreen() {
       .filter((op) => op.kind === 'delete_transaction' && op.status !== 'failed')
       .map((op) => { try { return (JSON.parse(op.payloadJson) as { groupId?: string }).groupId; } catch { return undefined; } })
       .filter((id): id is string => !!id));
-    return { queuedRows: queued, pendingDeletes: deletes };
+    return { queuedRows: queued, pendingDeletes: deletes, edits: pendingEdits(ops) };
   }, [outbox]);
 
   const remoteRows = remoteSearch.status === 'done' ? remoteSearch.rows : null;
@@ -238,7 +242,13 @@ export default function ActivityScreen() {
       .map((s): DisplaySection => ({
         key: s.key,
         totals: s.totals,
-        data: s.data.filter((row) => !pendingDeletes.has(row.groupId)),
+        data: s.data
+          .filter((row) => !pendingDeletes.has(row.groupId))
+          // An edit saved here shows its new values, marked queued until FF3 has it.
+          .map((row): ActivityCachedRow => {
+            const pending = applyPendingEdit(row, edits);
+            return pending ? { ...pending.row, pendingStatus: pending.status } : row;
+          }),
       }))
       .filter((s) => s.data.length > 0);
     if (queuedRows.length > 0) {
@@ -250,7 +260,7 @@ export default function ActivityScreen() {
       result.push({ key: REMOTE_SECTION_KEY, totals: [], data: remoteRows });
     }
     return result;
-  }, [sections, pendingDeletes, queuedRows, remoteRows]);
+  }, [sections, pendingDeletes, edits, queuedRows, remoteRows]);
 
   // Rows get callbacks that only change when selection mode starts or ends (when every row
   // re-renders anyway), so a memoized row re-renders only when its own selected state changes —
@@ -458,6 +468,7 @@ const ActivityRow = memo(function ActivityRow({
   // A remote-search row isn't cached locally yet, so there's nothing for the detail screen
   // (which only reads cachedTransactions) to open.
   const remote = 'remote' in item;
+  const pendingStatus = !queued && !remote ? item.pendingStatus : undefined;
   const description = item.description || (item.type === 'withdrawal' ? item.destinationName : item.sourceName) || '—';
   const accountLeg = item.type === 'deposit' ? item.sourceName : item.destinationName;
   const dotColor = item.categoryName ? categoryColor(item.categoryName, t.dark) : (item.type === 'transfer' ? t.color.transfer : t.color.textFaint);
@@ -484,6 +495,7 @@ const ActivityRow = memo(function ActivityRow({
         </Text>
       </View>
       {queued && <Chip label="Queued" tone="warn" />}
+      {!!pendingStatus && <Chip label={PENDING_LABELS[pendingStatus]} tone="warn" />}
       <Money amount={item.amount} currency={currencyOf(currencies ?? [], item.currencyCode)} type={item.type} />
     </Pressable>
   );
