@@ -64,7 +64,7 @@ export default function DraftScreen() {
 
   if (!row || !draft) {
     return (
-      <Screen>
+      <Screen bottom>
         <AppBar title="Review" left={<CloseButton />} />
       </Screen>
     );
@@ -135,7 +135,7 @@ export default function DraftScreen() {
   const itemCount = row.kind === 'receipt' && draft.notes ? draft.notes.split('\n').filter(Boolean).length : 0;
 
   return (
-    <Screen>
+    <Screen bottom>
       <View style={{ flex: 1 }}>
         <AppBar
           title="Review"

@@ -1,18 +1,26 @@
 // The whole component kit (design §4). Ten primitives, no styling outside this file:
 // a screen that needs a new look adds a variant here rather than inlining styles.
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useMemo, type ReactNode } from 'react';
 import {
   Animated, KeyboardAvoidingView, Modal, Pressable, ScrollView, Text, View,
   type StyleProp, type ViewStyle,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, hitSize, type Theme } from './theme';
 import { formatMoney, signFor, type DisplayCurrency } from './money';
 
-export function Screen({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
+/**
+ * A tab screen leaves the bottom edge to the tab bar. A modal screen (capture, count, a draft)
+ * has nothing under it but Android's own gesture/nav bar, so it passes `bottom` — without it the
+ * last control sits directly on top of the system controls.
+ */
+export function Screen({ children, style, bottom }: { children: ReactNode; style?: StyleProp<ViewStyle>; bottom?: boolean }) {
   const t = useTheme();
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={[{ flex: 1, backgroundColor: t.color.bg }, style]}>
+    <SafeAreaView
+      edges={bottom ? ['top', 'left', 'right', 'bottom'] : ['top', 'left', 'right']}
+      style={[{ flex: 1, backgroundColor: t.color.bg }, style]}
+    >
       {children}
     </SafeAreaView>
   );
@@ -191,6 +199,9 @@ export function StatusPill({ state, label }: { state: 'ok' | 'syncing' | 'queued
         flexDirection: 'row', alignItems: 'center', gap: t.space.sm,
         paddingHorizontal: t.space.md, paddingVertical: t.space.xs,
         borderRadius: t.radius.pill, backgroundColor: t.color.surfaceAlt,
+        // The AppBar title takes flex: 1, so without this the pill gets squeezed and its label
+        // is clipped mid-word — "just now" rendered as "just".
+        flexShrink: 0,
       }}
     >
       <Pulse active={state === 'syncing'}>
@@ -203,7 +214,7 @@ export function StatusPill({ state, label }: { state: 'ok' | 'syncing' | 'queued
 
 /** Opacity loop for "this is working, not stuck": the sync dot and the parsing receipt card. */
 export function Pulse({ active, children }: { active: boolean; children: ReactNode }) {
-  const value = useRef(new Animated.Value(1)).current;
+  const value = useMemo(() => new Animated.Value(1), []);
   useEffect(() => {
     if (!active) {
       value.setValue(1);
@@ -238,16 +249,20 @@ export function Sheet({
   scroll?: boolean;
 }) {
   const t = useTheme();
+  const insets = useSafeAreaInsets();
   const bodyPadding = { paddingHorizontal: t.space.lg, paddingBottom: t.space.lg, gap: t.space.md };
+  // `animationType="slide"` slid the scrim in with the panel, which read as a moving backdrop.
+  // `elevation` with only the top corners rounded makes Android draw the shadow as a full opaque
+  // rect, which showed as white squares outside the cutouts. Neither is worth keeping.
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <KeyboardAvoidingView behavior="padding" style={{ flex: 1, justifyContent: 'flex-end' }}>
-      <Pressable style={{ flex: 1, backgroundColor: t.color.scrim }} onPress={onClose} accessibilityLabel="Close" />
+        <Pressable style={{ flex: 1, backgroundColor: t.color.scrim }} onPress={onClose} accessibilityLabel="Close" />
         <View
           style={{
-            maxHeight: '80%', backgroundColor: t.color.surface,
+            maxHeight: '80%', backgroundColor: t.color.surface, overflow: 'hidden',
             borderTopLeftRadius: t.radius.lg, borderTopRightRadius: t.radius.lg,
-            paddingBottom: t.space.xxl, elevation: 8,
+            paddingBottom: t.space.xxl + insets.bottom,
           }}
         >
           <View style={{ alignSelf: 'center', width: 36, height: 4, borderRadius: 2, backgroundColor: t.color.border, marginVertical: t.space.md }} />
@@ -259,6 +274,23 @@ export function Sheet({
         </View>
       </KeyboardAvoidingView>
     </Modal>
+  );
+}
+
+/**
+ * Short confirmation floating over a screen. Anchored below the status bar inset — Android draws
+ * the app edge to edge, so a plain `top: 8` landed inside the camera cutout.
+ */
+export function Toast({ message }: { message: string | null }) {
+  const t = useTheme();
+  const insets = useSafeAreaInsets();
+  if (!message) return null;
+  return (
+    <View pointerEvents="none" style={{ position: 'absolute', top: insets.top + t.space.sm, left: t.space.lg, right: t.space.lg, alignItems: 'center' }}>
+      <View style={{ backgroundColor: t.color.text, borderRadius: t.radius.pill, paddingHorizontal: t.space.lg, paddingVertical: t.space.sm }}>
+        <Text style={[t.type.label, { color: t.color.surface }]}>{message}</Text>
+      </View>
+    </View>
   );
 }
 

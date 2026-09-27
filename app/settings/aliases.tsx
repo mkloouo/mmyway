@@ -68,7 +68,7 @@ export default function AliasesScreen() {
   }
 
   return (
-    <Screen>
+    <Screen bottom>
       <AppBar
         title="Aliases"
         right={(

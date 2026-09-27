@@ -99,7 +99,7 @@ export default function ReceiptScreen() {
   }, []);
 
   return (
-    <Screen>
+    <Screen bottom>
       <AppBar title={attachToJournalId ? 'Attach receipt' : 'Receipt'} />
       {showChooser && (
         <View style={{ padding: t.space.lg, gap: t.space.md }}>

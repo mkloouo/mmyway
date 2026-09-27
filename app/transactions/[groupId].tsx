@@ -51,7 +51,7 @@ export default function TransactionDetailScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  if (!row) return <Screen><AppBar title="Transaction" /></Screen>;
+  if (!row) return <Screen bottom><AppBar title="Transaction" /></Screen>;
 
   const conflictOp = (outbox ?? []).find((op) => {
     if (op.status !== 'failed' || op.lastError !== 'conflict') return false;
@@ -147,7 +147,7 @@ export default function TransactionDetailScreen() {
   if (conflictOp) {
     const pending = JSON.parse(conflictOp.payloadJson) as UpdateTransactionPayload;
     return (
-      <Screen>
+      <Screen bottom>
         <AppBar title="Conflict" left={<CloseButton />} />
         <View style={{ padding: t.space.lg, gap: t.space.md }}>
           <Card>
@@ -184,7 +184,7 @@ export default function TransactionDetailScreen() {
   };
 
   return (
-    <Screen>
+    <Screen bottom>
       <View style={{ flex: 1 }}>
         <AppBar
           title={row.type[0]!.toUpperCase() + row.type.slice(1)}

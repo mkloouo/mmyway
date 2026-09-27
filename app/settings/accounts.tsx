@@ -29,7 +29,7 @@ export default function AccountsScreen() {
   }
 
   return (
-    <Screen>
+    <Screen bottom>
       <AppBar title="Accounts" />
       <FlatList
         data={assetAccounts}

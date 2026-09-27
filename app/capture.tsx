@@ -6,7 +6,7 @@ import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { useDb } from '../src/providers/DbProvider';
 import { useTheme } from '../src/ui/theme';
-import { Screen, Chip, Button, Sheet, Money } from '../src/ui/components';
+import { Screen, Chip, Button, Sheet, Money, Toast } from '../src/ui/components';
 import { Keypad } from '../src/ui/Keypad';
 import { PayeeSheet } from '../src/ui/PayeeSheet';
 import { currencyOf } from '../src/ui/money';
@@ -220,7 +220,7 @@ export default function CaptureScreen() {
   const summaryParts = [merchantRawInput, categoryName].filter(Boolean);
 
   return (
-    <Screen>
+    <Screen bottom>
       <View style={{ flex: 1 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm, paddingHorizontal: t.space.lg, paddingTop: t.space.sm }}>
           <Pressable onPress={confirmClose} accessibilityRole="button" accessibilityLabel="Close">
@@ -340,18 +340,7 @@ export default function CaptureScreen() {
           <Text style={[t.type.body, { color: t.color.accent, fontWeight: '600', opacity: saving ? 0.4 : 1 }]}>Save to inbox</Text>
         </Pressable>
 
-        {!!toast && (
-          <View
-            pointerEvents="none"
-            style={{
-              position: 'absolute', top: 8, left: t.space.lg, right: t.space.lg, alignItems: 'center',
-            }}
-          >
-            <View style={{ backgroundColor: t.color.text, borderRadius: t.radius.pill, paddingHorizontal: t.space.lg, paddingVertical: t.space.sm }}>
-              <Text style={[t.type.label, { color: t.color.surface }]}>{toast}</Text>
-            </View>
-          </View>
-        )}
+        <Toast message={toast} />
       </View>
 
       <Sheet visible={dateSheetOpen} onClose={() => setDateSheetOpen(false)} title="Date">

@@ -1,12 +1,12 @@
 // Settings (design §6.6) — grouped Card/Row layout, every › opens a Sheet. No nested FlatLists.
 import { useEffect, useState } from 'react';
-import { Alert, Text, TextInput, View } from 'react-native';
+import { Alert, ScrollView, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import Constants from 'expo-constants';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, AppBar, SectionHeader, Card, Row, Chip, Button, Sheet } from '../../src/ui/components';
+import { Screen, AppBar, SectionHeader, Card, Row, Chip, Button, Sheet, Toast } from '../../src/ui/components';
 import { AddressesSheet } from '../../src/ui/AddressesSheet';
 import { relativeTime } from '../../src/ui/relativeTime';
 import { signIn, signOut, readStoredCredentials, probeAbout } from '../../src/api/ff3/auth';
@@ -125,7 +125,7 @@ export default function SettingsScreen() {
   return (
     <Screen>
       <AppBar title="Settings" />
-      <View style={{ paddingBottom: t.space.xxl }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: t.space.xxl }}>
         <SectionHeader title="Connection" />
         <Card style={{ marginHorizontal: t.space.lg }}>
           <Row
@@ -174,15 +174,9 @@ export default function SettingsScreen() {
           <Row first label="Version" value={version} />
           <Row label="Last sync" value={relativeTime(lastSyncedAt)} />
         </Card>
-      </View>
+      </ScrollView>
 
-      {!!toast && (
-        <View pointerEvents="none" style={{ position: 'absolute', top: 8, left: t.space.lg, right: t.space.lg, alignItems: 'center' }}>
-          <View style={{ backgroundColor: t.color.text, borderRadius: t.radius.pill, paddingHorizontal: t.space.lg, paddingVertical: t.space.sm }}>
-            <Text style={[t.type.label, { color: t.color.surface }]}>{toast}</Text>
-          </View>
-        </View>
-      )}
+      <Toast message={toast} />
 
       <Sheet
         visible={signInSheetOpen}
