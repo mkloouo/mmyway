@@ -78,7 +78,10 @@ export async function pullRecentTransactions(db: OutboxDb, client: FF3Client, sy
         budgetName: null as string | null,
         tagsJson: JSON.stringify(journal.tags ?? []),
         notes: journal.notes ?? null,
-        updatedAt: journal.updated_at,
+        // FF3 puts updated_at on the group's attributes, not on each split — journal.updated_at
+        // is undefined against real API responses despite what TransactionSplit's type claims
+        // (confirmed on a real device sync: NOT NULL constraint failed: cached_transactions.updated_at).
+        updatedAt: (group.attributes as { updated_at?: string }).updated_at ?? journal.updated_at ?? syncedAt,
         syncedAt,
       };
       await db.insert(cachedTransactions).values(row).onConflictDoUpdate({ target: cachedTransactions.groupId, set: row });

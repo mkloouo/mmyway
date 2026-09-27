@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { inboxItems } from '../db/schema';
+import { inboxItems, outboxOperations } from '../db/schema';
 import type { Draft } from './draft';
 import type { OutboxDb } from '../sync/outbox';
 
@@ -16,4 +16,13 @@ export async function updateDraft(db: OutboxDb, inboxItemId: string, patch: Part
   await db.update(inboxItems)
     .set({ draftJson: JSON.stringify(merged), updatedAt: new Date().toISOString() })
     .where(eq(inboxItems.id, inboxItemId));
+}
+
+// Local-only removal: deletes the inbox row and any outbox ops still pointing at it, so a
+// captured/errored item that never should have synced doesn't leave an orphaned outbox op
+// behind. Does not touch FF3 — an already-`synced` item's real transaction stays put; delete it
+// from the transaction list (app/transactions/[groupId].tsx) instead.
+export async function deleteInboxItem(db: OutboxDb, inboxItemId: string): Promise<void> {
+  await db.delete(outboxOperations).where(eq(outboxOperations.inboxItemId, inboxItemId));
+  await db.delete(inboxItems).where(eq(inboxItems.id, inboxItemId));
 }

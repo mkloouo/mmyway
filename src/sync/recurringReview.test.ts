@@ -28,6 +28,24 @@ describe('pullUnreviewedRecurring', () => {
     expect(path).not.toContain('type=recurring');
   });
 
+  it('reads updated_at from the group, not the split, when storing the review draft', async () => {
+    const db = createTestDb();
+    const client = fakeClient([
+      {
+        id: 'g1',
+        attributes: {
+          updated_at: '2026-09-20T12:00:00Z', // group-level, as real FF3 responses shape it
+          transactions: [{ transaction_journal_id: 'j1', tags: ['recurring'] }], // no updated_at on the split
+        },
+      },
+    ]);
+    await pullUnreviewedRecurring(db as any, client as any);
+
+    const item = (await db.select().from(inboxItems))[0]!;
+    const journal = JSON.parse(item.draftJson);
+    expect(journal.updated_at).toBe('2026-09-20T12:00:00Z');
+  });
+
   it('skips a transaction that already has the reviewed tag', async () => {
     const db = createTestDb();
     const client = fakeClient([

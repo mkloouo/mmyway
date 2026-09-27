@@ -23,11 +23,17 @@ export async function pullUnreviewedRecurring(db: OutboxDb, client: FF3Client): 
     const existing = await db.select().from(inboxItems).where(eq(inboxItems.ff3GroupId, group.id));
     if (existing.length > 0) continue;
 
+    // FF3 puts updated_at on the group's attributes, not on each split — journal.updated_at is
+    // undefined against real API responses despite what TransactionSplit's type claims. Fix it
+    // once here so every downstream reader (approve/edit/delete, all of which JSON.parse this
+    // draftJson) sees a correct value without having to know about the mismatch.
+    const groupUpdatedAt = (group.attributes as { updated_at?: string }).updated_at ?? journal.updated_at;
+
     await db.insert(inboxItems).values({
       id: generateId(),
       kind: 'recurring_review',
       state: 'confirmed', // arrives pre-parsed from the server; only needs a user decision (brief §4.3)
-      draftJson: JSON.stringify(journal),
+      draftJson: JSON.stringify({ ...journal, updated_at: groupUpdatedAt }),
       ff3GroupId: group.id,
       createdAt: now,
       updatedAt: now,

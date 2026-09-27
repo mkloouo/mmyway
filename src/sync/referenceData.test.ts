@@ -48,4 +48,26 @@ describe('pullRecentTransactions', () => {
     expect(rows).toHaveLength(1);
     expect(rows[0]!.amount).toBe('99.00');
   });
+
+  it('reads updated_at from the group, not the split (real FF3 responses put it there, not in TransactionSplit)', async () => {
+    const db = createTestDb();
+    const client = fakeClient([
+      [{
+        id: 'g1',
+        attributes: {
+          updated_at: '2026-09-20T12:00:00Z', // group-level, as real FF3 responses shape it
+          transactions: [{
+            transaction_journal_id: 'j1', type: 'withdrawal', date: '2026-09-01', amount: '12.34',
+            currency_code: 'PLN', description: 'coffee', tags: [],
+            // no updated_at on the split itself
+          }],
+        },
+      }],
+    ]);
+
+    await pullRecentTransactions(db as any, client as any, '2026-09-27T00:00:00Z');
+
+    const rows = await db.select().from(cachedTransactions);
+    expect(rows[0]!.updatedAt).toBe('2026-09-20T12:00:00Z');
+  });
 });

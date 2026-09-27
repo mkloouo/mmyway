@@ -7,6 +7,7 @@ import { useInboxItems } from '../src/inbox/useInboxItems';
 import { outboxOperations } from '../src/db/schema';
 import { useSync } from '../src/sync/useSync';
 import { confirmInboxItem } from '../src/inbox/createManualEntry';
+import { deleteInboxItem } from '../src/inbox/updateDraft';
 
 const CONFIRMABLE_STATES = new Set(['captured', 'parsed']);
 
@@ -72,9 +73,10 @@ export default function InboxScreen() {
             {CONFIRMABLE_STATES.has(item.state) && (
               <Switch value={selected.has(item.id)} onValueChange={() => toggle(item.id)} />
             )}
-            <Text onPress={() => router.push(`/draft/${item.id}`)}>
+            <Text onPress={() => router.push(`/draft/${item.id}`)} style={{ flex: 1 }}>
               {item.kind} · {item.state}
             </Text>
+            <Text onPress={() => deleteInboxItem(db, item.id)} style={{ color: 'red' }}>Delete</Text>
           </View>
         )}
       />
