@@ -41,6 +41,7 @@ export interface OutboxDb {
   select: any;
   update: any;
   insert: any;
+  delete: any;
 }
 
 export interface NewOutboxOperation {
