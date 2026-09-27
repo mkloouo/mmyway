@@ -1,10 +1,23 @@
 import { createTestDb } from '../db/testDb';
-import { pullRecentTransactions } from './referenceData';
-import { cachedTransactions } from '../db/schema';
+import { pullRecentTransactions, pullReferenceData } from './referenceData';
+import { cachedTransactions, referenceAccounts } from '../db/schema';
 
 function fakeClient(pages: unknown[][]) {
   let call = 0;
   return { request: jest.fn(async () => ({ data: pages[call++] ?? [] })) };
+}
+
+function journalGroup(id: string, overrides: Record<string, unknown> = {}) {
+  return {
+    id,
+    attributes: {
+      transactions: [{
+        transaction_journal_id: `${id}-j`, type: 'withdrawal', date: '2026-09-01', amount: '1.00',
+        currency_code: 'PLN', description: 'x', tags: [], updated_at: '2026-09-01T00:00:00Z',
+        ...overrides,
+      }],
+    },
+  };
 }
 
 describe('pullRecentTransactions', () => {
@@ -69,5 +82,68 @@ describe('pullRecentTransactions', () => {
 
     const rows = await db.select().from(cachedTransactions);
     expect(rows[0]!.updatedAt).toBe('2026-09-20T12:00:00Z');
+  });
+
+  it('pages past 20 pages when the history window has more than 2000 transactions', async () => {
+    const db = createTestDb();
+    const fullPages = Array.from({ length: 21 }, (_, i) => Array.from({ length: 100 }, (_, j) => journalGroup(`p${i}-${j}`)));
+    const client = fakeClient([...fullPages, []]); // 21 full pages, then an empty page stops the loop
+    await pullRecentTransactions(db as any, client as any, '2026-09-27T00:00:00Z');
+
+    expect(client.request).toHaveBeenCalledTimes(22);
+    const rows = await db.select().from(cachedTransactions);
+    expect(rows).toHaveLength(2100);
+  });
+});
+
+describe('pullReferenceData', () => {
+  function fakeReferenceClient() {
+    const calls: string[] = [];
+    return {
+      calls,
+      request: jest.fn(async (path: string) => {
+        calls.push(path);
+        if (path.startsWith('/v1/accounts')) {
+          return {
+            data: [{
+              id: 'acc-1',
+              attributes: {
+                name: 'Cash', type: 'asset', currency_code: 'PLN', active: true,
+                current_balance: '340.00', current_balance_date: '2026-09-27',
+              },
+            }],
+          };
+        }
+        if (path.startsWith('/v1/categories')) return { data: [] };
+        if (path.startsWith('/v1/budgets')) return { data: [] };
+        if (path.startsWith('/v1/currencies')) return { data: [] };
+        return { data: [] }; // transactions pull
+      }),
+    };
+  }
+
+  it('the balance and its date survive a pull', async () => {
+    const db = createTestDb();
+    await pullReferenceData(db as any, fakeReferenceClient() as any);
+
+    const [account] = await db.select().from(referenceAccounts);
+    expect(account).toMatchObject({ id: 'acc-1', currentBalance: '340.00', currentBalanceDate: '2026-09-27' });
+  });
+
+  it('the balance survives an update on a second pull', async () => {
+    const db = createTestDb();
+    await pullReferenceData(db as any, fakeReferenceClient() as any);
+
+    const updatedClient = fakeReferenceClient();
+    updatedClient.request.mockImplementation(async (path: string) => {
+      if (path.startsWith('/v1/accounts')) {
+        return { data: [{ id: 'acc-1', attributes: { name: 'Cash', type: 'asset', currency_code: 'PLN', active: true, current_balance: '280.00', current_balance_date: '2026-09-28' } }] };
+      }
+      return { data: [] };
+    });
+    await pullReferenceData(db as any, updatedClient as any);
+
+    const [account] = await db.select().from(referenceAccounts);
+    expect(account).toMatchObject({ currentBalance: '280.00', currentBalanceDate: '2026-09-28' });
   });
 });

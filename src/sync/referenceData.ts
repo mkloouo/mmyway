@@ -14,9 +14,16 @@ export async function pullReferenceData(db: OutboxDb, client: FF3Client): Promis
   ]);
 
   for (const account of accounts.data) {
-    await db.insert(referenceAccounts)
-      .values({ id: account.id, name: account.attributes.name, type: account.attributes.type, currencyCode: account.attributes.currency_code, active: account.attributes.active, syncedAt: now })
-      .onConflictDoUpdate({ target: referenceAccounts.id, set: { name: account.attributes.name, type: account.attributes.type, currencyCode: account.attributes.currency_code, active: account.attributes.active, syncedAt: now } });
+    // AccountRead (src/api/ff3/types.ts, pinned) doesn't declare these — narrowed with a local
+    // cast at the read site, as recurringReview.ts already does for the group's updated_at.
+    const balance = account.attributes as { current_balance?: string; current_balance_date?: string };
+    const row = {
+      id: account.id, name: account.attributes.name, type: account.attributes.type,
+      currencyCode: account.attributes.currency_code, active: account.attributes.active,
+      currentBalance: balance.current_balance ?? null, currentBalanceDate: balance.current_balance_date ?? null,
+      syncedAt: now,
+    };
+    await db.insert(referenceAccounts).values(row).onConflictDoUpdate({ target: referenceAccounts.id, set: row });
   }
   for (const category of categories.data) {
     await db.insert(referenceCategories)
@@ -45,8 +52,9 @@ export async function pullRecentTransactions(db: OutboxDb, client: FF3Client, sy
   start.setMonth(start.getMonth() - 3);
   const startDate = start.toISOString().slice(0, 10);
 
-  // ponytail: caps at 20 pages (~2000 txns at limit=100); raise if real history exceeds that.
-  for (let page = 1; page <= 20; page++) {
+  // Pages until the requested history window (startDate..now) is covered — no upper page bound,
+  // so a long real history is never silently truncated.
+  for (let page = 1; ; page++) {
     const response = await client.request<{ data: TransactionRead[] }>(
       `/v1/transactions?start=${startDate}&limit=100&page=${page}`,
     );

@@ -6,6 +6,8 @@ export const referenceAccounts = sqliteTable('reference_accounts', {
   type: text('type').notNull(), // asset | expense | revenue | liability | ...
   currencyCode: text('currency_code').notNull(),
   active: integer('active', { mode: 'boolean' }).notNull().default(true),
+  currentBalance: text('current_balance'), // decimal string, as of the last pull
+  currentBalanceDate: text('current_balance_date'),
   syncedAt: text('synced_at').notNull(),
 });
 
