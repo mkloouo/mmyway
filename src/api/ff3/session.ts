@@ -28,6 +28,7 @@ export function clientFor(address: string, token: string): FF3Client {
         throw err;
       }
     },
+    imageSource: inner.imageSource,
   };
   memo = { address, token, client };
   return client;

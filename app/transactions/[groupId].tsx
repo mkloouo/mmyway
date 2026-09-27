@@ -1,7 +1,7 @@
 // Transaction detail (design §6.5) — the same editing vocabulary as the draft screen: hero
 // amount + DetailRows, one picker implementation for both.
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
+import { Alert, Image, Modal, Pressable, ScrollView, Text, View, type ImageSourcePropType } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { eq } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
@@ -16,7 +16,7 @@ import { conflictFields } from '../../src/transactions/conflictDiff';
 import { relativeTime } from '../../src/ui/relativeTime';
 import { applyDigit, type KeypadKey } from '../../src/capture/amountInput';
 import { buildEntryDate } from '../../src/capture/entryDate';
-import { cachedTransactions, outboxOperations, referenceCategories, referenceBudgets, referenceCurrencies } from '../../src/db/schema';
+import { cachedTransactions, inboxItems, outboxOperations, referenceCategories, referenceBudgets, referenceCurrencies } from '../../src/db/schema';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { enqueueOperation, type UpdateTransactionPayload, type DeleteTransactionPayload } from '../../src/sync/outbox';
 import { generateId } from '../../src/utils/id';
@@ -54,6 +54,10 @@ export default function TransactionDetailScreen() {
   const { data: budgets } = useLiveQuery(db.select().from(referenceBudgets));
   const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
   const row = rows?.[0];
+  // The photo this transaction was captured from, if the phone still has it (kept a while after
+  // upload, see pruneUploadedReceiptImages) — shown without a round trip to FF3.
+  const { data: sourceItems } = useLiveQuery(db.select({ path: inboxItems.receiptImagePath }).from(inboxItems).where(eq(inboxItems.ff3GroupId, groupId)));
+  const localReceiptPath = sourceItems?.find((i) => !!i.path)?.path ?? null;
 
   // Receipt status: uploads still queued here, and what FF3 already holds. Refetched whenever the
   // number of queued uploads changes, so a finished upload shows up without leaving the screen.
@@ -72,6 +76,7 @@ export default function TransactionDetailScreen() {
   const [amountSheetOpen, setAmountSheetOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [photo, setPhoto] = useState<ImageSourcePropType | null>(null);
 
   if (!row) return <Screen bottom><AppBar title="Transaction" /></Screen>;
 
@@ -83,6 +88,18 @@ export default function TransactionDetailScreen() {
   });
 
   const currency = currencyOf(currencies ?? [], row.currencyCode);
+
+  // Receipt thumbnails: photos on the phone first (still waiting to upload, or the one this was
+  // captured from), then what FF3 holds, fetched with the API token like any request. Once the
+  // captured photo has uploaded it is FF3's first image too, so that download is skipped.
+  const queuedPaths = queued.map((q) => q.receiptImagePath).filter((p): p is string => !!p);
+  const localPaths = [...new Set([...queuedPaths, ...(localReceiptPath ? [localReceiptPath] : [])])];
+  const capturedUploaded = !!localReceiptPath && !queuedPaths.includes(localReceiptPath);
+  const remoteImages = (attachments.data ?? []).filter((a) => !!a.imageSource).slice(capturedUploaded ? 1 : 0);
+  const receiptPreviews: { key: string; source: ImageSourcePropType }[] = [
+    ...localPaths.map((uri) => ({ key: uri, source: { uri } })),
+    ...remoteImages.map((a) => ({ key: a.id, source: a.imageSource! })),
+  ];
   const effectiveAmount = changes.amount ?? row.amount;
   const effectiveSourceId = changes.source_id ?? allAssetAccounts.find((a) => a.name === row.sourceName)?.id ?? null;
   const effectiveDestinationId = changes.destination_id ?? allAssetAccounts.find((a) => a.name === row.destinationName)?.id ?? null;
@@ -257,26 +274,33 @@ export default function TransactionDetailScreen() {
             categories={categories ?? []}
             budgets={budgets ?? []}
           />
-          <Card style={{ marginHorizontal: t.space.lg }}>
-            {(attachments.data ?? []).map((a, i) => (
-              <Row key={a.id} first={i === 0} label={i === 0 ? 'Receipt' : ''} value={`📎 ${a.filename}`} />
+          <Card style={{ marginHorizontal: t.space.lg, gap: t.space.sm }}>
+            {receiptPreviews.map((p) => (
+              <Pressable key={p.key} onPress={() => setPhoto(p.source)} accessibilityRole="imagebutton" accessibilityLabel="Show the receipt photo">
+                <Image source={p.source} resizeMode="cover" style={{ width: '100%', height: 140, borderRadius: t.radius.sm, backgroundColor: t.color.surfaceAlt }} />
+              </Pressable>
             ))}
-            {queued.map((q, i) => (
+            <View>
+              {(attachments.data ?? []).map((a, i) => (
+                <Row key={a.id} first={i === 0} label={i === 0 ? 'Receipt' : ''} value={`📎 ${a.filename}`} />
+              ))}
+              {queued.map((q, i) => (
+                <Row
+                  key={q.opId}
+                  first={i === 0 && !attachments.data?.length}
+                  label={i === 0 && !attachments.data?.length ? 'Receipt' : ''}
+                  value={q.status === 'failed' ? `Upload failed${q.lastError ? `: ${q.lastError}` : ''}` : 'Uploading…'}
+                  tone={q.status === 'failed' ? 'danger' : undefined}
+                />
+              ))}
               <Row
-                key={q.opId}
-                first={i === 0 && !attachments.data?.length}
-                label={i === 0 && !attachments.data?.length ? 'Receipt' : ''}
-                value={q.status === 'failed' ? `Upload failed${q.lastError ? `: ${q.lastError}` : ''}` : 'Uploading…'}
-                tone={q.status === 'failed' ? 'danger' : undefined}
+                first={!attachments.data?.length && queued.length === 0}
+                label={!attachments.data?.length && queued.length === 0 ? 'Receipt' : ''}
+                value={attachments.data?.length || queued.length ? 'Attach another' : 'Attach receipt'}
+                chevron
+                onPress={() => router.push({ pathname: '/receipt', params: { attachToJournalId: row.journalId } })}
               />
-            ))}
-            <Row
-              first={!attachments.data?.length && queued.length === 0}
-              label={!attachments.data?.length && queued.length === 0 ? 'Receipt' : ''}
-              value={attachments.data?.length || queued.length ? 'Attach another' : 'Attach receipt'}
-              chevron
-              onPress={() => router.push({ pathname: '/receipt', params: { attachToJournalId: row.journalId } })}
-            />
+            </View>
           </Card>
         </View>
         </ScrollView>
@@ -299,6 +323,12 @@ export default function TransactionDetailScreen() {
       <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title="Transaction">
         <Row first label="Delete" tone="danger" onPress={onDelete} />
       </Sheet>
+      {/* Same full-screen view as the draft screen's receipt photo. */}
+      <Modal visible={!!photo} transparent animationType="fade" onRequestClose={() => setPhoto(null)}>
+        <Pressable style={{ flex: 1, backgroundColor: t.color.photoBackdrop, justifyContent: 'center' }} onPress={() => setPhoto(null)} accessibilityLabel="Close the photo">
+          {!!photo && <Image source={photo} resizeMode="contain" style={{ width: '100%', height: '100%' }} />}
+        </Pressable>
+      </Modal>
     </Screen>
   );
 }

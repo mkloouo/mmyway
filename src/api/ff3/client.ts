@@ -7,6 +7,8 @@ export interface FF3ClientConfig {
 
 export interface FF3Client {
   request<T>(path: string, init?: RequestInit): Promise<T>;
+  /** An `<Image source>` for an authenticated GET, e.g. an attachment download. */
+  imageSource?(path: string): { uri: string; headers: Record<string, string> };
 }
 
 export function createFF3Client({ baseUrl, apiToken }: FF3ClientConfig): FF3Client {
@@ -28,6 +30,9 @@ export function createFF3Client({ baseUrl, apiToken }: FF3ClientConfig): FF3Clie
       }
       if (response.status === 204) return undefined as T;
       return (await response.json()) as T;
+    },
+    imageSource(path: string) {
+      return { uri: `${apiRoot}${path}`, headers: { Authorization: `Bearer ${apiToken}` } };
     },
   };
 }
