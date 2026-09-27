@@ -1,5 +1,5 @@
 import { createTestDb } from '../db/testDb';
-import { pullRecentTransactions, pullReferenceData } from './referenceData';
+import { pullRecentTransactions, pullOlderTransactions, pullReferenceData } from './referenceData';
 import { cachedTransactions, referenceAccounts } from '../db/schema';
 
 function fakeClient(pages: unknown[][]) {
@@ -110,6 +110,34 @@ describe('pullRecentTransactions', () => {
     expect(client.request).toHaveBeenCalledTimes(22);
     const rows = await db.select().from(cachedTransactions);
     expect(rows).toHaveLength(2100);
+  });
+});
+
+describe('pullOlderTransactions', () => {
+  it('reaches back a further chunk before the oldest cached row and reports it found older history', async () => {
+    const db = createTestDb();
+    const seed = fakeClient([[journalGroup('g1', { date: '2026-06-01' })]]);
+    await pullRecentTransactions(db as any, seed as any, '2026-09-27T00:00:00Z');
+
+    const older = fakeClient([[journalGroup('g0', { date: '2026-03-15' })]]);
+    const foundOlder = await pullOlderTransactions(db as any, older as any, '2026-09-27T00:00:00Z');
+
+    expect(foundOlder).toBe(true);
+    expect(older.request.mock.calls[0]![0]).toContain('start=2026-03-01');
+    expect(older.request.mock.calls[0]![0]).toContain('end=2026-05-31');
+    const rows = await db.select().from(cachedTransactions);
+    expect(rows.map((r) => r.groupId).sort()).toEqual(['g0', 'g1']);
+  });
+
+  it('reports no older history once a chunk turns up nothing older than what is already cached', async () => {
+    const db = createTestDb();
+    const seed = fakeClient([[journalGroup('g1', { date: '2026-06-01' })]]);
+    await pullRecentTransactions(db as any, seed as any, '2026-09-27T00:00:00Z');
+
+    const empty = fakeClient([[]]);
+    const foundOlder = await pullOlderTransactions(db as any, empty as any, '2026-09-27T00:00:00Z');
+
+    expect(foundOlder).toBe(false);
   });
 });
 

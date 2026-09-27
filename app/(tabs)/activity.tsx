@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, SectionList, Text, TextInput, View } from 'react-native';
 import { router, useNavigation } from 'expo-router';
-import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
+import { useLiveQuery } from '../../src/db/useLiveQuery';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
@@ -12,7 +12,7 @@ import { currencyOf, formatMoney } from '../../src/ui/money';
 import { categoryColor } from '../../src/ui/categoryColor';
 import { relativeTime } from '../../src/ui/relativeTime';
 import { useTransactionPage, type ActivityTypeFilter, type CachedTransactionRow } from '../../src/transactions/useTransactionPage';
-import { useSync } from '../../src/sync/useSync';
+import { useSync, useLoadOlderHistory } from '../../src/sync/useSync';
 import { referenceAccounts, referenceCurrencies, outboxOperations, cachedTransactions } from '../../src/db/schema';
 import type { CreateTransactionPayload } from '../../src/sync/outbox';
 
@@ -70,6 +70,14 @@ export default function ActivityScreen() {
   const assetAccounts = (accountRows ?? []).filter((a) => a.type === 'asset');
 
   const { sections, loadMore, loadingMore, atEnd } = useTransactionPage({ search, type, accountName: accountFilter });
+  const { loadOlder, loadingOlder, exhausted } = useLoadOlderHistory();
+  // The local cache runs out before real history does — reaching the end of what's cached pulls
+  // a further chunk from FF3 instead of just stopping (see useLoadOlderHistory).
+  function handleEndReached() {
+    if (!atEnd) { loadMore(); return; }
+    if (!exhausted) void loadOlder();
+  }
+  const reachedRealEnd = atEnd && exhausted;
 
   const queuedRows: QueuedRow[] = (outbox ?? [])
     .filter((op) => op.kind === 'create_transaction' && op.status === 'pending')
@@ -201,7 +209,7 @@ export default function ActivityScreen() {
             keyExtractor={(row) => row.groupId}
             refreshing={status === 'syncing'}
             onRefresh={syncNow}
-            onEndReached={loadMore}
+            onEndReached={handleEndReached}
             onEndReachedThreshold={0.4}
             contentContainerStyle={{ paddingBottom: 140 }}
             renderSectionHeader={({ section }) => (
@@ -239,9 +247,9 @@ export default function ActivityScreen() {
                 </Pressable>
               );
             }}
-            ListFooterComponent={!atEnd ? (
+            ListFooterComponent={!reachedRealEnd ? (
               <Text style={[t.type.label, { color: t.color.textFaint, textAlign: 'center', paddingVertical: t.space.lg }]}>
-                {loadingMore ? 'Loading more…' : ' '}
+                {loadingMore || loadingOlder ? 'Loading more…' : ' '}
               </Text>
             ) : null}
           />
