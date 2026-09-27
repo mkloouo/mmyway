@@ -28,8 +28,14 @@ export function getDb(): ExpoSQLiteDatabase<typeof schema> {
   // next write dies with "Call to function 'NativeStatement.runSync' has been rejected... database
   // is locked" — for the life of the connection, which is why it survived reopening the app.
   // In WAL a reader never blocks the writer; busy_timeout makes the rest wait rather than throw.
-  sqlite.execSync('PRAGMA journal_mode = WAL;');
-  sqlite.execSync('PRAGMA busy_timeout = 5000;');
+  // Switching journal mode needs the write lock, which is exactly what a database already stuck
+  // in this state is holding — so a failure here must not become a crash before the app opens.
+  try {
+    sqlite.execSync('PRAGMA journal_mode = WAL;');
+    sqlite.execSync('PRAGMA busy_timeout = 5000;');
+  } catch (err) {
+    console.error('could not set WAL/busy_timeout', err);
+  }
   cached = drizzleExpo(sqlite, { schema }) as ExpoSQLiteDatabase<typeof schema>;
   migrationDone = migrateExpoSqlite(cached, migrations).catch((err: unknown) => {
     // Swallowed on purpose — the app still runs against whatever schema exists — but a failure
