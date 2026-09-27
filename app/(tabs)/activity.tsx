@@ -125,7 +125,7 @@ export default function ActivityScreen() {
           )}
         />
         {searchOpen && (
-          <View style={{ paddingHorizontal: t.space.lg, paddingBottom: t.space.sm }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm, paddingHorizontal: t.space.lg, paddingBottom: t.space.sm }}>
             <TextInput
               value={search}
               onChangeText={setSearch}
@@ -133,10 +133,18 @@ export default function ActivityScreen() {
               placeholderTextColor={t.color.textFaint}
               autoFocus
               style={{
-                borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm,
+                flex: 1, borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm,
                 paddingHorizontal: t.space.md, paddingVertical: t.space.sm, color: t.color.text,
               }}
             />
+            <Pressable
+              onPress={() => { setSearch(''); setAccountFilter(null); setType('all'); setSearchOpen(false); }}
+              accessibilityRole="button"
+              accessibilityLabel="Clear search and filters"
+              style={({ pressed }) => ({ padding: t.space.sm, opacity: pressed ? 0.6 : 1 })}
+            >
+              <Ionicons name="close" size={20} color={t.color.textMuted} />
+            </Pressable>
           </View>
         )}
 
