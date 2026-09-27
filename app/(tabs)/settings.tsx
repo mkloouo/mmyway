@@ -1,6 +1,6 @@
 // Settings (design §6.6) — grouped Card/Row layout, every › opens a Sheet. No nested FlatLists.
 import { useEffect, useState } from 'react';
-import { Alert, ScrollView, TextInput, View } from 'react-native';
+import { Alert, ScrollView, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import Constants from 'expo-constants';
@@ -130,6 +130,12 @@ export default function SettingsScreen() {
       { text: 'Sign out', style: 'destructive', onPress: async () => { await signOut(); await reload(); } },
     ]);
   }
+
+  const noAccountsHint = (
+    <Text style={[t.type.body, { color: t.color.textMuted }]}>
+      No asset accounts synced yet — connect Firefly III and pull to refresh.
+    </Text>
+  );
 
   const envelopeCount = assetAccounts.filter((a) => hasEnvelopeMarker(a.notes)).length;
   const version = Constants.expoConfig?.version ?? '0.1.0';
@@ -287,6 +293,7 @@ export default function SettingsScreen() {
           {assetAccounts.map((a) => (
             <Chip key={a.id} label={a.name} selected={a.id === defaultAccountId} onPress={async () => { await setDefaultSourceAccountId(db, a.id); setDefaultAccountIdState(a.id); setAccountSheetOpen(false); }} />
           ))}
+          {assetAccounts.length === 0 && noAccountsHint}
         </View>
       </Sheet>
 
@@ -303,6 +310,7 @@ export default function SettingsScreen() {
           {assetAccounts.map((a) => (
             <Chip key={a.id} label={a.name} selected={a.id === cashAccountId} onPress={async () => { await setCashAccountId(db, a.id); setCashAccountIdState(a.id); setCashAccountSheetOpen(false); }} />
           ))}
+          {assetAccounts.length === 0 && noAccountsHint}
         </View>
       </Sheet>
     </Screen>
