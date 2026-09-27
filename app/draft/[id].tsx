@@ -11,6 +11,7 @@ export default function DraftScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const db = useDb();
   const [draft, setDraft] = useState<Draft | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -29,9 +30,16 @@ export default function DraftScreen() {
       <Text>Type: {draft.type}</Text>
       <Button
         title="Confirm"
+        disabled={confirming}
         onPress={async () => {
-          await confirmInboxItem(db, id);
-          router.back();
+          if (confirming) return;
+          setConfirming(true);
+          try {
+            await confirmInboxItem(db, id);
+            router.back();
+          } finally {
+            setConfirming(false);
+          }
         }}
       />
     </View>

@@ -7,9 +7,11 @@
 //   mismatch is a conflict, not an overwrite (Review Focus: conflicting edits).
 // - A failure stops replay at that operation — later operations must not run out of order.
 import { eq } from 'drizzle-orm';
+import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 import type { FF3Client } from '../api/ff3/client';
 import { FF3RequestError } from '../api/ff3/client';
 import { outboxOperations, cachedTransactions } from '../db/schema';
+import * as schema from '../db/schema';
 import type { TransactionSplit } from '../api/ff3/types';
 
 export type OutboxKind =
@@ -35,14 +37,9 @@ export interface DeleteTransactionPayload {
   groupId: string;
 }
 
-// Minimal db surface this module needs — satisfied by both the expo-sqlite and
-// better-sqlite3 Drizzle instances from src/db/client.ts.
-export interface OutboxDb {
-  select: any;
-  update: any;
-  insert: any;
-  delete: any;
-}
+// Both the expo-sqlite and better-sqlite3 Drizzle instances (src/db/client.ts, src/db/testDb.ts)
+// extend BaseSQLiteDatabase<'sync', ...> — only TRunResult differs, which nothing here touches.
+export type OutboxDb = BaseSQLiteDatabase<'sync', any, typeof schema>;
 
 export interface NewOutboxOperation {
   id: string;
