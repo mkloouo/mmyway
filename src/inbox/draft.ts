@@ -20,6 +20,7 @@ export interface Draft {
   budgetId?: string;
   notes?: string;
   sharedWith?: string; // -> `mmyway-shared-<person>` tag, brief §9 Q12
+  extraTags?: string[]; // e.g. `mmyway-reconcile` (Task 9's cash count) — merged in ahead of sharedWith's tag
   // Field names the receipt provider couldn't confidently extract but still populated (design
   // §6.3): the draft screen marks these rows amber with "check this" instead of trusting them
   // silently. Never set outside src/receipt/toDraft.ts.
@@ -51,7 +52,7 @@ function payeeGatedEnd(draft: Draft): { source: { id?: string; name?: string }; 
 }
 
 export function draftToTransactionPayload(clientId: string, draft: Draft): CreateTransactionPayload {
-  const tags: string[] = [];
+  const tags: string[] = [...(draft.extraTags ?? [])];
   if (draft.sharedWith) tags.push(`mmyway-shared-${draft.sharedWith}`);
   const { source, destination } = payeeGatedEnd(draft);
 

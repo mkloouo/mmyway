@@ -8,6 +8,9 @@ const KEYS = {
   defaultSourceAccountId: 'default_source_account_id',
   defaultCurrencyCode: 'default_currency_code',
   cashAccountId: 'cash_account_id',
+  reconcileShortfallAccountId: 'reconcile_shortfall_account_id',
+  reconcileSurplusAccountId: 'reconcile_surplus_account_id',
+  reconcileCategoryName: 'reconcile_category_name',
   localModelBaseUrl: 'local_model_base_url',
   localModelBaseUrls: 'local_model_base_urls',
   localModelActiveUrl: 'local_model_active_url',
@@ -33,6 +36,17 @@ export const setDefaultSourceAccountId = (db: OutboxDb, value: string) => setSet
 // `/cash/i` name match buildReceiptDraftReference used to fall back on.
 export const getCashAccountId = (db: OutboxDb) => getSetting(db, KEYS.cashAccountId);
 export const setCashAccountId = (db: OutboxDb, value: string) => setSetting(db, KEYS.cashAccountId, value);
+
+// The cash count's adjustment payees (design §6.9): an expense account for a shortfall, a
+// revenue account for a surplus, picked once from the reference tables.
+export const getReconcileShortfallAccountId = (db: OutboxDb) => getSetting(db, KEYS.reconcileShortfallAccountId);
+export const setReconcileShortfallAccountId = (db: OutboxDb, value: string) => setSetting(db, KEYS.reconcileShortfallAccountId, value);
+
+export const getReconcileSurplusAccountId = (db: OutboxDb) => getSetting(db, KEYS.reconcileSurplusAccountId);
+export const setReconcileSurplusAccountId = (db: OutboxDb, value: string) => setSetting(db, KEYS.reconcileSurplusAccountId, value);
+
+export const getReconcileCategoryName = (db: OutboxDb) => getSetting(db, KEYS.reconcileCategoryName);
+export const setReconcileCategoryName = (db: OutboxDb, value: string) => setSetting(db, KEYS.reconcileCategoryName, value);
 
 export const getDefaultCurrencyCode = (db: OutboxDb) => getSetting(db, KEYS.defaultCurrencyCode);
 export const setDefaultCurrencyCode = (db: OutboxDb, value: string) => setSetting(db, KEYS.defaultCurrencyCode, value);

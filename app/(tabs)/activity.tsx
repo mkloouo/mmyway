@@ -6,7 +6,7 @@ import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { Ionicons } from '@expo/vector-icons';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, AppBar, SectionHeader, Card, Chip, Money, EmptyState } from '../../src/ui/components';
+import { Screen, AppBar, SectionHeader, Card, Chip, Money, EmptyState, Sheet, Row } from '../../src/ui/components';
 import { CaptureDock } from '../../src/ui/CaptureDock';
 import { currencyOf } from '../../src/ui/money';
 import { categoryColor } from '../../src/ui/categoryColor';
@@ -58,6 +58,7 @@ export default function ActivityScreen() {
 
   const [type, setType] = useState<ActivityTypeFilter>('all');
   const [searchOpen, setSearchOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [accountFilter, setAccountFilter] = useState<string | null>(null);
 
@@ -116,6 +117,9 @@ export default function ActivityScreen() {
             <View style={{ flexDirection: 'row', gap: t.space.md }}>
               <Pressable onPress={() => setSearchOpen((v) => !v)} accessibilityRole="button" accessibilityLabel="Search">
                 <Ionicons name="search" size={20} color={t.color.text} />
+              </Pressable>
+              <Pressable onPress={() => setMenuOpen(true)} accessibilityRole="button" accessibilityLabel="More">
+                <Text style={[t.type.heading, { color: t.color.text }]}>⋯</Text>
               </Pressable>
             </View>
           )}
@@ -226,6 +230,10 @@ export default function ActivityScreen() {
 
         <CaptureDock />
       </View>
+
+      <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title="Activity">
+        <Row first label="Count cash" chevron onPress={() => { setMenuOpen(false); router.push('/count'); }} />
+      </Sheet>
     </Screen>
   );
 }
