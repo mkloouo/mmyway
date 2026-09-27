@@ -1,10 +1,11 @@
 // Activity (design §6.4) — balances, grouped-by-day history with totals, paging, search.
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, SectionList, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, SectionList, Text, View } from 'react-native';
 import { useNavigation } from 'expo-router';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useDb } from '../../src/providers/DbProvider';
+import { SearchField } from '../../src/ui/SearchField';
 import { useTheme } from '../../src/ui/theme';
 import { Screen, AppBar, SectionHeader, Card, Chip, Money, EmptyState, Sheet, Row, Button } from '../../src/ui/components';
 import { CaptureDock } from '../../src/ui/CaptureDock';
@@ -262,25 +263,14 @@ export default function ActivityScreen() {
           </View>
         ) : searchOpen ? (
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm, paddingHorizontal: t.space.lg, paddingVertical: t.space.md }}>
-            <TextInput
+            <SearchField
               value={search}
               onChangeText={setSearch}
               placeholder="Search description or payee"
-              placeholderTextColor={t.color.textFaint}
               autoFocus
-              style={{
-                flex: 1, borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm,
-                paddingHorizontal: t.space.md, paddingVertical: t.space.sm, color: t.color.text,
-              }}
+              onClear={() => { setSearch(''); setAccountFilter(null); setType('all'); setSearchOpen(false); }}
+              style={{ flex: 1 }}
             />
-            <Pressable
-              onPress={() => { setSearch(''); setAccountFilter(null); setType('all'); setSearchOpen(false); }}
-              accessibilityRole="button"
-              accessibilityLabel="Clear search and filters"
-              style={({ pressed }) => ({ padding: t.space.sm, opacity: pressed ? 0.6 : 1 })}
-            >
-              <Ionicons name="close" size={20} color={t.color.textMuted} />
-            </Pressable>
           </View>
         ) : (
           <AppBar

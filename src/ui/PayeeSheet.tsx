@@ -1,8 +1,9 @@
 // Search + live re-rank over merchant history (design §6.2). Uses Sheet's list mode: the
 // history can be ~400 rows, which a ScrollView must not try to mount at once.
 import { useMemo, useState } from 'react';
-import { FlatList, Pressable, Text, TextInput } from 'react-native';
+import { FlatList, Pressable, Text } from 'react-native';
 import { Sheet } from './components';
+import { SearchField } from './SearchField';
 import { useTheme } from './theme';
 import { rankCandidates } from '../suggest/rank';
 import type { MerchantHistory } from '../lookup/merchantLookup';
@@ -46,18 +47,7 @@ export function PayeeSheet({
         </Pressable>
       )}
     >
-      <TextInput
-        placeholder={`Search ${payeeLabel}s`}
-        value={query}
-        onChangeText={setQuery}
-        autoFocus
-        placeholderTextColor={t.color.textFaint}
-        style={{
-          borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm,
-          paddingHorizontal: t.space.md, paddingVertical: t.space.sm, color: t.color.text,
-          marginBottom: t.space.sm,
-        }}
-      />
+      <SearchField value={query} onChangeText={setQuery} placeholder={`Search ${payeeLabel}s`} autoFocus style={{ marginBottom: t.space.sm }} />
       <FlatList
         data={results}
         keyExtractor={(h) => h.merchantKey}

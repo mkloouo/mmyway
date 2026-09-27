@@ -1,9 +1,10 @@
 // Asset accounts and the cash-envelope marker (design §6.6).
 import { useState } from 'react';
-import { FlatList, Pressable, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { eq } from 'drizzle-orm';
 import { useDb } from '../../src/providers/DbProvider';
+import { SearchField } from '../../src/ui/SearchField';
 import { useTheme } from '../../src/ui/theme';
 import { Screen, AppBar, Card, Row, Sheet, Chip, Button } from '../../src/ui/components';
 import { referenceAccounts } from '../../src/db/schema';
@@ -53,7 +54,19 @@ export default function AccountsScreen() {
       <AppBar
         title="Accounts"
         right={(
-          <Button title={reordering ? 'Done' : 'Reorder'} variant="ghost" onPress={() => { setReordering((r) => !r); setSearch(''); }} />
+          reordering ? (
+            <Button title="Done" variant="ghost" onPress={() => setReordering(false)} />
+          ) : (
+            <Pressable
+              onPress={() => { setReordering(true); setSearch(''); }}
+              accessibilityRole="button"
+              accessibilityLabel="Reorder accounts"
+              hitSlop={8}
+              style={({ pressed }) => ({ padding: t.space.xs, opacity: pressed ? 0.6 : 1 })}
+            >
+              <Ionicons name="swap-vertical" size={24} color={t.color.text} />
+            </Pressable>
+          )
         )}
       />
       {reordering ? (
@@ -62,14 +75,7 @@ export default function AccountsScreen() {
         </Text>
       ) : (
         <View style={{ paddingHorizontal: t.space.lg }}>
-          <TextInput
-            value={search}
-            onChangeText={setSearch}
-            placeholder="Search accounts"
-            placeholderTextColor={t.color.textFaint}
-            autoCapitalize="none"
-            style={{ borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm, paddingHorizontal: t.space.md, paddingVertical: t.space.sm, color: t.color.text }}
-          />
+          <SearchField value={search} onChangeText={setSearch} placeholder="Search accounts" />
         </View>
       )}
       <FlatList

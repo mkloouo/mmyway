@@ -1,9 +1,10 @@
 // Alias targets, picked from the reference tables (design §6.7) — this is what makes the §3.4
 // destination_id fix reachable from the UI: an alias now stores targetId, not just a name.
 import { useMemo, useState } from 'react';
-import { FlatList, Pressable, Text, TextInput } from 'react-native';
+import { FlatList, Pressable, Text } from 'react-native';
 import { useLiveQuery } from '../db/useLiveQuery';
 import { Sheet } from './components';
+import { SearchField } from './SearchField';
 import { useTheme } from './theme';
 import { useDb } from '../providers/DbProvider';
 import { referenceAccounts, referenceBudgets, referenceCurrencies } from '../db/schema';
@@ -67,17 +68,7 @@ export function TargetPickerSheet({
         </Pressable>
       ) : undefined}
     >
-      <TextInput
-        value={query}
-        onChangeText={setQuery}
-        placeholder={`Search ${kind}s`}
-        autoFocus
-        placeholderTextColor={t.color.textFaint}
-        style={{
-          borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm,
-          paddingHorizontal: t.space.md, paddingVertical: t.space.sm, color: t.color.text, marginBottom: t.space.sm,
-        }}
-      />
+      <SearchField value={query} onChangeText={setQuery} placeholder={`Search ${kind}s`} autoFocus style={{ marginBottom: t.space.sm }} />
       <FlatList
         data={results}
         keyExtractor={(item) => item.targetId ?? item.targetName}

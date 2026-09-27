@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Alert, FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
 import { useDb } from '../../src/providers/DbProvider';
+import { SearchField } from '../../src/ui/SearchField';
 import { useTheme } from '../../src/ui/theme';
 import { Screen, AppBar, Chip, Button, Sheet, Row } from '../../src/ui/components';
 import { TargetPickerSheet, type AliasKind, type AliasTarget } from '../../src/ui/TargetPickerSheet';
@@ -78,13 +79,7 @@ export default function AliasesScreen() {
         )}
       />
       <View style={{ paddingHorizontal: t.space.lg, gap: t.space.sm }}>
-        <TextInput
-          value={search}
-          onChangeText={setSearch}
-          placeholder="Search aliases"
-          placeholderTextColor={t.color.textFaint}
-          style={{ borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm, paddingHorizontal: t.space.md, paddingVertical: t.space.sm, color: t.color.text }}
-        />
+        <SearchField value={search} onChangeText={setSearch} placeholder="Search aliases" />
         <View style={{ flexDirection: 'row', gap: t.space.sm, flexWrap: 'wrap' }}>
           {KINDS.map((k) => (
             <Chip key={k} label={`${k[0]!.toUpperCase() + k.slice(1)} (${counts[k] ?? 0})`} selected={kind === k} onPress={() => setKind(k)} />

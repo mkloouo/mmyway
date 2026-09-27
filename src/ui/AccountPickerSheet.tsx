@@ -1,8 +1,9 @@
 // One search-and-pick sheet for asset accounts, on top of the shared Sheet (design §4). Every
 // account is already local via fetchAll, so the search over filterAccounts is instant and offline.
 import { useState } from 'react';
-import { FlatList, Pressable, Text, TextInput } from 'react-native';
+import { FlatList, Pressable, Text } from 'react-native';
 import { Sheet } from './components';
+import { SearchField } from './SearchField';
 import { useTheme } from './theme';
 import { filterAccounts } from '../accounts/filterAccounts';
 import { currencyOf, formatMoney } from './money';
@@ -33,17 +34,7 @@ export function AccountPickerSheet({
 
   return (
     <Sheet visible={visible} onClose={() => { setQuery(''); onClose(); }} title={title} scroll={false}>
-      <TextInput
-        value={query}
-        onChangeText={setQuery}
-        placeholder="Search accounts"
-        autoFocus
-        placeholderTextColor={t.color.textFaint}
-        style={{
-          borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm,
-          paddingHorizontal: t.space.md, paddingVertical: t.space.sm, color: t.color.text, marginBottom: t.space.sm,
-        }}
-      />
+      <SearchField value={query} onChangeText={setQuery} placeholder="Search accounts" autoFocus style={{ marginBottom: t.space.sm }} />
       <FlatList
         data={results}
         keyExtractor={(item) => item.id}
