@@ -1,4 +1,4 @@
-import { createTestDb } from '../db/client';
+import { createTestDb } from '../db/testDb';
 import { pullUnreviewedRecurring, approveRecurringReview } from './recurringReview';
 import { inboxItems, outboxOperations } from '../db/schema';
 

@@ -24,6 +24,14 @@ Replaces a Telegram capture bot. Full context: `the planning brief`
 ## Module layout
 
 - `src/db/` — Drizzle schema + migrations. SQLite is the source of truth for the UI.
+  `client.ts` (expo-sqlite, app-facing) and `testDb.ts` (better-sqlite3, Jest-only) are
+  separate files on purpose — **never merge them.** `testDb.ts` requires
+  `drizzle-orm/better-sqlite3/migrator`, which imports `node:crypto`/`node:fs` at module
+  scope; Metro bundles every `require()`/`import` it finds in any file reachable from the
+  app entry point, lazy or not, so if that ever ends up in a file `app/`/`src/app/` imports
+  (directly or transitively), the Android bundle fails with "attempted to import the Node
+  standard library module". Confirmed on a real device build. Test files import
+  `createTestDb` from `./testDb` (or `../db/testDb`), never from `./client`.
 - `src/api/ff3/` — hand-written FF3 client (fetch-based, no generated types — see note below).
 - `src/sync/` — outbox (queued writes) and reference-data pulls. Read `src/sync/outbox.ts`'s
   header comment before changing replay order or retry semantics.

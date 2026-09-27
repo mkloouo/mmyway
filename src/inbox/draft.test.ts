@@ -1,5 +1,5 @@
 import { draftToTransactionPayload, findDuplicateReceiptItem, type Draft } from './draft';
-import { createTestDb } from '../db/client';
+import { createTestDb } from '../db/testDb';
 import { inboxItems } from '../db/schema';
 
 const base: Draft = {

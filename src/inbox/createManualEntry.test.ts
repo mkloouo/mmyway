@@ -1,4 +1,4 @@
-import { createTestDb } from '../db/client';
+import { createTestDb } from '../db/testDb';
 import { upsertAlias } from '../lookup/aliases';
 import { createManualEntry, confirmInboxItem } from './createManualEntry';
 import { outboxOperations, inboxItems } from '../db/schema';

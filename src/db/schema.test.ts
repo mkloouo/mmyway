@@ -1,4 +1,5 @@
-import { createTestDb, schema } from './client';
+import { schema } from './client';
+import { createTestDb } from './testDb';
 
 describe('db schema', () => {
   it('round-trips a row through every table', async () => {

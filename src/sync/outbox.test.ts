@@ -1,4 +1,4 @@
-import { createTestDb } from '../db/client';
+import { createTestDb } from '../db/testDb';
 import { enqueueOperation, replayOutbox } from './outbox';
 import { outboxOperations, cachedTransactions } from '../db/schema';
 

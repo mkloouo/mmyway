@@ -1,4 +1,4 @@
-import { createTestDb } from '../db/client';
+import { createTestDb } from '../db/testDb';
 import { matchAlias, upsertAlias } from './aliases';
 
 describe('matchAlias', () => {
