@@ -36,6 +36,7 @@ export interface UpdateTransactionPayload {
 
 export interface DeleteTransactionPayload {
   groupId: string;
+  expectedUpdatedAt?: string; // conflict check, same as update_transaction; optional for callers that skip it
 }
 
 export interface AttachReceiptPayload {
@@ -60,7 +61,12 @@ export interface ReplayResult {
   failedAt: string | null; // operation id where replay stopped, if any
 }
 
-export type ConflictHandler = (op: { id: string; payload: UpdateTransactionPayload }, serverUpdatedAt: string) => void;
+export type ConflictHandler = (op: { id: string; payload: UpdateTransactionPayload | DeleteTransactionPayload }, serverUpdatedAt: string) => void;
+
+async function conflictingUpdatedAt(db: OutboxDb, groupId: string, expectedUpdatedAt: string): Promise<string | null> {
+  const current = (await db.select().from(cachedTransactions).where(eq(cachedTransactions.groupId, groupId)))[0];
+  return current && current.updatedAt !== expectedUpdatedAt ? current.updatedAt : null;
+}
 
 export async function enqueueOperation(db: OutboxDb, op: NewOutboxOperation): Promise<void> {
   const existing = await db.select().from(outboxOperations);
@@ -135,10 +141,10 @@ export async function replayOutbox(db: OutboxDb, client: FF3Client, opts: { onCo
         });
       } else if (row.kind === 'update_transaction' || row.kind === 'recurring_review') {
         const p = payload as UpdateTransactionPayload;
-        const current = (await db.select().from(cachedTransactions).where(eq(cachedTransactions.groupId, p.groupId)))[0];
-        if (current && current.updatedAt !== p.expectedUpdatedAt) {
+        const conflictAt = await conflictingUpdatedAt(db, p.groupId, p.expectedUpdatedAt);
+        if (conflictAt) {
           result.conflicted.push(row.id);
-          opts.onConflict?.({ id: row.id, payload: p }, current.updatedAt);
+          opts.onConflict?.({ id: row.id, payload: p }, conflictAt);
           await db.update(outboxOperations).set({ status: 'failed', lastError: 'conflict' }).where(eq(outboxOperations.id, row.id));
           result.failedAt = row.id;
           break;
@@ -149,6 +155,16 @@ export async function replayOutbox(db: OutboxDb, client: FF3Client, opts: { onCo
         });
       } else if (row.kind === 'delete_transaction') {
         const p = payload as DeleteTransactionPayload;
+        if (p.expectedUpdatedAt) {
+          const conflictAt = await conflictingUpdatedAt(db, p.groupId, p.expectedUpdatedAt);
+          if (conflictAt) {
+            result.conflicted.push(row.id);
+            opts.onConflict?.({ id: row.id, payload: p }, conflictAt);
+            await db.update(outboxOperations).set({ status: 'failed', lastError: 'conflict' }).where(eq(outboxOperations.id, row.id));
+            result.failedAt = row.id;
+            break;
+          }
+        }
         await client.request(`/v1/transactions/${p.groupId}`, { method: 'DELETE' });
       }
 

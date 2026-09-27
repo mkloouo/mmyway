@@ -39,9 +39,10 @@ describe('runSync', () => {
     const transactionGets = client.request.mock.calls.filter(
       ([path, init]) => path.startsWith('/v1/transactions') && init?.method !== 'POST',
     );
-    // one from pullReferenceData's own pullRecentTransactions call, one from pullUnreviewedRecurring —
-    // no third call, which would be the conditional re-pull this test asserts gets skipped.
-    expect(transactionGets).toHaveLength(2);
+    // one from pullReferenceData's own pullRecentTransactions call — no second call, which
+    // would be the conditional re-pull this test asserts gets skipped. pullUnreviewedRecurring
+    // hits /v1/tags/recurring/transactions instead, so it doesn't count toward this.
+    expect(transactionGets).toHaveLength(1);
   });
 
   it('surfaces a mid-queue replay failure in the summary instead of throwing', async () => {

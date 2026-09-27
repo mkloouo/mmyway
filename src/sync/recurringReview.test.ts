@@ -1,6 +1,7 @@
 import { createTestDb } from '../db/testDb';
-import { pullUnreviewedRecurring, approveRecurringReview } from './recurringReview';
-import { inboxItems, outboxOperations } from '../db/schema';
+import { pullUnreviewedRecurring, approveRecurringReview, editRecurringReview, deleteRecurringReview } from './recurringReview';
+import { replayOutbox } from './outbox';
+import { inboxItems, outboxOperations, cachedTransactions } from '../db/schema';
 
 function fakeClient(data: unknown[]) {
   return { request: jest.fn(async () => ({ data })) };
@@ -16,6 +17,15 @@ describe('pullUnreviewedRecurring', () => {
     expect(created).toBe(1);
     const rows = await db.select().from(inboxItems);
     expect(rows).toHaveLength(1);
+  });
+
+  it('fetches by the recurring tag, not an invalid type filter (defect (2))', async () => {
+    const db = createTestDb();
+    const client = fakeClient([]);
+    await pullUnreviewedRecurring(db as any, client as any);
+    const [path] = (client.request as jest.Mock).mock.calls[0]!;
+    expect(path).toContain('/v1/tags/recurring/transactions');
+    expect(path).not.toContain('type=recurring');
   });
 
   it('skips a transaction that already has the reviewed tag', async () => {
@@ -51,5 +61,67 @@ describe('approveRecurringReview', () => {
     const ops = await db.select().from(outboxOperations);
     const payload = JSON.parse(ops[0]!.payloadJson);
     expect(payload.changes.tags).toContain('mmyway-reviewed');
+  });
+});
+
+describe('editRecurringReview', () => {
+  it('enqueues a partial PUT keyed by transaction_journal_id with the review tag added (R2/R3)', async () => {
+    const db = createTestDb();
+    const client = fakeClient([
+      { id: 'g1', attributes: { transactions: [{ transaction_journal_id: 'j1', tags: ['recurring'], updated_at: '2026-09-01T00:00:00Z' }] } },
+    ]);
+    await pullUnreviewedRecurring(db as any, client as any);
+    const item = (await db.select().from(inboxItems))[0]!;
+
+    await editRecurringReview(db as any, item.id, { amount: '99.00', currency_code: 'EUR', source_id: 'acc-1' });
+
+    const ops = await db.select().from(outboxOperations);
+    expect(ops).toHaveLength(1);
+    const payload = JSON.parse(ops[0]!.payloadJson);
+    expect(payload.transactionJournalId).toBe('j1');
+    expect(payload.changes).toMatchObject({ amount: '99.00', currency_code: 'EUR', source_id: 'acc-1' });
+    expect(payload.changes.tags).toContain('mmyway-reviewed');
+  });
+});
+
+describe('deleteRecurringReview', () => {
+  it('enqueues a conflict-checked delete', async () => {
+    const db = createTestDb();
+    const client = fakeClient([
+      { id: 'g1', attributes: { transactions: [{ transaction_journal_id: 'j1', tags: ['recurring'], updated_at: '2026-09-01T00:00:00Z' }] } },
+    ]);
+    await pullUnreviewedRecurring(db as any, client as any);
+    const item = (await db.select().from(inboxItems))[0]!;
+
+    await deleteRecurringReview(db as any, item.id);
+
+    const ops = await db.select().from(outboxOperations);
+    expect(ops).toHaveLength(1);
+    expect(ops[0]!.kind).toBe('delete_transaction');
+    const payload = JSON.parse(ops[0]!.payloadJson);
+    expect(payload).toMatchObject({ groupId: 'g1', expectedUpdatedAt: '2026-09-01T00:00:00Z' });
+  });
+
+  it('surfaces a stale updated_at as a conflict instead of deleting (Review Focus)', async () => {
+    const db = createTestDb();
+    const client = fakeClient([
+      { id: 'g1', attributes: { transactions: [{ transaction_journal_id: 'j1', tags: ['recurring'], updated_at: '2026-09-01T00:00:00Z' }] } },
+    ]);
+    await pullUnreviewedRecurring(db as any, client as any);
+    const item = (await db.select().from(inboxItems))[0]!;
+    await deleteRecurringReview(db as any, item.id);
+
+    // The server's own cache says the transaction changed after the review was pulled.
+    await db.insert(cachedTransactions).values({
+      groupId: 'g1', journalId: 'j1', type: 'withdrawal', date: '2026-09-01', amount: '10.00',
+      currencyCode: 'PLN', description: 'test', tagsJson: '[]', updatedAt: '2026-09-15T00:00:00Z',
+      syncedAt: '2026-09-15T00:00:00Z',
+    });
+
+    const replayClient = { request: jest.fn(async () => { throw new Error('DELETE must not be called on conflict'); }) };
+    const result = await replayOutbox(db as any, replayClient as any);
+
+    expect(result.conflicted).toHaveLength(1);
+    expect(replayClient.request).not.toHaveBeenCalled();
   });
 });
