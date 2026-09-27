@@ -1,7 +1,10 @@
 // The whole component kit (design §4). Ten primitives, no styling outside this file:
 // a screen that needs a new look adds a variant here rather than inlining styles.
-import type { ReactNode } from 'react';
-import { Modal, Pressable, ScrollView, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { useEffect, useRef, type ReactNode } from 'react';
+import {
+  Animated, KeyboardAvoidingView, Modal, Pressable, ScrollView, Text, View,
+  type StyleProp, type ViewStyle,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme, hitSize, type Theme } from './theme';
 import { formatMoney, signFor, type DisplayCurrency } from './money';
@@ -176,10 +179,10 @@ export function Money({
   );
 }
 
-export function StatusPill({ state, label }: { state: 'ok' | 'queued' | 'offline' | 'error'; label: string }) {
+export function StatusPill({ state, label }: { state: 'ok' | 'syncing' | 'queued' | 'offline' | 'error'; label: string }) {
   const t = useTheme();
   const dot = state === 'ok' ? t.color.income
-    : state === 'queued' ? t.color.accent
+    : state === 'queued' || state === 'syncing' ? t.color.accent
     : state === 'error' ? t.color.danger
     : t.color.textFaint;
   return (
@@ -190,40 +193,71 @@ export function StatusPill({ state, label }: { state: 'ok' | 'queued' | 'offline
         borderRadius: t.radius.pill, backgroundColor: t.color.surfaceAlt,
       }}
     >
-      <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dot }} />
+      <Pulse active={state === 'syncing'}>
+        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dot }} />
+      </Pulse>
       <Text style={[t.type.label, { color: t.color.textMuted }]}>{label}</Text>
     </View>
   );
 }
 
-/** One bottom sheet serves every picker in the app (design §4). */
+/** Opacity loop for "this is working, not stuck": the sync dot and the parsing receipt card. */
+export function Pulse({ active, children }: { active: boolean; children: ReactNode }) {
+  const value = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    if (!active) {
+      value.setValue(1);
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(value, { toValue: 0.4, duration: 600, useNativeDriver: true }),
+        Animated.timing(value, { toValue: 1, duration: 600, useNativeDriver: true }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [active, value]);
+  return <Animated.View style={{ opacity: value }}>{children}</Animated.View>;
+}
+
+/**
+ * One bottom sheet serves every picker in the app (design §4). `scroll` (the default) wraps the
+ * body in a ScrollView; pass `scroll={false}` when the caller supplies its own FlatList, which an
+ * unbounded list (~400 payees) must — a ScrollView would mount every row.
+ * Android back closes it, and the keyboard never covers it: every text field in the app is here.
+ */
 export function Sheet({
-  visible, title, onClose, children, footer,
+  visible, title, onClose, children, footer, scroll = true,
 }: {
   visible: boolean;
   title: string;
   onClose: () => void;
   children: ReactNode;
   footer?: ReactNode;
+  scroll?: boolean;
 }) {
   const t = useTheme();
+  const bodyPadding = { paddingHorizontal: t.space.lg, paddingBottom: t.space.lg, gap: t.space.md };
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' }} onPress={onClose} accessibilityLabel="Close" />
-      <View
-        style={{
-          maxHeight: '80%', backgroundColor: t.color.surface,
-          borderTopLeftRadius: t.radius.lg, borderTopRightRadius: t.radius.lg,
-          paddingBottom: t.space.xxl, elevation: 8,
-        }}
-      >
-        <View style={{ alignSelf: 'center', width: 36, height: 4, borderRadius: 2, backgroundColor: t.color.border, marginVertical: t.space.md }} />
-        <Text style={[t.type.heading, { color: t.color.text, paddingHorizontal: t.space.lg, paddingBottom: t.space.md }]}>{title}</Text>
-        <ScrollView contentContainerStyle={{ paddingHorizontal: t.space.lg, paddingBottom: t.space.lg, gap: t.space.md }}>
-          {children}
-        </ScrollView>
-        {!!footer && <View style={{ paddingHorizontal: t.space.lg, paddingTop: t.space.md }}>{footer}</View>}
-      </View>
+      <KeyboardAvoidingView behavior="padding" style={{ flex: 1, justifyContent: 'flex-end' }}>
+        <Pressable style={{ flex: 1, backgroundColor: t.color.scrim }} onPress={onClose} accessibilityLabel="Close" />
+        <View
+          style={{
+            maxHeight: '80%', backgroundColor: t.color.surface,
+            borderTopLeftRadius: t.radius.lg, borderTopRightRadius: t.radius.lg,
+            paddingBottom: t.space.xxl, elevation: 8,
+          }}
+        >
+          <View style={{ alignSelf: 'center', width: 36, height: 4, borderRadius: 2, backgroundColor: t.color.border, marginVertical: t.space.md }} />
+          <Text style={[t.type.heading, { color: t.color.text, paddingHorizontal: t.space.lg, paddingBottom: t.space.md }]}>{title}</Text>
+          {scroll
+            ? <ScrollView contentContainerStyle={bodyPadding}>{children}</ScrollView>
+            : <View style={[bodyPadding, { flexShrink: 1 }]}>{children}</View>}
+          {!!footer && <View style={{ paddingHorizontal: t.space.lg, paddingTop: t.space.md }}>{footer}</View>}
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

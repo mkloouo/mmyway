@@ -19,6 +19,7 @@ export interface Palette {
   warnSoft: string;
   danger: string;
   dangerSoft: string;
+  scrim: string;
 }
 
 const light: Palette = {
@@ -37,6 +38,7 @@ const light: Palette = {
   warnSoft: '#FDF0DC',
   danger: '#C2413A',
   dangerSoft: '#FBE9E7',
+  scrim: 'rgba(0, 0, 0, 0.40)',
 };
 
 const dark: Palette = {
@@ -55,6 +57,7 @@ const dark: Palette = {
   warnSoft: '#3A2C10',
   danger: '#F87171',
   dangerSoft: '#3A1E1C',
+  scrim: 'rgba(0, 0, 0, 0.60)',
 };
 
 export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, xxxl: 32 } as const;
