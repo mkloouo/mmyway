@@ -25,6 +25,10 @@ import { rankCandidates } from '../src/suggest/rank';
 import { divideDecimal, isNegative } from '../src/api/ff3/decimal';
 import type { Draft } from '../src/inbox/draft';
 
+// A ScrollView defaults to flexGrow/flexShrink 1, so a row of chips would otherwise stretch or
+// be clipped as it competes with the keypad below it for height.
+const rowScroll = { flexGrow: 0, flexShrink: 0 } as const;
+
 const TYPES: { type: Draft['type']; label: string }[] = [
   { type: 'withdrawal', label: 'Expense' },
   { type: 'deposit', label: 'Income' },
@@ -279,7 +283,7 @@ export default function CaptureScreen() {
 
         <View style={{ gap: t.space.sm }}>
           {isPayeeType && (
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: t.space.lg, gap: t.space.sm }}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={rowScroll} contentContainerStyle={{ paddingHorizontal: t.space.lg, gap: t.space.sm }}>
               {rankedPayees.map((h) => (
                 <Chip key={h.merchantKey} label={h.displayName} selected={merchantRawInput === h.displayName} onPress={() => applyPayeeHistory(h)} />
               ))}
@@ -289,12 +293,12 @@ export default function CaptureScreen() {
 
           {type === 'transfer' ? (
             <>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: t.space.lg, gap: t.space.sm }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={rowScroll} contentContainerStyle={{ paddingHorizontal: t.space.lg, gap: t.space.sm }}>
                 {assetAccounts.map((a) => (
                   <Chip key={a.id} label={`From ${a.name}`} selected={effectiveSourceId === a.id} onPress={() => setSourceId(a.id)} />
                 ))}
               </ScrollView>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: t.space.lg, gap: t.space.sm }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={rowScroll} contentContainerStyle={{ paddingHorizontal: t.space.lg, gap: t.space.sm }}>
                 {assetAccounts.map((a) => (
                   <Chip key={a.id} label={`To ${a.name}`} selected={destinationId === a.id} onPress={() => setDestinationId(a.id)} />
                 ))}
@@ -303,7 +307,7 @@ export default function CaptureScreen() {
             </>
           ) : (
             <>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: t.space.lg, gap: t.space.sm }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={rowScroll} contentContainerStyle={{ paddingHorizontal: t.space.lg, gap: t.space.sm }}>
                 {assetAccounts.map((a) => (
                   <Chip
                     key={a.id}
@@ -313,7 +317,7 @@ export default function CaptureScreen() {
                   />
                 ))}
               </ScrollView>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: t.space.lg, gap: t.space.sm }}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={rowScroll} contentContainerStyle={{ paddingHorizontal: t.space.lg, gap: t.space.sm }}>
                 <Chip
                   label={categoryName ?? 'Category'}
                   selected={!!categoryName}

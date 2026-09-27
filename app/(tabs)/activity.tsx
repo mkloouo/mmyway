@@ -111,21 +111,10 @@ export default function ActivityScreen() {
   return (
     <Screen>
       <View style={{ flex: 1 }}>
-        <AppBar
-          title="Activity"
-          right={(
-            <View style={{ flexDirection: 'row', gap: t.space.md }}>
-              <Pressable onPress={() => setSearchOpen((v) => !v)} accessibilityRole="button" accessibilityLabel="Search">
-                <Ionicons name="search" size={20} color={t.color.text} />
-              </Pressable>
-              <Pressable onPress={() => setMenuOpen(true)} accessibilityRole="button" accessibilityLabel="More">
-                <Text style={[t.type.heading, { color: t.color.text }]}>⋯</Text>
-              </Pressable>
-            </View>
-          )}
-        />
-        {searchOpen && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm, paddingHorizontal: t.space.lg, paddingBottom: t.space.sm }}>
+        {/* Search takes the app bar's place rather than adding a row below it, so opening it
+            does not shove the balances and the list down the screen. */}
+        {searchOpen ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm, paddingHorizontal: t.space.lg, paddingVertical: t.space.md }}>
             <TextInput
               value={search}
               onChangeText={setSearch}
@@ -146,10 +135,31 @@ export default function ActivityScreen() {
               <Ionicons name="close" size={20} color={t.color.textMuted} />
             </Pressable>
           </View>
+        ) : (
+          <AppBar
+            title="Activity"
+            right={(
+              <View style={{ flexDirection: 'row', gap: t.space.md }}>
+                <Pressable onPress={() => setSearchOpen(true)} accessibilityRole="button" accessibilityLabel="Search">
+                  <Ionicons name="search" size={20} color={t.color.text} />
+                </Pressable>
+                <Pressable onPress={() => setMenuOpen(true)} accessibilityRole="button" accessibilityLabel="More">
+                  <Text style={[t.type.heading, { color: t.color.text }]}>⋯</Text>
+                </Pressable>
+              </View>
+            )}
+          />
         )}
 
         {assetAccounts.length > 0 && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: t.space.lg, gap: t.space.sm, paddingBottom: t.space.sm }}>
+          // A ScrollView defaults to flexGrow/flexShrink 1, so this row competed with the
+          // SectionList for height and had its cards clipped along the bottom edge.
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ flexGrow: 0, flexShrink: 0 }}
+            contentContainerStyle={{ paddingHorizontal: t.space.lg, gap: t.space.sm, paddingBottom: t.space.sm }}
+          >
             {assetAccounts.map((a) => {
               const stale = a.currentBalanceDate ? new Date().getTime() - new Date(a.currentBalanceDate).getTime() > STALE_MS : true;
               const selected = accountFilter === a.name;
@@ -186,6 +196,7 @@ export default function ActivityScreen() {
         {hasResults && (
           <SectionList<CachedTransactionRow | QueuedRow, DisplaySection>
             ref={listRef}
+            style={{ flex: 1 }}
             sections={displaySections}
             keyExtractor={(row) => row.groupId}
             refreshing={status === 'syncing'}
