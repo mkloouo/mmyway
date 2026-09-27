@@ -1,8 +1,8 @@
 // Inbox (design §6.1) — the approval queue. Only ever holds unfinished work; confirmed/synced
 // items leave every section (see src/inbox/useInboxSections.ts).
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Pressable, SectionList, Text, TextInput, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { eq } from 'drizzle-orm';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -215,7 +215,9 @@ export default function InboxScreen() {
   }
 
   const [hasCredentials, setHasCredentials] = useState<boolean | null>(null);
-  useEffect(() => { readStoredCredentials().then((c) => setHasCredentials(!!c)); }, []);
+  // Re-read on every focus: the tab stays mounted, so signing in on Settings and coming back
+  // would otherwise keep showing "Connect Firefly III".
+  useFocusEffect(useCallback(() => { readStoredCredentials().then((c) => setHasCredentials(!!c)); }, []));
 
   const [syncSheetOpen, setSyncSheetOpen] = useState(false);
   const [snackbar, setSnackbar] = useState<SnackbarEntry | null>(null);
@@ -341,7 +343,6 @@ export default function InboxScreen() {
   const dateTitle = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' });
 
   const showOfflineBanner = hasCredentials === true && summary && !summary.ff3Reachable && pendingOutboxCount > 0;
-  const hasAnySection = sections.length > 0;
   const hasSyncedBefore = (cachedTxRows ?? []).length > 0;
 
   return (
@@ -362,86 +363,89 @@ export default function InboxScreen() {
           </View>
         )}
 
-        {hasCredentials === false && !hasAnySection && (
-          <EmptyState
-            glyph="⚡"
-            title="Connect Firefly III"
-            hint="Sign in to start capturing entries."
-            action={<Button title="Go to Settings" onPress={() => router.push('/settings')} />}
-          />
-        )}
-        {hasCredentials === true && !hasSyncedBefore && !hasAnySection && (
-          <EmptyState glyph="↻" title="Nothing synced yet" hint="Pull to refresh." />
-        )}
-        {hasCredentials === true && hasSyncedBefore && !hasAnySection && (
-          <EmptyState
-            glyph="✓"
-            title="Inbox zero"
-            hint="Nothing waiting to confirm."
-            action={(
-              <View style={{ flexDirection: 'row', gap: t.space.md }}>
-                <Button title="＋ Add" onPress={() => router.push('/capture')} />
-                <Button title="📷" variant="secondary" onPress={() => router.push('/receipt')} />
-              </View>
-            )}
-          />
-        )}
-
-        {hasAnySection && (
-          <SectionList
-            sections={sections}
-            keyExtractor={(row) => row.id}
-            refreshing={status === 'syncing'}
-            onRefresh={syncNow}
-            contentContainerStyle={{ paddingBottom: 140 }}
-            renderSectionHeader={({ section }) => (
-              <SectionHeader
-                title={section.title}
-                action={section.key === 'confirm' && readyToConfirm.length >= 2 ? (
-                  <Pressable onPress={confirmAll} disabled={confirmingAll} accessibilityRole="button">
-                    <Text style={[t.type.label, { color: t.color.accent, fontWeight: '700', opacity: confirmingAll ? 0.5 : 1 }]}>
-                      {confirmingAll ? `Confirming ${confirmProgress.done}/${confirmProgress.total}` : `Confirm all (${readyToConfirm.length})`}
-                    </Text>
-                  </Pressable>
-                ) : undefined}
-              />
-            )}
-            renderItem={({ item, section }) => {
-              if (section.key === 'attention') {
-                return (
-                  <AttentionCard
-                    entry={item as AttentionItem}
-                    onRetryError={retryError}
-                    onDiscardError={discardError}
-                    onRetryOp={retryOpNow}
-                    onResolveConflict={resolveConflict}
-                  />
-                );
-              }
-              const row = item as InboxItemRow;
-              if (section.key === 'review') {
-                return (
-                  <ReviewCard
-                    item={row}
-                    currencies={currencies ?? []}
-                    onApprove={() => approveRecurringReview(db, row.id)}
-                    onEdit={() => startEditReview(row)}
-                    onDelete={() => discardReview(row.id)}
-                  />
-                );
-              }
+        {/* Always mounted (empty states go in ListEmptyComponent) so pull-to-refresh works on an
+            empty Inbox too. */}
+        <SectionList
+          sections={sections}
+          keyExtractor={(row) => row.id}
+          refreshing={status === 'syncing'}
+          onRefresh={syncNow}
+          contentContainerStyle={{ paddingBottom: 140 }}
+          ListEmptyComponent={(
+            <>
+              {hasCredentials === false && (
+                <EmptyState
+                  glyph="⚡"
+                  title="Connect Firefly III"
+                  hint="Sign in to start capturing entries."
+                  action={<Button title="Go to Settings" onPress={() => router.push('/settings')} />}
+                />
+              )}
+              {hasCredentials === true && !hasSyncedBefore && (
+                <EmptyState glyph="↻" title="Nothing synced yet" hint="Pull to refresh." />
+              )}
+              {hasCredentials === true && hasSyncedBefore && (
+                <EmptyState
+                  glyph="✓"
+                  title="Inbox zero"
+                  hint="Nothing waiting to confirm."
+                  action={(
+                    <View style={{ flexDirection: 'row', gap: t.space.md }}>
+                      <Button title="＋ Add" onPress={() => router.push('/capture')} />
+                      <Button title="📷" variant="secondary" onPress={() => router.push('/receipt')} />
+                    </View>
+                  )}
+                />
+              )}
+            </>
+          )}
+          renderSectionHeader={({ section }) => (
+            <SectionHeader
+              title={section.title}
+              action={section.key === 'confirm' && readyToConfirm.length >= 2 ? (
+                <Pressable onPress={confirmAll} disabled={confirmingAll} accessibilityRole="button">
+                  <Text style={[t.type.label, { color: t.color.accent, fontWeight: '700', opacity: confirmingAll ? 0.5 : 1 }]}>
+                    {confirmingAll ? `Confirming ${confirmProgress.done}/${confirmProgress.total}` : `Confirm all (${readyToConfirm.length})`}
+                  </Text>
+                </Pressable>
+              ) : undefined}
+            />
+          )}
+          renderItem={({ item, section }) => {
+            if (section.key === 'attention') {
               return (
-                <ConfirmCard
-                  item={row}
-                  currencies={currencies ?? []}
-                  onOpen={() => router.push(`/draft/${row.id}`)}
-                  onConfirm={() => confirmSingle(row)}
-                  onDelete={() => discardDraft(row.id)}
+                <AttentionCard
+                  entry={item as AttentionItem}
+                  onRetryError={retryError}
+                  onDiscardError={discardError}
+                  onRetryOp={retryOpNow}
+                  onResolveConflict={resolveConflict}
                 />
               );
-            }}
-          />
-        )}
+            }
+            const row = item as InboxItemRow;
+            if (section.key === 'review') {
+              return (
+                <ReviewCard
+                  item={row}
+                  currencies={currencies ?? []}
+                  onApprove={() => approveRecurringReview(db, row.id)}
+                  onEdit={() => startEditReview(row)}
+                  onDelete={() => discardReview(row.id)}
+                />
+              );
+            }
+            return (
+              <ConfirmCard
+                item={row}
+                currencies={currencies ?? []}
+                onOpen={() => router.push(`/draft/${row.id}`)}
+                onConfirm={() => confirmSingle(row)}
+                onDelete={() => discardDraft(row.id)}
+              />
+            );
+          }}
+        />
 
         <CaptureDock />
         <Snackbar entry={snackbar} onDismiss={() => setSnackbar(null)} />

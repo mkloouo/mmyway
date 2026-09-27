@@ -14,6 +14,7 @@ import { readHosts, writeHosts } from '../../src/api/ff3/hosts';
 import { saveGeminiKey, readGeminiKey } from '../../src/settings/secrets';
 import { referenceAccounts, referenceCurrencies, aliases as aliasesTable } from '../../src/db/schema';
 import { hasEnvelopeMarker } from '../../src/accounts/envelopeMarker';
+import { useSync } from '../../src/sync/useSync';
 import {
   getLocalModelBaseUrls, setLocalModelBaseUrls, getLocalModelActiveUrl,
   getLocalModelName, setLocalModelName,
@@ -33,6 +34,7 @@ function shortLabel(url: string): string {
 
 export default function SettingsScreen() {
   const db = useDb();
+  const { syncNow } = useSync();
   const t = useTheme();
 
   const { data: accounts } = useLiveQuery(db.select().from(referenceAccounts));
@@ -116,6 +118,7 @@ export default function SettingsScreen() {
         setHost('');
         setToken('');
         await reload();
+        syncNow(); // the Inbox otherwise stays empty until the next app resume
       } else {
         Alert.alert('Sign-in failed', result.reason);
       }
@@ -127,7 +130,7 @@ export default function SettingsScreen() {
   function onSignOut() {
     Alert.alert('Sign out?', 'You will need to sign in again to sync.', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out', style: 'destructive', onPress: async () => { await signOut(); await reload(); } },
+      { text: 'Sign out', style: 'destructive', onPress: async () => { await signOut(); await reload(); syncNow(); } },
     ]);
   }
 
