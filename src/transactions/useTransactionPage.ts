@@ -59,7 +59,10 @@ export function useTransactionPage(
   const where = conditions.length > 0 ? and(...conditions) : undefined;
 
   const base = db.select().from(cachedTransactions).orderBy(desc(cachedTransactions.date)).limit(limit + 1);
-  const { data } = useLiveQuery(where ? base.where(where) : base);
+  // useLiveQuery runs its query in an effect whose dep list defaults to `[]` — without these deps
+  // it keeps re-running the query built on the first render, so changing the filter, typing in
+  // search or paging past the first 100 rows all silently returned the same rows.
+  const { data } = useLiveQuery(where ? base.where(where) : base, [filterKey, limit]);
 
   const rows = data ?? [];
   const atEnd = rows.length <= limit;

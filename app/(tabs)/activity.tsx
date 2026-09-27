@@ -190,7 +190,7 @@ export default function ActivityScreen() {
                 title={dayTitle(section.key)}
                 action={section.totals.length > 0 ? (
                   <Text style={[t.type.label, { color: t.color.textMuted }]}>
-                    {section.totals.map((tot) => formatMoney(tot.amount, currencyOf(currencies, tot.currencyCode ?? ''))).join(' · ')}
+                    {section.totals.map((tot) => formatMoney(tot.amount, currencyOf(currencies ?? [], tot.currencyCode ?? ''))).join(' · ')}
                   </Text>
                 ) : undefined}
               />
