@@ -10,6 +10,9 @@ import { useSync } from '../src/sync/useSync';
 import { useTheme } from '../src/ui/theme';
 import { Button } from '../src/ui/components';
 import { useSharedImages } from '../src/receipt/useSharedImages';
+import { installLogCapture, logLine } from '../src/utils/log';
+
+installLogCapture();
 
 function ShareIntentBridge() {
   useSharedImages();
@@ -30,6 +33,7 @@ function SyncOnResume() {
 /** This build has no dev tools attached — a crash must never be a blank screen (design §7). */
 export function ErrorBoundary({ error, retry }: { error: Error; retry: () => void }) {
   const t = useTheme();
+  logLine('error', `render crash: ${error.message}\n${error.stack ?? ''}`);
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: t.space.lg, padding: t.space.xxl, backgroundColor: t.color.bg }}>
       <Text style={[t.type.heading, { color: t.color.text }]}>Something broke</Text>

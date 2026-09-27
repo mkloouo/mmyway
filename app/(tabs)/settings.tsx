@@ -191,6 +191,7 @@ export default function SettingsScreen() {
         <Card style={{ marginHorizontal: t.space.lg }}>
           <Row first label="Version" value={version} />
           <Row label="Last sync" value={relativeTime(lastSyncedAt)} />
+          <Row label="Diagnostics" chevron onPress={() => router.push('/settings/logs')} />
         </Card>
       </ScrollView>
 

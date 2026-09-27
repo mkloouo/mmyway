@@ -21,8 +21,19 @@ export function getDb(): ExpoSQLiteDatabase<typeof schema> {
   // without it expo-sqlite never fires onDatabaseChange, so screens only see writes made
   // elsewhere after a full reload.
   const sqlite = openDatabaseSync('mmyway.db', { enableChangeListener: true });
+  // WAL is what makes the change-listener design above survivable. drizzle's expo-sqlite session
+  // calls `prepareSync` per query and never finalizes the statement, and a sync fires the change
+  // listener once per upserted row, so every mounted useLiveQuery re-prepares and leaves another
+  // open read behind. Under the default rollback journal an open read blocks every write, and the
+  // next write dies with "Call to function 'NativeStatement.runSync' has been rejected... database
+  // is locked" — for the life of the connection, which is why it survived reopening the app.
+  // In WAL a reader never blocks the writer; busy_timeout makes the rest wait rather than throw.
+  sqlite.execSync('PRAGMA journal_mode = WAL;');
+  sqlite.execSync('PRAGMA busy_timeout = 5000;');
   cached = drizzleExpo(sqlite, { schema }) as ExpoSQLiteDatabase<typeof schema>;
   migrationDone = migrateExpoSqlite(cached, migrations).catch((err: unknown) => {
+    // Swallowed on purpose — the app still runs against whatever schema exists — but a failure
+    // here leaves every later query broken in ways that look unrelated, so it must be in the log.
     console.error('migration failed', err);
   });
   return cached;

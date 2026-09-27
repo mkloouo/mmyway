@@ -15,6 +15,7 @@ import { pullReferenceData, pullRecentTransactions } from './referenceData';
 import { replayOutbox, type OutboxDb } from './outbox';
 import { pullUnreviewedRecurring } from './recurringReview';
 import { retryPendingReceipts } from '../receipt/toDraft';
+import { logLine } from '../utils/log';
 
 export interface SyncSummary {
   signedIn: boolean;
@@ -89,6 +90,7 @@ export async function runSync(db: OutboxDb): Promise<SyncSummary> {
     await setLastSyncedAt(db, summary.lastSyncedAt);
   } catch (err) {
     summary.error = err instanceof Error ? err.message : String(err);
+    logLine('error', `sync failed: ${summary.error}${err instanceof Error && err.stack ? `\n${err.stack}` : ''}`);
   }
 
   return summary;
