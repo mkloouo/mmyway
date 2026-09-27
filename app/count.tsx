@@ -1,6 +1,6 @@
 // The cash count — the envelope sweep (design §6.9, decision C of §11). Counts every marked
 // cash envelope in one pass; one confirm creates one adjustment per envelope that differs.
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { useLiveQuery } from '../src/db/useLiveQuery';
@@ -8,10 +8,12 @@ import { useDb } from '../src/providers/DbProvider';
 import { useTheme } from '../src/ui/theme';
 import { Screen, AppBar, Card, Row, Chip, Button, Sheet, Money, EmptyState } from '../src/ui/components';
 import { currencyOf } from '../src/ui/money';
+import { parseDecimalInput } from '../src/api/ff3/decimal';
 import { relativeTime } from '../src/ui/relativeTime';
 import { haptics } from '../src/ui/haptics';
 import { referenceAccounts, referenceCategories, referenceCurrencies, inboxItems } from '../src/db/schema';
 import { hasEnvelopeMarker } from '../src/accounts/envelopeMarker';
+import { useAssetAccounts } from '../src/accounts/useAssetAccounts';
 import { computeSweep, driftByCurrency, type SweepRow, type SweepAdjustment } from '../src/reconcile/sweep';
 import { denominationsFor, totalDenominations } from '../src/reconcile/denominations';
 import { confirmInboxItem } from '../src/inbox/createManualEntry';
@@ -61,7 +63,7 @@ export default function CountScreen() {
   const { data: categories } = useLiveQuery(db.select().from(referenceCategories));
   const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
   const allAccounts = accountRows ?? [];
-  const envelopeAccounts = allAccounts.filter((a) => a.type === 'asset' && hasEnvelopeMarker(a.notes));
+  const envelopeAccounts = (useAssetAccounts() ?? []).filter((a) => hasEnvelopeMarker(a.notes));
   const expenseAccounts = allAccounts.filter((a) => a.type === 'expense');
   const revenueAccounts = allAccounts.filter((a) => a.type === 'revenue');
 
@@ -75,19 +77,32 @@ export default function CountScreen() {
   const [shortfallAccountId, setShortfallAccountIdState] = useState<string | null>(null);
   const [surplusAccountId, setSurplusAccountIdState] = useState<string | null>(null);
   const [reconcileCategory, setReconcileCategoryState] = useState<string | null>(null);
-  const [settingsLoaded, setSettingsLoaded] = useState(false);
-  if (!settingsLoaded) {
-    setSettingsLoaded(true);
+  useEffect(() => {
+    let cancelled = false;
     Promise.all([getReconcileShortfallAccountId(db), getReconcileSurplusAccountId(db), getReconcileCategoryName(db)]).then(([sf, sp, cat]) => {
+      if (cancelled) return;
       setShortfallAccountIdState(sf);
       setSurplusAccountIdState(sp);
       setReconcileCategoryState(cat);
     });
-  }
+    return () => { cancelled = true; };
+  }, [db]);
 
-  const sweepRows: SweepRow[] = envelopeAccounts.map((a) => ({
-    accountId: a.id, currencyCode: a.currencyCode, expected: a.currentBalance ?? '0', counted: counts[a.id] ?? '',
-  }));
+  // A raw typed comma used to reach addDecimal (sweep.ts) unparsed and crash the screen —
+  // parseDecimalInput here both normalizes it and catches what it rejects, before that.
+  const invalidCounts = new Set(
+    envelopeAccounts
+      .filter((a) => {
+        const raw = counts[a.id] ?? '';
+        return !!raw.trim() && !parseDecimalInput(raw, currencyOf(currencies ?? [], a.currencyCode).decimalPlaces).ok;
+      })
+      .map((a) => a.id),
+  );
+  const sweepRows: SweepRow[] = envelopeAccounts.map((a) => {
+    const raw = counts[a.id] ?? '';
+    const result = raw.trim() ? parseDecimalInput(raw, currencyOf(currencies ?? [], a.currencyCode).decimalPlaces) : null;
+    return { accountId: a.id, currencyCode: a.currencyCode, expected: a.currentBalance ?? '0', counted: result?.ok ? result.value : '' };
+  });
   const adjustments = computeSweep(sweepRows);
   const drift = driftByCurrency(sweepRows);
   const countedRows = sweepRows.filter((r) => r.counted.trim());
@@ -169,8 +184,9 @@ export default function CountScreen() {
             {envelopeAccounts.map((a) => {
               const currency = currencyOf(currencies ?? [], a.currencyCode);
               const counted = counts[a.id] ?? '';
+              const invalid = invalidCounts.has(a.id);
               const adjustment = adjustments.find((adj) => adj.accountId === a.id);
-              const matches = counted.trim() !== '' && !adjustment;
+              const matches = counted.trim() !== '' && !invalid && !adjustment;
               const ladder = denominationsFor(a.currencyCode);
               return (
                 <Card key={a.id}>
@@ -195,7 +211,9 @@ export default function CountScreen() {
                         <Text style={{ fontSize: 20 }}>🧮</Text>
                       </Pressable>
                     )}
-                    {matches ? (
+                    {invalid ? (
+                      <Text style={[t.type.body, { color: t.color.danger }]}>Invalid</Text>
+                    ) : matches ? (
                       <Text style={[t.type.body, { color: t.color.income, fontWeight: '600' }]}>✓</Text>
                     ) : adjustment ? (
                       <Money amount={adjustment.type === 'withdrawal' ? `-${adjustment.amount}` : adjustment.amount} currency={currency} />
@@ -203,6 +221,9 @@ export default function CountScreen() {
                       <Text style={[t.type.body, { color: t.color.textFaint }]}>skip</Text>
                     )}
                   </View>
+                  {invalid && (
+                    <Text style={[t.type.label, { color: t.color.danger, marginTop: t.space.xs }]}>Invalid amount</Text>
+                  )}
                 </Card>
               );
             })}
@@ -216,7 +237,9 @@ export default function CountScreen() {
                 Drift {drift.map((d) => `${d.amount} ${d.currencyCode}`).join(' · ')}
               </Text>
             )}
-            {countedRows.length > 0 && adjustments.length === 0 ? (
+            {invalidCounts.size > 0 ? (
+              <Button title="Fix the invalid amount above" variant="secondary" disabled />
+            ) : countedRows.length > 0 && adjustments.length === 0 ? (
               <Button title="Everything matches ✓" variant="secondary" disabled />
             ) : (
               <Button

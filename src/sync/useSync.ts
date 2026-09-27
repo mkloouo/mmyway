@@ -38,7 +38,10 @@ export function useSync() {
 
 // Activity's list only reads the local cache (useTransactionPage); this is the on-demand fetch
 // that extends it further back once the user scrolls past what's cached. `exhausted` latches once
-// a pull doesn't turn up anything older, so further scrolling stops asking the server.
+// a pull doesn't turn up anything older, so further scrolling stops asking the server. It only
+// ever moves forward on its own — a pull-to-refresh (or anything else that wants to re-check) calls
+// `reset` explicitly, since a manual sync can also bring in newer local rows without changing
+// whether older history was already found to be exhausted.
 export function useLoadOlderHistory() {
   const db = useDb();
   const [loading, setLoading] = useState(false);
@@ -61,7 +64,8 @@ export function useLoadOlderHistory() {
       setLoading(false);
     }
   }, [db, exhausted]);
-  return { loadOlder, loadingOlder: loading, exhausted };
+  const reset = useCallback(() => setExhausted(false), []);
+  return { loadOlder, loadingOlder: loading, exhausted, reset };
 }
 
 /** null until the first read. Read once, then only re-read via useSync().credentialsChanged. */

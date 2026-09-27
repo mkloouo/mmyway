@@ -2,9 +2,19 @@ import { createTestDb } from '../db/testDb';
 import { pullRecentTransactions, pullOlderTransactions, pullReferenceData } from './referenceData';
 import { cachedTransactions, referenceAccounts } from '../db/schema';
 
-function fakeClient(pages: unknown[][]) {
+// `totals` overrides meta.pagination.total per call index — real FF3 responses always carry it,
+// and pullOlderTransactions' anyTransactionsBefore probe reads it to tell a quiet chunk from the
+// actual end of history. Defaults to the page's own length, which keeps every other test (which
+// never looks at meta) working unchanged.
+function fakeClient(pages: unknown[][], totals: (number | undefined)[] = []) {
   let call = 0;
-  return { request: jest.fn(async (_path: string) => ({ data: pages[call++] ?? [] })) };
+  return {
+    request: jest.fn(async (_path: string) => {
+      const i = call++;
+      const data = pages[i] ?? [];
+      return { data, meta: { pagination: { total: totals[i] ?? data.length } } };
+    }),
+  };
 }
 
 function journalGroup(id: string, overrides: Record<string, unknown> = {}) {
@@ -129,15 +139,53 @@ describe('pullOlderTransactions', () => {
     expect(rows.map((r) => r.groupId).sort()).toEqual(['g0', 'g1']);
   });
 
-  it('reports no older history once a chunk turns up nothing older than what is already cached', async () => {
+  it('reports no older history once FF3 confirms nothing exists before the quiet chunk', async () => {
     const db = createTestDb();
     const seed = fakeClient([[journalGroup('g1', { date: '2026-06-01' })]]);
     await pullRecentTransactions(db as any, seed as any, '2026-09-27T00:00:00Z');
 
+    // page 1 of the chunk is empty, and the probe call after it reports total: 0 (default, since
+    // an empty page's own length is 0) — genuinely nothing older exists.
     const empty = fakeClient([[]]);
     const foundOlder = await pullOlderTransactions(db as any, empty as any, '2026-09-27T00:00:00Z');
 
     expect(foundOlder).toBe(false);
+  });
+
+  it('walks a year at a time once the cache already reaches back more than a year', async () => {
+    const db = createTestDb();
+    // 2025-06-01 is more than a year before "now" (2026-09-27), so the chunk past it should be a
+    // full year wide rather than the usual 3 months — a thin, long-lived account otherwise takes
+    // dozens of scrolls to reach anything old.
+    const seed = fakeClient([[journalGroup('g1', { date: '2025-06-01' })]]);
+    await pullRecentTransactions(db as any, seed as any, '2026-09-27T00:00:00Z');
+
+    const older = fakeClient([[journalGroup('g0', { date: '2024-08-01' })]]);
+    const foundOlder = await pullOlderTransactions(db as any, older as any, '2026-09-27T00:00:00Z');
+
+    expect(foundOlder).toBe(true);
+    expect(older.request.mock.calls[0]![0]).toContain('start=2024-06-01');
+    expect(older.request.mock.calls[0]![0]).toContain('end=2025-05-31');
+  });
+
+  it('widens past a quiet chunk when FF3 reports older history still exists beyond it', async () => {
+    const db = createTestDb();
+    const seed = fakeClient([[journalGroup('g1', { date: '2026-06-01' })]]);
+    await pullRecentTransactions(db as any, seed as any, '2026-09-27T00:00:00Z');
+
+    // First chunk (2026-03-01..2026-05-31) is quiet, but the probe (call index 1) says total: 1 —
+    // more history exists — so a second, further-back chunk is walked and finds it.
+    const client = fakeClient(
+      [[], [], [journalGroup('g0', { date: '2025-12-01' })]],
+      [undefined, 1],
+    );
+    const foundOlder = await pullOlderTransactions(db as any, client as any, '2026-09-27T00:00:00Z');
+
+    expect(foundOlder).toBe(true);
+    expect(client.request.mock.calls).toHaveLength(3);
+    expect(client.request.mock.calls[2]![0]).toContain('start=2025-12-01');
+    const rows = await db.select().from(cachedTransactions);
+    expect(rows.map((r) => r.groupId).sort()).toEqual(['g0', 'g1']);
   });
 });
 

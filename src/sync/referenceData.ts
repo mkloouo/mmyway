@@ -3,6 +3,7 @@ import type { FF3Client } from '../api/ff3/client';
 import type { AccountRead, CategoryRead, BudgetRead, CurrencyRead, TransactionRead } from '../api/ff3/types';
 import { referenceAccounts, referenceCategories, referenceBudgets, referenceCurrencies, cachedTransactions } from '../db/schema';
 import type { OutboxDb } from './outbox';
+import { logLine } from '../utils/log';
 
 const PAGE_SIZE = 100;
 
@@ -158,8 +159,23 @@ export async function pullRecentTransactions(db: OutboxDb, client: FF3Client, sy
   await pullTransactionsInRange(db, client, startDate, syncedAt);
 }
 
-/** How far past the local cache's oldest row each "load more" scroll reaches, in months. */
-const OLDER_CHUNK_MONTHS = 3;
+/** Below a year of local history, walk 3 months per "load more"; beyond that, a year at a time —
+ * a long-lived account otherwise takes dozens of scrolls to reach anything old. */
+const OLDER_CHUNK_MONTHS_RECENT = 3;
+const OLDER_CHUNK_MONTHS_DEEP = 12;
+const DEEP_HISTORY_YEARS = 1;
+
+// A safety valve, not the intended stopping condition: anyTransactionsBefore already proves
+// whether to keep walking, and `anchor` moves strictly further back every attempt, so a real
+// history always terminates well under this. Only a misbehaving server (total > 0 forever, no
+// data ever returned) would ever reach it.
+const MAX_CHUNK_ATTEMPTS = 40;
+
+function chunkMonthsFor(anchor: Date): number {
+  const cutoff = new Date();
+  cutoff.setFullYear(cutoff.getFullYear() - DEEP_HISTORY_YEARS);
+  return anchor < cutoff ? OLDER_CHUNK_MONTHS_DEEP : OLDER_CHUNK_MONTHS_RECENT;
+}
 
 async function oldestCachedDate(db: OutboxDb): Promise<string | null> {
   const [oldest] = await db.select({ date: cachedTransactions.date }).from(cachedTransactions)
@@ -167,21 +183,41 @@ async function oldestCachedDate(db: OutboxDb): Promise<string | null> {
   return oldest?.date ?? null;
 }
 
+// Asks FF3 directly whether anything strictly older than `beforeDate` exists at all — the one
+// reliable way to tell "this chunk was quiet" from "that's the end of history", since FF3's
+// meta.pagination.total counts the whole match set, not just this page.
+async function anyTransactionsBefore(client: FF3Client, beforeDate: string): Promise<boolean> {
+  const response = await client.request<{ meta: { pagination: { total: number } } }>(
+    `/v1/transactions?end=${beforeDate}&limit=1&page=1`,
+  );
+  return response.meta.pagination.total > 0;
+}
+
 // Activity's infinite scroll only ever reads the local cache (useTransactionPage) — the initial
 // sync only backfills BACKFILL_MONTHS, so scrolling past that found nothing older to page into.
-// Called when the list runs out of locally cached rows; re-walks a further chunk of history into
-// cachedTransactions and reports whether that pushed the cached window any older, so the caller
-// can stop asking once real history (not just the current filter) is exhausted.
+// Called when the list runs out of locally cached rows; walks chunks of history into
+// cachedTransactions (widening past any quiet ones) and reports whether real history remains
+// beyond what's now cached, so the caller can stop asking once it's genuinely exhausted.
 export async function pullOlderTransactions(db: OutboxDb, client: FF3Client, syncedAt: string): Promise<boolean> {
   const before = await oldestCachedDate(db);
-  const oldest = before ? new Date(before) : new Date();
-  // end and start are each computed from `oldest` directly (not chained off one another), so a
-  // short month can't roll the day-of-month over and throw the window off by a few days.
-  const end = new Date(oldest);
-  end.setDate(end.getDate() - 1); // strictly older than what's already cached
-  const start = new Date(oldest);
-  start.setMonth(start.getMonth() - OLDER_CHUNK_MONTHS);
-  await pullTransactionsInRange(db, client, dateOnly(start), syncedAt, dateOnly(end));
-  const after = await oldestCachedDate(db);
-  return !!after && after !== before;
+  let anchor = before ? new Date(before) : new Date();
+
+  for (let attempt = 0; attempt < MAX_CHUNK_ATTEMPTS; attempt++) {
+    // end and start are each computed from `anchor` directly (not chained off one another), so a
+    // short month can't roll the day-of-month over and throw the window off by a few days.
+    const end = new Date(anchor);
+    end.setDate(end.getDate() - 1); // strictly older than what's already cached
+    const start = new Date(anchor);
+    start.setMonth(start.getMonth() - chunkMonthsFor(anchor));
+    await pullTransactionsInRange(db, client, dateOnly(start), syncedAt, dateOnly(end));
+
+    const after = await oldestCachedDate(db);
+    if (after && after !== before) return true; // this chunk found something to cache
+
+    if (!(await anyTransactionsBefore(client, dateOnly(end)))) return false; // genuinely exhausted
+    anchor = start; // that chunk was quiet, but more history exists further back — keep walking
+  }
+  // Reached the safety valve — FF3 kept claiming more exists but never handed any of it back.
+  logLine('warn', `pullOlderTransactions: gave up after ${MAX_CHUNK_ATTEMPTS} quiet chunks before ${dateOnly(anchor)}`);
+  return true;
 }
