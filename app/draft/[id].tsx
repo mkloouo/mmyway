@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { View, Text, Button } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { eq } from 'drizzle-orm';
-import { useDb } from '../../src/app/DbProvider';
+import { useDb } from '../../src/providers/DbProvider';
 import { inboxItems } from '../../src/db/schema';
 import { confirmInboxItem } from '../../src/inbox/createManualEntry';
 import type { Draft } from '../../src/inbox/draft';

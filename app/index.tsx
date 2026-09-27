@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, Text, TextInput, Button, FlatList } from 'react-native';
 import { router } from 'expo-router';
-import { useDb } from '../src/app/DbProvider';
+import { useDb } from '../src/providers/DbProvider';
 import { useInboxItems } from '../src/inbox/useInboxItems';
 import { createManualEntry } from '../src/inbox/createManualEntry';
 

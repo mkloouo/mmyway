@@ -1,7 +1,7 @@
 import { View, Text, Button, FlatList } from 'react-native';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { eq } from 'drizzle-orm';
-import { useDb } from '../../src/app/DbProvider';
+import { useDb } from '../../src/providers/DbProvider';
 import { inboxItems } from '../../src/db/schema';
 import { approveRecurringReview } from '../../src/sync/recurringReview';
 

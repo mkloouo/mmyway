@@ -28,10 +28,17 @@ Replaces a Telegram capture bot. Full context: `the planning brief`
   separate files on purpose — **never merge them.** `testDb.ts` requires
   `drizzle-orm/better-sqlite3/migrator`, which imports `node:crypto`/`node:fs` at module
   scope; Metro bundles every `require()`/`import` it finds in any file reachable from the
-  app entry point, lazy or not, so if that ever ends up in a file `app/`/`src/app/` imports
-  (directly or transitively), the Android bundle fails with "attempted to import the Node
-  standard library module". Confirmed on a real device build. Test files import
+  app entry point, lazy or not, so if that ever ends up in a file `app/`/`src/providers/`
+  imports (directly or transitively), the Android bundle fails with "attempted to import the
+  Node standard library module". Confirmed on a real device build. Test files import
   `createTestDb` from `./testDb` (or `../db/testDb`), never from `./client`.
+- `src/providers/` — `DbProvider.tsx` (exposes the drizzle db via context, `useDb()`) and
+  `queryClient.ts` (TanStack Query client), both consumed only by `app/_layout.tsx`. **Never
+  name this directory `src/app`** — expo-router treats `src/app/` as an alternate routes root
+  (a documented convention for projects that put everything under `src/`), so a `src/app/`
+  full of plain helper files gets scanned as routes too, crashing every screen with
+  "Element type is invalid... forgot to export your component" for each non-route file in
+  it. Confirmed on a real device run.
 - `src/api/ff3/` — hand-written FF3 client (fetch-based, no generated types — see note below).
 - `src/sync/` — outbox (queued writes) and reference-data pulls. Read `src/sync/outbox.ts`'s
   header comment before changing replay order or retry semantics.

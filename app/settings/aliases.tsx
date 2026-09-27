@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, TextInput, Button, FlatList, Text } from 'react-native';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
-import { useDb } from '../../src/app/DbProvider';
+import { useDb } from '../../src/providers/DbProvider';
 import { aliases } from '../../src/db/schema';
 import { upsertAlias, removeAlias } from '../../src/lookup/aliases';
 

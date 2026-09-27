@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
-import { useDb } from '../app/DbProvider';
+import { useDb } from '../providers/DbProvider';
 import { inboxItems } from '../db/schema';
 
 export function useInboxItems() {

@@ -3,7 +3,7 @@
 // Metro bundles every require()/import it finds in a file reachable from the app entry
 // point, lazy or not, static or not — a real device build broke on exactly this before
 // the split (see docs/handover.md). This file must never be imported by app code
-// (app/**, src/db/client.ts, src/app/**) — only by Jest tests, which Metro never bundles.
+// (app/**, src/db/client.ts, src/providers/**) — only by Jest tests, which Metro never bundles.
 import type { BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
 import * as schema from './schema';
 
