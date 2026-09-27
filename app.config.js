@@ -1,4 +1,6 @@
 const IS_DEV = process.env.APP_VARIANT === 'development' || process.env.APP_VARIANT === 'preview';
+// Set by eas.json's production-apk profile: per-ABI APKs + a universal one.
+const ABI_SPLITS = process.env.ANDROID_ABI_SPLITS === '1';
 const BASE_BUNDLE_ID = 'com.mkloouo.mmyway';
 const BASE_NAME = 'mmyway';
 
@@ -23,6 +25,17 @@ module.exports = {
         },
       ],
       '@react-native-community/datetimepicker',
+      [
+        'expo-build-properties',
+        {
+          android: {
+            enableMinifyInReleaseBuilds: true,
+            enableShrinkResourcesInReleaseBuilds: true,
+            useLegacyPackaging: true,
+          },
+        },
+      ],
+      ...(ABI_SPLITS ? ['./plugins/withAbiSplits'] : []),
     ],
     android: {
       package: IS_DEV ? `${BASE_BUNDLE_ID}.dev` : BASE_BUNDLE_ID,

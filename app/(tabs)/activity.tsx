@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, SectionList, Text, TextInput, View } from 'react-native';
 import { router, useNavigation } from 'expo-router';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
 import { Screen, AppBar, SectionHeader, Card, Chip, Money, EmptyState, Sheet, Row } from '../../src/ui/components';

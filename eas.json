@@ -13,6 +13,7 @@
     "production": {
       "distribution": "internal",
       "android": { "buildType": "apk" },
+      "env": { "ANDROID_ABI_SPLITS": "1" },
       "autoIncrement": true
     }
   }

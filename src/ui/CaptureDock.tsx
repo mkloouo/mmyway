@@ -1,7 +1,7 @@
 // Floating over Inbox and Activity, never Settings (design §5).
 import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTheme } from './theme';
 
 export function CaptureDock() {

@@ -6,7 +6,9 @@ Replaces a Telegram capture bot. Full context: `the planning brief`
 
 ## Commands
 
-- `npm start` — Expo dev server
+- `npm start` — Expo dev server. **Run it against a dev build, never Expo Go.** A JS reload in
+  Expo Go leaves the native SQLite handle open, so a connection stuck holding a lock survives
+  what looks like restarting the app; this repo also uses config plugins Expo Go cannot apply.
 - `npm run typecheck` / `npm run lint` / `npm run test` / `npm run check` (all three)
 - `npm run db:generate` — regenerate Drizzle migrations after editing `src/db/schema.ts`
 - `npm run android:build:dev` / `npm run android:build:pro` — local EAS APK build
