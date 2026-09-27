@@ -8,8 +8,9 @@ import { clientFor } from '../api/ff3/session';
 import { readHosts } from '../api/ff3/hosts';
 import {
   getLocalModelBaseUrls, getLocalModelActiveUrl, setLocalModelActiveUrl,
-  getFf3ActiveHost, setFf3ActiveHost, getLastSyncedAt, setLastSyncedAt,
+  getFf3ActiveHost, setFf3ActiveHost, getLastSyncedAt, setLastSyncedAt, getLocalModelName,
 } from '../settings/appSettings';
+import { readGeminiKey } from '../settings/secrets';
 import { probeReachability, type ServerReachability } from './reachability';
 import { pullReferenceData, pullRecentTransactions } from './referenceData';
 import { warmMerchantLookup } from '../lookup/merchantLookup';
@@ -25,6 +26,8 @@ export interface SyncSummary {
   ff3Reachable: boolean; // derived: any FF3 address answered
   providers: Record<string, ServerReachability>;
   providersReachable: Record<string, boolean>; // derived: any address for that provider answered
+  /** Receipt readers with a configuration, probed or not — Gemini has no address to probe. */
+  configuredProviders: string[];
   replaySucceeded: number;
   replayConflicted: number;
   recurringCreated: number;
@@ -37,7 +40,7 @@ export interface SyncSummary {
 const EMPTY_REACHABILITY: ServerReachability = { winner: null, results: [] };
 
 const NOT_SIGNED_IN: SyncSummary = {
-  signedIn: false, ff3: EMPTY_REACHABILITY, ff3Reachable: false, providers: {}, providersReachable: {},
+  signedIn: false, ff3: EMPTY_REACHABILITY, ff3Reachable: false, providers: {}, providersReachable: {}, configuredProviders: [],
   replaySucceeded: 0, replayConflicted: 0, recurringCreated: 0, receiptsParsed: 0, failedAt: null, error: null,
   lastSyncedAt: null,
 };
@@ -72,8 +75,9 @@ export function runSync(db: OutboxDb, mode: SyncMode = 'full'): Promise<SyncSumm
 }
 
 async function doSync(db: OutboxDb, mode: SyncMode): Promise<SyncSummary> {
-  const [credentials, ff3Hosts, ff3ActiveHost, localModelBaseUrls, localModelActiveUrl, lastSyncedAt] = await Promise.all([
+  const [credentials, ff3Hosts, ff3ActiveHost, localModelBaseUrls, localModelActiveUrl, lastSyncedAt, localModelName, geminiKey] = await Promise.all([
     readStoredCredentials(), readHosts(), getFf3ActiveHost(db), getLocalModelBaseUrls(db), getLocalModelActiveUrl(db), getLastSyncedAt(db),
+    getLocalModelName(db), readGeminiKey().catch(() => null),
   ]);
   if (!credentials) return { ...NOT_SIGNED_IN };
 
@@ -81,6 +85,11 @@ async function doSync(db: OutboxDb, mode: SyncMode): Promise<SyncSummary> {
     signedIn: true, ff3: EMPTY_REACHABILITY, ff3Reachable: false, providers: {}, providersReachable: {},
     replaySucceeded: 0, replayConflicted: 0, recurringCreated: 0, receiptsParsed: 0, failedAt: null, error: null,
     lastSyncedAt: null,
+    // Same conditions buildChain uses to put a provider in the chain.
+    configuredProviders: [
+      ...(localModelBaseUrls.length > 0 && localModelName ? ['local'] : []),
+      ...(geminiKey ? ['gemini'] : []),
+    ],
   };
 
   try {

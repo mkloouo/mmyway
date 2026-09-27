@@ -7,6 +7,8 @@ import { useTheme } from './theme';
 import type { SyncSummary } from '../sync/runSync';
 import type { ServerReachability } from '../sync/reachability';
 
+const PROVIDER_LABELS: Record<string, string> = { local: 'Local model', gemini: 'Gemini' };
+
 function AddressRows({ label, report }: { label: string; report: ServerReachability }) {
   const t = useTheme();
   if (report.results.length === 0) {
@@ -53,10 +55,16 @@ export function SyncSheet({
         ) : (
           <AddressRows label="Firefly III" report={summary!.ff3} />
         )}
-        {Object.entries(summary?.providers ?? {}).map(([name, report]) => (
-          <AddressRows key={name} label={name} report={report} />
-        ))}
-        {signedIn && Object.keys(summary?.providers ?? {}).length === 0 && (
+        {/* A probed provider (the local model, on a full sync) shows its addresses; one that isn't
+            probed — Gemini has no address, and a push sync skips the probe — just shows it's set. */}
+        {(summary?.configuredProviders ?? []).map((name) => {
+          const report = summary?.providers[name];
+          const label = PROVIDER_LABELS[name] ?? name;
+          return report
+            ? <AddressRows key={name} label={label} report={report} />
+            : <Row key={name} label={label} value="configured" />;
+        })}
+        {signedIn && (summary?.configuredProviders ?? []).length === 0 && (
           <Row label="Receipt providers" value="none configured" tone="warn" />
         )}
         <Row label="Pending outbox" value={String(pendingOutboxCount)} tone={pendingOutboxCount > 0 ? 'warn' : 'default'} />

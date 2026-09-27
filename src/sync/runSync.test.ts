@@ -4,10 +4,12 @@ import { enqueueOperation } from './outbox';
 import { clientFor } from '../api/ff3/session';
 import { readStoredCredentials, probeAbout } from '../api/ff3/auth';
 import { readHosts } from '../api/ff3/hosts';
+import { readGeminiKey } from '../settings/secrets';
 
 jest.mock('../api/ff3/session', () => ({ clientFor: jest.fn() }));
 jest.mock('../api/ff3/auth', () => ({ readStoredCredentials: jest.fn(), probeAbout: jest.fn() }));
 jest.mock('../api/ff3/hosts', () => ({ ...jest.requireActual('../api/ff3/hosts'), readHosts: jest.fn() }));
+jest.mock('../settings/secrets', () => ({ readGeminiKey: jest.fn(async () => null) }));
 
 function buildClient(opts: { failCreate?: boolean; slow?: boolean } = {}) {
   const request = jest.fn(async (path: string, init?: RequestInit) => {
@@ -89,6 +91,17 @@ describe('runSync', () => {
 
     expect(summary).toMatchObject({ signedIn: true, ff3Reachable: false, error: null, lastSyncedAt: null });
     expect(clientFor).not.toHaveBeenCalled();
+  });
+
+  it('lists Gemini as a configured receipt provider though it has no address to probe', async () => {
+    signedInWith(['https://ff3.example.com']);
+    (clientFor as jest.Mock).mockReturnValue(buildClient());
+    (readGeminiKey as jest.Mock).mockResolvedValueOnce('key');
+
+    const summary = await runSync(createTestDb() as any);
+
+    expect(summary.configuredProviders).toEqual(['gemini']);
+    expect(summary.providers).toEqual({});
   });
 
   it('a second call while a sync runs joins it instead of starting another replay', async () => {
