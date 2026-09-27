@@ -1,7 +1,7 @@
 // Receipt capture (design §6.8) — nearly invisible by design: the camera (or, from the Inbox's
 // gallery shortcut, the gallery) opens on arrival, not after a form.
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useDb } from '../src/providers/DbProvider';
@@ -9,8 +9,7 @@ import { useTheme } from '../src/ui/theme';
 import { Screen, AppBar, Button, Card, Row, Sheet } from '../src/ui/components';
 import { captureReceipt, attachReceiptToJournal } from '../src/receipt/ingest';
 import { pickPhoto, type PhotoSource } from '../src/receipt/pickPhoto';
-
-const PARSE_WAIT_MS = 2000;
+import { requestSync, SYNC_DELAY } from '../src/sync/syncTrigger';
 
 function SourceTile({ icon, label, onPress, disabled }: { icon: 'camera' | 'images'; label: string; onPress: () => void; disabled: boolean }) {
   const t = useTheme();
@@ -52,27 +51,29 @@ export default function ReceiptScreen() {
         return;
       }
 
-      // C2: attaching to an already-synced transaction — no inbox item, no parsing, just the upload.
+      // Nothing below waits on the photo being hashed, copied or read: the screen closes as soon as
+      // the picker hands the photo over, so the next receipt is one tap away. The card appears in
+      // the Inbox ("Reading receipt…") when the insert lands, and fills in when the parse does.
       if (attachToJournalId) {
-        await attachReceiptToJournal(db, { uri: photo.uri, transactionJournalId: attachToJournalId });
+        // C2: attaching to an already-synced transaction — no inbox item, no parsing, just the upload.
+        attachReceiptToJournal(db, { uri: photo.uri, transactionJournalId: attachToJournalId })
+          .then(() => requestSync(SYNC_DELAY.afterWrite))
+          .catch((err) => Alert.alert('Couldn\u2019t attach the photo', err instanceof Error ? err.message : String(err)));
         router.back();
         return;
       }
 
-      const result = await captureReceipt(db, { uri: photo.uri, base64: photo.base64, hint: hint || undefined });
-      if (result.kind === 'duplicate') {
-        router.replace(`/draft/${result.itemId}`);
-        return;
-      }
-
-      // A fast parse opens straight into the draft; a slow one leaves the "Reading receipt…"
-      // card in the Inbox as the notification instead of blocking here, and a failed one shows
-      // up there under Needs attention.
-      const parsed = await Promise.race([
-        result.parse,
-        new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), PARSE_WAIT_MS)),
-      ]);
-      router.replace(parsed === 'parsed' ? `/draft/${result.itemId}` : '/');
+      captureReceipt(db, { uri: photo.uri, base64: photo.base64, hint: hint || undefined })
+        .then((result) => {
+          if (result.kind === 'duplicate') {
+            Alert.alert('Already in the Inbox', 'This photo was captured before.', [
+              { text: 'OK', style: 'cancel' },
+              { text: 'Open it', onPress: () => router.push(`/draft/${result.itemId}`) },
+            ]);
+          }
+        })
+        .catch((err) => Alert.alert('Couldn\u2019t save the receipt', err instanceof Error ? err.message : String(err)));
+      router.replace('/');
     } finally {
       setBusy(false);
     }
@@ -95,17 +96,10 @@ export default function ReceiptScreen() {
           </Pressable>
         )}
       />
-      {/* After the photo is taken: hashing, saving and the first seconds of the parse. The
-          screen used to sit empty here. */}
+      {/* Only while the camera/gallery is opening — the screen closes the moment a photo comes back. */}
       {busy && !showChooser && (
         <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: t.space.md, padding: t.space.xxl }}>
           <ActivityIndicator size="large" color={t.color.accent} />
-          <Text style={[t.type.heading, { color: t.color.text }]}>{attachToJournalId ? 'Attaching…' : 'Reading receipt…'}</Text>
-          {!attachToJournalId && (
-            <Text style={[t.type.body, { color: t.color.textMuted, textAlign: 'center' }]}>
-              If it takes longer than a moment, it carries on in the Inbox.
-            </Text>
-          )}
         </View>
       )}
       {showChooser && (

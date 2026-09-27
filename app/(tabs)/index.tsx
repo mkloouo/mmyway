@@ -102,24 +102,27 @@ function ConfirmCard({
           <Money amount={draft.amount || '0'} currency={currencyOf(currencies, draft.currencyCode)} type={draft.type} size="heading" />
         </View>
         {!!meta && <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]}>{meta}</Text>}
-        {badges.length > 0 && (
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm, marginTop: t.space.sm }}>
-            {badges.map((b) => <Chip key={b.label} label={b.label} tone={b.tone} />)}
-          </View>
-        )}
-        {readiness.ready && !selection.active && (
-          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: t.space.sm }}>
-            <Pressable
-              onPress={onConfirm}
-              accessibilityRole="button"
-              accessibilityLabel="Confirm"
-              style={({ pressed }) => ({
-                width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center',
-                backgroundColor: t.color.accentSoft, opacity: pressed ? 0.6 : 1,
-              })}
-            >
-              <Ionicons name="checkmark" size={20} color={t.color.accent} />
-            </Pressable>
+        {/* Badges and the ✓ share one footer row: the button sits level with "New payee"
+            instead of on a line of its own under it. */}
+        {(badges.length > 0 || (readiness.ready && !selection.active)) && (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm, marginTop: t.space.sm }}>
+            <View style={{ flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
+              {badges.map((b) => <Chip key={b.label} label={b.label} tone={b.tone} />)}
+            </View>
+            {readiness.ready && !selection.active && (
+              <Pressable
+                onPress={onConfirm}
+                accessibilityRole="button"
+                accessibilityLabel="Confirm"
+                hitSlop={8}
+                style={({ pressed }) => ({
+                  width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center',
+                  backgroundColor: t.color.accentSoft, opacity: pressed ? 0.6 : 1,
+                })}
+              >
+                <Ionicons name="checkmark" size={20} color={t.color.accent} />
+              </Pressable>
+            )}
           </View>
         )}
       </Card>

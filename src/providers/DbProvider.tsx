@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { Text } from 'react-native';
+import { InteractionManager, Text } from 'react-native';
+import { warmMerchantLookup } from '../lookup/merchantLookup';
 import { getDb, getMigrationDone, schema } from '../db/client';
 import type { ExpoSQLiteDatabase } from 'drizzle-orm/expo-sqlite';
 
@@ -13,8 +14,15 @@ export function DbProvider({ children }: { children: ReactNode }) {
   const [migrated, setMigrated] = useState(false);
 
   useEffect(() => {
-    getMigrationDone().finally(() => setMigrated(true));
-  }, []);
+    getMigrationDone().finally(() => {
+      setMigrated(true);
+      // Preload capture's payee/account history once the first screen has drawn, so the first
+      // +Add of the session opens as fast as later ones instead of scanning the cache on open.
+      InteractionManager.runAfterInteractions(() => {
+        warmMerchantLookup(db).catch(() => undefined);
+      });
+    });
+  }, [db]);
 
   // Gates every screen behind migrations finishing — querying an unmigrated db races table
   // creation (see getMigrationDone's comment).

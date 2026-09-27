@@ -2,6 +2,7 @@
 // the whole bottom cluster reads as one control.
 import { Pressable, Text, View } from 'react-native';
 import { useTheme } from './theme';
+import { haptics } from './haptics';
 import type { KeypadKey } from '../capture/amountInput';
 
 const DIGIT_ROWS: KeypadKey[][] = [['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9'], [',', '0', '00']];
@@ -11,6 +12,8 @@ function Key({ label, onPress, tone, disabled }: { label: string; onPress: () =>
   const isAccent = tone === 'accent';
   return (
     <Pressable
+      // On press-in, not release: the buzz lands with the finger, the way a keyboard's does.
+      onPressIn={() => { void haptics.key(); }}
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="button"

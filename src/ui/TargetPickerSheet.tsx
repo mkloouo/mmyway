@@ -82,6 +82,8 @@ export function TargetPickerSheet({
         data={results}
         keyExtractor={(item) => item.targetId ?? item.targetName}
         style={{ flex: 1 }}
+        // Keeps the right-aligned column clear of Android's scrollbar, which draws over the content.
+        contentContainerStyle={{ paddingRight: t.space.md }}
         renderItem={({ item }) => (
           <Pressable
             onPress={() => { onSelect(item); setQuery(''); onClose(); }}

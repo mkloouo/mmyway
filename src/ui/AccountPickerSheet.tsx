@@ -48,6 +48,8 @@ export function AccountPickerSheet({
         data={results}
         keyExtractor={(item) => item.id}
         style={{ flex: 1 }}
+        // Keeps the right-aligned column clear of Android's scrollbar, which draws over the content.
+        contentContainerStyle={{ paddingRight: t.space.md }}
         renderItem={({ item }) => (
           <Pressable
             onPress={() => { onSelect(item); setQuery(''); onClose(); }}

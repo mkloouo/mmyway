@@ -12,6 +12,7 @@ import {
 } from '../settings/appSettings';
 import { probeReachability, type ServerReachability } from './reachability';
 import { pullReferenceData, pullRecentTransactions } from './referenceData';
+import { warmMerchantLookup } from '../lookup/merchantLookup';
 import { replayOutbox, recoverInFlight, pruneUploadedReceiptImages, type OutboxDb } from './outbox';
 import { pruneReferenceData, reapplyQueuedAccountEdits } from './referenceHygiene';
 import { pullUnreviewedRecurring } from './recurringReview';
@@ -133,6 +134,11 @@ async function doSync(db: OutboxDb, mode: SyncMode): Promise<SyncSummary> {
     if (full) {
       summary.receiptsParsed = await retryPendingReceipts(db);
       await pruneUploadedReceiptImages(db);
+    }
+
+    if (full) {
+      // Rebuild capture's payee/account history now, while nobody's waiting on it.
+      await warmMerchantLookup(db).catch(() => undefined);
     }
 
     if (winner && full) {

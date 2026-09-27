@@ -20,6 +20,9 @@ import { cachedTransactions, outboxOperations, referenceCategories, referenceBud
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { enqueueOperation, type UpdateTransactionPayload, type DeleteTransactionPayload } from '../../src/sync/outbox';
 import { generateId } from '../../src/utils/id';
+import { useQuery } from '@tanstack/react-query';
+import { getClient } from '../../src/api/ff3/session';
+import { fetchJournalAttachments, queuedAttachments } from '../../src/receipt/journalAttachments';
 import type { TransactionSplit } from '../../src/api/ff3/types';
 
 const SHARED_TAG_PREFIX = 'mmyway-shared-';
@@ -51,6 +54,19 @@ export default function TransactionDetailScreen() {
   const { data: budgets } = useLiveQuery(db.select().from(referenceBudgets));
   const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
   const row = rows?.[0];
+
+  // Receipt status: uploads still queued here, and what FF3 already holds. Refetched whenever the
+  // number of queued uploads changes, so a finished upload shows up without leaving the screen.
+  const queued = row ? queuedAttachments(outbox ?? [], row.journalId) : [];
+  const attachments = useQuery({
+    queryKey: ['journal-attachments', groupId, row?.journalId, queued.length],
+    enabled: !!row,
+    queryFn: async () => {
+      const client = await getClient(db);
+      return client ? fetchJournalAttachments(client, groupId, row!.journalId) : null;
+    },
+    retry: false,
+  });
 
   const [changes, setChanges] = useState<Partial<TransactionSplit>>({});
   const [amountSheetOpen, setAmountSheetOpen] = useState(false);
@@ -242,7 +258,25 @@ export default function TransactionDetailScreen() {
             budgets={budgets ?? []}
           />
           <Card style={{ marginHorizontal: t.space.lg }}>
-            <Row first label="Receipt" value="Attach receipt" chevron onPress={() => router.push({ pathname: '/receipt', params: { attachToJournalId: row.journalId } })} />
+            {(attachments.data ?? []).map((a, i) => (
+              <Row key={a.id} first={i === 0} label={i === 0 ? 'Receipt' : ''} value={`📎 ${a.filename}`} />
+            ))}
+            {queued.map((q, i) => (
+              <Row
+                key={q.opId}
+                first={i === 0 && !attachments.data?.length}
+                label={i === 0 && !attachments.data?.length ? 'Receipt' : ''}
+                value={q.status === 'failed' ? `Upload failed${q.lastError ? `: ${q.lastError}` : ''}` : 'Uploading…'}
+                tone={q.status === 'failed' ? 'danger' : undefined}
+              />
+            ))}
+            <Row
+              first={!attachments.data?.length && queued.length === 0}
+              label={!attachments.data?.length && queued.length === 0 ? 'Receipt' : ''}
+              value={attachments.data?.length || queued.length ? 'Attach another' : 'Attach receipt'}
+              chevron
+              onPress={() => router.push({ pathname: '/receipt', params: { attachToJournalId: row.journalId } })}
+            />
           </Card>
         </View>
         </ScrollView>

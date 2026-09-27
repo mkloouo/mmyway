@@ -24,7 +24,7 @@ import { buildManualEntryInput, type CaptureFormState } from '../src/capture/bui
 import { useCaptureDefaults } from '../src/capture/useCaptureDefaults';
 import { createManualEntry, confirmInboxItem, undoConfirm } from '../src/inbox/createManualEntry';
 import { draftReadiness } from '../src/inbox/readiness';
-import { buildMerchantLookup, type MerchantHistory } from '../src/lookup/merchantLookup';
+import { accountLastUsed, buildMerchantLookup, peekAccountLastUsed, peekMerchantLookup, type MerchantHistory } from '../src/lookup/merchantLookup';
 import { matchAlias } from '../src/lookup/aliases';
 import { rankCandidates } from '../src/suggest/rank';
 import { divideDecimal, isNegative, parseDecimalInput } from '../src/api/ff3/decimal';
@@ -68,7 +68,8 @@ export default function CaptureScreen() {
   const t = useTheme();
   const { defaultAccountId, defaultCurrencyCode } = useCaptureDefaults();
 
-  const assetAccounts = useAssetAccounts() ?? [];
+  const assetAccountRows = useAssetAccounts();
+  const assetAccounts = useMemo(() => assetAccountRows ?? [], [assetAccountRows]);
   const { data: categories } = useLiveQuery(db.select().from(referenceCategories));
   const { data: budgets } = useLiveQuery(db.select().from(referenceBudgets));
   const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
@@ -109,11 +110,27 @@ export default function CaptureScreen() {
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
   const [dateSheetOpen, setDateSheetOpen] = useState(false);
 
-  const [histories, setHistories] = useState<MerchantHistory[]>([]);
+  // Seeded from the lookup warmed at startup (DbProvider, runSync) so the first frame already has
+  // suggestions; the effect then refreshes it in case the cache moved since.
+  const lookupType = type === 'transfer' ? undefined : type;
+  const [loaded, setLoaded] = useState<{ type: string | undefined; list: MerchantHistory[] } | null>(null);
+  const histories = useMemo(
+    () => (loaded && loaded.type === lookupType ? loaded.list : peekMerchantLookup(lookupType) ?? []),
+    [loaded, lookupType],
+  );
+  const [accountRecency, setAccountRecency] = useState<Map<string, string>>(() => peekAccountLastUsed() ?? new Map());
   useEffect(() => {
-    const lookupType = type === 'transfer' ? undefined : type;
-    buildMerchantLookup(db, { type: lookupType }).then((map) => setHistories([...map.values()]));
-  }, [db, type]);
+    let cancelled = false;
+    buildMerchantLookup(db, { type: lookupType }).then((map) => { if (!cancelled) setLoaded({ type: lookupType, list: [...map.values()] }); });
+    accountLastUsed(db).then((m) => { if (!cancelled) setAccountRecency(m); });
+    return () => { cancelled = true; };
+  }, [db, lookupType]);
+  // The chip rows lead with the accounts used most recently; FF3's order breaks ties and places
+  // accounts never used (sort is stable).
+  const recentAccounts = useMemo(
+    () => [...assetAccounts].sort((a, b) => (accountRecency.get(b.name) ?? '').localeCompare(accountRecency.get(a.name) ?? '')),
+    [assetAccounts, accountRecency],
+  );
 
   // Defaults arrive asynchronously (SecureStore/app_settings) after first render — derived here
   // rather than mirrored into state via an effect, so there is nothing to keep in sync.
@@ -378,7 +395,7 @@ export default function CaptureScreen() {
                 <Text style={[t.type.label, { color: t.color.textFaint, paddingHorizontal: t.space.lg }]}>From</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={rowScroll} contentContainerStyle={{ paddingHorizontal: t.space.lg, gap: t.space.sm, paddingTop: t.space.xs }}>
                   <Chip label="🔍" accessibilityLabel="Search source accounts" onPress={() => setAccountSheetTarget('source')} />
-                  {topChips(assetAccounts, effectiveSourceId).map((a) => (
+                  {topChips(recentAccounts, effectiveSourceId).map((a) => (
                     <Chip key={a.id} label={a.name} selected={effectiveSourceId === a.id} onPress={() => setSourceId(a.id)} />
                   ))}
                 </ScrollView>
@@ -387,7 +404,7 @@ export default function CaptureScreen() {
                 <Text style={[t.type.label, { color: t.color.textFaint, paddingHorizontal: t.space.lg }]}>To</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={rowScroll} contentContainerStyle={{ paddingHorizontal: t.space.lg, gap: t.space.sm, paddingTop: t.space.xs }}>
                   <Chip label="🔍" accessibilityLabel="Search destination accounts" onPress={() => setAccountSheetTarget('destination')} />
-                  {topChips(assetAccounts.filter((a) => a.id !== effectiveSourceId), destinationId).map((a) => (
+                  {topChips(recentAccounts.filter((a) => a.id !== effectiveSourceId), destinationId).map((a) => (
                     <Chip key={a.id} label={a.name} selected={destinationId === a.id} onPress={() => setDestinationId(a.id)} />
                   ))}
                   <Chip label={detailsLabel} selected={detailsParts.length > 0} onPress={() => setMoreSheetOpen(true)} />
@@ -402,7 +419,7 @@ export default function CaptureScreen() {
                 </Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={rowScroll} contentContainerStyle={{ paddingHorizontal: t.space.lg, gap: t.space.sm, paddingTop: t.space.xs }}>
                   <Chip label="🔍" accessibilityLabel="Search accounts" onPress={() => setAccountSheetTarget(type === 'withdrawal' ? 'source' : 'destination')} />
-                  {topChips(assetAccounts, type === 'withdrawal' ? effectiveSourceId : destinationId).map((a) => (
+                  {topChips(recentAccounts, type === 'withdrawal' ? effectiveSourceId : destinationId).map((a) => (
                     <Chip
                       key={a.id}
                       label={a.name}

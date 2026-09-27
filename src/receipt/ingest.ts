@@ -24,8 +24,8 @@ export type CaptureResult =
 
 /**
  * Dedupes by content hash, persists the image, inserts the `captured` inbox item and starts the
- * parse. `parse` is returned rather than awaited so the caller decides how long to wait (the
- * receipt screen waits ~2s, then lets the Inbox card carry on); it never rejects.
+ * parse. `parse` is returned rather than awaited (the receipt screen doesn't wait for it at
+ * all — the Inbox card carries on); it never rejects.
  */
 export async function captureReceipt(db: OutboxDb, input: { uri: string; base64: string; hint?: string }): Promise<CaptureResult> {
   const hash = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, input.base64);
