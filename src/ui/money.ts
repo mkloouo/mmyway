@@ -41,3 +41,13 @@ export function signFor(type: 'withdrawal' | 'deposit' | 'transfer'): string {
   if (type === 'deposit') return '+';
   return '';
 }
+
+/**
+ * Looks up a currency's display shape from the synced `reference_currencies` cache. A code not
+ * yet synced (a draft mid-entry, before the next pull) falls back to 2 decimal places with the
+ * code itself as the symbol, rather than failing to render.
+ */
+export function currencyOf(currencies: { code: string; symbol: string; decimalPlaces: number }[], code: string): DisplayCurrency {
+  const found = currencies.find((c) => c.code === code);
+  return found ? { symbol: found.symbol, decimalPlaces: found.decimalPlaces } : { symbol: code, decimalPlaces: 2 };
+}

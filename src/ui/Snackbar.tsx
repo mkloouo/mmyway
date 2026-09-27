@@ -1,0 +1,54 @@
+// `Confirmed · Undo`, 5 s (design §6.1, §11 decision 2). Floats above the capture dock.
+import { useEffect } from 'react';
+import { Pressable, Text, View } from 'react-native';
+import { useTheme } from './theme';
+
+const VISIBLE_MS = 5000;
+
+export interface SnackbarEntry {
+  id: string;
+  message: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}
+
+export function Snackbar({ entry, onDismiss }: { entry: SnackbarEntry | null; onDismiss: () => void }) {
+  const t = useTheme();
+
+  useEffect(() => {
+    if (!entry) return;
+    const timer = setTimeout(onDismiss, VISIBLE_MS);
+    return () => clearTimeout(timer);
+  }, [entry, onDismiss]);
+
+  if (!entry) return null;
+
+  return (
+    <View
+      style={{
+        position: 'absolute', left: t.space.lg, right: t.space.lg, bottom: 88,
+        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+        backgroundColor: t.dark ? t.color.surfaceAlt : t.color.text,
+        borderRadius: t.radius.md, paddingHorizontal: t.space.lg, paddingVertical: t.space.md,
+        elevation: 8,
+      }}
+    >
+      <Text style={[t.type.body, { color: t.dark ? t.color.text : t.color.surface, flex: 1 }]} numberOfLines={1}>
+        {entry.message}
+      </Text>
+      {!!entry.actionLabel && (
+        <Pressable
+          onPress={() => {
+            entry.onAction?.();
+            onDismiss();
+          }}
+          accessibilityRole="button"
+        >
+          <Text style={[t.type.label, { color: t.color.accent, fontWeight: '700', paddingLeft: t.space.lg }]}>
+            {entry.actionLabel}
+          </Text>
+        </Pressable>
+      )}
+    </View>
+  );
+}

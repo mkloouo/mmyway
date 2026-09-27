@@ -1,4 +1,4 @@
-import { formatMoney, signFor } from './money';
+import { formatMoney, signFor, currencyOf } from './money';
 
 const PLN = { symbol: 'zł', decimalPlaces: 2 };
 const JPY = { symbol: '¥', decimalPlaces: 0 };
@@ -31,5 +31,17 @@ describe('signFor', () => {
     expect(signFor('deposit')).toBe('+');
     expect(signFor('withdrawal')).toBe('−');
     expect(signFor('transfer')).toBe('');
+  });
+});
+
+describe('currencyOf', () => {
+  const currencies = [{ code: 'PLN', symbol: 'zł', decimalPlaces: 2 }, { code: 'JPY', symbol: '¥', decimalPlaces: 0 }];
+
+  it('finds a synced currency by code', () => {
+    expect(currencyOf(currencies, 'JPY')).toEqual({ symbol: '¥', decimalPlaces: 0 });
+  });
+
+  it('falls back to the code itself with 2 decimal places when unsynced', () => {
+    expect(currencyOf(currencies, 'USD')).toEqual({ symbol: 'USD', decimalPlaces: 2 });
   });
 });

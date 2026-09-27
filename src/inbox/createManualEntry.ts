@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
-import { inboxItems } from '../db/schema';
+import { inboxItems, outboxOperations } from '../db/schema';
 import { matchAlias } from '../lookup/aliases';
-import { transition } from './state';
+import { transition, type InboxState } from './state';
 import { draftToTransactionPayload, type Draft } from './draft';
 import { enqueueOperation } from '../sync/outbox';
 import type { OutboxDb } from '../sync/outbox';
@@ -102,19 +102,39 @@ export async function createManualEntry(db: OutboxDb, input: ManualEntryInput): 
   return { inboxItemId: id, draft, isNewPayee };
 }
 
-export async function confirmInboxItem(db: OutboxDb, inboxItemId: string): Promise<void> {
+export interface ConfirmResult {
+  outboxOperationId: string;
+  previousState: InboxState;
+}
+
+export async function confirmInboxItem(db: OutboxDb, inboxItemId: string): Promise<ConfirmResult> {
   const rows = await db.select().from(inboxItems).where(eq(inboxItems.id, inboxItemId));
   const item = rows[0];
   if (!item) throw new Error(`inbox item ${inboxItemId} not found`);
 
-  const nextState = transition(item.state as any, 'confirm');
+  const previousState = item.state as InboxState;
+  const nextState = transition(previousState, 'confirm');
   const draft: Draft = JSON.parse(item.draftJson);
 
   await db.update(inboxItems).set({ state: nextState, updatedAt: new Date().toISOString() }).where(eq(inboxItems.id, inboxItemId));
+  const outboxOperationId = generateId();
   await enqueueOperation(db, {
-    id: generateId(),
+    id: outboxOperationId,
     inboxItemId,
     kind: 'create_transaction',
     payload: draftToTransactionPayload(inboxItemId, draft),
   });
+  return { outboxOperationId, previousState };
+}
+
+// Undo stays inside the same rule confirm itself follows (Global Constraints): it may delete a
+// still-`pending` outbox operation, never touch one that already sent. `already_sent` means the
+// operation moved past `pending` (in flight, done, or failed) between confirm and the tap.
+export async function undoConfirm(db: OutboxDb, inboxItemId: string, undo: ConfirmResult): Promise<'undone' | 'already_sent'> {
+  const rows = await db.select().from(outboxOperations).where(eq(outboxOperations.id, undo.outboxOperationId));
+  const op = rows[0];
+  if (!op || op.status !== 'pending') return 'already_sent';
+  await db.delete(outboxOperations).where(eq(outboxOperations.id, undo.outboxOperationId));
+  await db.update(inboxItems).set({ state: undo.previousState, updatedAt: new Date().toISOString() }).where(eq(inboxItems.id, inboxItemId));
+  return 'undone';
 }

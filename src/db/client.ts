@@ -17,7 +17,7 @@ export function getDb(): ExpoSQLiteDatabase<typeof schema> {
   const { migrate: migrateExpoSqlite } = require('drizzle-orm/expo-sqlite/migrator');
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const migrations = require('./migrations').default;
-  // enableChangeListener is required for drizzle's useLiveQuery (src/inbox/useInboxItems.ts) —
+  // enableChangeListener is required for drizzle's useLiveQuery (src/inbox/useInboxSections.ts) —
   // without it expo-sqlite never fires onDatabaseChange, so screens only see writes made
   // elsewhere after a full reload.
   const sqlite = openDatabaseSync('mmyway.db', { enableChangeListener: true });

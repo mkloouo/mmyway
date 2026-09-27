@@ -1,7 +1,7 @@
 import { createTestDb } from '../db/testDb';
 import { upsertAlias } from '../lookup/aliases';
 import * as aliases from '../lookup/aliases';
-import { createManualEntry, confirmInboxItem } from './createManualEntry';
+import { createManualEntry, confirmInboxItem, undoConfirm } from './createManualEntry';
 import { outboxOperations, inboxItems } from '../db/schema';
 import { eq } from 'drizzle-orm';
 
@@ -74,5 +74,38 @@ describe('createManualEntry + confirmInboxItem', () => {
     expect(isNewPayee).toBe(true);
     expect(draft.destinationId).toBeUndefined();
     expect(draft.destinationName).toBe('zabka');
+  });
+
+  it('undo deletes the pending outbox operation and returns the item to its previous state', async () => {
+    const db = createTestDb();
+    const { inboxItemId } = await createManualEntry(db as any, {
+      type: 'withdrawal', amount: '30.00', currencyCode: 'PLN', date: new Date().toISOString(),
+      description: 'McDonalds', merchantRawInput: 'McDonalds',
+    });
+    const confirmed = await confirmInboxItem(db as any, inboxItemId);
+    expect(confirmed.previousState).toBe('captured');
+
+    const outcome = await undoConfirm(db as any, inboxItemId, confirmed);
+    expect(outcome).toBe('undone');
+
+    const ops = await db.select().from(outboxOperations);
+    expect(ops).toHaveLength(0);
+    const item = (await db.select().from(inboxItems).where(eq(inboxItems.id, inboxItemId)))[0];
+    expect(item?.state).toBe('captured');
+  });
+
+  it('undo reports already_sent once the operation is no longer pending', async () => {
+    const db = createTestDb();
+    const { inboxItemId } = await createManualEntry(db as any, {
+      type: 'withdrawal', amount: '30.00', currencyCode: 'PLN', date: new Date().toISOString(),
+      description: 'McDonalds', merchantRawInput: 'McDonalds',
+    });
+    const confirmed = await confirmInboxItem(db as any, inboxItemId);
+    await db.update(outboxOperations).set({ status: 'done' }).where(eq(outboxOperations.id, confirmed.outboxOperationId));
+
+    const outcome = await undoConfirm(db as any, inboxItemId, confirmed);
+    expect(outcome).toBe('already_sent');
+    const ops = await db.select().from(outboxOperations);
+    expect(ops).toHaveLength(1); // untouched
   });
 });
