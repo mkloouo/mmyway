@@ -7,6 +7,7 @@ import { Sheet } from './components';
 import { useTheme } from './theme';
 import { useDb } from '../providers/DbProvider';
 import { referenceAccounts, referenceBudgets, referenceCurrencies } from '../db/schema';
+import { useAssetAccounts } from '../accounts/useAssetAccounts';
 import { normkey } from '../lookup/normkey';
 
 export type AliasKind = 'payee' | 'account' | 'budget' | 'currency';
@@ -18,15 +19,16 @@ export interface AliasTarget {
 function useCandidates(kind: AliasKind): AliasTarget[] {
   const db = useDb();
   const { data: accounts } = useLiveQuery(db.select().from(referenceAccounts));
+  const assetAccounts = useAssetAccounts();
   const { data: budgets } = useLiveQuery(db.select().from(referenceBudgets));
   const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
 
   return useMemo(() => {
     if (kind === 'payee') return (accounts ?? []).filter((a) => a.type === 'expense').map((a) => ({ targetId: a.id, targetName: a.name }));
-    if (kind === 'account') return (accounts ?? []).filter((a) => a.type === 'asset').map((a) => ({ targetId: a.id, targetName: a.name }));
+    if (kind === 'account') return (assetAccounts ?? []).map((a) => ({ targetId: a.id, targetName: a.name }));
     if (kind === 'budget') return (budgets ?? []).map((b) => ({ targetId: b.id, targetName: b.name }));
     return (currencies ?? []).map((c) => ({ targetId: c.code, targetName: c.code }));
-  }, [kind, accounts, budgets, currencies]);
+  }, [kind, accounts, assetAccounts, budgets, currencies]);
 }
 
 export function TargetPickerSheet({

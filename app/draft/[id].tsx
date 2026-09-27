@@ -13,7 +13,8 @@ import { PayeeSheet } from '../../src/ui/PayeeSheet';
 import { Keypad } from '../../src/ui/Keypad';
 import { currencyOf } from '../../src/ui/money';
 import { haptics } from '../../src/ui/haptics';
-import { inboxItems, referenceAccounts, referenceCategories, referenceBudgets, referenceCurrencies } from '../../src/db/schema';
+import { inboxItems, referenceCategories, referenceBudgets, referenceCurrencies } from '../../src/db/schema';
+import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { confirmInboxItem } from '../../src/inbox/createManualEntry';
 import { updateDraft, deleteInboxItem } from '../../src/inbox/updateDraft';
 import { draftReadiness } from '../../src/inbox/readiness';
@@ -29,14 +30,19 @@ export default function DraftScreen() {
   const t = useTheme();
 
   const { data: rows } = useLiveQuery(db.select().from(inboxItems).where(eq(inboxItems.id, id)));
-  const { data: accountRows } = useLiveQuery(db.select().from(referenceAccounts));
+  const assetAccounts = useAssetAccounts() ?? [];
   const { data: categories } = useLiveQuery(db.select().from(referenceCategories));
   const { data: budgets } = useLiveQuery(db.select().from(referenceBudgets));
   const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
-  const assetAccounts = (accountRows ?? []).filter((a) => a.type === 'asset');
+
+  const row = rows?.[0];
+  const draft: Draft | null = row ? JSON.parse(row.draftJson) : null;
 
   const [histories, setHistories] = useState<MerchantHistory[]>([]);
-  useEffect(() => { buildMerchantLookup(db).then((map) => setHistories([...map.values()])); }, [db]);
+  useEffect(() => {
+    const lookupType = draft?.type === 'transfer' ? undefined : draft?.type;
+    buildMerchantLookup(db, { type: lookupType }).then((map) => setHistories([...map.values()]));
+  }, [db, draft?.type]);
 
   const [amountSheetOpen, setAmountSheetOpen] = useState(false);
   const [payeeSheetOpen, setPayeeSheetOpen] = useState(false);
@@ -44,8 +50,6 @@ export default function DraftScreen() {
   const [confirming, setConfirming] = useState(false);
   const [matchedFor, setMatchedFor] = useState<{ text: string; caption: string | null } | null>(null);
 
-  const row = rows?.[0];
-  const draft: Draft | null = row ? JSON.parse(row.draftJson) : null;
   const readOnly = row ? row.state === 'confirmed' || row.state === 'synced' : false;
   const payeeName = draft ? (draft.type === 'deposit' ? draft.sourceName : draft.destinationName) : undefined;
   const isPayeeType = !!draft && draft.type !== 'transfer';
@@ -173,6 +177,7 @@ export default function DraftScreen() {
             onDatePress={openDatePicker}
             readOnly={readOnly}
             accounts={assetAccounts}
+            currencies={currencies ?? []}
             categories={categories ?? []}
             budgets={budgets ?? []}
           />

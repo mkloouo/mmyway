@@ -10,9 +10,11 @@ import { Screen, AppBar, SectionHeader, Card, Row, Chip, Button, Sheet, Toast } 
 import { AddressesSheet } from '../../src/ui/AddressesSheet';
 import { relativeTime } from '../../src/ui/relativeTime';
 import { signIn, signOut, readStoredCredentials, probeAbout } from '../../src/api/ff3/auth';
+import type { AuthErrorReason } from '../../src/api/ff3/types';
 import { readHosts, writeHosts } from '../../src/api/ff3/hosts';
 import { saveGeminiKey, readGeminiKey } from '../../src/settings/secrets';
-import { referenceAccounts, referenceCurrencies, aliases as aliasesTable } from '../../src/db/schema';
+import { referenceCurrencies, aliases as aliasesTable } from '../../src/db/schema';
+import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { hasEnvelopeMarker } from '../../src/accounts/envelopeMarker';
 import { useSync } from '../../src/sync/useSync';
 import {
@@ -23,6 +25,14 @@ import {
   getCashAccountId, setCashAccountId,
   getFf3ActiveHost, getLastSyncedAt,
 } from '../../src/settings/appSettings';
+
+const SIGN_IN_ERROR_MESSAGES: Record<AuthErrorReason, string> = {
+  invalid_host: "Can't reach that address. Check it's correct and the device has network access.",
+  invalid_api_key: 'That token was rejected — check it was copied in full.',
+  unexpected_status: 'Firefly III returned an unexpected response. Try again in a moment.',
+  not_a_firefly_instance: "That address doesn't look like a Firefly III instance.",
+  api_version_too_low: 'This Firefly III instance is running a version too old for the app.',
+};
 
 function shortLabel(url: string): string {
   try {
@@ -37,10 +47,10 @@ export default function SettingsScreen() {
   const { credentialsChanged } = useSync();
   const t = useTheme();
 
-  const { data: accounts } = useLiveQuery(db.select().from(referenceAccounts));
+  const allAssetAccounts = useAssetAccounts({ includeInactive: true }) ?? [];
+  const assetAccounts = useAssetAccounts() ?? [];
   const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
   const { data: aliasRows } = useLiveQuery(db.select().from(aliasesTable));
-  const assetAccounts = (accounts ?? []).filter((a) => a.type === 'asset');
 
   const [signedIn, setSignedIn] = useState(false);
   const [ff3Hosts, setFf3Hosts] = useState<string[]>([]);
@@ -120,7 +130,7 @@ export default function SettingsScreen() {
         await reload();
         credentialsChanged();
       } else {
-        Alert.alert('Sign-in failed', result.reason);
+        Alert.alert('Sign-in failed', SIGN_IN_ERROR_MESSAGES[result.reason]);
       }
     } finally {
       setSigningIn(false);
@@ -132,6 +142,14 @@ export default function SettingsScreen() {
       { text: 'Cancel', style: 'cancel' },
       { text: 'Sign out', style: 'destructive', onPress: async () => { await signOut(); await reload(); credentialsChanged(); } },
     ]);
+  }
+
+  function accountLabel(id: string | null): string {
+    if (!id) return 'none';
+    const active = assetAccounts.find((a) => a.id === id);
+    if (active) return active.name;
+    const inactive = allAssetAccounts.find((a) => a.id === id);
+    return inactive ? `${inactive.name} (inactive)` : 'none';
   }
 
   const noAccountsHint = (
@@ -175,9 +193,9 @@ export default function SettingsScreen() {
 
         <SectionHeader title="Defaults" />
         <Card style={{ marginHorizontal: t.space.lg }}>
-          <Row first label="Account" chevron value={assetAccounts.find((a) => a.id === defaultAccountId)?.name ?? 'none'} onPress={() => setAccountSheetOpen(true)} />
+          <Row first label="Account" chevron value={accountLabel(defaultAccountId)} onPress={() => setAccountSheetOpen(true)} />
           <Row label="Currency" chevron value={defaultCurrency ?? 'none'} onPress={() => setCurrencySheetOpen(true)} />
-          <Row label="Cash payments use" chevron value={assetAccounts.find((a) => a.id === cashAccountId)?.name ?? 'none'} onPress={() => setCashAccountSheetOpen(true)} />
+          <Row label="Cash payments use" chevron value={accountLabel(cashAccountId)} onPress={() => setCashAccountSheetOpen(true)} />
         </Card>
 
         <SectionHeader title="Accounts" />

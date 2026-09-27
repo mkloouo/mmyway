@@ -13,8 +13,11 @@ import { categoryColor } from '../../src/ui/categoryColor';
 import { relativeTime } from '../../src/ui/relativeTime';
 import { useTransactionPage, type ActivityTypeFilter, type CachedTransactionRow } from '../../src/transactions/useTransactionPage';
 import { useSync, useLoadOlderHistory } from '../../src/sync/useSync';
-import { referenceAccounts, referenceCurrencies, outboxOperations, cachedTransactions } from '../../src/db/schema';
+import { getClient } from '../../src/api/ff3/session';
+import { referenceCurrencies, outboxOperations, cachedTransactions } from '../../src/db/schema';
+import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import type { CreateTransactionPayload } from '../../src/sync/outbox';
+import type { TransactionRead } from '../../src/api/ff3/types';
 
 const FILTERS: { label: string; type: ActivityTypeFilter }[] = [
   { label: 'All', type: 'all' },
@@ -37,6 +40,41 @@ interface QueuedRow {
   categoryName: string | null;
 }
 
+interface RemoteResultRow {
+  remote: true;
+  groupId: string;
+  description: string;
+  amount: string;
+  currencyCode: string;
+  type: 'withdrawal' | 'deposit' | 'transfer';
+  sourceName: string | null;
+  destinationName: string | null;
+  categoryName: string | null;
+}
+
+function mapRemoteResult(group: TransactionRead): RemoteResultRow | null {
+  const journal = group.attributes.transactions[0];
+  if (!journal) return null;
+  return {
+    remote: true,
+    groupId: group.id,
+    description: journal.description,
+    amount: journal.amount,
+    currencyCode: journal.currency_code ?? '',
+    type: journal.type as 'withdrawal' | 'deposit' | 'transfer',
+    sourceName: journal.source_name ?? null,
+    destinationName: journal.destination_name ?? null,
+    categoryName: journal.category_name ?? null,
+  };
+}
+
+type RemoteSearchState =
+  | { status: 'idle' }
+  | { status: 'loading'; query: string }
+  | { status: 'done'; query: string; rows: RemoteResultRow[] }
+  | { status: 'error'; query: string }
+  | { status: 'offline'; query: string };
+
 function localDayKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
@@ -54,7 +92,7 @@ export default function ActivityScreen() {
   const db = useDb();
   const t = useTheme();
   const navigation = useNavigation();
-  const listRef = useRef<SectionList<CachedTransactionRow | QueuedRow, DisplaySection>>(null);
+  const listRef = useRef<SectionList<CachedTransactionRow | QueuedRow | RemoteResultRow, DisplaySection>>(null);
 
   const [type, setType] = useState<ActivityTypeFilter>('all');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -62,15 +100,15 @@ export default function ActivityScreen() {
   const [search, setSearch] = useState('');
   const [accountFilter, setAccountFilter] = useState<string | null>(null);
 
-  const { data: accountRows } = useLiveQuery(db.select().from(referenceAccounts));
+  const assetAccounts = useAssetAccounts() ?? [];
   const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
   const { data: outbox } = useLiveQuery(db.select().from(outboxOperations));
-  const { data: cachedTxRows } = useLiveQuery(db.select().from(cachedTransactions));
+  // Just "has anything ever synced" — .limit(1) instead of loading the whole cached table.
+  const { data: cachedTxProbe } = useLiveQuery(db.select({ id: cachedTransactions.groupId }).from(cachedTransactions).limit(1));
   const { status, syncNow } = useSync();
-  const assetAccounts = (accountRows ?? []).filter((a) => a.type === 'asset');
 
   const { sections, loadMore, loadingMore, atEnd } = useTransactionPage({ search, type, accountName: accountFilter });
-  const { loadOlder, loadingOlder, exhausted } = useLoadOlderHistory();
+  const { loadOlder, loadingOlder, exhausted, reset: resetExhausted } = useLoadOlderHistory();
   // The local cache runs out before real history does — reaching the end of what's cached pulls
   // a further chunk from FF3 instead of just stopping (see useLoadOlderHistory).
   function handleEndReached() {
@@ -78,6 +116,49 @@ export default function ActivityScreen() {
     if (!exhausted) void loadOlder();
   }
   const reachedRealEnd = atEnd && exhausted;
+  // A pull-to-refresh is the user asking "check again" — `exhausted` otherwise only ever latches
+  // forward for the lifetime of this screen.
+  function handleRefresh() {
+    resetExhausted();
+    syncNow();
+  }
+
+  // Once local search runs out of cached rows to page through, FF3's own search covers what
+  // hasn't been pulled into cachedTransactions yet — kept as a separate section rather than
+  // written into the cache, so local search stays a predictable, offline-first read.
+  const remoteQuery = reachedRealEnd ? search.trim() : '';
+  // Only ever holds a *finished* fetch (never "loading") — "loading" is derived below from
+  // whether this still matches remoteQuery, rather than set eagerly at the top of the effect.
+  const [fetchedSearch, setFetchedSearch] = useState<
+    { query: string; status: 'done'; rows: RemoteResultRow[] } | { query: string; status: 'error' | 'offline' } | null
+  >(null);
+  useEffect(() => {
+    if (!remoteQuery) return;
+    let cancelled = false;
+    (async () => {
+      const client = await getClient(db);
+      if (!client) {
+        if (!cancelled) setFetchedSearch({ status: 'offline', query: remoteQuery });
+        return;
+      }
+      try {
+        const response = await client.request<{ data: TransactionRead[] }>(
+          `/v1/search/transactions?query=${encodeURIComponent(remoteQuery)}&limit=50&page=1`,
+        );
+        if (cancelled) return;
+        const rows = response.data.map(mapRemoteResult).filter((r): r is RemoteResultRow => !!r);
+        setFetchedSearch({ status: 'done', query: remoteQuery, rows });
+      } catch {
+        if (!cancelled) setFetchedSearch({ status: 'error', query: remoteQuery });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [db, remoteQuery]);
+  // Once the query changes, the fetch above hasn't re-run yet — falling back to "loading" here
+  // instead of resetting fetchedSearch avoids a stale result flashing under the new query.
+  const remoteSearch: RemoteSearchState = !remoteQuery ? { status: 'idle' }
+    : fetchedSearch?.query === remoteQuery ? fetchedSearch
+    : { status: 'loading', query: remoteQuery };
 
   const queuedRows: QueuedRow[] = (outbox ?? [])
     .filter((op) => op.kind === 'create_transaction' && op.status === 'pending')
@@ -94,13 +175,17 @@ export default function ActivityScreen() {
     })
     .filter((r): r is QueuedRow => !!r);
 
-  interface DisplaySection { key: string; totals: { currencyCode: string; amount: string }[]; data: (CachedTransactionRow | QueuedRow)[] }
+  const REMOTE_SECTION_KEY = 'ff3-search';
+  interface DisplaySection { key: string; totals: { currencyCode: string; amount: string }[]; data: (CachedTransactionRow | QueuedRow | RemoteResultRow)[] }
   const todayKey = localDayKey(new Date());
   const displaySections: DisplaySection[] = sections.map((s): DisplaySection => ({ key: s.key, totals: s.totals, data: s.data }));
   if (queuedRows.length > 0) {
     const idx = displaySections.findIndex((s) => s.key === todayKey);
     if (idx >= 0) displaySections[idx] = { ...displaySections[idx]!, data: [...queuedRows, ...displaySections[idx]!.data] };
     else displaySections.unshift({ key: todayKey, totals: [], data: queuedRows });
+  }
+  if (remoteSearch.status === 'done' && remoteSearch.rows.length > 0) {
+    displaySections.push({ key: REMOTE_SECTION_KEY, totals: [], data: remoteSearch.rows });
   }
 
   function scrollToTop() {
@@ -113,7 +198,9 @@ export default function ActivityScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigation]);
 
-  const hasSyncedBefore = (cachedTxRows ?? []).length > 0;
+  // undefined until the first read lands, so a synced-but-empty Activity doesn't flash "Nothing
+  // cached yet" before flipping to "No results" once the probe resolves.
+  const hasSyncedBefore = cachedTxProbe === undefined ? undefined : cachedTxProbe.length > 0;
   const hasResults = displaySections.length > 0;
 
   return (
@@ -194,27 +281,27 @@ export default function ActivityScreen() {
           ))}
         </View>
 
-        {!hasSyncedBefore && !hasResults && (
+        {hasSyncedBefore === false && !hasResults && (
           <EmptyState glyph="↻" title="Nothing cached yet" hint="Pull to sync." />
         )}
-        {hasSyncedBefore && !hasResults && (
+        {hasSyncedBefore === true && !hasResults && (
           <EmptyState glyph="🔍" title="No results" hint="Try a different search or filter." />
         )}
 
         {hasResults && (
-          <SectionList<CachedTransactionRow | QueuedRow, DisplaySection>
+          <SectionList<CachedTransactionRow | QueuedRow | RemoteResultRow, DisplaySection>
             ref={listRef}
             style={{ flex: 1 }}
             sections={displaySections}
             keyExtractor={(row) => row.groupId}
             refreshing={status === 'syncing'}
-            onRefresh={syncNow}
+            onRefresh={handleRefresh}
             onEndReached={handleEndReached}
             onEndReachedThreshold={0.4}
             contentContainerStyle={{ paddingBottom: 140 }}
             renderSectionHeader={({ section }) => (
               <SectionHeader
-                title={dayTitle(section.key)}
+                title={section.key === REMOTE_SECTION_KEY ? 'FROM FIREFLY III' : dayTitle(section.key)}
                 action={section.totals.length > 0 ? (
                   <Text style={[t.type.label, { color: t.color.textMuted }]}>
                     {section.totals.map((tot) => formatMoney(tot.amount, currencyOf(currencies ?? [], tot.currencyCode ?? ''))).join(' · ')}
@@ -224,12 +311,15 @@ export default function ActivityScreen() {
             )}
             renderItem={({ item }) => {
               const queued = 'queued' in item;
+              // A remote-search row isn't cached locally yet, so there's nothing for the detail
+              // screen (which only reads cachedTransactions) to open.
+              const remote = 'remote' in item;
               const description = item.description || (item.type === 'withdrawal' ? item.destinationName : item.sourceName) || '—';
               const accountLeg = item.type === 'deposit' ? item.sourceName : item.destinationName;
               const dotColor = item.categoryName ? categoryColor(item.categoryName, t.dark) : (item.type === 'transfer' ? t.color.transfer : t.color.textFaint);
               return (
                 <Pressable
-                  onPress={() => !queued && router.push(`/transactions/${item.groupId}`)}
+                  onPress={() => !queued && !remote && router.push(`/transactions/${item.groupId}`)}
                   style={({ pressed }) => ({
                     flexDirection: 'row', alignItems: 'center', gap: t.space.sm,
                     paddingHorizontal: t.space.lg, paddingVertical: t.space.sm, opacity: pressed ? 0.6 : 1,
@@ -247,11 +337,35 @@ export default function ActivityScreen() {
                 </Pressable>
               );
             }}
-            ListFooterComponent={!reachedRealEnd ? (
-              <Text style={[t.type.label, { color: t.color.textFaint, textAlign: 'center', paddingVertical: t.space.lg }]}>
-                {loadingMore || loadingOlder ? 'Loading more…' : ' '}
-              </Text>
-            ) : null}
+            ListFooterComponent={(
+              <>
+                {!reachedRealEnd && (
+                  <Text style={[t.type.label, { color: t.color.textFaint, textAlign: 'center', paddingVertical: t.space.lg }]}>
+                    {loadingMore || loadingOlder ? 'Loading more…' : ' '}
+                  </Text>
+                )}
+                {remoteSearch.status === 'loading' && (
+                  <Text style={[t.type.label, { color: t.color.textFaint, textAlign: 'center', paddingVertical: t.space.lg }]}>
+                    Searching Firefly III…
+                  </Text>
+                )}
+                {remoteSearch.status === 'offline' && (
+                  <Text style={[t.type.label, { color: t.color.textFaint, textAlign: 'center', paddingVertical: t.space.lg }]}>
+                    Can&apos;t search Firefly III while offline
+                  </Text>
+                )}
+                {remoteSearch.status === 'error' && (
+                  <Text style={[t.type.label, { color: t.color.warn, textAlign: 'center', paddingVertical: t.space.lg }]}>
+                    Searching Firefly III failed
+                  </Text>
+                )}
+                {remoteSearch.status === 'done' && remoteSearch.rows.length === 0 && (
+                  <Text style={[t.type.label, { color: t.color.textFaint, textAlign: 'center', paddingVertical: t.space.lg }]}>
+                    Nothing more in Firefly III
+                  </Text>
+                )}
+              </>
+            )}
           />
         )}
 

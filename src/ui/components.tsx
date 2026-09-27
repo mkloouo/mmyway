@@ -2,10 +2,10 @@
 // a screen that needs a new look adds a variant here rather than inlining styles.
 import { useEffect, useMemo, type ReactNode } from 'react';
 import {
-  Animated, KeyboardAvoidingView, Modal, Pressable, ScrollView, Text, View,
+  Animated, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, Text, View,
   type StyleProp, type ViewStyle,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme, hitSize, type Theme } from './theme';
 import { formatMoney, signFor, type DisplayCurrency } from './money';
 
@@ -16,13 +16,20 @@ import { formatMoney, signFor, type DisplayCurrency } from './money';
  */
 export function Screen({ children, style, bottom }: { children: ReactNode; style?: StyleProp<ViewStyle>; bottom?: boolean }) {
   const t = useTheme();
+  const insets = useSafeAreaInsets();
   return (
-    <SafeAreaView
-      edges={bottom ? ['top', 'left', 'right', 'bottom'] : ['top', 'left', 'right']}
-      style={[{ flex: 1, backgroundColor: t.color.bg }, style]}
+    <View
+      style={[
+        {
+          flex: 1, backgroundColor: t.color.bg,
+          paddingTop: insets.top, paddingLeft: insets.left, paddingRight: insets.right,
+          paddingBottom: bottom ? insets.bottom : 0,
+        },
+        style,
+      ]}
     >
       {children}
-    </SafeAreaView>
+    </View>
   );
 }
 
@@ -210,7 +217,9 @@ export function StatusPill({ state, label }: { state: 'ok' | 'syncing' | 'queued
       <Pulse active={state === 'syncing'}>
         <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dot }} />
       </Pulse>
-      <Text style={[t.type.label, { color: t.color.textMuted }]}>{label}</Text>
+      <Text style={[t.type.label, { color: t.color.textMuted, flexShrink: 0 }]} numberOfLines={1}>
+        {label.replace(/ /g, ' ')}
+      </Text>
     </View>
   );
 }
@@ -259,11 +268,17 @@ export function Sheet({
   // rect, which showed as white squares outside the cutouts. Neither is worth keeping.
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-      <KeyboardAvoidingView behavior="padding" style={{ flex: 1, justifyContent: 'flex-end' }}>
+      {/* The manifest's windowSoftInputMode defaults to adjustResize, which already shrinks this
+          Modal's window for the keyboard — adding "padding" here on top of that pushed the panel
+          up a second time and covered the list. iOS has no such resize, so it still needs it. */}
+      <KeyboardAvoidingView behavior={Platform.OS === 'android' ? undefined : 'padding'} style={{ flex: 1, justifyContent: 'flex-end' }}>
         <Pressable style={{ flex: 1, backgroundColor: t.color.scrim }} onPress={onClose} accessibilityLabel="Close" />
         <View
           style={{
-            maxHeight: '80%', backgroundColor: t.color.surface, overflow: 'hidden',
+            // A `scroll={false}` body hands us a flex: 1 FlatList that needs a resolved height to
+            // fill, not just a ceiling — `maxHeight` alone leaves it collapsed to 0.
+            [scroll ? 'maxHeight' : 'height']: '80%',
+            backgroundColor: t.color.surface, overflow: 'hidden',
             borderTopLeftRadius: t.radius.lg, borderTopRightRadius: t.radius.lg,
             paddingBottom: t.space.xxl + insets.bottom,
           }}
@@ -272,7 +287,7 @@ export function Sheet({
           <Text style={[t.type.heading, { color: t.color.text, paddingHorizontal: t.space.lg, paddingBottom: t.space.md }]}>{title}</Text>
           {scroll
             ? <ScrollView contentContainerStyle={bodyPadding}>{children}</ScrollView>
-            : <View style={[bodyPadding, { flexShrink: 1 }]}>{children}</View>}
+            : <View style={[bodyPadding, { flex: 1 }]}>{children}</View>}
           {!!footer && <View style={{ paddingHorizontal: t.space.lg, paddingTop: t.space.md }}>{footer}</View>}
         </View>
       </KeyboardAvoidingView>

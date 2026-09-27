@@ -5,6 +5,7 @@ import { Text, TextInput, View } from 'react-native';
 import { Card, Row, Chip, Button, Sheet } from './components';
 import { useTheme } from './theme';
 import { categoryColor } from './categoryColor';
+import { AccountPickerSheet, type AccountPickerAccount } from './AccountPickerSheet';
 
 export interface DetailRowsValue {
   type: 'withdrawal' | 'deposit' | 'transfer';
@@ -22,12 +23,16 @@ export interface DetailRowsProps {
   onChange: (patch: Partial<DetailRowsValue>) => void;
   onDatePress: () => void;
   readOnly?: boolean;
-  accounts: { id: string; name: string }[];
+  /** For display — an old transaction can name an account since made inactive. */
+  accounts: AccountPickerAccount[];
+  /** Choices offered when picking a new account. Defaults to `accounts`. */
+  pickableAccounts?: AccountPickerAccount[];
+  currencies: { code: string; symbol: string; decimalPlaces: number }[];
   categories: { id: string; name: string }[];
   budgets: { id: string; name: string }[];
 }
 
-export function DetailRows({ value, onChange, onDatePress, readOnly, accounts, categories, budgets }: DetailRowsProps) {
+export function DetailRows({ value, onChange, onDatePress, readOnly, accounts, pickableAccounts, currencies, categories, budgets }: DetailRowsProps) {
   const t = useTheme();
   const [categorySheetOpen, setCategorySheetOpen] = useState(false);
   const [budgetSheetOpen, setBudgetSheetOpen] = useState(false);
@@ -37,6 +42,7 @@ export function DetailRows({ value, onChange, onDatePress, readOnly, accounts, c
   const sourceAccount = accounts.find((a) => a.id === value.sourceAccountId);
   const destinationAccount = accounts.find((a) => a.id === value.destinationAccountId);
   const budget = budgets.find((b) => b.id === value.budgetId);
+  const accountChoices = pickableAccounts ?? accounts;
 
   return (
     <>
@@ -101,21 +107,15 @@ export function DetailRows({ value, onChange, onDatePress, readOnly, accounts, c
         </View>
       </Sheet>
 
-      <Sheet visible={!!accountSheetTarget} onClose={() => setAccountSheetTarget(null)} title={accountSheetTarget === 'source' ? 'From' : 'To'}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
-          {accounts.map((a) => (
-            <Chip
-              key={a.id}
-              label={a.name}
-              selected={(accountSheetTarget === 'source' ? value.sourceAccountId : value.destinationAccountId) === a.id}
-              onPress={() => {
-                onChange(accountSheetTarget === 'source' ? { sourceAccountId: a.id } : { destinationAccountId: a.id });
-                setAccountSheetTarget(null);
-              }}
-            />
-          ))}
-        </View>
-      </Sheet>
+      <AccountPickerSheet
+        visible={!!accountSheetTarget}
+        onClose={() => setAccountSheetTarget(null)}
+        title={accountSheetTarget === 'source' ? 'From' : 'To'}
+        accounts={accountChoices}
+        currencies={currencies}
+        excludeId={accountSheetTarget === 'destination' && value.type === 'transfer' ? value.sourceAccountId : null}
+        onSelect={(a) => onChange(accountSheetTarget === 'source' ? { sourceAccountId: a.id } : { destinationAccountId: a.id })}
+      />
 
       <Sheet
         visible={textSheetOpen}

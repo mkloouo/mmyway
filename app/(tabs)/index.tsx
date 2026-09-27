@@ -24,8 +24,12 @@ import { deleteInboxItem } from '../../src/inbox/updateDraft';
 import { confirmDestructive } from '../../src/ui/confirm';
 import { transition } from '../../src/inbox/state';
 import { approveRecurringReview, editRecurringReview, deleteRecurringReview } from '../../src/sync/recurringReview';
+import { discardOperation } from '../../src/sync/outbox';
+import { parseDecimalInput } from '../../src/api/ff3/decimal';
+import { reportErrors } from '../../src/ui/reportError';
 import { useSync, useSignedIn } from '../../src/sync/useSync';
-import { inboxItems, outboxOperations, referenceAccounts, referenceCurrencies, cachedTransactions } from '../../src/db/schema';
+import { inboxItems, outboxOperations, referenceCurrencies, cachedTransactions } from '../../src/db/schema';
+import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { generateId } from '../../src/utils/id';
 import type { Draft } from '../../src/inbox/draft';
 
@@ -114,13 +118,24 @@ function ReviewCard({
 }: {
   item: InboxItemRow;
   currencies: { code: string; symbol: string; decimalPlaces: number }[];
-  onApprove: () => void;
+  onApprove: () => Promise<void>;
   onEdit: () => void;
   onDelete: () => void;
 }) {
   const t = useTheme();
+  const [approving, setApproving] = useState(false);
   const journal = JSON.parse(item.draftJson);
   const dateLabel = journal.date ? new Date(journal.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : undefined;
+
+  async function approve() {
+    if (approving) return;
+    setApproving(true);
+    try {
+      await onApprove();
+    } finally {
+      setApproving(false);
+    }
+  }
 
   return (
     <Card style={{ marginHorizontal: t.space.lg, marginBottom: t.space.sm }}>
@@ -133,21 +148,22 @@ function ReviewCard({
         {metaLine([journal.source_name, dateLabel, 'recurring'])}
       </Text>
       <View style={{ flexDirection: 'row', gap: t.space.sm, marginTop: t.space.sm }}>
-        <Button title="Approve" variant="secondary" onPress={onApprove} style={{ flex: 1 }} />
-        <Button title="Edit" variant="ghost" onPress={onEdit} style={{ flex: 1 }} />
-        <Button title="Delete" variant="danger" onPress={onDelete} style={{ flex: 1 }} />
+        <Button title={approving ? 'Approving…' : 'Approve'} variant="secondary" onPress={approve} disabled={approving} style={{ flex: 1 }} />
+        <Button title="Edit" variant="ghost" onPress={onEdit} disabled={approving} style={{ flex: 1 }} />
+        <Button title="Delete" variant="danger" onPress={onDelete} disabled={approving} style={{ flex: 1 }} />
       </View>
     </Card>
   );
 }
 
 function AttentionCard({
-  entry, onRetryError, onDiscardError, onRetryOp, onResolveConflict,
+  entry, onRetryError, onDiscardError, onRetryOp, onDiscardOp, onResolveConflict,
 }: {
   entry: AttentionItem;
   onRetryError: (id: string) => void;
   onDiscardError: (id: string) => void;
   onRetryOp: (id: string) => void;
+  onDiscardOp: (id: string) => void;
   onResolveConflict: (groupId: string) => void;
 }) {
   const t = useTheme();
@@ -184,9 +200,14 @@ function AttentionCard({
         {op.lastError ?? 'Unknown error'}
       </Text>
       <View style={{ flexDirection: 'row', gap: t.space.sm, marginTop: t.space.sm }}>
-        {isConflict && groupId
-          ? <Button title="Resolve ›" variant="secondary" onPress={() => onResolveConflict(groupId!)} style={{ flex: 1 }} />
-          : <Button title="Retry now" variant="secondary" onPress={() => onRetryOp(op.id)} style={{ flex: 1 }} />}
+        {isConflict && groupId ? (
+          <Button title="Resolve ›" variant="secondary" onPress={() => onResolveConflict(groupId!)} style={{ flex: 1 }} />
+        ) : (
+          <>
+            <Button title="Retry now" variant="secondary" onPress={() => onRetryOp(op.id)} style={{ flex: 1 }} />
+            <Button title="Discard" variant="danger" onPress={() => onDiscardOp(op.id)} style={{ flex: 1 }} />
+          </>
+        )}
       </View>
     </Card>
   );
@@ -198,11 +219,11 @@ export default function InboxScreen() {
   const { needsAttention, toConfirm, toReview } = useInboxSections();
   const { data: outbox } = useLiveQuery(db.select().from(outboxOperations));
   const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
-  const { data: assetAccountRows } = useLiveQuery(db.select().from(referenceAccounts));
-  const { data: cachedTxRows } = useLiveQuery(db.select().from(cachedTransactions));
+  // Just "has anything ever synced" — .limit(1) instead of loading the whole cached table.
+  const { data: cachedTxProbe } = useLiveQuery(db.select({ id: cachedTransactions.groupId }).from(cachedTransactions).limit(1));
   const { status, summary, syncNow } = useSync();
 
-  const assetAccounts = (assetAccountRows ?? []).filter((a) => a.type === 'asset');
+  const assetAccounts = useAssetAccounts() ?? [];
   const pendingOutboxCount = (outbox ?? []).filter((op) => op.status === 'pending' || op.status === 'failed').length;
 
   // A sync that clears the queue gets a success haptic (design §3.4) — adjusted during render
@@ -238,9 +259,11 @@ export default function InboxScreen() {
   }
 
   async function confirmSingle(item: InboxItemRow) {
-    const result = await confirmInboxItem(db, item.id);
-    haptics.tick();
-    showConfirmedSnackbar([{ id: item.id, result }]);
+    await reportErrors('Confirm', async () => {
+      const result = await confirmInboxItem(db, item.id);
+      haptics.tick();
+      showConfirmedSnackbar([{ id: item.id, result }]);
+    }, (message) => setSnackbar({ id: generateId(), message }));
   }
 
   const readyToConfirm = toConfirm.filter((item) => {
@@ -253,15 +276,22 @@ export default function InboxScreen() {
     setConfirmingAll(true);
     setConfirmProgress({ done: 0, total: readyToConfirm.length });
     const batch: { id: string; result: ConfirmResult }[] = [];
+    let failed = false;
     try {
-      for (const item of readyToConfirm) {
-        const result = await confirmInboxItem(db, item.id);
-        batch.push({ id: item.id, result });
-        setConfirmProgress((p) => ({ ...p, done: p.done + 1 }));
-      }
+      await reportErrors('Confirm all', async () => {
+        for (const item of readyToConfirm) {
+          const result = await confirmInboxItem(db, item.id);
+          batch.push({ id: item.id, result });
+          setConfirmProgress((p) => ({ ...p, done: p.done + 1 }));
+        }
+      }, (message) => {
+        failed = true;
+        setSnackbar({ id: generateId(), message: batch.length > 0 ? `${message} after ${batch.length}` : message });
+      });
     } finally {
       setConfirmingAll(false);
     }
+    if (failed || batch.length === 0) return;
     haptics.tick();
     showConfirmedSnackbar(batch);
   }
@@ -289,6 +319,10 @@ export default function InboxScreen() {
     await db.update(outboxOperations).set({ status: 'pending', lastError: null }).where(eq(outboxOperations.id, opId));
     syncNow();
   }
+  async function discardOp(opId: string) {
+    if (!await confirmDestructive('Discard this queued change?', 'Discard', 'It is dropped without being sent to Firefly III.')) return;
+    await discardOperation(db, opId);
+  }
   function resolveConflict(groupId: string) {
     router.push(`/transactions/${groupId}`);
   }
@@ -297,17 +331,21 @@ export default function InboxScreen() {
     const journal = JSON.parse(item.draftJson);
     setEditingReview({ id: item.id, amount: journal.amount ?? '', currencyCode: journal.currency_code ?? '', accountId: journal.source_id ?? null });
   }
+  const editAmountResult = editingReview ? parseDecimalInput(editingReview.amount) : null;
+  const editAmountInvalid = !!editAmountResult && !editAmountResult.ok;
   // A double-tap here used to enqueue two recurring_review operations.
   async function saveEditReview() {
-    if (!editingReview || savingReview) return;
+    if (!editingReview || savingReview || !editAmountResult?.ok) return;
     setSavingReview(true);
     try {
-      await editRecurringReview(db, editingReview.id, {
-        amount: editingReview.amount,
-        currency_code: editingReview.currencyCode,
-        ...(editingReview.accountId ? { source_id: editingReview.accountId } : {}),
-      });
-      setEditingReview(null);
+      await reportErrors('Save', async () => {
+        await editRecurringReview(db, editingReview.id, {
+          amount: editAmountResult.value,
+          currency_code: editingReview.currencyCode,
+          ...(editingReview.accountId ? { source_id: editingReview.accountId } : {}),
+        });
+        setEditingReview(null);
+      }, (message) => setSnackbar({ id: generateId(), message }));
     } finally {
       setSavingReview(false);
     }
@@ -339,7 +377,9 @@ export default function InboxScreen() {
   const dateTitle = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' });
 
   const showOfflineBanner = hasCredentials === true && summary && !summary.ff3Reachable && pendingOutboxCount > 0;
-  const hasSyncedBefore = (cachedTxRows ?? []).length > 0;
+  // undefined until the first read lands, so a synced-but-empty Inbox doesn't flash "Nothing
+  // synced yet" before flipping to "Inbox zero" once the probe resolves.
+  const hasSyncedBefore = cachedTxProbe === undefined ? undefined : cachedTxProbe.length > 0;
 
   return (
     <Screen>
@@ -377,10 +417,10 @@ export default function InboxScreen() {
                   action={<Button title="Go to Settings" onPress={() => router.push('/settings')} />}
                 />
               )}
-              {hasCredentials === true && !hasSyncedBefore && (
+              {hasCredentials === true && hasSyncedBefore === false && (
                 <EmptyState glyph="↻" title="Nothing synced yet" hint="Pull to refresh." />
               )}
-              {hasCredentials === true && hasSyncedBefore && (
+              {hasCredentials === true && hasSyncedBefore === true && (
                 <EmptyState
                   glyph="✓"
                   title="Inbox zero"
@@ -415,6 +455,7 @@ export default function InboxScreen() {
                   onRetryError={retryError}
                   onDiscardError={discardError}
                   onRetryOp={retryOpNow}
+                  onDiscardOp={discardOp}
                   onResolveConflict={resolveConflict}
                 />
               );
@@ -425,7 +466,7 @@ export default function InboxScreen() {
                 <ReviewCard
                   item={row}
                   currencies={currencies ?? []}
-                  onApprove={() => approveRecurringReview(db, row.id)}
+                  onApprove={() => reportErrors('Approve', () => approveRecurringReview(db, row.id), (message) => setSnackbar({ id: generateId(), message }))}
                   onEdit={() => startEditReview(row)}
                   onDelete={() => discardReview(row.id)}
                 />
@@ -460,7 +501,7 @@ export default function InboxScreen() {
         visible={!!editingReview}
         onClose={() => setEditingReview(null)}
         title="Edit recurring transaction"
-        footer={<Button title={savingReview ? 'Saving…' : 'Save & approve'} disabled={savingReview} onPress={saveEditReview} />}
+        footer={<Button title={savingReview ? 'Saving…' : 'Save & approve'} disabled={savingReview || editAmountInvalid} onPress={saveEditReview} />}
       >
         {!!editingReview && (
           <>
@@ -470,6 +511,9 @@ export default function InboxScreen() {
               style={{ borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm, padding: t.space.md, color: t.color.text }}
               placeholderTextColor={t.color.textFaint}
             />
+            {editAmountInvalid && (
+              <Text style={[t.type.label, { color: t.color.danger }]}>Invalid amount</Text>
+            )}
             <TextInput
               placeholder="Currency" value={editingReview.currencyCode}
               onChangeText={(v) => setEditingReview((cur) => (cur ? { ...cur, currencyCode: v } : cur))}

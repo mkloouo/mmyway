@@ -15,7 +15,8 @@ import { currencyOf } from '../../src/ui/money';
 import { relativeTime } from '../../src/ui/relativeTime';
 import { applyDigit, type KeypadKey } from '../../src/capture/amountInput';
 import { buildEntryDate } from '../../src/capture/entryDate';
-import { cachedTransactions, outboxOperations, referenceAccounts, referenceCategories, referenceBudgets, referenceCurrencies } from '../../src/db/schema';
+import { cachedTransactions, outboxOperations, referenceCategories, referenceBudgets, referenceCurrencies } from '../../src/db/schema';
+import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { enqueueOperation, type UpdateTransactionPayload, type DeleteTransactionPayload } from '../../src/sync/outbox';
 import { generateId } from '../../src/utils/id';
 import type { TransactionSplit } from '../../src/api/ff3/types';
@@ -39,11 +40,13 @@ export default function TransactionDetailScreen() {
 
   const { data: rows } = useLiveQuery(db.select().from(cachedTransactions).where(eq(cachedTransactions.groupId, groupId)));
   const { data: outbox } = useLiveQuery(db.select().from(outboxOperations));
-  const { data: accountRows } = useLiveQuery(db.select().from(referenceAccounts));
+  // An old transaction can point at an account since made inactive — look its name up across
+  // every account for display, but only offer active ones when picking a new one.
+  const allAssetAccounts = useAssetAccounts({ includeInactive: true }) ?? [];
+  const activeAssetAccounts = useAssetAccounts() ?? [];
   const { data: categories } = useLiveQuery(db.select().from(referenceCategories));
   const { data: budgets } = useLiveQuery(db.select().from(referenceBudgets));
   const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
-  const assetAccounts = (accountRows ?? []).filter((a) => a.type === 'asset');
   const row = rows?.[0];
 
   const [changes, setChanges] = useState<Partial<TransactionSplit>>({});
@@ -61,8 +64,8 @@ export default function TransactionDetailScreen() {
 
   const currency = currencyOf(currencies ?? [], row.currencyCode);
   const effectiveAmount = changes.amount ?? row.amount;
-  const effectiveSourceId = changes.source_id ?? assetAccounts.find((a) => a.name === row.sourceName)?.id ?? null;
-  const effectiveDestinationId = changes.destination_id ?? assetAccounts.find((a) => a.name === row.destinationName)?.id ?? null;
+  const effectiveSourceId = changes.source_id ?? allAssetAccounts.find((a) => a.name === row.sourceName)?.id ?? null;
+  const effectiveDestinationId = changes.destination_id ?? allAssetAccounts.find((a) => a.name === row.destinationName)?.id ?? null;
   const effectiveBudgetId = changes.budget_id ?? (budgets ?? []).find((b) => b.name === row.budgetName)?.id ?? null;
   const effectiveCategoryName = changes.category_name ?? row.categoryName ?? null;
   const effectiveDate = changes.date ? new Date(changes.date) : new Date(row.date);
@@ -209,7 +212,9 @@ export default function TransactionDetailScreen() {
             value={detailValue}
             onChange={handleDetailChange}
             onDatePress={openDatePicker}
-            accounts={assetAccounts}
+            accounts={allAssetAccounts}
+            pickableAccounts={activeAssetAccounts}
+            currencies={currencies ?? []}
             categories={categories ?? []}
             budgets={budgets ?? []}
           />
