@@ -2,8 +2,7 @@
 
 2026-09-27 · Mykola Odnosumov
 
-Started from the live doc at [removed].
-This repo copy is the source of truth from the merge of both branches on: tick items off here.
+This file is the source of truth: tick items off here.
 
 ## Status
 
@@ -84,7 +83,7 @@ None of these break anything today; they make the next change harder or hide the
 The biggest gap is that nothing checks a push: there is no CI, and nothing tests a screen.
 
 - [ ] **CI.** A GitHub Actions job running `npm run typecheck`, `npm run lint` and `npm test` on every push. The timezone is now pinned in `jest.config.js`, so it passes in UTC.
-- [ ] **Screen-level tests.** Every bug in `docs/bugs-found.md` was on a screen, which the 250 pure-function tests can't catch. Add React Native Testing Library for screens, and one Maestro flow on a device: capture → confirm → queued → synced.
+- [ ] **Screen-level tests.** Every bug from the first device build was on a screen, which the 250 pure-function tests can't catch. Add React Native Testing Library for screens, and one Maestro flow on a device: capture → confirm → queued → synced.
 - [ ] **Crash reporting** (for example Sentry), beyond the on-device Diagnostics log.
 - [ ] **Typed routes.** Turn on expo-router's `experiments.typedRoutes` so route strings like `/draft/${id}` are checked.
 - [ ] **README.** There isn't one; AGENTS.md covers agents, not people.
@@ -98,9 +97,9 @@ Publishing the code is about a weekend of cleanup; letting other people rely on 
 
 **Publishing the code** (others build it for their own FF3):
 
-- [ ] Replace `LICENSE`: it is Expo's template, "© 650 Industries".
-- [ ] **Next up:** remove personal material before publishing. `docs/PLANNING_BRIEF.md` and the design docs describe your income situation, envelopes, budget lines, merchants and network setup. Git history keeps them, so publish a fresh repo or rewrite history.
-- [ ] `AGENTS.md` and `.claude/settings.json` point at your `~/Projects` paths; the EAS `projectId` in `app.config.js` ties builds to your Expo account; about 4,400 lines of AI planning docs live in `docs/superpowers/`.
+- [x] `LICENSE` is PolyForm Noncommercial 1.0.0, replacing Expo's template.
+- [x] Personal material removed: the planning brief, design and plan docs are gone from the tree and from history, and `AGENTS.md` / `.claude/settings.json` no longer point at local paths.
+- [ ] The EAS `projectId` in `app.config.js` ties builds to your Expo account.
 - [ ] Loosen what is hardcoded to you: Polish number formatting in `formatMoney`, English-only text, Android-only APIs (`DateTimePickerAndroid`, iOS share target disabled), note denominations for four currencies.
 - A pattern scan found no committed secrets.
 
@@ -108,12 +107,12 @@ Publishing the code is about a weekend of cleanup; letting other people rely on 
 
 - [ ] Every open item in Sync and outbox and in Data correctness becomes mandatory: a stuck queue is an annoyance for you, lost financial data for someone else.
 - [ ] Onboarding: a sign-out that clears local data. (Readable sign-in errors: done in `4b361d6`.)
-- [ ] Privacy: a privacy policy and an in-app notice that receipt photos go to Google when Gemini is used; strip financial data from the shareable log.
+- [ ] Privacy: a privacy policy (done: `PRIVACY.md`) and an in-app notice that receipt photos go to Google when Gemini is used; strip financial data from the shareable log.
 - [ ] Distribution: Play Store needs an AAB (the production profile builds only APKs), crash reporting, translations, locale-aware money via `Intl.NumberFormat`, and tested migrations, since users won't reinstall to recover a broken schema.
 
 ## On-device checks for the pushed fixes
 
-The tests run on a desktop SQLite driver with no real FF3, so these claims need a real phone and server. Walk-through steps live in `docs/testing-plan.md`.
+The tests run on a desktop SQLite driver with no real FF3, so these claims need a real phone and server.
 
 - [ ] **Offline queue.** Queue three entries in airplane mode, go online, and confirm each arrives in FF3 exactly once.
 - [ ] **Idempotency key.** Open a transaction created from the app in FF3's web UI and confirm its internal reference reads `mmyway:…`. Lost-response recovery depends on FF3 returning it and on its "Duplicate of transaction #N" message.

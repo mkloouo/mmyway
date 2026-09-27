@@ -1,5 +1,4 @@
-// Design tokens. The single source of colour, type and spacing for every screen —
-// see docs/superpowers/designs/2026-09-27-mmyway-ui-design.md §3.
+// Design tokens. The single source of colour, type and spacing for every screen.
 // Screens never write a literal hex; they read from useTheme().
 import { useColorScheme } from 'react-native';
 

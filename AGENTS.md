@@ -1,8 +1,8 @@
 # mmyway
 
 A personal Android app (`com.mkloouo.mmyway`) for the user's self-hosted Firefly III (FF3).
-Replaces a Telegram capture bot. Full context: `the planning brief`
-(read it before any feature work — this repo's CLAUDE.md only covers repo mechanics).
+Replaces a Telegram capture bot. See `docs/ARCHITECTURE.md` for the capture → confirm → sync
+pipeline.
 
 ## Commands
 
@@ -41,8 +41,7 @@ Replaces a Telegram capture bot. Full context: `the planning brief`
   photo into a draft. Never call a provider with a live key from a test — mock `fetch`.
 - `src/inbox/` — the capture → parsed → confirmed → synced state machine shared by manual
   entries, receipts, and recurring-transaction reviews.
-- `app/` — expo-router screens, designed per
-  `docs/superpowers/designs/2026-09-27-mmyway-ui-design.md`: amount-first capture, an Inbox
+- `app/` — expo-router screens: amount-first capture, an Inbox
   that behaves as an approval queue, and a shared `src/ui/` component kit every screen draws
   from — no screen inlines a literal colour, styling always goes through `useTheme()`.
 

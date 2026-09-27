@@ -26,8 +26,8 @@ mmyway uses a state machine to manage financial entry capture and synchronizatio
   photo into a draft. Never call a provider with a live key from a test — mock `fetch`.
 - `src/inbox/` — the capture → parsed → confirmed → synced state machine shared by manual
   entries, receipts, and recurring-transaction reviews.
-- `app/` — expo-router screens. Deliberately plain UI — the entry UX is still an open design
-  question (brief §9 Q11); don't invest in polish here until that's settled.
+- `app/` — expo-router screens: amount-first capture, an Inbox that behaves as an approval
+  queue, and a shared `src/ui/` component kit styled through `useTheme()`.
 
 ## Key Rules
 

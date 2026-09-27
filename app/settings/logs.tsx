@@ -1,4 +1,4 @@
-// Diagnostics (docs/bugs-found.md): a production build leaves nothing behind when it fails on a
+// Diagnostics: a production build leaves nothing behind when it fails on a
 // real device, so the last few hundred warn/error lines are kept and can be shared out.
 import { useState } from 'react';
 import { FlatList, Share, Text, View } from 'react-native';

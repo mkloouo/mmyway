@@ -40,7 +40,7 @@ yarn-error.*
 /ios
 /android
 
-# superpowers scratch directory
+# agent scratch directory
 .superpowers/
 
 # claude runtime state
