@@ -10,9 +10,10 @@ import { eq } from 'drizzle-orm';
 import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 import type { FF3Client } from '../api/ff3/client';
 import { FF3RequestError } from '../api/ff3/client';
-import { outboxOperations, cachedTransactions } from '../db/schema';
+import { outboxOperations, cachedTransactions, inboxItems } from '../db/schema';
 import * as schema from '../db/schema';
-import type { TransactionSplit } from '../api/ff3/types';
+import type { TransactionSplit, TransactionRead } from '../api/ff3/types';
+import { generateId } from '../utils/id';
 
 export type OutboxKind =
   | 'create_transaction'
@@ -37,6 +38,11 @@ export interface DeleteTransactionPayload {
   groupId: string;
 }
 
+export interface AttachReceiptPayload {
+  transactionJournalId: string;
+  receiptImagePath: string; // file:// uri; read lazily at replay time, never held in memory across app restarts
+}
+
 // Both the expo-sqlite and better-sqlite3 Drizzle instances (src/db/client.ts, src/db/testDb.ts)
 // extend BaseSQLiteDatabase<'sync', ...> — only TRunResult differs, which nothing here touches.
 export type OutboxDb = BaseSQLiteDatabase<'sync', any, typeof schema>;
@@ -45,7 +51,7 @@ export interface NewOutboxOperation {
   id: string;
   inboxItemId?: string;
   kind: OutboxKind;
-  payload: CreateTransactionPayload | UpdateTransactionPayload | DeleteTransactionPayload | Record<string, unknown>;
+  payload: CreateTransactionPayload | UpdateTransactionPayload | DeleteTransactionPayload | AttachReceiptPayload | Record<string, unknown>;
 }
 
 export interface ReplayResult {
@@ -83,13 +89,49 @@ export async function replayOutbox(db: OutboxDb, client: FF3Client, opts: { onCo
     try {
       if (row.kind === 'create_transaction') {
         const p = payload as CreateTransactionPayload;
-        await client.request('/v1/transactions', {
+        // Defect (3): the create response carries the group/journal ids nothing downstream can
+        // work without — the confirmed→synced transition and the receipt attachment below both
+        // need them, and without writing ff3GroupId a confirmed manual entry never leaves Inbox.
+        const created = await client.request<{ data: TransactionRead }>('/v1/transactions', {
           method: 'POST',
           body: JSON.stringify({
             error_if_duplicate_hash: true,
             group_title: p.clientId,
             transactions: p.splits,
           }),
+        });
+        if (row.inboxItemId) {
+          const [item] = await db.select().from(inboxItems).where(eq(inboxItems.id, row.inboxItemId));
+          await db.update(inboxItems)
+            .set({ ff3GroupId: created.data.id, state: 'synced', updatedAt: new Date().toISOString() })
+            .where(eq(inboxItems.id, row.inboxItemId));
+
+          const journal = created.data.attributes.transactions[0];
+          if (item?.receiptImagePath && journal) {
+            await enqueueOperation(db, {
+              id: generateId(),
+              inboxItemId: row.inboxItemId,
+              kind: 'attach_receipt',
+              payload: { transactionJournalId: journal.transaction_journal_id, receiptImagePath: item.receiptImagePath },
+            });
+          }
+        }
+      } else if (row.kind === 'attach_receipt') {
+        const p = payload as AttachReceiptPayload;
+        const created = await client.request<{ data: { id: string } }>('/v1/attachments', {
+          method: 'POST',
+          body: JSON.stringify({ filename: 'receipt.jpg', attachable_type: 'TransactionJournal', attachable_id: p.transactionJournalId }),
+        });
+        // Lazy require, not a module-scope import: this file is pulled into every outbox/inbox
+        // test (see src/db/testDb.ts's header) and must stay safe to import under Jest, which
+        // never reaches this branch. Loaded only when an attach_receipt op is actually replayed.
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const { File } = require('expo-file-system');
+        const bytes: ArrayBuffer = await new File(p.receiptImagePath).arrayBuffer();
+        await client.request(`/v1/attachments/${created.data.id}/upload`, {
+          method: 'POST',
+          body: bytes,
+          headers: { 'Content-Type': 'application/octet-stream' },
         });
       } else if (row.kind === 'update_transaction' || row.kind === 'recurring_review') {
         const p = payload as UpdateTransactionPayload;
@@ -109,8 +151,6 @@ export async function replayOutbox(db: OutboxDb, client: FF3Client, opts: { onCo
         const p = payload as DeleteTransactionPayload;
         await client.request(`/v1/transactions/${p.groupId}`, { method: 'DELETE' });
       }
-      // attach_receipt follows the same try/advance/stop-on-failure shape; implemented in
-      // Task 8 alongside the module that produces its payload.
 
       await db.update(outboxOperations).set({ status: 'done' }).where(eq(outboxOperations.id, row.id));
       result.succeeded.push(row.id);

@@ -10,6 +10,7 @@ import { probeReachability } from './reachability';
 import { pullReferenceData, pullRecentTransactions } from './referenceData';
 import { replayOutbox, type OutboxDb } from './outbox';
 import { pullUnreviewedRecurring } from './recurringReview';
+import { retryPendingReceipts } from '../receipt/toDraft';
 
 export interface SyncSummary {
   signedIn: boolean;
@@ -18,6 +19,7 @@ export interface SyncSummary {
   replaySucceeded: number;
   replayConflicted: number;
   recurringCreated: number;
+  receiptsParsed: number;
   failedAt: string | null;
   error: string | null;
   lastSyncedAt: string | null;
@@ -25,7 +27,7 @@ export interface SyncSummary {
 
 const NOT_SIGNED_IN: SyncSummary = {
   signedIn: false, ff3Reachable: false, providersReachable: {},
-  replaySucceeded: 0, replayConflicted: 0, recurringCreated: 0, failedAt: null, error: null,
+  replaySucceeded: 0, replayConflicted: 0, recurringCreated: 0, receiptsParsed: 0, failedAt: null, error: null,
   lastSyncedAt: null,
 };
 
@@ -35,7 +37,7 @@ export async function runSync(db: OutboxDb): Promise<SyncSummary> {
 
   const summary: SyncSummary = {
     signedIn: true, ff3Reachable: false, providersReachable: {},
-    replaySucceeded: 0, replayConflicted: 0, recurringCreated: 0, failedAt: null, error: null,
+    replaySucceeded: 0, replayConflicted: 0, recurringCreated: 0, receiptsParsed: 0, failedAt: null, error: null,
     lastSyncedAt: null,
   };
 
@@ -56,6 +58,7 @@ export async function runSync(db: OutboxDb): Promise<SyncSummary> {
     summary.failedAt = replay.failedAt;
 
     summary.recurringCreated = await pullUnreviewedRecurring(db, client);
+    summary.receiptsParsed = await retryPendingReceipts(db);
 
     if (replay.succeeded.length > 0) {
       await pullRecentTransactions(db, client, new Date().toISOString());
