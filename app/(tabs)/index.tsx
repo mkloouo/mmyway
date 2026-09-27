@@ -21,6 +21,7 @@ import { useInboxSections, type AttentionItem, type InboxItemRow } from '../../s
 import { draftReadiness } from '../../src/inbox/readiness';
 import { confirmInboxItem, undoConfirm, type ConfirmResult } from '../../src/inbox/createManualEntry';
 import { deleteInboxItem } from '../../src/inbox/updateDraft';
+import { confirmDestructive } from '../../src/ui/confirm';
 import { transition } from '../../src/inbox/state';
 import { approveRecurringReview, editRecurringReview, deleteRecurringReview } from '../../src/sync/recurringReview';
 import { useSync } from '../../src/sync/useSync';
@@ -221,6 +222,7 @@ export default function InboxScreen() {
   const [confirmingAll, setConfirmingAll] = useState(false);
   const [confirmProgress, setConfirmProgress] = useState({ done: 0, total: 0 });
   const [editingReview, setEditingReview] = useState<{ id: string; amount: string; currencyCode: string; accountId: string | null } | null>(null);
+  const [savingReview, setSavingReview] = useState(false);
 
   function showConfirmedSnackbar(batch: { id: string; result: ConfirmResult }[]) {
     setSnackbar({
@@ -272,7 +274,18 @@ export default function InboxScreen() {
       .where(eq(inboxItems.id, id));
   }
   async function discardError(id: string) {
+    if (!await confirmDestructive('Discard this item?', 'Discard', 'It is removed from the Inbox and never sent.')) return;
     await deleteInboxItem(db, id);
+  }
+  // Both the card's ✕ and a completed left-swipe land here, so the confirmation covers both —
+  // the swipe used to delete outright, with no confirm and no undo.
+  async function discardDraft(id: string) {
+    if (!await confirmDestructive('Delete this entry?', 'Delete')) return;
+    await deleteInboxItem(db, id);
+  }
+  async function discardReview(id: string) {
+    if (!await confirmDestructive('Delete this recurring review?', 'Delete', 'The recurring transaction itself stays in Firefly III.')) return;
+    await deleteRecurringReview(db, id);
   }
   async function retryOpNow(opId: string) {
     await db.update(outboxOperations).set({ status: 'pending', lastError: null }).where(eq(outboxOperations.id, opId));
@@ -286,14 +299,20 @@ export default function InboxScreen() {
     const journal = JSON.parse(item.draftJson);
     setEditingReview({ id: item.id, amount: journal.amount ?? '', currencyCode: journal.currency_code ?? '', accountId: journal.source_id ?? null });
   }
+  // A double-tap here used to enqueue two recurring_review operations.
   async function saveEditReview() {
-    if (!editingReview) return;
-    await editRecurringReview(db, editingReview.id, {
-      amount: editingReview.amount,
-      currency_code: editingReview.currencyCode,
-      ...(editingReview.accountId ? { source_id: editingReview.accountId } : {}),
-    });
-    setEditingReview(null);
+    if (!editingReview || savingReview) return;
+    setSavingReview(true);
+    try {
+      await editRecurringReview(db, editingReview.id, {
+        amount: editingReview.amount,
+        currency_code: editingReview.currencyCode,
+        ...(editingReview.accountId ? { source_id: editingReview.accountId } : {}),
+      });
+      setEditingReview(null);
+    } finally {
+      setSavingReview(false);
+    }
   }
 
   const allSections: { key: SectionKey; title: string; data: SectionRow[] }[] = [
@@ -407,7 +426,7 @@ export default function InboxScreen() {
                     currencies={currencies ?? []}
                     onApprove={() => approveRecurringReview(db, row.id)}
                     onEdit={() => startEditReview(row)}
-                    onDelete={() => deleteRecurringReview(db, row.id)}
+                    onDelete={() => discardReview(row.id)}
                   />
                 );
               }
@@ -417,7 +436,7 @@ export default function InboxScreen() {
                   currencies={currencies ?? []}
                   onOpen={() => router.push(`/draft/${row.id}`)}
                   onConfirm={() => confirmSingle(row)}
-                  onDelete={() => deleteInboxItem(db, row.id)}
+                  onDelete={() => discardDraft(row.id)}
                 />
               );
             }}
@@ -441,7 +460,7 @@ export default function InboxScreen() {
         visible={!!editingReview}
         onClose={() => setEditingReview(null)}
         title="Edit recurring transaction"
-        footer={<Button title="Save & approve" onPress={saveEditReview} />}
+        footer={<Button title={savingReview ? 'Saving…' : 'Save & approve'} disabled={savingReview} onPress={saveEditReview} />}
       >
         {!!editingReview && (
           <>

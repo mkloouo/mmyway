@@ -93,13 +93,15 @@ export function Row({
 }
 
 export function Chip({
-  label, selected, onPress, tone, dotColor,
+  label, selected, onPress, tone, dotColor, accessibilityLabel,
 }: {
   label: string;
   selected?: boolean;
   onPress?: () => void;
   tone?: 'default' | 'warn';
   dotColor?: string;
+  /** Required when `label` is a bare glyph rather than real text. */
+  accessibilityLabel?: string;
 }) {
   const t = useTheme();
   const border = tone === 'warn' ? t.color.warn : selected ? t.color.accent : t.color.border;
@@ -109,6 +111,7 @@ export function Chip({
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
       accessibilityState={{ selected: !!selected }}
       style={({ pressed }) => ({
         flexDirection: 'row', alignItems: 'center', gap: t.space.sm,

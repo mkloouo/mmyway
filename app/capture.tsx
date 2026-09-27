@@ -283,7 +283,7 @@ export default function CaptureScreen() {
               {rankedPayees.map((h) => (
                 <Chip key={h.merchantKey} label={h.displayName} selected={merchantRawInput === h.displayName} onPress={() => applyPayeeHistory(h)} />
               ))}
-              <Chip label="🔍" onPress={() => setPayeeSheetOpen(true)} />
+              <Chip label="🔍" accessibilityLabel={`Search ${type === 'deposit' ? 'payers' : 'payees'}`} onPress={() => setPayeeSheetOpen(true)} />
             </ScrollView>
           )}
 

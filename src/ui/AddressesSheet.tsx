@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { Sheet, Button } from './components';
+import { confirmDestructive } from './confirm';
 import { useTheme } from './theme';
 
 type Status = 'idle' | 'probing' | 'ok' | 'down' | 'never_reached';
@@ -25,6 +26,8 @@ export function AddressesSheet({
   const [newAddress, setNewAddress] = useState('');
   const [adding, setAdding] = useState(false);
   const [testingAll, setTestingAll] = useState(false);
+  /** Reorder and remove both write the whole list — a second tap mid-write would race it. */
+  const [busy, setBusy] = useState(false);
 
   // Reset the working copy whenever the sheet opens — adjusted during render (React's documented
   // pattern for this), not in an effect.
@@ -61,15 +64,28 @@ export function AddressesSheet({
   }
 
   async function removeAddress(address: string) {
-    const next = list.filter((a) => a !== address);
-    setList(next);
-    await onSave(next);
+    if (busy) return;
+    if (!await confirmDestructive('Remove this address?', 'Remove', address)) return;
+    setBusy(true);
+    try {
+      const next = list.filter((a) => a !== address);
+      setList(next);
+      await onSave(next);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function makePrimary(address: string) {
-    const next = [address, ...list.filter((a) => a !== address)];
-    setList(next);
-    await onSave(next);
+    if (busy) return;
+    setBusy(true);
+    try {
+      const next = [address, ...list.filter((a) => a !== address)];
+      setList(next);
+      await onSave(next);
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function testAll() {
@@ -93,11 +109,11 @@ export function AddressesSheet({
             <Text style={[t.type.body, { color: t.color.text, flex: 1 }]} numberOfLines={1}>{address}</Text>
             {address === activeAddress && <Text style={[t.type.label, { color: t.color.accent }]}>in use</Text>}
             {status[address] === 'never_reached' && <Text style={[t.type.label, { color: t.color.warn }]}>never reached</Text>}
-            <Pressable onPress={() => makePrimary(address)} accessibilityRole="button" accessibilityLabel={`Make ${address} primary`}>
-              <Text style={[t.type.body, { color: t.color.textMuted }]}>▲</Text>
+            <Pressable onPress={() => makePrimary(address)} disabled={busy} accessibilityRole="button" accessibilityLabel={`Make ${address} primary`}>
+              <Text style={[t.type.body, { color: t.color.textMuted, opacity: busy ? 0.4 : 1 }]}>▲</Text>
             </Pressable>
-            <Pressable onPress={() => removeAddress(address)} accessibilityRole="button" accessibilityLabel={`Remove ${address}`}>
-              <Text style={[t.type.body, { color: t.color.danger }]}>✕</Text>
+            <Pressable onPress={() => removeAddress(address)} disabled={busy} accessibilityRole="button" accessibilityLabel={`Remove ${address}`}>
+              <Text style={[t.type.body, { color: t.color.danger, opacity: busy ? 0.4 : 1 }]}>✕</Text>
             </Pressable>
           </View>
         ))}

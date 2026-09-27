@@ -92,6 +92,18 @@ export default function SettingsScreen() {
   const [token, setToken] = useState('');
   const [signingIn, setSigningIn] = useState(false);
   const [geminiKeyInput, setGeminiKeyInput] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  /** Keeps a double-tap on any Save from writing the same secret or setting twice. */
+  async function saveOnce(write: () => Promise<void>) {
+    if (saving) return;
+    setSaving(true);
+    try {
+      await write();
+    } finally {
+      setSaving(false);
+    }
+  }
 
   async function onSignIn() {
     if (signingIn) return;
@@ -231,7 +243,13 @@ export default function SettingsScreen() {
         visible={localModelSheetOpen}
         onClose={() => setLocalModelSheetOpen(false)}
         title="Local model"
-        footer={<Button title="Save" onPress={async () => { await setLocalModelName(db, localModelName); setLocalModelSheetOpen(false); }} />}
+        footer={(
+          <Button
+            title={saving ? 'Saving…' : 'Save'}
+            disabled={saving}
+            onPress={() => saveOnce(async () => { await setLocalModelName(db, localModelName); setLocalModelSheetOpen(false); })}
+          />
+        )}
       >
         <TextInput
           value={localModelName} onChangeText={setLocalModelNameState} placeholder="e.g. qwen3-vl-8b" autoCapitalize="none"
@@ -244,7 +262,18 @@ export default function SettingsScreen() {
         visible={geminiSheetOpen}
         onClose={() => setGeminiSheetOpen(false)}
         title="Gemini API key"
-        footer={<Button title="Save" onPress={async () => { await saveGeminiKey(geminiKeyInput); setHasGeminiKey(true); setGeminiKeyInput(''); setGeminiSheetOpen(false); }} />}
+        footer={(
+          <Button
+            title={saving ? 'Saving…' : 'Save'}
+            disabled={saving || !geminiKeyInput.trim()}
+            onPress={() => saveOnce(async () => {
+              await saveGeminiKey(geminiKeyInput);
+              setHasGeminiKey(true);
+              setGeminiKeyInput('');
+              setGeminiSheetOpen(false);
+            })}
+          />
+        )}
       >
         <TextInput
           value={geminiKeyInput} onChangeText={setGeminiKeyInput} placeholder="API key" secureTextEntry autoCapitalize="none"
