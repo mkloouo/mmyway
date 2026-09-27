@@ -22,5 +22,5 @@ export type ReceiptChainResult = {
   extraction: ReceiptExtraction;
 } | {
   ok: false;
-  reason: 'all_providers_failed' | 'all_providers_unreachable';
+  reason: 'all_providers_unreachable';
 };

@@ -22,11 +22,6 @@ export const referenceBudgets = sqliteTable('reference_budgets', {
   syncedAt: text('synced_at').notNull(),
 });
 
-export const referenceTags = sqliteTable('reference_tags', {
-  tag: text('tag').primaryKey(),
-  syncedAt: text('synced_at').notNull(),
-});
-
 export const referenceCurrencies = sqliteTable('reference_currencies', {
   code: text('code').primaryKey(), // e.g. PLN
   symbol: text('symbol').notNull(),
@@ -88,9 +83,4 @@ export const aliases = sqliteTable('aliases', {
   targetId: text('target_id'), // FF3 id when known
   targetName: text('target_name').notNull(),
   createdAt: text('created_at').notNull(),
-});
-
-export const appSettings = sqliteTable('app_settings', {
-  key: text('key').primaryKey(),
-  value: text('value').notNull(),
 });

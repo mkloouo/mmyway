@@ -13,24 +13,14 @@ function offsetMinutesAt(timeZone: string, at: Date): number {
   return (asUtc - at.getTime()) / 60000;
 }
 
-export class TimeZoneHandler {
-  private useServerTime = true;
+/** Mirrors Waterfly's getLocalTimeAsServerTime: shift a device-local instant by the
+ * server/device offset difference so it reads correctly once the server applies its own tz. */
+export function toServerEquivalent(serverTz: string, deviceLocal: Date, deviceTz: string = Intl.DateTimeFormat().resolvedOptions().timeZone): Date {
+  const diffMinutes = offsetMinutesAt(serverTz, deviceLocal) - offsetMinutesAt(deviceTz, deviceLocal);
+  return new Date(deviceLocal.getTime() - diffMinutes * 60000);
+}
 
-  constructor(private serverTz: string, private deviceTz: string = Intl.DateTimeFormat().resolvedOptions().timeZone) {}
-
-  setUseServerTime(value: boolean): void {
-    this.useServerTime = value;
-  }
-
-  /** Mirrors Waterfly's getLocalTimeAsServerTime: shift a device-local instant by the
-   * server/device offset difference so it reads correctly once the server applies its own tz. */
-  toServerEquivalent(deviceLocal: Date): Date {
-    const diffMinutes = offsetMinutesAt(this.serverTz, deviceLocal) - offsetMinutesAt(this.deviceTz, deviceLocal);
-    return new Date(deviceLocal.getTime() - diffMinutes * 60000);
-  }
-
-  /** Mirrors Waterfly's newTXTime(): the timestamp to send for a transaction created right now. */
-  newTxTime(deviceNow: Date = new Date()): Date {
-    return this.useServerTime ? this.toServerEquivalent(deviceNow) : deviceNow;
-  }
+/** Mirrors Waterfly's newTXTime(): the timestamp to send for a transaction created right now. */
+export function newTxTime(serverTz: string, deviceNow: Date = new Date(), deviceTz?: string): Date {
+  return toServerEquivalent(serverTz, deviceNow, deviceTz);
 }
