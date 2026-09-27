@@ -45,3 +45,6 @@ yarn-error.*
 
 # claude runtime state
 .claude/*.lock
+
+# release build output
+/releases/
