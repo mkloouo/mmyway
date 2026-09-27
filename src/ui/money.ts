@@ -37,6 +37,18 @@ export function formatMoney(amount: string, currency: DisplayCurrency): string {
   return `${negative ? MINUS : ''}${body}${currency.symbol ? ` ${currency.symbol}` : ''}`;
 }
 
+/**
+ * Echoes a keypad string as it is being typed: the whole part grouped, the fraction exactly as
+ * entered, a bare trailing separator kept. `formatMoney` pads the fraction to the currency's
+ * scale, which hid every keystroke behind "0,00" until the user reached that many digits.
+ */
+export function formatAmountInput(amount: string, currency: DisplayCurrency): string {
+  const [rawWhole = '', rawFraction] = amount.split('.');
+  const whole = group(rawWhole.replace(/\D/g, ''));
+  const body = rawFraction === undefined ? whole : `${whole},${rawFraction.replace(/\D/g, '')}`;
+  return `${body}${currency.symbol ? ` ${currency.symbol}` : ''}`;
+}
+
 /** The sign a transaction type reads as in a list: spending is neutral, income is `+`. */
 export function signFor(type: 'withdrawal' | 'deposit' | 'transfer'): string {
   if (type === 'withdrawal') return MINUS;

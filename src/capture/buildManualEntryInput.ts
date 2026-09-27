@@ -31,7 +31,9 @@ export function buildManualEntryInput(state: CaptureFormState, accounts: { id: s
 
   return {
     type: state.type,
-    amount: state.amount,
+    // The keypad can leave a bare trailing separator ("12."), which the capture screen now
+    // echoes back as the user types — FF3 must not see it.
+    amount: state.amount.replace(/\.$/, ''),
     currencyCode: state.currencyCode,
     date: state.date.toISOString(),
     description: state.description || state.merchantRawInput || state.type,

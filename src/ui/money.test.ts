@@ -1,4 +1,4 @@
-import { formatMoney, signFor, currencyOf } from './money';
+import { formatMoney, formatAmountInput, signFor, currencyOf } from './money';
 
 const PLN = { symbol: 'zł', decimalPlaces: 2 };
 const JPY = { symbol: '¥', decimalPlaces: 0 };
@@ -29,6 +29,17 @@ describe('formatMoney', () => {
     expect(formatMoney('12.000000000', PLN)).toBe('12,00 zł');
     expect(formatMoney('12.000000040', PLN)).toBe('12,00000004 zł');
   })
+});
+
+describe('formatAmountInput', () => {
+  it('echoes the keypad string instead of padding it to the currency scale', () => {
+    expect(formatAmountInput('0', PLN)).toBe('0 zł');
+    expect(formatAmountInput('123', PLN)).toBe('123 zł');
+    expect(formatAmountInput('123.', PLN)).toBe('123, zł');
+    expect(formatAmountInput('123.0', PLN)).toBe('123,0 zł');
+    expect(formatAmountInput('123.05', PLN)).toBe('123,05 zł');
+    expect(formatAmountInput('1234567', PLN)).toBe('1 234 567 zł');
+  });
 });
 
 describe('signFor', () => {

@@ -18,6 +18,10 @@ describe('buildManualEntryInput', () => {
     });
   });
 
+  it('drops a bare trailing separator the keypad can leave behind', () => {
+    expect(buildManualEntryInput({ ...base, amount: '22.' }, accounts).amount).toBe('22');
+  });
+
   it('deposit: payee is the source, destination is the asset account', () => {
     const state: CaptureFormState = { ...base, type: 'deposit', merchantRawInput: 'Employer', sourceId: null, destinationId: 'acc-pko' };
     const input = buildManualEntryInput(state, accounts);

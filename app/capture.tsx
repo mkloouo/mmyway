@@ -6,10 +6,10 @@ import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { useDb } from '../src/providers/DbProvider';
 import { useTheme } from '../src/ui/theme';
-import { Screen, Chip, Button, Sheet, Money, Toast } from '../src/ui/components';
+import { Screen, Chip, Button, Sheet, Toast } from '../src/ui/components';
 import { Keypad } from '../src/ui/Keypad';
 import { PayeeSheet } from '../src/ui/PayeeSheet';
-import { currencyOf } from '../src/ui/money';
+import { currencyOf, formatAmountInput } from '../src/ui/money';
 import { categoryColor } from '../src/ui/categoryColor';
 import { haptics } from '../src/ui/haptics';
 import { referenceAccounts, referenceCategories, referenceBudgets, referenceCurrencies } from '../src/db/schema';
@@ -237,7 +237,14 @@ export default function CaptureScreen() {
         </View>
 
         <View style={{ alignItems: 'center', paddingVertical: t.space.xl }}>
-          <Money amount={amount} currency={currency} size="display" />
+          <Text style={[t.type.display, t.type.money, { color: t.color.text }]} numberOfLines={1}>
+            {formatAmountInput(amount, currency)}
+          </Text>
+          {isDirty && !readiness.ready && (
+            <Text style={[t.type.label, { color: t.color.warn, marginTop: t.space.xs }]}>
+              Needs {readiness.missing.join(', ')}
+            </Text>
+          )}
           {summaryParts.length > 0 && (
             <Text style={[t.type.body, { color: t.color.textMuted, marginTop: t.space.xs }]}>{summaryParts.join(' · ')}</Text>
           )}
