@@ -11,6 +11,8 @@ import { useTheme } from '../../src/ui/theme';
 import { Screen, AppBar, SectionHeader, Card, Chip, Button, Money, StatusPill, EmptyState, Sheet, Pulse } from '../../src/ui/components';
 import { CaptureDock } from '../../src/ui/CaptureDock';
 import { SyncSheet } from '../../src/ui/SyncSheet';
+import { SwipeableCard } from '../../src/ui/SwipeableCard';
+import { haptics } from '../../src/ui/haptics';
 import { Snackbar, type SnackbarEntry } from '../../src/ui/Snackbar';
 import { relativeTime } from '../../src/ui/relativeTime';
 import { currencyOf } from '../../src/ui/money';
@@ -35,22 +37,25 @@ function metaLine(parts: (string | null | undefined)[]): string {
 }
 
 function ConfirmCard({
-  item, currencies, onOpen, onConfirm,
+  item, currencies, onOpen, onConfirm, onDelete,
 }: {
   item: InboxItemRow;
   currencies: { code: string; symbol: string; decimalPlaces: number }[];
   onOpen: () => void;
   onConfirm: () => void;
+  onDelete: () => void;
 }) {
   const t = useTheme();
 
   if (item.kind === 'receipt' && item.state === 'captured') {
     return (
-      <Card onPress={onOpen} style={{ marginHorizontal: t.space.lg, marginBottom: t.space.sm }}>
-        <Pulse active>
-          <Text style={[t.type.body, { color: t.color.textMuted }]}>▦ Reading receipt…</Text>
-        </Pulse>
-      </Card>
+      <SwipeableCard onDelete={onDelete}>
+        <Card onPress={onOpen} style={{ marginHorizontal: t.space.lg, marginBottom: t.space.sm }}>
+          <Pulse active>
+            <Text style={[t.type.body, { color: t.color.textMuted }]}>▦ Reading receipt…</Text>
+          </Pulse>
+        </Card>
+      </SwipeableCard>
     );
   }
 
@@ -71,34 +76,36 @@ function ConfirmCard({
   if (draft.sharedWith) badges.push({ label: `Shared with ${draft.sharedWith}` });
 
   return (
-    <Card onPress={onOpen} style={{ marginHorizontal: t.space.lg, marginBottom: t.space.sm }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
-        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor }} />
-        <Text style={[t.type.heading, { color: t.color.text, flex: 1 }]} numberOfLines={1}>{payeeName}</Text>
-        <Money amount={draft.amount || '0'} currency={currencyOf(currencies, draft.currencyCode)} type={draft.type} size="heading" />
-      </View>
-      {!!meta && <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]}>{meta}</Text>}
-      {badges.length > 0 && (
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm, marginTop: t.space.sm }}>
-          {badges.map((b) => <Chip key={b.label} label={b.label} tone={b.tone} />)}
+    <SwipeableCard onConfirm={onConfirm} onDelete={onDelete} confirmEnabled={readiness.ready} onRefused={haptics.warn}>
+      <Card onPress={onOpen} style={{ marginHorizontal: t.space.lg, marginBottom: t.space.sm }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor }} />
+          <Text style={[t.type.heading, { color: t.color.text, flex: 1 }]} numberOfLines={1}>{payeeName}</Text>
+          <Money amount={draft.amount || '0'} currency={currencyOf(currencies, draft.currencyCode)} type={draft.type} size="heading" />
         </View>
-      )}
-      {readiness.ready && (
-        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: t.space.sm }}>
-          <Pressable
-            onPress={onConfirm}
-            accessibilityRole="button"
-            accessibilityLabel="Confirm"
-            style={({ pressed }) => ({
-              width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center',
-              backgroundColor: t.color.accentSoft, opacity: pressed ? 0.6 : 1,
-            })}
-          >
-            <Ionicons name="checkmark" size={20} color={t.color.accent} />
-          </Pressable>
-        </View>
-      )}
-    </Card>
+        {!!meta && <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]}>{meta}</Text>}
+        {badges.length > 0 && (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm, marginTop: t.space.sm }}>
+            {badges.map((b) => <Chip key={b.label} label={b.label} tone={b.tone} />)}
+          </View>
+        )}
+        {readiness.ready && (
+          <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: t.space.sm }}>
+            <Pressable
+              onPress={onConfirm}
+              accessibilityRole="button"
+              accessibilityLabel="Confirm"
+              style={({ pressed }) => ({
+                width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center',
+                backgroundColor: t.color.accentSoft, opacity: pressed ? 0.6 : 1,
+              })}
+            >
+              <Ionicons name="checkmark" size={20} color={t.color.accent} />
+            </Pressable>
+          </View>
+        )}
+      </Card>
+    </SwipeableCard>
   );
 }
 
@@ -198,6 +205,14 @@ export default function InboxScreen() {
   const assetAccounts = (assetAccountRows ?? []).filter((a) => a.type === 'asset');
   const pendingOutboxCount = (outbox ?? []).filter((op) => op.status === 'pending' || op.status === 'failed').length;
 
+  // A sync that clears the queue gets a success haptic (design §3.4) — adjusted during render
+  // (React's pattern for reacting to a derived value changing), not in an effect.
+  const [prevPendingOutboxCount, setPrevPendingOutboxCount] = useState(pendingOutboxCount);
+  if (pendingOutboxCount !== prevPendingOutboxCount) {
+    if (prevPendingOutboxCount > 0 && pendingOutboxCount === 0) haptics.success();
+    setPrevPendingOutboxCount(pendingOutboxCount);
+  }
+
   const [hasCredentials, setHasCredentials] = useState<boolean | null>(null);
   useEffect(() => { readStoredCredentials().then((c) => setHasCredentials(!!c)); }, []);
 
@@ -224,6 +239,7 @@ export default function InboxScreen() {
 
   async function confirmSingle(item: InboxItemRow) {
     const result = await confirmInboxItem(db, item.id);
+    haptics.tick();
     showConfirmedSnackbar([{ id: item.id, result }]);
   }
 
@@ -246,6 +262,7 @@ export default function InboxScreen() {
     } finally {
       setConfirmingAll(false);
     }
+    haptics.tick();
     showConfirmedSnackbar(batch);
   }
 
@@ -400,6 +417,7 @@ export default function InboxScreen() {
                   currencies={currencies ?? []}
                   onOpen={() => router.push(`/draft/${row.id}`)}
                   onConfirm={() => confirmSingle(row)}
+                  onDelete={() => deleteInboxItem(db, row.id)}
                 />
               );
             }}
