@@ -22,8 +22,9 @@ export function SwipeableCard({
   return (
     <Swipeable
       ref={ref}
-      leftThreshold={64}
-      rightThreshold={64}
+      // 96, up from 64: a short flick while scrolling confirmed or deleted a card too readily.
+      leftThreshold={96}
+      rightThreshold={96}
       renderLeftActions={onConfirm ? () => (
         <View style={{ backgroundColor: t.color.accent, justifyContent: 'center', paddingHorizontal: t.space.xl }}>
           <Text style={{ color: t.color.onAccent, fontWeight: '700' }}>✓ Confirm</Text>
