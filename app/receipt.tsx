@@ -4,16 +4,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import * as Crypto from 'expo-crypto';
 import { useDb } from '../src/providers/DbProvider';
 import { useTheme } from '../src/ui/theme';
 import { Screen, AppBar, Button, Row, Sheet } from '../src/ui/components';
-import { inboxItems } from '../src/db/schema';
-import { findDuplicateReceiptItem } from '../src/inbox/draft';
-import { parseReceiptItem } from '../src/receipt/toDraft';
-import { enqueueOperation } from '../src/sync/outbox';
-import { generateId } from '../src/utils/id';
-import type { Draft } from '../src/inbox/draft';
+import { captureReceipt, attachReceiptToJournal } from '../src/receipt/ingest';
 
 const PARSE_WAIT_MS = 2000;
 
@@ -51,41 +45,27 @@ export default function ReceiptScreen() {
         return;
       }
 
-      // C2: attaching to an already-synced transaction reuses the attach_receipt operation
-      // directly — no inbox item, no parsing, just the upload.
+      // C2: attaching to an already-synced transaction — no inbox item, no parsing, just the upload.
       if (attachToJournalId) {
-        await enqueueOperation(db, {
-          id: generateId(),
-          kind: 'attach_receipt',
-          payload: { transactionJournalId: attachToJournalId, receiptImagePath: asset.uri },
-        });
+        await attachReceiptToJournal(db, { uri: asset.uri, transactionJournalId: attachToJournalId });
         router.back();
         return;
       }
 
-      const hash = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, asset.base64);
-      const duplicate = await findDuplicateReceiptItem(db, hash);
-      if (duplicate) {
-        router.replace(`/draft/${duplicate.id}`);
+      const result = await captureReceipt(db, { uri: asset.uri, base64: asset.base64, hint: hint || undefined });
+      if (result.kind === 'duplicate') {
+        router.replace(`/draft/${result.itemId}`);
         return;
       }
 
-      const id = generateId();
-      const now = new Date().toISOString();
-      const stub: Draft = { type: 'withdrawal', amount: '', currencyCode: '', date: now, description: '', isNewPayee: true };
-      await db.insert(inboxItems).values({
-        id, kind: 'receipt', state: 'captured', draftJson: JSON.stringify(stub),
-        receiptImagePath: asset.uri, receiptContentHash: hash,
-        createdAt: now, updatedAt: now,
-      });
-
       // A fast local-model parse (~2s) opens straight into the draft; a slow one leaves the
-      // "Reading receipt…" card in the Inbox as the notification instead of blocking here.
+      // "Reading receipt…" card in the Inbox as the notification instead of blocking here, and a
+      // failed one shows up there under Needs attention.
       const parsed = await Promise.race([
-        parseReceiptItem(db, id, asset.base64, hint || undefined),
+        result.parse,
         new Promise<'timeout'>((resolve) => setTimeout(() => resolve('timeout'), PARSE_WAIT_MS)),
       ]);
-      router.replace(parsed === true ? `/draft/${id}` : '/');
+      router.replace(parsed === 'parsed' ? `/draft/${result.itemId}` : '/');
     } finally {
       setBusy(false);
     }

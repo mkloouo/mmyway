@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 import { inboxItems, outboxOperations } from '../db/schema';
 import type { Draft } from './draft';
 import type { OutboxDb } from '../sync/outbox';
+import { deletePersistedReceiptImage } from '../receipt/imageFiles';
 
 const NOT_EDITABLE = new Set(['confirmed', 'synced']);
 
@@ -23,6 +24,8 @@ export async function updateDraft(db: OutboxDb, inboxItemId: string, patch: Part
 // behind. Does not touch FF3 — an already-`synced` item's real transaction stays put; delete it
 // from the transaction list (app/transactions/[groupId].tsx) instead.
 export async function deleteInboxItem(db: OutboxDb, inboxItemId: string): Promise<void> {
+  const [item] = await db.select().from(inboxItems).where(eq(inboxItems.id, inboxItemId));
   await db.delete(outboxOperations).where(eq(outboxOperations.inboxItemId, inboxItemId));
   await db.delete(inboxItems).where(eq(inboxItems.id, inboxItemId));
+  deletePersistedReceiptImage(item?.receiptImagePath);
 }

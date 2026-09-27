@@ -1,4 +1,4 @@
-import { receiptToDraft, buildReceiptDraftReference, type ReceiptDraftReference } from './toDraft';
+import { receiptToDraft, receiptLocalDate, buildReceiptDraftReference, type ReceiptDraftReference } from './toDraft';
 import { normalizeExtraction } from './providers/local';
 import { createTestDb } from '../db/testDb';
 import { setCashAccountId, setDefaultSourceAccountId } from '../settings/appSettings';
@@ -106,5 +106,17 @@ describe('buildReceiptDraftReference', () => {
     await setDefaultSourceAccountId(db as any, 'acc-card-default');
     const reference = await buildReceiptDraftReference(db as any);
     expect(reference.cardAccountId).toBe('acc-card-default');
+  });
+});
+
+describe('receiptLocalDate', () => {
+  it('reads a receipt time as local wall-clock time, so a late-evening receipt keeps its day', () => {
+    // jest.config.js pins TZ=Europe/Warsaw (UTC+2 in September).
+    const d = receiptLocalDate('2026-09-26', '23:30');
+    expect(d.getDate()).toBe(26);
+    expect(d.toISOString()).toBe('2026-09-26T21:30:00.000Z');
+  });
+  it('uses noon when the receipt has no time, so no offset can move the day', () => {
+    expect(receiptLocalDate('2026-09-26', null).getDate()).toBe(26);
   });
 });

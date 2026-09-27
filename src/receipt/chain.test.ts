@@ -3,7 +3,10 @@ import { normalizeExtraction } from './providers/local';
 import type { ReceiptProvider } from './types';
 
 function providerThatThrows(name: string): ReceiptProvider {
-  return { name, extract: async () => { throw new Error('unreachable'); } };
+  return { name, extract: async () => { throw new TypeError('Network request failed'); } };
+}
+function providerThatAnswersBadly(name: string): ReceiptProvider {
+  return { name, extract: async () => { throw new Error(`${name} provider HTTP 400`); } };
 }
 function providerThatSucceeds(name: string, extraction: any): ReceiptProvider {
   return { name, extract: async () => extraction };
@@ -19,7 +22,20 @@ describe('runProviderChain', () => {
 
   it('reports unreachable when every provider fails', async () => {
     const result = await runProviderChain([providerThatThrows('local'), providerThatThrows('gemini')], { imageBase64: 'x', categoryNames: [] });
-    expect(result).toEqual({ ok: false, reason: 'all_providers_unreachable' });
+    expect(result).toEqual({
+      ok: false, reason: 'all_providers_unreachable',
+      errors: ['local: Network request failed', 'gemini: Network request failed'],
+    });
+  });
+
+  it('reports failed when a provider answered but gave nothing usable', async () => {
+    const result = await runProviderChain([providerThatThrows('local'), providerThatAnswersBadly('gemini')], { imageBase64: 'x', categoryNames: [] });
+    expect(result).toMatchObject({ ok: false, reason: 'all_providers_failed' });
+  });
+
+  it('treats a provider timeout as unreachable', async () => {
+    const timeout: ReceiptProvider = { name: 'local', extract: async () => { const e = new Error('aborted'); e.name = 'AbortError'; throw e; } };
+    expect(await runProviderChain([timeout], { imageBase64: 'x', categoryNames: [] })).toMatchObject({ reason: 'all_providers_unreachable' });
   });
 });
 
@@ -32,6 +48,24 @@ describe('normalizeExtraction', () => {
     });
     expect(result.amount).toBe('5.00');
     expect(result.category).toBeNull();
+  });
+
+  it.each([
+    [12.5, '12.5'], ['12,50', '12.50'], ['1 234,50', '1234.50'], ['12.50 zł', null], [null, null], [{}, null],
+  ])('normalises amount %p to %p (a number or a comma must never reach a draft)', (amount, expected) => {
+    expect(normalizeExtraction({ amount, items: [], confidence: 0.9 }).amount).toBe(expected);
+  });
+
+  it('drops a date or time that is not in the promised format', () => {
+    const result = normalizeExtraction({ date: '27.09.2026', time: '9:5', items: [] });
+    expect(result.date).toBeNull();
+    expect(result.time).toBeNull();
+    expect(normalizeExtraction({ date: '2026-09-27', time: '09:05', items: [] })).toMatchObject({ date: '2026-09-27', time: '09:05' });
+  });
+
+  it('keeps only well-formed line items', () => {
+    const result = normalizeExtraction({ items: [{ title: 'Milk', count: 2, price: '3,49' }, { title: 5 }, 'junk'] });
+    expect(result.items).toEqual([{ title: 'Milk', count: 2, price: '3.49' }]);
   });
 
   it('defaults an invalid payment_method to unknown rather than throwing', () => {

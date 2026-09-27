@@ -22,5 +22,9 @@ export type ReceiptChainResult = {
   extraction: ReceiptExtraction;
 } | {
   ok: false;
-  reason: 'all_providers_unreachable';
+  // unreachable: nothing answered (offline, PC asleep, timeout) — worth retrying on a later sync.
+  // failed: at least one provider answered but gave nothing usable — retrying the same image
+  // won't help, so the receipt is shown as an error instead of "Reading receipt…" forever.
+  reason: 'all_providers_unreachable' | 'all_providers_failed';
+  errors: string[]; // one line per provider, for the error card and the log
 };

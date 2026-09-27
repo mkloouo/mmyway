@@ -3,13 +3,10 @@
 import { useEffect, useRef } from 'react';
 import { router } from 'expo-router';
 import { useShareIntent } from 'expo-share-intent';
-import * as Crypto from 'expo-crypto';
 import { useDb } from '../providers/DbProvider';
-import { inboxItems } from '../db/schema';
-import { findDuplicateReceiptItem } from '../inbox/draft';
-import { parseReceiptItem, readReceiptImageBase64 } from './toDraft';
-import { generateId } from '../utils/id';
-import type { Draft } from '../inbox/draft';
+import { readReceiptImageBase64 } from './toDraft';
+import { captureReceipt } from './ingest';
+import { logLine } from '../utils/log';
 import type { OutboxDb } from '../sync/outbox';
 
 export interface SharedImageFile {
@@ -18,32 +15,19 @@ export interface SharedImageFile {
 }
 
 /**
- * Routes one shared image through the existing capture path: dedupe by content hash, insert the
- * inbox item, land on the Inbox, then keep parsing in the background — the same shape as
- * app/receipt.tsx's `capture()`, minus the camera/gallery picker.
+ * Routes one shared image through the same capture path as the camera (src/receipt/ingest.ts):
+ * dedupe by content hash, keep the image, insert the inbox item, land on the Inbox, parse.
  */
 export async function ingestSharedImage(db: OutboxDb, file: SharedImageFile): Promise<void> {
   if (!file.mimeType.startsWith('image/')) return;
-
   const base64 = await readReceiptImageBase64(file.path);
-  const hash = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, base64);
-
-  const duplicate = await findDuplicateReceiptItem(db, hash);
-  if (duplicate) {
-    router.replace(`/draft/${duplicate.id}`);
+  const result = await captureReceipt(db, { uri: file.path, base64 });
+  if (result.kind === 'duplicate') {
+    router.replace(`/draft/${result.itemId}`);
     return;
   }
-
-  const id = generateId();
-  const now = new Date().toISOString();
-  const stub: Draft = { type: 'withdrawal', amount: '', currencyCode: '', date: now, description: '', isNewPayee: true };
-  await db.insert(inboxItems).values({
-    id, kind: 'receipt', state: 'captured', draftJson: JSON.stringify(stub),
-    receiptImagePath: file.path, receiptContentHash: hash,
-    createdAt: now, updatedAt: now,
-  });
   router.replace('/');
-  await parseReceiptItem(db, id, base64);
+  await result.parse;
 }
 
 export function useSharedImages(): void {
@@ -60,9 +44,20 @@ export function useSharedImages(): void {
     }
     processing.current = true;
     (async () => {
-      for (const file of files) await ingestSharedImage(db, file);
-      resetShareIntent();
-      processing.current = false;
+      try {
+        for (const file of files) {
+          try {
+            await ingestSharedImage(db, file);
+          } catch (err) {
+            // One unreadable file must not wedge the share target: `processing` used to stay
+            // true forever and every later share was ignored until a restart.
+            logLine('error', `shared image ${file.path}: ${err instanceof Error ? err.message : String(err)}`);
+          }
+        }
+      } finally {
+        resetShareIntent();
+        processing.current = false;
+      }
     })();
   }, [hasShareIntent, shareIntent, db, resetShareIntent]);
 }
