@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, BackHandler, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
-import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
+import { useLiveQuery } from '../src/db/useLiveQuery';
 import { useDb } from '../src/providers/DbProvider';
 import { useTheme } from '../src/ui/theme';
 import { Screen, Chip, Button, Sheet, Toast } from '../src/ui/components';

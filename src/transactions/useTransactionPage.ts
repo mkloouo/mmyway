@@ -3,7 +3,7 @@
 // push into the SQL so a match outside the loaded window is still found.
 import { useMemo, useState } from 'react';
 import { and, desc, eq, like, or } from 'drizzle-orm';
-import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
+import { useLiveQuery } from '../db/useLiveQuery';
 import { useDb } from '../providers/DbProvider';
 import { cachedTransactions } from '../db/schema';
 import { groupByDay, type DaySection, type DayTransaction } from './groupByDay';

@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Alert, ScrollView, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
-import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
+import { useLiveQuery } from '../../src/db/useLiveQuery';
 import Constants from 'expo-constants';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
@@ -34,7 +34,7 @@ function shortLabel(url: string): string {
 
 export default function SettingsScreen() {
   const db = useDb();
-  const { syncNow } = useSync();
+  const { credentialsChanged } = useSync();
   const t = useTheme();
 
   const { data: accounts } = useLiveQuery(db.select().from(referenceAccounts));
@@ -118,7 +118,7 @@ export default function SettingsScreen() {
         setHost('');
         setToken('');
         await reload();
-        syncNow(); // the Inbox otherwise stays empty until the next app resume
+        credentialsChanged();
       } else {
         Alert.alert('Sign-in failed', result.reason);
       }
@@ -130,7 +130,7 @@ export default function SettingsScreen() {
   function onSignOut() {
     Alert.alert('Sign out?', 'You will need to sign in again to sync.', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out', style: 'destructive', onPress: async () => { await signOut(); await reload(); syncNow(); } },
+      { text: 'Sign out', style: 'destructive', onPress: async () => { await signOut(); await reload(); credentialsChanged(); } },
     ]);
   }
 

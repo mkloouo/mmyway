@@ -2,7 +2,7 @@
 // target, storing targetId so the §3.4 destination_id fix is reachable from here.
 import { useState } from 'react';
 import { Alert, FlatList, Pressable, Text, TextInput, View } from 'react-native';
-import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
+import { useLiveQuery } from '../../src/db/useLiveQuery';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
 import { Screen, AppBar, Chip, Button, Sheet, Row } from '../../src/ui/components';

@@ -1,6 +1,6 @@
 // The Inbox's three sections (design §6.1): the list only ever holds unfinished work.
 // `confirmed`/`synced` items leave every section — they show up in Activity instead.
-import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
+import { useLiveQuery } from '../db/useLiveQuery';
 import { useDb } from '../providers/DbProvider';
 import { inboxItems, outboxOperations } from '../db/schema';
 

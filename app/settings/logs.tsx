@@ -34,7 +34,7 @@ export default function LogsScreen() {
         )}
         ListEmptyComponent={<EmptyState glyph="✓" title="Nothing logged" hint="Warnings and errors show up here." />}
       />
-      <View style={{ flexDirection: 'row', gap: t.space.sm, paddingHorizontal: t.space.lg, paddingTop: t.space.sm }}>
+      <View style={{ flexDirection: 'row', gap: t.space.sm, paddingHorizontal: t.space.lg, paddingVertical: t.space.sm }}>
         <Button title="Share" onPress={shareLog} disabled={lines.length === 0} style={{ flex: 1 }} />
         <Button title="Clear" variant="danger" onPress={onClear} disabled={lines.length === 0} style={{ flex: 1 }} />
       </View>

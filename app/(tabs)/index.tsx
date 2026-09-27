@@ -1,10 +1,10 @@
 // Inbox (design §6.1) — the approval queue. Only ever holds unfinished work; confirmed/synced
 // items leave every section (see src/inbox/useInboxSections.ts).
-import { useCallback, useState } from 'react';
+import { useState } from 'react';
 import { Pressable, SectionList, Text, TextInput, View } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
+import { router } from 'expo-router';
 import { eq } from 'drizzle-orm';
-import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
+import { useLiveQuery } from '../../src/db/useLiveQuery';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
@@ -24,8 +24,7 @@ import { deleteInboxItem } from '../../src/inbox/updateDraft';
 import { confirmDestructive } from '../../src/ui/confirm';
 import { transition } from '../../src/inbox/state';
 import { approveRecurringReview, editRecurringReview, deleteRecurringReview } from '../../src/sync/recurringReview';
-import { useSync } from '../../src/sync/useSync';
-import { readStoredCredentials } from '../../src/api/ff3/auth';
+import { useSync, useSignedIn } from '../../src/sync/useSync';
 import { inboxItems, outboxOperations, referenceAccounts, referenceCurrencies, cachedTransactions } from '../../src/db/schema';
 import { generateId } from '../../src/utils/id';
 import type { Draft } from '../../src/inbox/draft';
@@ -214,10 +213,7 @@ export default function InboxScreen() {
     setPrevPendingOutboxCount(pendingOutboxCount);
   }
 
-  const [hasCredentials, setHasCredentials] = useState<boolean | null>(null);
-  // Re-read on every focus: the tab stays mounted, so signing in on Settings and coming back
-  // would otherwise keep showing "Connect Firefly III".
-  useFocusEffect(useCallback(() => { readStoredCredentials().then((c) => setHasCredentials(!!c)); }, []));
+  const hasCredentials = useSignedIn();
 
   const [syncSheetOpen, setSyncSheetOpen] = useState(false);
   const [snackbar, setSnackbar] = useState<SnackbarEntry | null>(null);

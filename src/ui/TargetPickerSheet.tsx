@@ -2,7 +2,7 @@
 // destination_id fix reachable from the UI: an alias now stores targetId, not just a name.
 import { useMemo, useState } from 'react';
 import { FlatList, Pressable, Text, TextInput } from 'react-native';
-import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
+import { useLiveQuery } from '../db/useLiveQuery';
 import { Sheet } from './components';
 import { useTheme } from './theme';
 import { useDb } from '../providers/DbProvider';

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
-import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
+import { useLiveQuery } from '../src/db/useLiveQuery';
 import { useDb } from '../src/providers/DbProvider';
 import { useTheme } from '../src/ui/theme';
 import { Screen, AppBar, Card, Row, Chip, Button, Sheet, Money, EmptyState } from '../src/ui/components';
