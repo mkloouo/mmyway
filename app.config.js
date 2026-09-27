@@ -22,6 +22,7 @@ module.exports = {
           disableIOS: true,
         },
       ],
+      '@react-native-community/datetimepicker',
     ],
     android: {
       package: IS_DEV ? `${BASE_BUNDLE_ID}.dev` : BASE_BUNDLE_ID,
@@ -29,6 +30,9 @@ module.exports = {
     },
     extra: {
       appVariant: process.env.APP_VARIANT ?? 'production',
+      eas: {
+        projectId: '88fb2848-3ae9-41a3-9952-b23a72698e6c',
+      },
     },
   },
 };

@@ -8,7 +8,7 @@ import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
 import { Screen, AppBar, SectionHeader, Card, Chip, Money, EmptyState, Sheet, Row } from '../../src/ui/components';
 import { CaptureDock } from '../../src/ui/CaptureDock';
-import { currencyOf } from '../../src/ui/money';
+import { currencyOf, formatMoney } from '../../src/ui/money';
 import { categoryColor } from '../../src/ui/categoryColor';
 import { relativeTime } from '../../src/ui/relativeTime';
 import { useTransactionPage, type ActivityTypeFilter, type CachedTransactionRow } from '../../src/transactions/useTransactionPage';
@@ -190,7 +190,7 @@ export default function ActivityScreen() {
                 title={dayTitle(section.key)}
                 action={section.totals.length > 0 ? (
                   <Text style={[t.type.label, { color: t.color.textMuted }]}>
-                    {section.totals.map((tot) => `${tot.amount} ${tot.currencyCode}`).join(' · ')}
+                    {section.totals.map((tot) => formatMoney(tot.amount, currencyOf(currencies, tot.currencyCode ?? ''))).join(' · ')}
                   </Text>
                 ) : undefined}
               />

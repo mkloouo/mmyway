@@ -4,14 +4,13 @@
 // journal.entries[].idx (see node_modules/drizzle-orm/expo-sqlite/migrator.js).
 // Add one import + one map entry per future `npm run db:generate`.
 import journal from './migrations/meta/_journal.json';
-// eslint-disable-next-line import/no-unresolved -- inlined as a string by babel-plugin-inline-import
 import m0000 from './migrations/0000_petite_prism.sql';
-// eslint-disable-next-line import/no-unresolved -- inlined as a string by babel-plugin-inline-import
 import m0001 from './migrations/0001_mysterious_christian_walker.sql';
-// eslint-disable-next-line import/no-unresolved -- inlined as a string by babel-plugin-inline-import
 import m0002 from './migrations/0002_cool_major_mapleleaf.sql';
+import m0003 from './migrations/0003_freezing_ares.sql';
+import m0004 from './migrations/0004_needy_jazinda.sql';
 
 export default {
   journal,
-  migrations: { m0000, m0001, m0002 },
+  migrations: { m0000, m0001, m0002, m0003, m0004 },
 };

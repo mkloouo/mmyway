@@ -6,15 +6,6 @@ Replaces a Telegram capture bot. Full context: `the planning brief`
 
 ## Commands
 
-- **`npm install` always needs `--legacy-peer-deps`** (Expo SDK 57's dependency graph has
-  unresolvable peer conflicts otherwise). This has a real consequence: legacy-peer-deps mode
-  skips npm's normal peer-dependency auto-install, so any package this repo's own config files
-  `require()` directly — `babel-preset-expo` (from `babel.config.js`), `@react-native/jest-preset`
-  (loaded internally by `jest-expo`, per `jest.config.js`'s `preset`) — must be **explicit**
-  devDependencies with a pinned version, never left to hoist in as someone else's peer. If a
-  future `npm install` silently drops one of these (jest suddenly fails with "Cannot find
-  module 'babel-preset-expo'" or "...jest-preset"), reinstall it explicitly at the version
-  `expo`/`jest-expo`'s own `package.json` declares, don't just retry the same install command.
 - `npm start` — Expo dev server
 - `npm run typecheck` / `npm run lint` / `npm run test` / `npm run check` (all three)
 - `npm run db:generate` — regenerate Drizzle migrations after editing `src/db/schema.ts`

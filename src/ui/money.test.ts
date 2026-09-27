@@ -24,6 +24,11 @@ describe('formatMoney', () => {
     expect(formatMoney('', PLN)).toBe('0,00 zł');
     expect(formatMoney('.5', PLN)).toBe('0,50 zł');
   });
+
+  it('keeps non-zero fraction longer then a currency scale', () => {
+    expect(formatMoney('12.000000000', PLN)).toBe('12,00 zł');
+    expect(formatMoney('12.000000040', PLN)).toBe('12,00000004 zł');
+  })
 });
 
 describe('signFor', () => {

@@ -6,25 +6,30 @@ import type { OutboxDb } from './outbox';
 export async function pullReferenceData(db: OutboxDb, client: FF3Client): Promise<void> {
   const now = new Date().toISOString();
 
-  const [accounts, categories, budgets, currencies] = await Promise.all([
-    client.request<{ data: AccountRead[] }>('/v1/accounts?limit=200'),
-    client.request<{ data: CategoryRead[] }>('/v1/categories?limit=200'),
-    client.request<{ data: BudgetRead[] }>('/v1/budgets?limit=200'),
+  const [assetAccounts, cashAccounts, expenseAccounts, revenueAccounts, categories, budgets, currencies] = await Promise.all([
+    client.request<{ data: AccountRead[] }>('/v1/accounts?limit=50&type=asset'),
+    client.request<{ data: AccountRead[] }>('/v1/accounts?limit=50&type=cash'),
+    client.request<{ data: AccountRead[] }>('/v1/accounts?limit=50&type=expense'),
+    client.request<{ data: AccountRead[] }>('/v1/accounts?limit=50&type=revenue'),
+    client.request<{ data: CategoryRead[] }>('/v1/categories?limit=50'),
+    client.request<{ data: BudgetRead[] }>('/v1/budgets?limit=50'),
     client.request<{ data: CurrencyRead[] }>('/v1/currencies?limit=50'),
   ]);
 
-  for (const account of accounts.data) {
-    // AccountRead (src/api/ff3/types.ts, pinned) doesn't declare these — narrowed with a local
-    // cast at the read site, as recurringReview.ts already does for the group's updated_at.
-    const extra = account.attributes as { current_balance?: string; current_balance_date?: string; notes?: string | null };
-    const row = {
-      id: account.id, name: account.attributes.name, type: account.attributes.type,
-      currencyCode: account.attributes.currency_code, active: account.attributes.active,
-      currentBalance: extra.current_balance ?? null, currentBalanceDate: extra.current_balance_date ?? null,
-      notes: extra.notes ?? null,
-      syncedAt: now,
-    };
-    await db.insert(referenceAccounts).values(row).onConflictDoUpdate({ target: referenceAccounts.id, set: row });
+  for (const accounts of [assetAccounts, cashAccounts, expenseAccounts, revenueAccounts]) {
+    for (const account of accounts.data) {
+      // AccountRead (src/api/ff3/types.ts, pinned) doesn't declare these — narrowed with a local
+      // cast at the read site, as recurringReview.ts already does for the group's updated_at.
+      const extra = account.attributes as { current_balance?: string; current_balance_date?: string; notes?: string | null };
+      const row = {
+        id: account.id, name: account.attributes.name, type: account.attributes.type,
+        currencyCode: account.attributes.currency_code, active: account.attributes.active,
+        currentBalance: extra.current_balance ?? null, currentBalanceDate: extra.current_balance_date ?? null,
+        notes: extra.notes ?? null,
+        syncedAt: now,
+      };
+      await db.insert(referenceAccounts).values(row).onConflictDoUpdate({ target: referenceAccounts.id, set: row });
+    }
   }
   for (const category of categories.data) {
     await db.insert(referenceCategories)

@@ -242,7 +242,7 @@ export function Sheet({
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <KeyboardAvoidingView behavior="padding" style={{ flex: 1, justifyContent: 'flex-end' }}>
-        <Pressable style={{ flex: 1, backgroundColor: t.color.scrim }} onPress={onClose} accessibilityLabel="Close" />
+      <Pressable style={{ flex: 1, backgroundColor: t.color.scrim }} onPress={onClose} accessibilityLabel="Close" />
         <View
           style={{
             maxHeight: '80%', backgroundColor: t.color.surface,

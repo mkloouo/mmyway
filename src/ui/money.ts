@@ -28,10 +28,12 @@ export function formatMoney(amount: string, currency: DisplayCurrency): string {
   const [rawWhole = '', rawFraction = ''] = unsigned.split('.');
   const whole = rawWhole.replace(/\D/g, '');
   const fraction = rawFraction.replace(/\D/g, '');
-  const scaled = fraction.length >= currency.decimalPlaces
-    ? fraction
-    : fraction.padEnd(currency.decimalPlaces, '0');
+  const trimmedFraction = fraction.replace(/0+$/, '');
+  const scaled = trimmedFraction.length >= currency.decimalPlaces
+    ? trimmedFraction
+    : trimmedFraction.padEnd(currency.decimalPlaces, '0');
   const body = scaled ? `${group(whole)},${scaled}` : group(whole);
+
   return `${negative ? MINUS : ''}${body}${currency.symbol ? ` ${currency.symbol}` : ''}`;
 }
 
