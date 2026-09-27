@@ -44,3 +44,26 @@ export function divideDecimal(a: string, b: string, precision: number): string {
   const scaledDenominator = scaleDiff >= 0 ? denominator.minor : denominator.minor * 10n ** BigInt(-scaleDiff);
   return fromMinorUnits(scaledNumerator / scaledDenominator, precision);
 }
+
+export type DecimalInputResult =
+  | { ok: true; value: string }
+  | { ok: false; reason: 'empty' | 'invalid' | 'too_many_decimals' };
+
+/**
+ * The one gate every typed amount goes through before it reaches this file's arithmetic, a draft
+ * or the outbox. Accepts what a person types — `12,50`, `12.5`, `1 234,5`, a trailing separator —
+ * and returns FF3's canonical form (`12.50`, `1234.5`). Anything else is rejected rather than
+ * guessed at: the helpers above call `BigInt()` and throw on a stray comma, and FF3 answers a
+ * malformed amount with a 422 that would park in the outbox. Unsigned: the transaction type
+ * carries the sign.
+ */
+export function parseDecimalInput(raw: string, decimalPlaces?: number): DecimalInputResult {
+  const compact = raw.replace(/[\s  ]/g, '').replace(',', '.');
+  if (compact === '' || compact === '.') return { ok: false, reason: 'empty' };
+  const match = /^(\d*)(?:\.(\d*))?$/.exec(compact);
+  if (!match) return { ok: false, reason: 'invalid' };
+  const whole = (match[1] ?? '').replace(/^0+(?=\d)/, '') || '0';
+  const fraction = match[2] ?? '';
+  if (decimalPlaces !== undefined && fraction.length > decimalPlaces) return { ok: false, reason: 'too_many_decimals' };
+  return { ok: true, value: fraction ? `${whole}.${fraction}` : whole };
+}

@@ -23,8 +23,15 @@ function topOf(counts: Map<string, number>): string | null {
   return best;
 }
 
-export async function buildMerchantLookup(db: OutboxDb): Promise<Map<string, MerchantHistory>> {
-  const rows = await db.select().from(cachedTransactions);
+/**
+ * Payee history from cached transactions: the merchant of a withdrawal, the payer of a deposit.
+ * Transfers never count — both ends are the user's own asset accounts, which is how
+ * "Cash · Case · PLN" used to show up next to Żabka among capture's payee chips. `type` narrows
+ * to payees (withdrawal) or payers (deposit), so each capture type suggests its own kind.
+ */
+export async function buildMerchantLookup(db: OutboxDb, opts: { type?: 'withdrawal' | 'deposit' } = {}): Promise<Map<string, MerchantHistory>> {
+  const rows = (await db.select().from(cachedTransactions))
+    .filter((row) => (opts.type ? row.type === opts.type : row.type === 'withdrawal' || row.type === 'deposit'));
   const byMerchant = new Map<string, { displayName: string; categories: Map<string, number>; accounts: Map<string, number>; budgets: Map<string, number>; count: number }>();
 
   for (const row of rows) {

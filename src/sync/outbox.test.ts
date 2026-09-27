@@ -132,4 +132,13 @@ describe('replayOutbox', () => {
     expect(result.succeeded).toEqual(['op-1']);
     expect(JSON.parse(putBody!)).toEqual({ notes: 'Edited in the web UI just now\nmmyway-envelope' });
   });
+
+  it('update_account sends only the active flag when that is all it carries', async () => {
+    const db = createTestDb();
+    await enqueueOperation(db, { id: 'op-1', kind: 'update_account', payload: { accountId: 'acc-1', active: false } });
+    const client = fakeClient({ '/v1/accounts/acc-1': async () => ({}) });
+    await replayOutbox(db as any, client as any);
+    expect(client.request).toHaveBeenCalledTimes(1);
+    expect(client.request.mock.calls[0]).toEqual(['/v1/accounts/acc-1', { method: 'PUT', body: JSON.stringify({ active: false }) }]);
+  });
 });

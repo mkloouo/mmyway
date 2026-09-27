@@ -1,4 +1,4 @@
-import { addDecimal, isNegative, divideDecimal } from './decimal';
+import { addDecimal, isNegative, divideDecimal, parseDecimalInput } from './decimal';
 
 describe('addDecimal', () => {
   it('adds two decimals with matching scale', () => {
@@ -35,5 +35,28 @@ describe('divideDecimal', () => {
 
   it('matches exact integer division with no drift (0.1/0.1 style case)', () => {
     expect(divideDecimal('0.30', '0.10', 2)).toBe('3.00');
+  });
+});
+
+describe('parseDecimalInput', () => {
+  it.each([
+    ['12,50', '12.50'], ['12.5', '12.5'], ['1 234,5', '1234.5'], ['1 234,50', '1234.50'],
+    ['12,', '12'], [',5', '0.5'], ['007', '7'], ['0', '0'],
+  ])('accepts %p as %p', (raw, value) => {
+    expect(parseDecimalInput(raw)).toEqual({ ok: true, value });
+  });
+  it.each(['', ' ', ',', '.'])('reports %p as empty', (raw) => {
+    expect(parseDecimalInput(raw)).toEqual({ ok: false, reason: 'empty' });
+  });
+  it.each(['12,5,0', '1.2.3', '-5', '12a', '1e5', '12.50 zł'])('rejects %p', (raw) => {
+    expect(parseDecimalInput(raw)).toEqual({ ok: false, reason: 'invalid' });
+  });
+  it('enforces the currency scale when given one', () => {
+    expect(parseDecimalInput('1.234', 2)).toEqual({ ok: false, reason: 'too_many_decimals' });
+    expect(parseDecimalInput('1.23', 2)).toEqual({ ok: true, value: '1.23' });
+  });
+  it('output always survives the arithmetic helpers', () => {
+    const parsed = parseDecimalInput('1 234,5');
+    expect(parsed.ok && addDecimal(parsed.value, '0.5')).toBe('1235.0');
   });
 });

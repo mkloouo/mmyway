@@ -48,7 +48,8 @@ export interface AttachReceiptPayload {
 
 export interface UpdateAccountPayload {
   accountId: string;
-  setEnvelopeMarker: boolean; // the desired on/off state; the notes text itself is read fresh at replay
+  setEnvelopeMarker?: boolean; // the desired on/off state; the notes text itself is read fresh at replay
+  active?: boolean; // FF3's account `active` flag
 }
 
 // Both the expo-sqlite and better-sqlite3 Drizzle instances (src/db/client.ts, src/db/testDb.ts)
@@ -174,16 +175,19 @@ export async function replayOutbox(db: OutboxDb, client: FF3Client, opts: { onCo
         }
         await client.request(`/v1/transactions/${p.groupId}`, { method: 'DELETE' });
       } else if (row.kind === 'update_account') {
-        // Read-modify-write at replay time, not a snapshot taken when the box was ticked: the
-        // account's notes may have been edited in FF3's web UI meanwhile, and this must not
-        // clobber it — only the mmyway-envelope line changes (design §6.6).
+        // Only the fields this operation carries are sent. The envelope marker is a
+        // read-modify-write at replay time, not a snapshot taken when the box was ticked: the
+        // account's notes may have been edited in FF3's web UI meanwhile, and this must not clobber
+        // it — only the mmyway-envelope line changes (design §6.6).
         const p = payload as UpdateAccountPayload;
-        const current = await client.request<{ data: AccountRead }>(`/v1/accounts/${p.accountId}`);
-        const currentNotes = (current.data.attributes as { notes?: string | null }).notes ?? null;
-        await client.request(`/v1/accounts/${p.accountId}`, {
-          method: 'PUT',
-          body: JSON.stringify({ notes: setEnvelopeMarker(currentNotes, p.setEnvelopeMarker) }),
-        });
+        const body: { notes?: string; active?: boolean } = {};
+        if (p.setEnvelopeMarker !== undefined) {
+          const current = await client.request<{ data: AccountRead }>(`/v1/accounts/${p.accountId}`);
+          const currentNotes = (current.data.attributes as { notes?: string | null }).notes ?? null;
+          body.notes = setEnvelopeMarker(currentNotes, p.setEnvelopeMarker);
+        }
+        if (p.active !== undefined) body.active = p.active;
+        await client.request(`/v1/accounts/${p.accountId}`, { method: 'PUT', body: JSON.stringify(body) });
       }
 
       await db.update(outboxOperations).set({ status: 'done' }).where(eq(outboxOperations.id, row.id));
@@ -199,4 +203,22 @@ export async function replayOutbox(db: OutboxDb, client: FF3Client, opts: { onCo
   }
 
   return result;
+}
+
+/**
+ * The user's way out of an operation that can never succeed (a 422, an account deleted in FF3, a
+ * receipt file that is gone): replay stops at the first failure, so without this one bad
+ * operation would hold back every later write forever. Local only — nothing is sent. An inbox
+ * item the operation was confirming goes back to the Inbox as a draft rather than vanishing, so
+ * the entry itself is not lost.
+ */
+export async function discardOperation(db: OutboxDb, opId: string): Promise<void> {
+  const [op] = await db.select().from(outboxOperations).where(eq(outboxOperations.id, opId));
+  if (!op) return;
+  await db.delete(outboxOperations).where(eq(outboxOperations.id, opId));
+  if (op.kind === 'create_transaction' && op.inboxItemId) {
+    await db.update(inboxItems)
+      .set({ state: 'captured', updatedAt: new Date().toISOString() })
+      .where(eq(inboxItems.id, op.inboxItemId));
+  }
 }
