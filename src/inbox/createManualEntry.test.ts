@@ -1,5 +1,6 @@
 import { createTestDb } from '../db/testDb';
 import { upsertAlias } from '../lookup/aliases';
+import * as aliases from '../lookup/aliases';
 import { createManualEntry, confirmInboxItem } from './createManualEntry';
 import { outboxOperations, inboxItems } from '../db/schema';
 import { eq } from 'drizzle-orm';
@@ -32,5 +33,46 @@ describe('createManualEntry + confirmInboxItem', () => {
       description: 'snacks', merchantRawInput: 'zabka',
     });
     expect(isNewPayee).toBe(false);
+  });
+
+  it('puts a deposit payee on the source side, asset account on destination (defect fix)', async () => {
+    const db = createTestDb();
+    const { draft } = await createManualEntry(db as any, {
+      type: 'deposit', amount: '2500.00', currencyCode: 'PLN', date: new Date().toISOString(),
+      description: 'Salary', merchantRawInput: 'Employer Inc', destinationId: 'acc-cash', destinationName: 'Cash',
+    });
+    expect(draft.sourceName).toBe('Employer Inc');
+    expect(draft.destinationId).toBe('acc-cash');
+    expect(draft.isNewPayee).toBe(true);
+  });
+
+  it('runs no payee alias lookup for a transfer and never flags it a new payee', async () => {
+    const db = createTestDb();
+    // Even a matching alias for the raw text must be irrelevant — a transfer has no payee.
+    await upsertAlias(db as any, { kind: 'payee', rawInput: 'acc-2', targetId: 'should-not-be-used', targetName: 'should-not-be-used' });
+    const matchAliasSpy = jest.spyOn(aliases, 'matchAlias');
+
+    const { draft, isNewPayee } = await createManualEntry(db as any, {
+      type: 'transfer', amount: '100.00', currencyCode: 'PLN', date: new Date().toISOString(),
+      description: 'To savings', sourceId: 'acc-1', destinationId: 'acc-2',
+    });
+
+    expect(matchAliasSpy).not.toHaveBeenCalled();
+    expect(isNewPayee).toBe(false);
+    expect(draft.sourceId).toBe('acc-1');
+    expect(draft.destinationId).toBe('acc-2');
+    matchAliasSpy.mockRestore();
+  });
+
+  it('skips alias matching and forces a new payee when the screen checkbox is set', async () => {
+    const db = createTestDb();
+    await upsertAlias(db as any, { kind: 'payee', rawInput: 'Żabka', targetId: 'acc-99', targetName: 'Żabka' });
+    const { isNewPayee, draft } = await createManualEntry(db as any, {
+      type: 'withdrawal', amount: '15.90', currencyCode: 'PLN', date: new Date().toISOString(),
+      description: 'snacks', merchantRawInput: 'zabka', forceNewPayee: true,
+    });
+    expect(isNewPayee).toBe(true);
+    expect(draft.destinationId).toBeUndefined();
+    expect(draft.destinationName).toBe('zabka');
   });
 });

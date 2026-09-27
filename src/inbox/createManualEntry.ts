@@ -13,24 +13,84 @@ export interface ManualEntryInput {
   currencyCode: string;
   date: string;
   description: string;
-  merchantRawInput: string; // payee for withdrawal, source for deposit
-  sourceId?: string; // asset account the money moves from/to
+  // Payee text: the merchant for a withdrawal, the payer for a deposit. Ignored for a transfer,
+  // which has no payee (defect (1)).
+  merchantRawInput?: string;
+  // The screen's "new payee" checkbox (brief §3.4: new payee stays explicit) — when set, skips
+  // alias matching entirely rather than relying on "no alias found" to imply newness.
+  forceNewPayee?: boolean;
+  sourceId?: string; // asset account id: source for withdrawal/transfer
+  sourceName?: string;
+  destinationId?: string; // asset account id: destination for deposit/transfer
+  destinationName?: string;
+  categoryName?: string;
+  budgetId?: string;
+  notes?: string;
+  foreignAmount?: string;
+  foreignCurrencyCode?: string;
+  sharedWith?: string;
 }
 
 export async function createManualEntry(db: OutboxDb, input: ManualEntryInput): Promise<{ inboxItemId: string; draft: Draft; isNewPayee: boolean }> {
-  const aliasMatch = await matchAlias(db, 'payee', input.merchantRawInput);
-  const draft: Draft = {
-    type: input.type,
+  const shared = {
     amount: input.amount,
     currencyCode: input.currencyCode,
     date: input.date,
     description: input.description,
-    sourceId: input.sourceId,
-    destinationId: aliasMatch.matched ? aliasMatch.alias.targetId ?? undefined : undefined,
-    destinationName: aliasMatch.matched ? aliasMatch.alias.targetName : input.merchantRawInput,
-    isNewPayee: !aliasMatch.matched,
-    categoryName: undefined, // filled in by the draft screen from suggest/, not here
+    categoryName: input.categoryName,
+    budgetId: input.budgetId,
+    notes: input.notes,
+    foreignAmount: input.foreignAmount,
+    foreignCurrencyCode: input.foreignCurrencyCode,
+    sharedWith: input.sharedWith,
   };
+
+  let draft: Draft;
+  let isNewPayee: boolean;
+
+  if (input.type === 'withdrawal') {
+    isNewPayee = input.forceNewPayee ?? true;
+    let destinationId: string | undefined;
+    let destinationName = input.merchantRawInput;
+    if (!input.forceNewPayee) {
+      const aliasMatch = await matchAlias(db, 'payee', input.merchantRawInput ?? '');
+      isNewPayee = !aliasMatch.matched;
+      if (aliasMatch.matched) {
+        destinationId = aliasMatch.alias.targetId ?? undefined;
+        destinationName = aliasMatch.alias.targetName;
+      }
+    }
+    draft = {
+      ...shared, type: 'withdrawal', isNewPayee,
+      sourceId: input.sourceId, sourceName: input.sourceName,
+      destinationId, destinationName,
+    };
+  } else if (input.type === 'deposit') {
+    isNewPayee = input.forceNewPayee ?? true;
+    let sourceId: string | undefined;
+    let sourceName = input.merchantRawInput;
+    if (!input.forceNewPayee) {
+      const aliasMatch = await matchAlias(db, 'payee', input.merchantRawInput ?? '');
+      isNewPayee = !aliasMatch.matched;
+      if (aliasMatch.matched) {
+        sourceId = aliasMatch.alias.targetId ?? undefined;
+        sourceName = aliasMatch.alias.targetName;
+      }
+    }
+    draft = {
+      ...shared, type: 'deposit', isNewPayee,
+      sourceId, sourceName,
+      destinationId: input.destinationId, destinationName: input.destinationName,
+    };
+  } else {
+    // transfer: both ends are known asset accounts, no payee alias lookup at all (defect (1)).
+    isNewPayee = false;
+    draft = {
+      ...shared, type: 'transfer', isNewPayee,
+      sourceId: input.sourceId, sourceName: input.sourceName,
+      destinationId: input.destinationId, destinationName: input.destinationName,
+    };
+  }
 
   const id = generateId();
   const now = new Date().toISOString();
@@ -39,7 +99,7 @@ export async function createManualEntry(db: OutboxDb, input: ManualEntryInput): 
     createdAt: now, updatedAt: now,
   });
 
-  return { inboxItemId: id, draft, isNewPayee: !aliasMatch.matched };
+  return { inboxItemId: id, draft, isNewPayee };
 }
 
 export async function confirmInboxItem(db: OutboxDb, inboxItemId: string): Promise<void> {
