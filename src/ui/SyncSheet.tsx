@@ -6,6 +6,7 @@ import { Sheet, Row, Button } from './components';
 import { useTheme } from './theme';
 import type { SyncSummary } from '../sync/runSync';
 import type { ServerReachability } from '../sync/reachability';
+import { describeSyncTime } from './relativeTime';
 
 const PROVIDER_LABELS: Record<string, string> = { local: 'Local model', gemini: 'Gemini' };
 
@@ -68,7 +69,7 @@ export function SyncSheet({
           <Row label="Receipt providers" value="none configured" tone="warn" />
         )}
         <Row label="Pending outbox" value={String(pendingOutboxCount)} tone={pendingOutboxCount > 0 ? 'warn' : 'default'} />
-        <Row label="Last synced" value={summary?.lastSyncedAt ?? 'never'} />
+        <Row label="Last synced" value={describeSyncTime(summary?.lastSyncedAt)} />
         {!!summary?.error && (
           <Text style={[t.type.label, { color: t.color.danger, paddingTop: t.space.sm }]}>{summary.error}</Text>
         )}

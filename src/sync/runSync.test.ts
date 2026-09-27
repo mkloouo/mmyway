@@ -104,6 +104,18 @@ describe('runSync', () => {
     expect(summary.providers).toEqual({});
   });
 
+  it('keeps the stored last-synced time on a sync that does not replace it', async () => {
+    signedInWith(['https://ff3.example.com']);
+    (clientFor as jest.Mock).mockReturnValue(buildClient());
+    const db = createTestDb();
+    const first = await runSync(db as any);
+    expect(first.lastSyncedAt).not.toBeNull();
+
+    const push = await runSync(db as any, 'push');
+
+    expect(push.lastSyncedAt).toBe(first.lastSyncedAt);
+  });
+
   it('a second call while a sync runs joins it instead of starting another replay', async () => {
     signedInWith(['https://ff3.example.com']);
     const client = buildClient({ slow: true });

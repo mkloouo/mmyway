@@ -84,7 +84,9 @@ async function doSync(db: OutboxDb, mode: SyncMode): Promise<SyncSummary> {
   const summary: SyncSummary = {
     signedIn: true, ff3: EMPTY_REACHABILITY, ff3Reachable: false, providers: {}, providersReachable: {},
     replaySucceeded: 0, replayConflicted: 0, recurringCreated: 0, receiptsParsed: 0, failedAt: null, error: null,
-    lastSyncedAt: null,
+    // The last successful full sync; replaced below if this one succeeds. Starting from null
+    // made a push sync (which never sets it) show "never" in the Sync sheet.
+    lastSyncedAt,
     // Same conditions buildChain uses to put a provider in the chain.
     configuredProviders: [
       ...(localModelBaseUrls.length > 0 && localModelName ? ['local'] : []),
