@@ -20,11 +20,13 @@ export interface SyncSummary {
   recurringCreated: number;
   failedAt: string | null;
   error: string | null;
+  lastSyncedAt: string | null;
 }
 
 const NOT_SIGNED_IN: SyncSummary = {
   signedIn: false, ff3Reachable: false, providersReachable: {},
   replaySucceeded: 0, replayConflicted: 0, recurringCreated: 0, failedAt: null, error: null,
+  lastSyncedAt: null,
 };
 
 export async function runSync(db: OutboxDb): Promise<SyncSummary> {
@@ -34,6 +36,7 @@ export async function runSync(db: OutboxDb): Promise<SyncSummary> {
   const summary: SyncSummary = {
     signedIn: true, ff3Reachable: false, providersReachable: {},
     replaySucceeded: 0, replayConflicted: 0, recurringCreated: 0, failedAt: null, error: null,
+    lastSyncedAt: null,
   };
 
   try {
@@ -58,7 +61,8 @@ export async function runSync(db: OutboxDb): Promise<SyncSummary> {
       await pullRecentTransactions(db, client, new Date().toISOString());
     }
 
-    await setLastSyncedAt(db, new Date().toISOString());
+    summary.lastSyncedAt = new Date().toISOString();
+    await setLastSyncedAt(db, summary.lastSyncedAt);
   } catch (err) {
     summary.error = err instanceof Error ? err.message : String(err);
   }

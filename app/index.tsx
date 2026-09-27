@@ -1,39 +1,42 @@
-import { useState } from 'react';
-import { View, Text, TextInput, Button, FlatList } from 'react-native';
+import { View, Text, Button, FlatList } from 'react-native';
 import { router, Link } from 'expo-router';
+import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { useDb } from '../src/providers/DbProvider';
 import { useInboxItems } from '../src/inbox/useInboxItems';
-import { createManualEntry } from '../src/inbox/createManualEntry';
+import { outboxOperations } from '../src/db/schema';
+import { useSync } from '../src/sync/useSync';
 
 export default function InboxScreen() {
   const db = useDb();
   const { data: items } = useInboxItems();
-  const [amount, setAmount] = useState('');
-  const [merchant, setMerchant] = useState('');
-
-  async function onCapture() {
-    if (!amount || !merchant) return;
-    const { inboxItemId } = await createManualEntry(db, {
-      type: 'withdrawal', amount, currencyCode: 'PLN', date: new Date().toISOString(),
-      description: merchant, merchantRawInput: merchant,
-    });
-    setAmount('');
-    setMerchant('');
-    router.push(`/draft/${inboxItemId}`);
-  }
+  const { data: outbox } = useLiveQuery(db.select().from(outboxOperations));
+  const { summary, status, syncNow } = useSync();
+  const pendingCount = (outbox ?? []).filter((row) => row.status === 'pending' || row.status === 'failed').length;
 
   return (
     <View style={{ flex: 1, padding: 16, gap: 8 }}>
       <Text style={{ fontSize: 20, fontWeight: 'bold' }}>Inbox</Text>
       <View style={{ flexDirection: 'row', gap: 12 }}>
+        <Link href="/entry">Capture</Link>
+        <Link href="/receipt">Receipt</Link>
         <Link href="/transactions">Transactions</Link>
         <Link href="/recurring">Recurring</Link>
         <Link href="/settings">Settings</Link>
         <Link href="/settings/aliases">Aliases</Link>
       </View>
-      <TextInput placeholder="Merchant" value={merchant} onChangeText={setMerchant} style={{ borderWidth: 1, padding: 8 }} />
-      <TextInput placeholder="Amount" value={amount} onChangeText={setAmount} keyboardType="decimal-pad" style={{ borderWidth: 1, padding: 8 }} />
-      <Button title="Capture" onPress={onCapture} />
+
+      <View style={{ borderWidth: 1, borderColor: '#ddd', padding: 8, gap: 2 }}>
+        <Text>FF3: {!summary ? '…' : summary.signedIn ? (summary.ff3Reachable ? 'reachable' : 'unreachable') : 'not signed in'}</Text>
+        <Text>
+          Providers: {summary && Object.keys(summary.providersReachable).length > 0
+            ? Object.entries(summary.providersReachable).map(([name, ok]) => `${name}: ${ok ? 'up' : 'down'}`).join(', ')
+            : 'none configured'}
+        </Text>
+        <Text>Pending outbox: {pendingCount}</Text>
+        <Text>Last synced: {summary?.lastSyncedAt ?? 'never'}</Text>
+        {summary?.error && <Text style={{ color: 'red' }}>Sync error: {summary.error}</Text>}
+        <Button title={status === 'syncing' ? 'Syncing…' : 'Sync now'} onPress={() => syncNow()} disabled={status === 'syncing'} />
+      </View>
       <FlatList
         data={items ?? []}
         keyExtractor={(item) => item.id}
