@@ -1,9 +1,10 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { inboxItems, outboxOperations } from '../db/schema';
 import { matchAlias } from '../lookup/aliases';
 import { transition, type InboxState } from './state';
 import { draftToTransactionPayload, type Draft } from './draft';
-import { enqueueOperation } from '../sync/outbox';
+import { enqueueOperationSync } from '../sync/outbox';
+import { requestSync } from '../sync/syncTrigger';
 import type { OutboxDb } from '../sync/outbox';
 import { generateId } from '../utils/id';
 
@@ -116,25 +117,33 @@ export async function confirmInboxItem(db: OutboxDb, inboxItemId: string): Promi
   const nextState = transition(previousState, 'confirm');
   const draft: Draft = JSON.parse(item.draftJson);
 
-  await db.update(inboxItems).set({ state: nextState, updatedAt: new Date().toISOString() }).where(eq(inboxItems.id, inboxItemId));
   const outboxOperationId = generateId();
-  await enqueueOperation(db, {
-    id: outboxOperationId,
-    inboxItemId,
-    kind: 'create_transaction',
-    payload: draftToTransactionPayload(inboxItemId, draft),
+  // One transaction: a failure between the two writes used to leave the item `confirmed` with no
+  // operation behind it — out of the Inbox, never sent, and visible nowhere.
+  db.transaction((tx) => {
+    tx.update(inboxItems).set({ state: nextState, updatedAt: new Date().toISOString() }).where(eq(inboxItems.id, inboxItemId)).run();
+    enqueueOperationSync(tx, {
+      id: outboxOperationId,
+      inboxItemId,
+      kind: 'create_transaction',
+      payload: draftToTransactionPayload(inboxItemId, draft),
+    });
   });
+  requestSync();
   return { outboxOperationId, previousState };
 }
 
 // Undo stays inside the same rule confirm itself follows (Global Constraints): it may delete a
 // still-`pending` outbox operation, never touch one that already sent. `already_sent` means the
-// operation moved past `pending` (in flight, done, or failed) between confirm and the tap.
+// operation moved past `pending` (in flight, done, or failed) between confirm and the tap. The
+// delete is conditional on `pending` in the same statement, and replay claims an op the same
+// way before sending it — so exactly one of the two wins, and a replay that loaded the queue
+// before the tap skips the undone op instead of sending it.
 export async function undoConfirm(db: OutboxDb, inboxItemId: string, undo: ConfirmResult): Promise<'undone' | 'already_sent'> {
-  const rows = await db.select().from(outboxOperations).where(eq(outboxOperations.id, undo.outboxOperationId));
-  const op = rows[0];
-  if (!op || op.status !== 'pending') return 'already_sent';
-  await db.delete(outboxOperations).where(eq(outboxOperations.id, undo.outboxOperationId));
+  const removed = await db.delete(outboxOperations)
+    .where(and(eq(outboxOperations.id, undo.outboxOperationId), eq(outboxOperations.status, 'pending')))
+    .returning({ id: outboxOperations.id });
+  if (removed.length === 0) return 'already_sent';
   await db.update(inboxItems).set({ state: undo.previousState, updatedAt: new Date().toISOString() }).where(eq(inboxItems.id, inboxItemId));
   return 'undone';
 }

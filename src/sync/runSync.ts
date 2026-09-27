@@ -4,15 +4,16 @@
 // transactions only if the replay actually created something server-side worth re-pulling.
 // Never throws: a sync failure is a status the caller displays, not a crash.
 import { readStoredCredentials } from '../api/ff3/auth';
-import { getClient } from '../api/ff3/session';
+import { clientFor } from '../api/ff3/session';
 import { readHosts } from '../api/ff3/hosts';
 import {
   getLocalModelBaseUrls, getLocalModelActiveUrl, setLocalModelActiveUrl,
-  getFf3ActiveHost, setFf3ActiveHost, setLastSyncedAt,
+  getFf3ActiveHost, setFf3ActiveHost, getLastSyncedAt, setLastSyncedAt,
 } from '../settings/appSettings';
 import { probeReachability, type ServerReachability } from './reachability';
 import { pullReferenceData, pullRecentTransactions } from './referenceData';
-import { replayOutbox, type OutboxDb } from './outbox';
+import { replayOutbox, recoverInFlight, type OutboxDb } from './outbox';
+import { pruneReferenceData, reapplyQueuedAccountEdits } from './referenceHygiene';
 import { pullUnreviewedRecurring } from './recurringReview';
 import { retryPendingReceipts } from '../receipt/toDraft';
 import { logLine } from '../utils/log';
@@ -44,9 +45,24 @@ function anyOk(report: ServerReachability): boolean {
   return report.results.some((r) => r.ok);
 }
 
-export async function runSync(db: OutboxDb): Promise<SyncSummary> {
-  const client = await getClient(db);
-  if (!client) return NOT_SIGNED_IN;
+let inFlight: Promise<SyncSummary> | null = null;
+let recovered = false;
+
+/**
+ * One sync at a time, process-wide: a call while one is running gets the running one's result.
+ * Every trigger (app open, resume, pull-to-refresh, "Retry now", a just-queued write) funnels
+ * through here, so two outbox replays can never run side by side.
+ */
+export function runSync(db: OutboxDb): Promise<SyncSummary> {
+  if (!inFlight) inFlight = doSync(db).finally(() => { inFlight = null; });
+  return inFlight;
+}
+
+async function doSync(db: OutboxDb): Promise<SyncSummary> {
+  const [credentials, ff3Hosts, ff3ActiveHost, localModelBaseUrls, localModelActiveUrl, lastSyncedAt] = await Promise.all([
+    readStoredCredentials(), readHosts(), getFf3ActiveHost(db), getLocalModelBaseUrls(db), getLocalModelActiveUrl(db), getLastSyncedAt(db),
+  ]);
+  if (!credentials) return { ...NOT_SIGNED_IN };
 
   const summary: SyncSummary = {
     signedIn: true, ff3: EMPTY_REACHABILITY, ff3Reachable: false, providers: {}, providersReachable: {},
@@ -55,11 +71,13 @@ export async function runSync(db: OutboxDb): Promise<SyncSummary> {
   };
 
   try {
-    const [credentials, ff3Hosts, ff3ActiveHost, localModelBaseUrls, localModelActiveUrl] = await Promise.all([
-      readStoredCredentials(), readHosts(), getFf3ActiveHost(db), getLocalModelBaseUrls(db), getLocalModelActiveUrl(db),
-    ]);
+    if (!recovered) {
+      await recoverInFlight(db);
+      recovered = true;
+    }
+
     const reachability = await probeReachability({
-      ff3: credentials ? { addresses: ff3Hosts, apiToken: credentials.apiToken, remembered: ff3ActiveHost } : null,
+      ff3: { addresses: ff3Hosts, apiToken: credentials.apiToken, remembered: ff3ActiveHost },
       providers: localModelBaseUrls.length > 0 ? { local: { addresses: localModelBaseUrls, remembered: localModelActiveUrl } } : {},
     });
     summary.ff3 = reachability.ff3;
@@ -67,27 +85,42 @@ export async function runSync(db: OutboxDb): Promise<SyncSummary> {
     summary.providers = reachability.providers;
     summary.providersReachable = Object.fromEntries(Object.entries(reachability.providers).map(([name, r]) => [name, anyOk(r)]));
 
-    if (reachability.ff3.winner && reachability.ff3.winner !== ff3ActiveHost) await setFf3ActiveHost(db, reachability.ff3.winner);
     if (reachability.providers.local?.winner && reachability.providers.local.winner !== localModelActiveUrl) {
       await setLocalModelActiveUrl(db, reachability.providers.local.winner);
     }
 
-    await pullReferenceData(db, client);
+    const winner = reachability.ff3.winner;
+    if (winner) {
+      if (winner !== ff3ActiveHost) await setFf3ActiveHost(db, winner);
+      // Built from the address that just answered — not a client memoised from an earlier sync,
+      // which may point at an address that is no longer reachable.
+      const client = clientFor(winner, credentials.apiToken);
 
-    const replay = await replayOutbox(db, client);
-    summary.replaySucceeded = replay.succeeded.length;
-    summary.replayConflicted = replay.conflicted.length;
-    summary.failedAt = replay.failedAt;
+      const pullStartedAt = new Date().toISOString();
+      await pullReferenceData(db, client);
+      await pruneReferenceData(db, pullStartedAt);
+      await reapplyQueuedAccountEdits(db);
 
-    summary.recurringCreated = await pullUnreviewedRecurring(db, client);
-    summary.receiptsParsed = await retryPendingReceipts(db);
+      const replay = await replayOutbox(db, client);
+      summary.replaySucceeded = replay.succeeded.length;
+      summary.replayConflicted = replay.conflicted.length;
+      summary.failedAt = replay.failedAt;
 
-    if (replay.succeeded.length > 0) {
-      await pullRecentTransactions(db, client, new Date().toISOString());
+      summary.recurringCreated = await pullUnreviewedRecurring(db, client, { since: lastSyncedAt });
+
+      if (replay.succeeded.length > 0) {
+        await pullRecentTransactions(db, client, new Date().toISOString());
+      }
     }
 
-    summary.lastSyncedAt = new Date().toISOString();
-    await setLastSyncedAt(db, summary.lastSyncedAt);
+    // Independent of FF3 (brief §5.4: a draft can be parsed now and sent later) — a receipt
+    // reader can be reachable while Firefly III is not.
+    summary.receiptsParsed = await retryPendingReceipts(db);
+
+    if (winner) {
+      summary.lastSyncedAt = new Date().toISOString();
+      await setLastSyncedAt(db, summary.lastSyncedAt);
+    }
   } catch (err) {
     summary.error = err instanceof Error ? err.message : String(err);
     logLine('error', `sync failed: ${summary.error}${err instanceof Error && err.stack ? `\n${err.stack}` : ''}`);
