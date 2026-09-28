@@ -3,14 +3,16 @@
 ## [Unreleased]
 
 ### Splits
-- **Split** next to Save (and next to Confirm on a draft) adds a split: type its amount, then
-  slide how much of it each existing split gives up. The sliders always add up to the new amount.
+- **Split** next to Save (and next to Confirm on a draft) adds a split: type its amount and it
+  comes out of split 1. **Choose which splits give it** shows sliders instead, one per split,
+  always adding up to the new amount.
 - A split transaction shows its total on top and one page per split: swipe sideways to move
   between them. Each split has its own amount, description, payee, category, budget, note and
   shared-with; the date and your own account are shared by all.
-- Tap the total to change it, or change one split's amount: whenever the splits and the total
-  disagree, a sheet asks where the difference goes, and Save waits until it's placed.
-- A split can be removed; its money is then reassigned the same way.
+- Tap the total to change it, or change one split's amount: split 1 takes up the difference
+  (split 2, when you changed split 1). When it can't, sliders ask where the difference goes, and
+  Save waits until it's placed.
+- A split can be removed; split 1 takes its amount.
 
 ### Activity
 - **Duplicate** on a transaction makes an Inbox draft with exactly the same data — date, splits,
@@ -23,10 +25,6 @@
   planned on, category and tags. Add one with **+**; delete it from its page.
 - The detailed view lists Firefly III's subscriptions, rules and recurring transactions
   separately, exactly as they are there; tap one to see everything about it.
-
-### Fixed
-- Editing the category, note or date of a split transaction no longer deletes its other splits in
-  Firefly III.
 
 ## [1.2.0] - 2026-09-28
 

@@ -38,7 +38,7 @@ import { appLocale } from '../../src/i18n';
 import { readDraft } from '../../src/inbox/draftJson';
 import { useAction } from '../../src/ui/useAction';
 import { addSplit, draftAmounts, draftTotal, isSplitDraft, patchExtraSplit, removeExtraSplit, withAmounts } from '../../src/inbox/draftSplits';
-import { leftover } from '../../src/splits/allocate';
+import { absorb, leftover } from '../../src/splits/allocate';
 
 export default function DraftScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -195,10 +195,22 @@ export default function DraftScreen() {
     ]);
   }
 
-  /** Opens the leftover sheet when the splits don't add up to the total. */
-  function askLeftover(nextAmounts: string[], nextTotal: string, exclude?: number) {
+  /**
+   * When the splits don't add up to the total, split 1 takes the difference (split 2, if split 1
+   * was just typed); only when it can't are the sliders asked.
+   */
+  function placeLeftover(nextAmounts: string[], nextTotal: string, exclude?: number) {
     const delta = leftover(nextTotal, nextAmounts, dp);
-    if (delta !== 0n && nextAmounts.length > 1) setAllocation({ kind: 'leftover', delta, exclude });
+    if (delta === 0n || nextAmounts.length < 2) return;
+    const absorbed = absorb(nextAmounts, delta, dp, exclude);
+    if (absorbed) patch(withAmounts(draft!, absorbed));
+    else setAllocation({ kind: 'leftover', delta, exclude });
+  }
+
+  /** The Reassign button: the sliders, whatever split 1 could take. */
+  function askLeftover(nextAmounts: string[], nextTotal: string) {
+    const delta = leftover(nextTotal, nextAmounts, dp);
+    if (delta !== 0n && nextAmounts.length > 1) setAllocation({ kind: 'leftover', delta });
   }
 
   function onAllocated(result: AllocationResult) {
@@ -214,17 +226,20 @@ export default function DraftScreen() {
 
   function removeSplit(index: number) {
     const next = removeExtraSplit(draft!, index);
-    patch(next);
-    setPage(Math.max(0, index - 1));
     const nextAmounts = amounts.filter((_, i) => i !== index);
-    if (nextAmounts.length > 1) askLeftover(nextAmounts, total);
+    const delta = leftover(total, nextAmounts, dp);
+    const absorbed = nextAmounts.length > 1 ? absorb(nextAmounts, delta, dp) : null;
+    // Split 1 takes the removed amount, in the same write as the removal.
+    patch(absorbed ? { ...next, ...withAmounts({ ...draft!, ...next }, absorbed) } : next);
+    setPage(Math.max(0, index - 1));
+    if (nextAmounts.length > 1 && !absorbed) askLeftover(nextAmounts, total);
   }
 
   function closeKeypad() {
     const target = keypadFor;
     setKeypadFor(null);
-    if (target === 'total') askLeftover(amounts, total);
-    else if (typeof target === 'number') askLeftover(amounts, total, target);
+    if (target === 'total') placeLeftover(amounts, total);
+    else if (typeof target === 'number') placeLeftover(amounts, total, target);
   }
 
   function typeDigit(key: KeypadKey) {

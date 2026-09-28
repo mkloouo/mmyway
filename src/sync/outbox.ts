@@ -51,13 +51,13 @@ export interface UpdateTransactionPayload {
   changes: Partial<TransactionSplit>;
   /**
    * A split transaction's edit: every split, in order, as it should be afterwards. FF3 updates the
-   * splits that carry a transaction_journal_id, creates the ones without, and deletes the ones
-   * left out — so a group with more than one split must always be sent whole: sending only the
-   * first split deleted the others. `changes` then only summarises it (total, title) for Activity
-   * and the conflict screen.
+   * splits that carry a transaction_journal_id and creates the ones without. `changes` then only
+   * summarises it (total, title) for Activity and the conflict screen.
    */
   splits?: (Partial<TransactionSplit> & { transaction_journal_id?: string })[];
   groupTitle?: string;
+  /** Splits the user removed: deleted one by one after the update (a PUT doesn't remove them). */
+  removedJournalIds?: string[];
 }
 
 export interface DeleteTransactionPayload {
@@ -444,11 +444,22 @@ async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: 
           method: 'PUT',
           body: JSON.stringify(body),
         });
-        const next = (updated?.data?.attributes as { updated_at?: string } | undefined)?.updated_at ?? null;
+        for (const journalId of u.removedJournalIds ?? []) {
+          try {
+            await client.request(`/v1/transaction-journals/${journalId}`, { method: 'DELETE' });
+          } catch (err) {
+            // Already gone (an earlier attempt, or FF3's web UI): that's the goal.
+            if (!(err instanceof FF3RequestError && err.status === 404)) throw err;
+          }
+        }
+        const final = u.removedJournalIds?.length
+          ? await client.request<{ data?: TransactionRead }>(`/v1/transactions/${u.groupId}`)
+          : updated;
+        const next = (final?.data?.attributes as { updated_at?: string } | undefined)?.updated_at ?? null;
         if (u.expectedUpdatedAt) await rebaseLaterEdits(db, u.groupId, u.expectedUpdatedAt, next);
         // A split edit adds, removes and re-numbers splits: the cached row takes FF3's answer at
         // once, so the detail screen doesn't show the old splits until the next pull.
-        const fresh = u.splits && updated?.data ? cachedRowFromGroup(updated.data, new Date().toISOString()) : null;
+        const fresh = u.splits && final?.data ? cachedRowFromGroup(final.data, new Date().toISOString()) : null;
         if (fresh) await db.insert(cachedTransactions).values(fresh).onConflictDoUpdate({ target: cachedTransactions.groupId, set: fresh });
       }
       await db.delete(outboxOperations).where(eq(outboxOperations.id, row.id));

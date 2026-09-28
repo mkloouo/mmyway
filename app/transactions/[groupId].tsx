@@ -40,7 +40,7 @@ import { refreshCachedGroup } from '../../src/transactions/refreshGroup';
 import { queueSplitEdit } from '../../src/transactions/queueSplitEdit';
 import { duplicateTransaction } from '../../src/transactions/duplicate';
 import { fromCached, fromQueued, newSplit, patchSplit, toPayloadSplits, type EditableSplit } from '../../src/splits/editSplits';
-import { leftover } from '../../src/splits/allocate';
+import { absorb, leftover } from '../../src/splits/allocate';
 import { buildMerchantLookup, type MerchantHistory } from '../../src/lookup/merchantLookup';
 
 const SHARED_TAG_PREFIX = 'mmyway-shared-';
@@ -137,6 +137,7 @@ export default function TransactionDetailScreen() {
   const [keypadFor, setKeypadFor] = useState<number | 'total' | null>(null);
   const [textFor, setTextFor] = useState<number | 'title' | null>(null);
   const [payeeFor, setPayeeFor] = useState<number | null>(null);
+  const [removed, setRemoved] = useState<string[]>([]);
 
   if (!row) return <Screen bottom><AppBar title={tr('transaction.title')} /></Screen>;
 
@@ -241,10 +242,22 @@ export default function TransactionDetailScreen() {
     setAllocation({ mode: { kind: 'newSplit' }, base: splitMode ? splits : [singleAsSplit()] });
   }
 
-  /** Opens the leftover sheet if `next` doesn't add up to `nextTotal`. */
-  function askLeftover(next: EditableSplit[], nextTotal: string, exclude?: number) {
+  /**
+   * When `next` doesn't add up to `nextTotal`, split 1 takes the difference (split 2, if split 1
+   * was just typed); only when it can't are the sliders asked.
+   */
+  function placeLeftover(next: EditableSplit[], nextTotal: string, exclude?: number) {
     const delta = leftover(nextTotal, next.map((s) => s.amount), dp);
-    if (delta !== 0n && next.length > 1) setAllocation({ mode: { kind: 'leftover', delta, exclude }, base: next });
+    if (delta === 0n || next.length < 2) return;
+    const absorbed = absorb(next.map((s) => s.amount), delta, dp, exclude);
+    if (absorbed) setEdited(next.map((s, i) => ({ ...s, amount: absorbed[i]! })));
+    else setAllocation({ mode: { kind: 'leftover', delta, exclude }, base: next });
+  }
+
+  /** The Reassign button: the sliders, whatever split 1 could take. */
+  function askLeftover(next: EditableSplit[], nextTotal: string) {
+    const delta = leftover(nextTotal, next.map((s) => s.amount), dp);
+    if (delta !== 0n && next.length > 1) setAllocation({ mode: { kind: 'leftover', delta }, base: next });
   }
 
   function onAllocated(result: AllocationResult) {
@@ -260,21 +273,23 @@ export default function TransactionDetailScreen() {
   }
 
   function removeSplit(index: number) {
+    const gone = splits[index]?.journalId;
+    if (gone) setRemoved((r) => [...r, gone]);
     const next = splits.filter((_, i) => i !== index);
-    // One split left holds the whole total; with more, the removed amount is left to reassign.
+    // One split left holds the whole total; with more, split 1 takes the removed amount.
     if (next.length === 1) next[0] = { ...next[0]!, amount: total };
     setEdited(next);
     setPage(Math.max(0, index - 1));
-    askLeftover(next, total);
+    placeLeftover(next, total);
   }
 
   function closeKeypad() {
     const target = keypadFor;
     setKeypadFor(null);
-    if (target === 'total') askLeftover(splits, total);
+    if (target === 'total') placeLeftover(splits, total);
     else if (typeof target === 'number') {
       if (splits.length === 1) setTotalEdit(splits[0]!.amount);
-      else askLeftover(splits, total, target);
+      else placeLeftover(splits, total, target);
     }
   }
 
@@ -300,6 +315,7 @@ export default function TransactionDetailScreen() {
           changes: { amount: total, description: groupTitle, ...(changes.date ? { date: changes.date } : {}) },
           splits: toPayloadSplits(splits, { type, date, currencyCode: row!.currencyCode }),
           groupTitle,
+          ...(removed.length ? { removedJournalIds: removed } : {}),
         });
         router.back();
       } finally {
@@ -548,8 +564,7 @@ export default function TransactionDetailScreen() {
           <Button
             title={saving ? tr('common.saving') : tr('common.save')}
             onPress={onSave}
-            // Sending one split of a group whose splits aren't loaded would delete the others.
-            disabled={saving || rest !== 0n || splitsLoading}
+            disabled={saving || rest !== 0n}
             size="lg"
             style={{ flex: 1 }}
           />

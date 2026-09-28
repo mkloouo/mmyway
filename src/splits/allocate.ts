@@ -107,6 +107,21 @@ export function capsFor(amounts: readonly string[], delta: bigint, decimalPlaces
   });
 }
 
+/**
+ * The default for any difference between the total and the splits: split 1 takes it (or split 2,
+ * when split 1 is the one whose amount was just typed). Null when that would leave the absorbing
+ * split at zero or below — the sliders decide then.
+ */
+export function absorb(amounts: readonly string[], delta: bigint, decimalPlaces: number, exclude?: number): string[] | null {
+  if (delta === 0n) return [...amounts];
+  const index = exclude === 0 ? 1 : 0;
+  const current = amounts[index];
+  if (current === undefined) return null;
+  const next = toMinor(current, decimalPlaces) + delta;
+  if (next <= 0n) return null;
+  return amounts.map((a, i) => (i === index ? fromMinor(next, decimalPlaces) : a));
+}
+
 /** A slider position 0..1 as minor units of `cap`. The rounding is the gesture's, not money's. */
 export function positionToMinor(position: number, cap: bigint): bigint {
   const clamped = Math.min(1, Math.max(0, position));

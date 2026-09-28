@@ -1,5 +1,5 @@
 import {
-  applyShares, balance, capsFor, defaultShares, fromMinor, leftover, positionToMinor, sumMinor, toMinor,
+  absorb, applyShares, balance, capsFor, defaultShares, fromMinor, leftover, positionToMinor, sumMinor, toMinor,
 } from './allocate';
 
 describe('minor units', () => {
@@ -72,4 +72,19 @@ it('maps a slider position to minor units', () => {
   expect(positionToMinor(0.5, 1000n)).toBe(500n);
   expect(positionToMinor(2, 1000n)).toBe(1000n);
   expect(positionToMinor(0.3, 0n)).toBe(0n);
+});
+
+describe('absorb', () => {
+  it('lets split 1 take the difference', () => {
+    expect(absorb(['70.00', '30.00'], 500n, 2)).toEqual(['75.00', '30.00']);
+    expect(absorb(['70.00', '30.00'], -500n, 2)).toEqual(['65.00', '30.00']);
+  });
+
+  it('uses split 2 when split 1 was the one typed', () => {
+    expect(absorb(['80.00', '30.00'], -1000n, 2, 0)).toEqual(['80.00', '20.00']);
+  });
+
+  it('is null when the absorbing split would reach zero', () => {
+    expect(absorb(['5.00', '30.00'], -500n, 2)).toBeNull();
+  });
 });

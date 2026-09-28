@@ -1,4 +1,5 @@
-// The Split button's sheet, and the leftover sheet: one set of sliders says how much of an
+// The Split button's sheet, and the leftover sheet. By default split 1 gives a new split its
+// amount (Done on the keypad); "Choose splits" and the leftover sheet show sliders that say how much of an
 // amount each split gives (a new split's amount, a lowered total) or gets (a raised total). The
 // sliders always add up to the amount — moving one moves the others (src/splits/allocate.ts).
 import { useState } from 'react';
@@ -53,11 +54,19 @@ export function AllocationSheet({
   const [step, setStep] = useState<'amount' | 'shares'>(mode.kind === 'newSplit' ? 'amount' : 'shares');
   const [shares, setShares] = useState<bigint[]>(() => (mode.kind === 'newSplit' ? [] : defaultShares(target, caps) ?? caps.map(() => 0n)));
 
-  function next() {
+  /** "Choose splits": the sliders, starting from the default. */
+  function chooseSplits() {
     const initial = defaultShares(target, caps);
     if (!initial || target === 0n) return;
     setShares(initial);
     setStep('shares');
+  }
+
+  /** Done on the keypad: split 1 gives the amount (the next splits only what it can't). */
+  function takeDefault() {
+    const initial = defaultShares(target, caps);
+    if (!initial || target === 0n) return;
+    onDone({ amounts: applyShares(amounts, initial, sign, dp), newAmount: fromMinor(target, dp) });
   }
 
   function done() {
@@ -79,10 +88,13 @@ export function AllocationSheet({
         <Keypad
           compact
           onDigit={(key: KeypadKey) => setTyped((v) => applyDigit(v, key, dp))}
-          saveLabel={tr('splits.next')}
+          saveLabel={tr('common.done')}
           saveDisabled={target === 0n || tooMuch}
-          onSave={next}
+          onSave={takeDefault}
         />
+        {amounts.length > 1 && (
+          <Button title={tr('splits.chooseSplits')} variant="secondary" onPress={chooseSplits} disabled={target === 0n || tooMuch} />
+        )}
       </Sheet>
     );
   }

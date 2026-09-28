@@ -11,14 +11,18 @@ export async function queueSplitEdit(db: OutboxDb, payload: UpdateTransactionPay
   const queued = await db.select().from(outboxOperations)
     .where(and(eq(outboxOperations.kind, 'update_transaction'), inArray(outboxOperations.status, ['pending', 'failed'])));
   let expectedUpdatedAt = payload.expectedUpdatedAt;
+  const removed = new Set(payload.removedJournalIds ?? []);
   for (const op of queued) {
     const p = readPayload<UpdateTransactionPayload>(op.kind, op.payloadJson);
     if (p.groupId !== payload.groupId || !p.splits) continue;
     // Only while it hasn't started sending (the same claim rule as Undo).
-    const removed = await db.delete(outboxOperations)
+    const gone = await db.delete(outboxOperations)
       .where(and(eq(outboxOperations.id, op.id), inArray(outboxOperations.status, ['pending', 'failed'])))
       .returning({ id: outboxOperations.id });
-    if (removed.length > 0) expectedUpdatedAt = p.expectedUpdatedAt;
+    if (gone.length > 0) {
+      expectedUpdatedAt = p.expectedUpdatedAt;
+      for (const id of p.removedJournalIds ?? []) removed.add(id);
+    }
   }
-  await enqueueOperation(db, { id: generateId(), kind: 'update_transaction', payload: { ...payload, expectedUpdatedAt } });
+  await enqueueOperation(db, { id: generateId(), kind: 'update_transaction', payload: { ...payload, expectedUpdatedAt, ...(removed.size ? { removedJournalIds: [...removed] } : {}) } });
 }
