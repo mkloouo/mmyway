@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
-import { InteractionManager, Text } from 'react-native';
+import { ActivityIndicator, InteractionManager, View } from 'react-native';
 import { warmMerchantLookup } from '../lookup/merchantLookup';
 import { getDb, getMigrationDone, schema } from '../db/client';
+import { useTheme } from '../ui/theme';
 import type { ExpoSQLiteDatabase } from 'drizzle-orm/expo-sqlite';
 
 type Db = ExpoSQLiteDatabase<typeof schema>;
@@ -12,6 +13,7 @@ export function DbProvider({ children }: { children: ReactNode }) {
   // useState initializer runs it exactly once, on mount, not on every render.
   const [db] = useState<Db>(() => getDb());
   const [migrated, setMigrated] = useState(false);
+  const t = useTheme();
 
   useEffect(() => {
     getMigrationDone().finally(() => {
@@ -25,8 +27,15 @@ export function DbProvider({ children }: { children: ReactNode }) {
   }, [db]);
 
   // Gates every screen behind migrations finishing — querying an unmigrated db races table
-  // creation (see getMigrationDone's comment).
-  if (!migrated) return <Text>Loading…</Text>;
+  // creation (see getMigrationDone's comment). A bare <Text> here used to land unstyled in the
+  // corner under the status bar; fill the screen with the app background and centre a spinner.
+  if (!migrated) {
+    return (
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: t.color.bg }}>
+        <ActivityIndicator color={t.color.accent} accessibilityLabel="Loading" />
+      </View>
+    );
+  }
 
   return <DbContext.Provider value={db}>{children}</DbContext.Provider>;
 }
