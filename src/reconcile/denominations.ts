@@ -35,6 +35,26 @@ const LADDERS: Record<string, Denomination[]> = {
   ],
 };
 
+/** A ladder from face values, largest first; labels show whole units bare and cents with a point. */
+function ladder(values: string[], decimals = 2): Denomination[] {
+  return values.map((v) => ({ value: v.includes('.') || decimals === 0 ? v : `${v}.00`, label: v }));
+}
+
+// Currencies beyond the four above, for people outside Poland/Ukraine (review: "note
+// denominations for four currencies"). Notes and coins in circulation as of 2026.
+Object.assign(LADDERS, {
+  GBP: ladder(['50', '20', '10', '5', '2', '1', '0.50', '0.20', '0.10', '0.05', '0.02', '0.01']),
+  CHF: ladder(['1000', '200', '100', '50', '20', '10', '5', '2', '1', '0.50', '0.20', '0.10', '0.05']),
+  CZK: ladder(['5000', '2000', '1000', '500', '200', '100', '50', '20', '10', '5', '2', '1']),
+  HUF: ladder(['20000', '10000', '5000', '2000', '1000', '500', '200', '100', '50', '20', '10', '5']),
+  SEK: ladder(['1000', '500', '200', '100', '50', '20', '10', '5', '2', '1']),
+  NOK: ladder(['1000', '500', '200', '100', '50', '20', '10', '5', '1']),
+  DKK: ladder(['1000', '500', '200', '100', '50', '20', '10', '5', '2', '1', '0.50']),
+  RON: ladder(['500', '200', '100', '50', '10', '5', '1', '0.50', '0.10', '0.05', '0.01']),
+  CAD: ladder(['100', '50', '20', '10', '5', '2', '1', '0.25', '0.10', '0.05']),
+  JPY: ladder(['10000', '5000', '2000', '1000', '500', '100', '50', '10', '5', '1'], 0), // no minor unit
+});
+
 export function denominationsFor(currencyCode: string): Denomination[] | null {
   return LADDERS[currencyCode.toUpperCase()] ?? null;
 }

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import i18n, { appLocale } from '../src/i18n';
 import { Alert, BackHandler, Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import { pickDate as openSystemDatePicker } from '../src/ui/pickDate';
 import { useLiveQuery } from '../src/db/useLiveQuery';
 import { useDb } from '../src/providers/DbProvider';
 import { useTheme } from '../src/ui/theme';
@@ -245,15 +245,9 @@ export default function CaptureScreen() {
 
   function openNativeDatePicker() {
     setDateSheetOpen(false);
-    DateTimePickerAndroid.open({
-      value: date,
-      mode: 'date',
-      onChange: (event: { type: string }, picked?: Date) => {
-        if (event.type === 'set' && picked) {
-          setDate(buildEntryDate(picked, new Date()));
-          setDateMode('custom');
-        }
-      },
+    openSystemDatePicker(date, (picked) => {
+      setDate(buildEntryDate(picked, new Date()));
+      setDateMode('custom');
     });
   }
 

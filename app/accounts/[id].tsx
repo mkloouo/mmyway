@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, BackHandler, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import { pickDate } from '../../src/ui/pickDate';
 import { eq } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
 import { useDb } from '../../src/providers/DbProvider';
@@ -121,13 +121,7 @@ export default function AccountScreen() {
   });
 
   function pickDay(value: string | null, onPick: (day: string) => void) {
-    DateTimePickerAndroid.open({
-      value: dayDate(value),
-      mode: 'date',
-      onChange: (event: { type: string }, picked?: Date) => {
-        if (event.type === 'set' && picked) onPick(dayString(picked));
-      },
-    });
+    pickDate(dayDate(value), (picked) => onPick(dayString(picked)));
   }
 
   async function save() {

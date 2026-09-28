@@ -5,7 +5,7 @@ import { Alert, Image, Modal, Pressable, ScrollView, Text, View } from 'react-na
 import { useLocalSearchParams, router } from 'expo-router';
 import { eq } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
-import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import { pickDate } from '../../src/ui/pickDate';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
 import { Screen, AppBar, BarIconButton, Card, Chip, Button, Money, StatusPill, Sheet, Row } from '../../src/ui/components';
@@ -135,13 +135,7 @@ export default function DraftScreen() {
   }
 
   function openDatePicker() {
-    DateTimePickerAndroid.open({
-      value: new Date(draft!.date),
-      mode: 'date',
-      onChange: (event: { type: string }, picked?: Date) => {
-        if (event.type === 'set' && picked) patch({ date: buildEntryDate(picked, new Date(draft!.date)).toISOString() });
-      },
-    });
+    pickDate(new Date(draft!.date), (picked) => patch({ date: buildEntryDate(picked, new Date(draft!.date)).toISOString() }));
   }
 
   const handleConfirm = act(tr('inbox.confirm'), async () => {

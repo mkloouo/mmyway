@@ -7,7 +7,7 @@ import { Alert, Image, Modal, Pressable, ScrollView, Text, View, type ImageSourc
 import { useLocalSearchParams, router } from 'expo-router';
 import { eq, ne } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
-import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import { pickDate } from '../../src/ui/pickDate';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
 import { Screen, AppBar, BarIconButton, Card, Button, Money, Row, Sheet } from '../../src/ui/components';
@@ -146,15 +146,7 @@ export default function TransactionDetailScreen() {
   }
 
   function openDatePicker() {
-    DateTimePickerAndroid.open({
-      value: effectiveDate,
-      mode: 'date',
-      onChange: (event: { type: string }, picked?: Date) => {
-        if (event.type === 'set' && picked) {
-          setChanges((prev) => ({ ...prev, date: buildEntryDate(picked, effectiveDate).toISOString() }));
-        }
-      },
-    });
+    pickDate(effectiveDate, (picked) => setChanges((prev) => ({ ...prev, date: buildEntryDate(picked, effectiveDate).toISOString() })));
   }
 
   const keepMine = act(tr('conflict.keepMine'), async () => {

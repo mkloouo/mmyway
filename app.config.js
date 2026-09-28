@@ -44,6 +44,10 @@ module.exports = {
     android: {
       package: IS_DEV ? `${BASE_BUNDLE_ID}.dev` : BASE_BUNDLE_ID,
       permissions: ['android.permission.CAMERA'],
+      // Off on purpose: the database holds every cached transaction and account balance, and
+      // Android backups copy it into Google Drive. A new phone signs in and re-syncs from Firefly
+      // III instead (drafts and aliases on the old phone are not carried over).
+      allowBackup: false,
     },
     extra: {
       appVariant: process.env.APP_VARIANT ?? 'production',

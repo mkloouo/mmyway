@@ -355,6 +355,7 @@ export default function SettingsScreen() {
           />
         )}
       >
+        <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('settings.geminiPrivacy')}</Text>
         <TextField
           value={geminiKeyInput} onChangeText={setGeminiKeyInput} placeholder={tr('settings.apiKeyPlaceholder')} secureTextEntry autoCapitalize="none"
         />

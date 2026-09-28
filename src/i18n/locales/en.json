@@ -74,7 +74,8 @@
     "geminiApiKey": "Gemini API key",
     "apiKeyPlaceholder": "API key",
     "defaultAccount": "Default account",
-    "defaultCurrency": "Default currency"
+    "defaultCurrency": "Default currency",
+    "geminiPrivacy": "With a Gemini key, receipt photos go to Google whenever your local model isn’t set up or can’t read them. Without one, they never leave your network."
   },
   "time": {
     "never": "never",
