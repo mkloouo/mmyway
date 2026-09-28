@@ -28,10 +28,10 @@ import { relativeTime } from '../../src/ui/relativeTime';
 import {
   useInboxSections,
   type AttentionItem,
+  type ConfirmEntry,
   type InboxItemRow,
   type QueuedChange,
 } from '../../src/inbox/useInboxSections';
-import { draftReadiness } from '../../src/inbox/readiness';
 import {
   confirmInboxItem,
   undoConfirm,
@@ -54,14 +54,14 @@ import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { generateId } from '../../src/utils/id';
 import { navigateOnce } from '../../src/ui/navigateOnce';
 import { appLocale } from '../../src/i18n';
-import { readDraft, readReviewJournal, reviewForeign } from '../../src/inbox/draftJson';
+import { readReviewJournal, reviewForeign } from '../../src/inbox/draftJson';
 import { AccountPickerSheet } from '../../src/ui/AccountPickerSheet';
 import { TextField } from '../../src/ui/TextField';
 import { useAction } from '../../src/ui/useAction';
 import { ConfirmCard, ReviewCard, AttentionCard, QueuedCard } from '../../src/ui/InboxCards';
 
 type SectionKey = 'attention' | 'confirm' | 'review' | 'queued';
-type SectionRow = AttentionItem | InboxItemRow | QueuedChange;
+type SectionRow = AttentionItem | InboxItemRow | QueuedChange | ConfirmEntry;
 
 const UNDO_WINDOW_MS = 5000; // matches the Snackbar's visible time
 
@@ -219,11 +219,8 @@ export default function InboxScreen() {
     );
   }
 
-  const visibleToConfirm = toConfirm.filter((item) => !hiddenIds.has(item.id));
-  const readyToConfirm = visibleToConfirm.filter((item) => {
-    if (item.kind === 'receipt' && item.state === 'captured') return false;
-    return draftReadiness(readDraft(item.draftJson)).ready;
-  });
+  const visibleToConfirm = toConfirm.filter((entry) => !hiddenIds.has(entry.id));
+  const readyToConfirm = visibleToConfirm.filter((entry) => entry.confirmable);
 
   async function confirmAll() {
     if (confirmingAll || readyToConfirm.length < 2) return;
@@ -283,10 +280,7 @@ export default function InboxScreen() {
   }
   async function confirmSelected() {
     const ready = visibleToConfirm.filter(
-      (item) =>
-        selectedIds.has(item.id) &&
-        !(item.kind === 'receipt' && item.state === 'captured') &&
-        draftReadiness(readDraft(item.draftJson)).ready,
+      (entry) => selectedIds.has(entry.id) && entry.confirmable,
     );
     setSelectedIds(new Set());
     if (ready.length === 0) {
@@ -608,6 +602,27 @@ export default function InboxScreen() {
             }
             if (section.key === 'queued')
               return <QueuedCard change={item as QueuedChange} onOpen={navigateOnce} />;
+            if (section.key === 'confirm') {
+              const entry = item as ConfirmEntry;
+              return (
+                <Collapsible collapsed={leavingIds.has(entry.id)}>
+                  <ConfirmCard
+                    item={entry.item}
+                    draft={entry.draft}
+                    readiness={entry.readiness}
+                    currencies={currencies ?? []}
+                    onOpen={() => navigateOnce(`/draft/${entry.id}`)}
+                    onConfirm={() => confirmSingle(entry.item)}
+                    onDelete={() => deleteWithUndo([entry.id])}
+                    selection={{
+                      active: selecting,
+                      selected: selectedIds.has(entry.id),
+                      toggle: () => toggleSelected(entry.id),
+                    }}
+                  />
+                </Collapsible>
+              );
+            }
             const row = item as InboxItemRow;
             if (section.key === 'review') {
               return (
@@ -626,22 +641,7 @@ export default function InboxScreen() {
                 />
               );
             }
-            return (
-              <Collapsible collapsed={leavingIds.has(row.id)}>
-                <ConfirmCard
-                  item={row}
-                  currencies={currencies ?? []}
-                  onOpen={() => navigateOnce(`/draft/${row.id}`)}
-                  onConfirm={() => confirmSingle(row)}
-                  onDelete={() => deleteWithUndo([row.id])}
-                  selection={{
-                    active: selecting,
-                    selected: selectedIds.has(row.id),
-                    toggle: () => toggleSelected(row.id),
-                  }}
-                />
-              </Collapsible>
-            );
+            return null;
           }}
         />
 

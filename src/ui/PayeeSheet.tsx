@@ -36,6 +36,8 @@ export function PayeeSheet({
   const [query, setQuery] = useState('');
   const { data: payeeAliases } = useLiveQuery(
     db.select().from(aliases).where(eq(aliases.kind, PAYEE)),
+    [],
+    visible,
   );
 
   const byKey = useMemo(() => new Map(histories.map((h) => [h.merchantKey, h])), [histories]);

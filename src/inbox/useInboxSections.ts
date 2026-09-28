@@ -11,6 +11,9 @@ import {
   referencedTransactions,
   type QueuedChangeInfo,
 } from './queuedChanges';
+import { readDraft } from './draftJson';
+import { draftReadiness, type DraftReadiness } from './readiness';
+import type { Draft } from './draft';
 
 export type InboxItemRow = typeof inboxItems.$inferSelect;
 export type OutboxOperationRow = typeof outboxOperations.$inferSelect;
@@ -25,9 +28,23 @@ export interface QueuedChange {
   info: QueuedChangeInfo;
 }
 
+/**
+ * A to-confirm row with its draft parsed once. The Inbox re-renders on every live-query update,
+ * and the parse plus the readiness rule used to run per item in three places on each of them.
+ */
+export interface ConfirmEntry {
+  id: string;
+  item: InboxItemRow;
+  /** null while a receipt is still being read — there is no draft to show yet. */
+  draft: Draft | null;
+  readiness: DraftReadiness | null;
+  /** Past the receipt-reading state and ready: what Confirm all and multi-select act on. */
+  confirmable: boolean;
+}
+
 export interface InboxSections {
   needsAttention: AttentionItem[];
-  toConfirm: InboxItemRow[];
+  toConfirm: ConfirmEntry[];
   toReview: InboxItemRow[];
   queued: QueuedChange[];
   actionableCount: number;
@@ -87,9 +104,16 @@ export function useInboxSections(): InboxSections {
       info: describeQueuedChange(op, lookups),
     }));
 
-    const toConfirm = rows.filter(
-      (row) => TO_CONFIRM_KINDS.has(row.kind) && TO_CONFIRM_STATES.has(row.state),
-    );
+    const toConfirm = rows
+      .filter((row) => TO_CONFIRM_KINDS.has(row.kind) && TO_CONFIRM_STATES.has(row.state))
+      .map((item): ConfirmEntry => {
+        // A receipt still being read has no draft yet; its card shows "Reading receipt…".
+        if (item.kind === 'receipt' && item.state === 'captured')
+          return { id: item.id, item, draft: null, readiness: null, confirmable: false };
+        const draft = readDraft(item.draftJson);
+        const readiness = draftReadiness(draft);
+        return { id: item.id, item, draft, readiness, confirmable: readiness.ready };
+      });
     const toReview = rows.filter(
       (row) => row.kind === 'recurring_review' && row.state === 'confirmed',
     );
