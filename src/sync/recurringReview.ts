@@ -5,6 +5,7 @@ import { inboxItems } from '../db/schema';
 import { enqueueOperation } from './outbox';
 import type { NewOutboxOperation, OutboxDb } from './outbox';
 import { generateId } from '../utils/id';
+import { readReviewJournal, writeDraft, type ReviewJournal } from '../inbox/draftJson';
 
 const REVIEWED_TAG = 'mmyway-reviewed';
 
@@ -42,7 +43,7 @@ export async function pullUnreviewedRecurring(db: OutboxDb, client: FF3Client, o
       id: generateId(),
       kind: 'recurring_review',
       state: 'confirmed', // arrives pre-parsed from the server; only needs a user decision (brief §4.3)
-      draftJson: JSON.stringify({ ...journal, updated_at: groupUpdatedAt }),
+      draftJson: writeDraft({ ...journal, updated_at: groupUpdatedAt }),
       ff3GroupId: group.id,
       createdAt: now,
       updatedAt: now,
@@ -59,12 +60,12 @@ export async function pullUnreviewedRecurring(db: OutboxDb, client: FF3Client, o
 async function decideRecurringReview(
   db: OutboxDb,
   inboxItemId: string,
-  decide: (groupId: string, journal: { transaction_journal_id: string; updated_at: string; tags?: string[] }) => NewOutboxOperation['payload'] & object,
+  decide: (groupId: string, journal: ReviewJournal) => NewOutboxOperation['payload'] & object,
   kind: 'recurring_review' | 'delete_transaction',
 ): Promise<void> {
   const [item] = await db.select().from(inboxItems).where(eq(inboxItems.id, inboxItemId));
   if (!item?.ff3GroupId) throw new Error(`recurring review item ${inboxItemId} has no ff3GroupId`);
-  const journal = JSON.parse(item.draftJson);
+  const journal = readReviewJournal(item.draftJson);
   await enqueueOperation(db, { id: generateId(), inboxItemId, kind, payload: decide(item.ff3GroupId, journal) });
   await db.update(inboxItems).set({ state: 'synced', updatedAt: new Date().toISOString() }).where(eq(inboxItems.id, inboxItemId));
 }

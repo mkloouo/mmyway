@@ -27,6 +27,7 @@ import { getClient } from '../../src/api/ff3/session';
 import { fetchJournalAttachments, queuedAttachments } from '../../src/receipt/journalAttachments';
 import type { TransactionSplit } from '../../src/api/ff3/types';
 import { pendingEdits } from '../../src/transactions/pendingEdits';
+import { readPayload, writePayload } from '../../src/sync/payloadJson';
 
 const SHARED_TAG_PREFIX = 'mmyway-shared-';
 // The words the rest of the app uses (capture's type chips), not FF3's "Withdrawal"/"Deposit".
@@ -155,9 +156,9 @@ export default function TransactionDetailScreen() {
 
   async function keepMine() {
     if (!conflictOp) return;
-    const payload = JSON.parse(conflictOp.payloadJson) as UpdateTransactionPayload | DeleteTransactionPayload;
+    const payload = readPayload<UpdateTransactionPayload | DeleteTransactionPayload>(conflictOp.kind, conflictOp.payloadJson);
     payload.expectedUpdatedAt = row!.updatedAt;
-    await db.update(outboxOperations).set({ status: 'pending', payloadJson: JSON.stringify(payload), lastError: null }).where(eq(outboxOperations.id, conflictOp.id));
+    await db.update(outboxOperations).set({ status: 'pending', payloadJson: writePayload(payload), lastError: null }).where(eq(outboxOperations.id, conflictOp.id));
   }
   async function discardMine() {
     if (!conflictOp) return;
@@ -197,7 +198,7 @@ export default function TransactionDetailScreen() {
   }
 
   if (conflictOp) {
-    const pending = JSON.parse(conflictOp.payloadJson) as UpdateTransactionPayload;
+    const pending = readPayload<UpdateTransactionPayload>(conflictOp.kind, conflictOp.payloadJson);
     const isDelete = conflictOp.kind === 'delete_transaction';
     const fields = isDelete ? [] : conflictFields(pending.changes ?? {}, row, {
       accountName: (accountId) => allAssetAccounts.find((a) => a.id === accountId)?.name,

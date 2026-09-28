@@ -9,6 +9,7 @@ import type { Draft } from '../inbox/draft';
 import type { ReceiptExtraction } from './types';
 import { logLine } from '../utils/log';
 import { resolvePayeeAlias } from '../lookup/aliases';
+import { writeDraft } from '../inbox/draftJson';
 
 // Below this confidence, guessing a field the model wasn't sure about does more harm than
 // leaving it blank for the user to fill in on the draft screen.
@@ -138,7 +139,7 @@ export async function parseReceiptItem(db: OutboxDb, itemId: string, imageBase64
   // Only if nothing touched the item while the provider was working (a parse takes seconds; the
   // user may already have opened the card and typed an amount) — their edits win.
   const updated = await db.update(inboxItems)
-    .set({ draftJson: JSON.stringify(draft), state: transition('captured', 'parsed'), updatedAt: new Date().toISOString() })
+    .set({ draftJson: writeDraft(draft), state: transition('captured', 'parsed'), updatedAt: new Date().toISOString() })
     .where(and(eq(inboxItems.id, itemId), eq(inboxItems.state, 'captured'), eq(inboxItems.updatedAt, before.updatedAt)))
     .returning({ id: inboxItems.id });
   return updated.length > 0 ? 'parsed' : 'waiting';

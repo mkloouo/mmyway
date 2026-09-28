@@ -31,6 +31,7 @@ import type { Draft } from '../../src/inbox/draft';
 import { navigateOnce } from '../../src/ui/navigateOnce';
 import { missingLabel } from '../../src/ui/readinessLabel';
 import { appLocale } from '../../src/i18n';
+import { readDraft } from '../../src/inbox/draftJson';
 
 export default function DraftScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -65,7 +66,7 @@ export default function DraftScreen() {
     const outcome = await undoConfirm(db, id, { outboxOperationId: pendingCreate.id, previousState: row?.kind === 'receipt' ? 'parsed' : 'captured' });
     if (outcome === 'already_sent') Alert.alert(tr('inbox.alreadySent'), tr('draft.alreadySentBody'));
   }
-  const draft: Draft | null = row ? JSON.parse(row.draftJson) : null;
+  const draft: Draft | null = row ? readDraft(row.draftJson) : null;
 
   const [histories, setHistories] = useState<MerchantHistory[]>([]);
   useEffect(() => {

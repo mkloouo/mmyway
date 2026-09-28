@@ -3,6 +3,7 @@ import { inboxItems, outboxOperations } from '../db/schema';
 import type { Draft } from './draft';
 import type { OutboxDb } from '../sync/outbox';
 import { deletePersistedReceiptImage } from '../receipt/imageFiles';
+import { readDraft, writeDraft } from './draftJson';
 
 const NOT_EDITABLE = new Set(['confirmed', 'synced']);
 
@@ -12,10 +13,10 @@ export async function updateDraft(db: OutboxDb, inboxItemId: string, patch: Part
   if (!item) throw new Error(`inbox item ${inboxItemId} not found`);
   if (NOT_EDITABLE.has(item.state)) throw new Error(`cannot update inbox item ${inboxItemId}: already ${item.state}`);
 
-  const draft: Draft = JSON.parse(item.draftJson);
+  const draft = readDraft(item.draftJson);
   const merged: Draft = { ...draft, ...patch };
   await db.update(inboxItems)
-    .set({ draftJson: JSON.stringify(merged), updatedAt: new Date().toISOString() })
+    .set({ draftJson: writeDraft(merged), updatedAt: new Date().toISOString() })
     .where(eq(inboxItems.id, inboxItemId));
 }
 

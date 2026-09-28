@@ -7,6 +7,7 @@ import { enqueueOperationSync } from '../sync/outbox';
 import { requestSync, SYNC_DELAY } from '../sync/syncTrigger';
 import type { OutboxDb } from '../sync/outbox';
 import { generateId } from '../utils/id';
+import { readDraft, writeDraft } from './draftJson';
 
 export interface ManualEntryInput {
   type: Draft['type'];
@@ -76,7 +77,7 @@ export async function createManualEntry(db: OutboxDb, input: ManualEntryInput): 
   const id = generateId();
   const now = new Date().toISOString();
   await db.insert(inboxItems).values({
-    id, kind: 'manual_entry', state: 'captured', draftJson: JSON.stringify(draft),
+    id, kind: 'manual_entry', state: 'captured', draftJson: writeDraft(draft),
     createdAt: now, updatedAt: now,
   });
 
@@ -95,7 +96,7 @@ export async function confirmInboxItem(db: OutboxDb, inboxItemId: string): Promi
 
   const previousState = item.state;
   const nextState = transition(previousState, 'confirm');
-  const draft: Draft = JSON.parse(item.draftJson);
+  const draft = readDraft(item.draftJson);
 
   const outboxOperationId = generateId();
   // One transaction: a failure between the two writes used to leave the item `confirmed` with no

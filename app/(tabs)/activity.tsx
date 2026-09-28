@@ -29,6 +29,7 @@ import { generateId } from '../../src/utils/id';
 import { inArray, ne } from 'drizzle-orm';
 import { haptics } from '../../src/ui/haptics';
 import { pendingEdits, applyPendingEdit, type PendingEditStatus } from '../../src/transactions/pendingEdits';
+import { readPayload } from '../../src/sync/payloadJson';
 
 const FILTERS: { labelKey: string; type: ActivityTypeFilter }[] = [
   { labelKey: 'activity.filterAll', type: 'all' },
@@ -218,7 +219,7 @@ export default function ActivityScreen() {
     const queued: QueuedRow[] = ops
       .filter((op) => op.kind === 'create_transaction' && (op.status === 'pending' || op.status === 'in_flight'))
       .map((op): QueuedRow | null => {
-        const payload = JSON.parse(op.payloadJson) as CreateTransactionPayload;
+        const payload = readPayload<CreateTransactionPayload>(op.kind, op.payloadJson);
         const split = payload.splits[0];
         if (!split) return null;
         return {

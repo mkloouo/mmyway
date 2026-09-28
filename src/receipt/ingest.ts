@@ -16,6 +16,7 @@ import { generateId } from '../utils/id';
 import { parseReceiptItem, type ParseOutcome } from './toDraft';
 import { persistReceiptImage } from './imageFiles';
 import { downscaleReceipt } from './downscale';
+import { writeDraft } from '../inbox/draftJson';
 
 export { persistReceiptImage, deletePersistedReceiptImage } from './imageFiles';
 
@@ -52,7 +53,7 @@ export async function captureReceipt(db: OutboxDb, original: { uri: string; base
   const now = new Date().toISOString();
   const stub: Draft = { type: 'withdrawal', amount: '', currencyCode: '', date: now, description: '', isNewPayee: true };
   await db.insert(inboxItems).values({
-    id, kind: 'receipt', state: 'captured', draftJson: JSON.stringify(stub),
+    id, kind: 'receipt', state: 'captured', draftJson: writeDraft(stub),
     receiptImagePath, receiptContentHash: hash,
     createdAt: now, updatedAt: now,
   });

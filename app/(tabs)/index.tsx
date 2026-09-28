@@ -36,6 +36,7 @@ import type { Draft } from '../../src/inbox/draft';
 import { navigateOnce } from '../../src/ui/navigateOnce';
 import { needsLabel } from '../../src/ui/readinessLabel';
 import { appLocale } from '../../src/i18n';
+import { readDraft, readReviewJournal } from '../../src/inbox/draftJson';
 
 type SectionKey = 'attention' | 'confirm' | 'review';
 type SectionRow = AttentionItem | InboxItemRow;
@@ -79,7 +80,7 @@ function ConfirmCard({
     );
   }
 
-  const draft: Draft = JSON.parse(item.draftJson);
+  const draft: Draft = readDraft(item.draftJson);
   const readiness = draftReadiness(draft);
   const isTransfer = draft.type === 'transfer';
   const payeeName = isTransfer
@@ -146,7 +147,7 @@ function ReviewCard({
   const t = useTheme();
   const { t: tr } = useTranslation();
   const [approving, setApproving] = useState(false);
-  const journal = JSON.parse(item.draftJson);
+  const journal = readReviewJournal(item.draftJson);
   const dateLabel = journal.date ? new Date(journal.date).toLocaleDateString(appLocale(), { day: 'numeric', month: 'short' }) : undefined;
 
   async function approve() {
@@ -336,7 +337,7 @@ export default function InboxScreen() {
   const visibleToConfirm = toConfirm.filter((item) => !hiddenIds.has(item.id));
   const readyToConfirm = visibleToConfirm.filter((item) => {
     if (item.kind === 'receipt' && item.state === 'captured') return false;
-    return draftReadiness(JSON.parse(item.draftJson)).ready;
+    return draftReadiness(readDraft(item.draftJson)).ready;
   });
 
   async function confirmAll() {
@@ -381,7 +382,7 @@ export default function InboxScreen() {
     deleteWithUndo(ids);
   }
   async function confirmSelected() {
-    const ready = visibleToConfirm.filter((item) => selectedIds.has(item.id) && !(item.kind === 'receipt' && item.state === 'captured') && draftReadiness(JSON.parse(item.draftJson)).ready);
+    const ready = visibleToConfirm.filter((item) => selectedIds.has(item.id) && !(item.kind === 'receipt' && item.state === 'captured') && draftReadiness(readDraft(item.draftJson)).ready);
     setSelectedIds(new Set());
     if (ready.length === 0) { haptics.warn(); return; }
     const batch: { id: string; result: ConfirmResult }[] = [];
@@ -407,7 +408,7 @@ export default function InboxScreen() {
   }
 
   function startEditReview(item: InboxItemRow) {
-    const journal = JSON.parse(item.draftJson);
+    const journal = readReviewJournal(item.draftJson);
     setEditingReview({ id: item.id, amount: journal.amount ?? '', currencyCode: journal.currency_code ?? '', accountId: journal.source_id ?? null });
   }
   const editAmountResult = editingReview ? parseDecimalInput(editingReview.amount) : null;

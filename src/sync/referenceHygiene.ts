@@ -5,6 +5,7 @@ import { setEnvelopeMarker } from '../accounts/envelopeMarker';
 import type { AccountEdit } from '../accounts/accountEdit';
 import type { OutboxDb, UpdateAccountPayload } from './outbox';
 import { getAccountOrder, setAccountOrder } from '../settings/appSettings';
+import { readPayload } from './payloadJson';
 
 /**
  * The pull only upserts, so an account, category, budget or currency deleted in FF3 stayed in
@@ -34,7 +35,7 @@ export async function reapplyQueuedAccountEdits(db: OutboxDb): Promise<void> {
   const order = await getAccountOrder(db);
   let orderChanged = false;
   for (const op of ops) {
-    const p = JSON.parse(op.payloadJson) as UpdateAccountPayload;
+    const p = readPayload<UpdateAccountPayload>('update_account', op.payloadJson);
     if (p.order !== undefined) { order[p.accountId] = p.order; orderChanged = true; }
     const [account] = await db.select().from(referenceAccounts).where(eq(referenceAccounts.id, p.accountId));
     if (!account) continue;

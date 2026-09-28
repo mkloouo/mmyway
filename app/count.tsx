@@ -30,6 +30,7 @@ import { useSync } from '../src/sync/useSync';
 import { generateId } from '../src/utils/id';
 import type { Draft } from '../src/inbox/draft';
 import { LEDGER_KINDS, type OutboxDb } from '../src/sync/outbox';
+import { writeDraft } from '../src/inbox/draftJson';
 
 const STALE_MS = 24 * 60 * 60 * 1000;
 
@@ -56,7 +57,7 @@ async function createAndConfirmAdjustment(
     extraTags: ['mmyway-reconcile'],
   };
   const id = generateId();
-  await db.insert(inboxItems).values({ id, kind: 'manual_entry', state: 'captured', draftJson: JSON.stringify(draft), createdAt: now, updatedAt: now });
+  await db.insert(inboxItems).values({ id, kind: 'manual_entry', state: 'captured', draftJson: writeDraft(draft), createdAt: now, updatedAt: now });
   await confirmInboxItem(db, id);
 }
 

@@ -22,6 +22,7 @@ import { ff3AccountBody, type AccountEdit } from '../accounts/accountEdit';
 import { requestSync } from './syncTrigger';
 import { deletePersistedReceiptImage } from '../receipt/imageFiles';
 import { cachedRowFromGroup } from './referenceData';
+import { readPayload, writePayload } from './payloadJson';
 
 export type OutboxKind =
   | 'create_transaction'
@@ -151,7 +152,7 @@ function insertOperation(db: OutboxDb, op: NewOutboxOperation): void {
     id: op.id,
     inboxItemId: op.inboxItemId ?? null,
     kind: op.kind,
-    payloadJson: JSON.stringify(op.payload),
+    payloadJson: writePayload(op.payload),
     status: 'pending',
     attempts: 0,
     createdAt: new Date().toISOString(),
@@ -202,10 +203,10 @@ async function rebaseLaterEdits(db: OutboxDb, groupId: string, previous: string,
   const later = await db.select().from(outboxOperations)
     .where(and(inArray(outboxOperations.status, ['pending', 'failed']), inArray(outboxOperations.kind, ['update_transaction', 'recurring_review', 'delete_transaction'])));
   for (const op of later) {
-    const payload = JSON.parse(op.payloadJson) as UpdateTransactionPayload | DeleteTransactionPayload;
+    const payload = readPayload<UpdateTransactionPayload | DeleteTransactionPayload>(op.kind, op.payloadJson);
     if (payload.groupId !== groupId || payload.expectedUpdatedAt !== previous) continue;
     payload.expectedUpdatedAt = next;
-    await db.update(outboxOperations).set({ payloadJson: JSON.stringify(payload) }).where(eq(outboxOperations.id, op.id));
+    await db.update(outboxOperations).set({ payloadJson: writePayload(payload) }).where(eq(outboxOperations.id, op.id));
   }
 }
 
@@ -280,8 +281,9 @@ async function missingReferences(db: OutboxDb, splits: TransactionSplit[]): Prom
 }
 
 async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: { onConflict?: ConflictHandler }): Promise<'done' | 'conflict' | 'failed' | 'returned'> {
-  const payload = JSON.parse(row.payloadJson);
+  let payload: unknown;
   try {
+    payload = readPayload(row.kind, row.payloadJson);
     if (row.kind === 'create_transaction') {
       const p = payload as CreateTransactionPayload;
       const missing = await missingReferences(db, p.splits);

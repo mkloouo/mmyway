@@ -1,0 +1,71 @@
+// inbox_items.draft_json outlives app versions: a draft saved by one build is read by the next.
+// Every write stamps a version (`v`), and every read validates the shape instead of casting, so a
+// field renamed later fails loudly here rather than as `undefined` deep inside a screen.
+import { z } from 'zod';
+import type { Draft } from './draft';
+
+export const DRAFT_VERSION = 1;
+
+const optionalText = z.string().optional();
+
+const DraftSchema = z.looseObject({
+  v: z.literal(DRAFT_VERSION).optional(), // absent on drafts written before versioning: read as v1
+  type: z.enum(['withdrawal', 'deposit', 'transfer']),
+  amount: z.string(),
+  currencyCode: z.string(),
+  foreignAmount: optionalText,
+  foreignCurrencyCode: optionalText,
+  date: z.string(),
+  description: z.string(),
+  sourceName: optionalText,
+  sourceId: optionalText,
+  destinationName: optionalText,
+  destinationId: optionalText,
+  isNewPayee: z.boolean(),
+  payeeReadAs: optionalText,
+  categoryName: optionalText,
+  budgetId: optionalText,
+  notes: optionalText,
+  sharedWith: optionalText,
+  extraTags: z.array(z.string()).optional(),
+  lowConfidenceFields: z.array(z.string()).optional(),
+});
+
+/** A recurring review stores FF3's own journal; only the fields the app relies on are checked. */
+const ReviewJournalSchema = z.looseObject({
+  v: z.literal(DRAFT_VERSION).optional(),
+  transaction_journal_id: z.string(),
+  updated_at: z.string().optional(),
+  tags: z.array(z.string()).optional(),
+  amount: z.string().optional(),
+  currency_code: z.string().optional(),
+  description: z.string().optional(),
+  date: z.string().optional(),
+  source_id: z.string().nullish(),
+  source_name: z.string().nullish(),
+});
+
+export type ReviewJournal = z.infer<typeof ReviewJournalSchema>;
+
+function describe(error: z.ZodError): string {
+  const issue = error.issues[0];
+  return issue ? `${issue.path.join('.') || '(root)'}: ${issue.message}` : error.message;
+}
+
+export function readDraft(json: string): Draft {
+  const result = DraftSchema.safeParse(JSON.parse(json));
+  if (!result.success) throw new Error(`unreadable draft (${describe(result.error)})`);
+  const { v: _v, ...draft } = result.data;
+  return draft as Draft;
+}
+
+export function readReviewJournal(json: string): ReviewJournal {
+  const result = ReviewJournalSchema.safeParse(JSON.parse(json));
+  if (!result.success) throw new Error(`unreadable recurring review (${describe(result.error)})`);
+  return result.data;
+}
+
+/** What goes into draft_json: the draft (or review journal) with the current version stamped on it. */
+export function writeDraft(draft: Draft | Record<string, unknown>): string {
+  return JSON.stringify({ ...draft, v: DRAFT_VERSION });
+}
