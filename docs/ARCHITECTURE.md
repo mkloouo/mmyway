@@ -2,7 +2,7 @@
 
 mmyway is an offline-first Android client for a self-hosted Firefly III (FF3). Everything the UI shows is read from a local SQLite database; every change the user makes is queued and sent to FF3 by a sync. The app is usable with no network at all, and nothing reaches FF3 without the user confirming it.
 
-Rules that apply everywhere are in `AGENTS.md`. The component review with open cleanup items is `docs/component-review.md`; translations are `docs/LOCALIZATION.md`.
+Rules that apply everywhere are in `AGENTS.md`; translations are `docs/LOCALIZATION.md`. Open bugs, features and cleanups are tracked in [GitHub Issues](https://github.com/mkloouo/mmyway/issues).
 
 ## The pipeline: capture → confirm → sync
 

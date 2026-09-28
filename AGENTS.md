@@ -86,6 +86,9 @@ pipeline.
   `src/db/migrations.upgrade.test.ts` fails if you don't.
 - `src/api/ff3/types.ts` and `src/db/migrations/**/*.sql` are generated/pinned — don't hand-edit
   generated SQL migrations; edit `src/db/schema.ts` and run `npm run db:generate`.
+- **Open bugs, features and cleanups are GitHub Issues** (`mkloouo/mmyway`), not checklists in
+  `docs/`. File what you find but don't fix as an issue; a PR that resolves one says `Fixes #N`
+  in its description so merging closes it.
 
 RTK Golden Rule, Sub-Agents clause, and full command reference live in `~/.claude/RTK.md`
 (global, loaded every session) — see there instead of duplicating it here.
