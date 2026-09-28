@@ -36,6 +36,9 @@
 - Denominations for GBP, CHF, CZK, HUF, SEK, NOK, DKK, RON, CAD and JPY.
 
 ### Look and feel
+- Smoother exits: confirmed, deleted and swiped-away Inbox cards and deleted Activity rows fold
+  away, and the rest slide up instead of jumping. In Capture, the saved amount floats up and fades
+  while the cleared field fades in.
 - Everything that vibrates also moves, for phones without vibration: keypad keys shrink under
   your finger, a card or row you select pops, a confirm or delete pops its Undo bar in, the sync
   pill pops when the queue empties, and whatever blocks a Save & ✓, a confirm or a swipe shakes.

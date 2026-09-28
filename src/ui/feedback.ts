@@ -7,7 +7,7 @@
 //   hold    -> useHoldRing: a border that grows while a long press charges, then the tick + pop
 //              when it fires (Card's longPressRing)
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated } from 'react-native';
+import { Animated, Easing } from 'react-native';
 import { haptics } from './haptics';
 
 export function useShake() {
@@ -70,4 +70,35 @@ export function useHoldRing(durationMs: number) {
     pop();
   }, [progress, pop]);
   return { progress, start, stop, fire, popStyle };
+}
+
+/**
+ * Capture's save: the amount just saved floats up and fades out while the cleared field fades in
+ * (about 0.65 s), slow enough to see — the instant jump to 0 read as nothing happening. `fly`
+ * takes the text as it was on screen; render `ghost` over the field with `ghostStyle`, and give
+ * the field itself `fieldStyle`.
+ */
+export function useFlyAway() {
+  const [ghost, setGhost] = useState<{ key: number; text: string } | null>(null);
+  const [out] = useState(() => new Animated.Value(1));
+  const [inField] = useState(() => new Animated.Value(1));
+  const fly = useCallback((text: string) => {
+    setGhost({ key: Date.now(), text });
+    out.stopAnimation();
+    inField.stopAnimation();
+    out.setValue(0);
+    inField.setValue(0);
+    Animated.parallel([
+      Animated.timing(out, { toValue: 1, duration: 650, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+      Animated.timing(inField, { toValue: 1, duration: 350, delay: 250, useNativeDriver: true }),
+    ]).start(({ finished }) => { if (finished) setGhost(null); });
+  }, [out, inField]);
+  const ghostStyle = {
+    opacity: out.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
+    transform: [
+      { translateY: out.interpolate({ inputRange: [0, 1], outputRange: [0, -48] }) },
+      { scale: out.interpolate({ inputRange: [0, 1], outputRange: [1, 0.85] }) },
+    ],
+  };
+  return { fly, ghost, ghostStyle, fieldStyle: { opacity: inField } };
 }

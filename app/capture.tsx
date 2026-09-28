@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n, { appLocale } from '../src/i18n';
 import { Animated, Alert, BackHandler, Pressable, ScrollView, Text, View } from 'react-native';
-import { usePop, useShake } from '../src/ui/feedback';
+import { useFlyAway, useShake } from '../src/ui/feedback';
 import { router } from 'expo-router';
 import { pickDate as openSystemDatePicker } from '../src/ui/pickDate';
 import { useLiveQuery } from '../src/db/useLiveQuery';
@@ -77,9 +77,9 @@ export default function CaptureScreen() {
   const { t: tr } = useTranslation();
   const act = useAction();
   // Visual twins of the haptics below (src/ui/feedback.ts): a refused Save & ✓ shakes what's
-  // missing, a save pops the amount as it clears.
+  // missing; a save floats the saved amount away while the cleared field fades in.
   const { shake, shakeStyle } = useShake();
-  const { pop, popStyle } = usePop();
+  const { fly, ghost, ghostStyle, fieldStyle } = useFlyAway();
   const { defaultAccountId, defaultCurrencyCode } = useCaptureDefaults();
 
   const assetAccountRows = useAssetAccounts();
@@ -273,7 +273,7 @@ export default function CaptureScreen() {
         if (photoUri) await attachReceiptImage(db, inboxItemId, photoUri);
         const label = merchantRawInput || description || tr(labelKeyForType(type));
         haptics.tick();
-        pop();
+        fly(formatAmountInput(amount, currency));
         if (andConfirm) {
           const confirmed = await confirmInboxItem(db, inboxItemId);
           // Same Undo the Inbox gives a confirm: the entry stays unsent while this is on screen.
@@ -319,9 +319,22 @@ export default function CaptureScreen() {
         </View>
 
         <View style={{ alignItems: 'center', paddingVertical: t.space.xl }}>
-          <Animated.Text style={[t.type.display, t.type.money, { color: t.color.text }, popStyle]} numberOfLines={1}>
-            {formatAmountInput(amount, currency)}
-          </Animated.Text>
+          {/* Full width, so the floating ghost of a longer amount isn't clipped to the new "0". */}
+          <View style={{ alignSelf: 'stretch', alignItems: 'center' }}>
+            <Animated.Text style={[t.type.display, t.type.money, { color: t.color.text }, fieldStyle]} numberOfLines={1}>
+              {formatAmountInput(amount, currency)}
+            </Animated.Text>
+            {!!ghost && (
+              <Animated.Text
+                key={ghost.key}
+                pointerEvents="none"
+                style={[t.type.display, t.type.money, { color: t.color.accent, position: 'absolute', left: 0, right: 0, textAlign: 'center' }, ghostStyle]}
+                numberOfLines={1}
+              >
+                {ghost.text}
+              </Animated.Text>
+            )}
+          </View>
           {isDirty && !readiness.ready && (
             <Animated.Text style={[t.type.label, { color: t.color.warn, marginTop: t.space.xs }, shakeStyle]}>
               {needsLabel(readiness.missing)}

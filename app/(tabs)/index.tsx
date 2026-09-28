@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, SectionList, Text, View } from 'react-native';
 import { usePopOnChange } from '../../src/ui/feedback';
+import { Collapsible, leaveThen } from '../../src/ui/Collapsible';
 import { useTranslation } from 'react-i18next';
 import { inArray } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
@@ -101,8 +102,13 @@ export default function InboxScreen() {
     // Leaving the screen commits whatever is still waiting.
     return () => { for (const [id, timer] of timers) { clearTimeout(timer); void deleteInboxItem(db, id); } timers.clear(); };
   }, [db]);
+  // Cards fold away (Collapsible) before they leave the list, so the rest slide up smoothly.
+  const [leavingIds, setLeavingIds] = useState<Set<string>>(new Set());
+  function forgetLeaving(ids: string[]) {
+    setLeavingIds((cur) => new Set([...cur].filter((id) => !ids.includes(id))));
+  }
   function deleteWithUndo(ids: string[]) {
-    setHiddenIds((cur) => new Set([...cur, ...ids]));
+    leaveThen(ids, setLeavingIds, () => setHiddenIds((cur) => new Set([...cur, ...ids])));
     for (const id of ids) {
       deleteTimers.current.set(id, setTimeout(() => {
         deleteTimers.current.delete(id);
@@ -117,6 +123,7 @@ export default function InboxScreen() {
       onAction: () => {
         for (const id of ids) { clearTimeout(deleteTimers.current.get(id)); deleteTimers.current.delete(id); }
         setHiddenIds((cur) => new Set([...cur].filter((id) => !ids.includes(id))));
+        forgetLeaving(ids);
       },
     });
   }
@@ -128,6 +135,7 @@ export default function InboxScreen() {
       actionLabel: tr('common.undo'),
       onAction: async () => {
         const outcomes = await Promise.all(batch.map(({ id, result }) => undoConfirm(db, id, result)));
+        forgetLeaving(batch.map(({ id }) => id));
         setSnackbar({
           id: generateId(),
           message: outcomes.includes('already_sent') ? tr('inbox.alreadySent') : tr('inbox.undone'),
@@ -136,12 +144,12 @@ export default function InboxScreen() {
     });
   }
 
-  async function confirmSingle(item: InboxItemRow) {
-    await reportErrors(tr('inbox.confirm'), async () => {
+  function confirmSingle(item: InboxItemRow) {
+    haptics.tick();
+    leaveThen([item.id], setLeavingIds, () => reportErrors(tr('inbox.confirm'), async () => {
       const result = await confirmInboxItem(db, item.id);
-      haptics.tick();
       showConfirmedSnackbar([{ id: item.id, result }]);
-    }, (message) => setSnackbar({ id: generateId(), message }));
+    }, (message) => { forgetLeaving([item.id]); setSnackbar({ id: generateId(), message }); }));
   }
 
   const visibleToConfirm = toConfirm.filter((item) => !hiddenIds.has(item.id));
@@ -197,11 +205,15 @@ export default function InboxScreen() {
       setSnackbar({ id: generateId(), message: tr('inbox.noneReady') });
       return;
     }
-    const batch: { id: string; result: ConfirmResult }[] = [];
-    await reportErrors(tr('inbox.confirm'), async () => {
-      for (const item of ready) batch.push({ id: item.id, result: await confirmInboxItem(db, item.id) });
-    }, (message) => setSnackbar({ id: generateId(), message }));
-    if (batch.length > 0) { haptics.tick(); showConfirmedSnackbar(batch); }
+    haptics.tick();
+    const ids = ready.map((item) => item.id);
+    leaveThen(ids, setLeavingIds, async () => {
+      const batch: { id: string; result: ConfirmResult }[] = [];
+      await reportErrors(tr('inbox.confirm'), async () => {
+        for (const item of ready) batch.push({ id: item.id, result: await confirmInboxItem(db, item.id) });
+      }, (message) => { forgetLeaving(ids.filter((id) => !batch.some((b) => b.id === id))); setSnackbar({ id: generateId(), message }); });
+      if (batch.length > 0) showConfirmedSnackbar(batch);
+    });
   }
   const discardReview = act(tr('common.delete'), async (id: string) => {
     if (!await confirmDestructive(tr('inbox.deleteReviewTitle'), tr('common.delete'), tr('inbox.deleteReviewBody'))) return;
@@ -380,14 +392,16 @@ export default function InboxScreen() {
               );
             }
             return (
-              <ConfirmCard
-                item={row}
-                currencies={currencies ?? []}
-                onOpen={() => navigateOnce(`/draft/${row.id}`)}
-                onConfirm={() => confirmSingle(row)}
-                onDelete={() => deleteWithUndo([row.id])}
-                selection={{ active: selecting, selected: selectedIds.has(row.id), toggle: () => toggleSelected(row.id) }}
-              />
+              <Collapsible collapsed={leavingIds.has(row.id)}>
+                <ConfirmCard
+                  item={row}
+                  currencies={currencies ?? []}
+                  onOpen={() => navigateOnce(`/draft/${row.id}`)}
+                  onConfirm={() => confirmSingle(row)}
+                  onDelete={() => deleteWithUndo([row.id])}
+                  selection={{ active: selecting, selected: selectedIds.has(row.id), toggle: () => toggleSelected(row.id) }}
+                />
+              </Collapsible>
             );
           }}
         />

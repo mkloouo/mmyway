@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import i18n, { appLocale } from '../../src/i18n';
 import { Animated, Pressable, ScrollView, SectionList, Text, View } from 'react-native';
 import { usePopOnChange } from '../../src/ui/feedback';
+import { Collapsible, leaveThen } from '../../src/ui/Collapsible';
 import { useNavigation } from 'expo-router';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -160,11 +161,13 @@ export default function ActivityScreen() {
       return next;
     });
   }, []);
+  const [leavingIds, setLeavingIds] = useState<Set<string>>(new Set());
   const deleteSelected = act(tr('common.delete'), async () => {
     const ids = [...selectedIds];
     if (!await confirmDestructive(tr('activity.deleteTitle', { count: ids.length }), tr('common.delete'), tr('activity.deleteBody'))) return;
-    await deleteCachedTransactions(db, ids);
     setSelectedIds(new Set());
+    // The rows fold away first, then the deletes are queued (which takes them out of the list).
+    leaveThen(ids, setLeavingIds, () => deleteCachedTransactions(db, ids));
   });
 
   // A FF3 search result isn't in the local cache; store the copy we already have, then open it.
@@ -283,15 +286,17 @@ export default function ActivityScreen() {
     toggleSelected(item.groupId);
   }, [toggleSelected]);
   const renderItem = useCallback(({ item }: { item: ActivityItem }) => (
-    <ActivityRow
-      item={item}
-      selecting={selecting}
-      selected={selectedIds.has(item.groupId)}
-      currencies={currencies}
-      onPress={onRowPress}
-      onLongPress={onRowLongPress}
-    />
-  ), [selecting, selectedIds, currencies, onRowPress, onRowLongPress]);
+    <Collapsible collapsed={leavingIds.has(item.groupId)}>
+      <ActivityRow
+        item={item}
+        selecting={selecting}
+        selected={selectedIds.has(item.groupId)}
+        currencies={currencies}
+        onPress={onRowPress}
+        onLongPress={onRowLongPress}
+      />
+    </Collapsible>
+  ), [selecting, selectedIds, currencies, onRowPress, onRowLongPress, leavingIds]);
 
   // The listener is added once but reads the current sections through a ref: it used to close
   // over the first render's (empty) list and never scroll.
