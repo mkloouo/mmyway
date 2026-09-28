@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ### Look
+- Change the app name to what I meant to call this app.
 - New app icon: a white stepped arrow on indigo. On Android 13+ it follows your themed-icon colours.
 - The launch screen now shows the same arrow in a circle, on a light or dark background to match
   your phone's theme, instead of the placeholder icon.
