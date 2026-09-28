@@ -2,6 +2,32 @@
 
 ## [Unreleased]
 
+### Splits
+- **Split** next to Save (and next to Confirm on a draft) adds a split: type its amount, then
+  slide how much of it each existing split gives up. The sliders always add up to the new amount.
+- A split transaction shows its total on top and one page per split: swipe sideways to move
+  between them. Each split has its own amount, description, payee, category, budget, note and
+  shared-with; the date and your own account are shared by all.
+- Tap the total to change it, or change one split's amount: whenever the splits and the total
+  disagree, a sheet asks where the difference goes, and Save waits until it's placed.
+- A split can be removed; its money is then reassigned the same way.
+
+### Activity
+- **Duplicate** on a transaction makes an Inbox draft with exactly the same data — date, splits,
+  tags and all — and opens it for review.
+
+### Planned
+- A new **Planned** tab. The simple view lists each planned payment once, with its subscription,
+  rule and recurring transaction edited together: name, from and to, exact amount and currency
+  (Spotify's 7.99 USD from a PLN account), note, whether and how often it repeats, the date it's
+  planned on, category and tags. Add one with **+**; delete it from its page.
+- The detailed view lists Firefly III's subscriptions, rules and recurring transactions
+  separately, exactly as they are there; tap one to see everything about it.
+
+### Fixed
+- Editing the category, note or date of a split transaction no longer deletes its other splits in
+  Firefly III.
+
 ## [1.2.0] - 2026-09-28
 
 ### Accounts

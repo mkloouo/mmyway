@@ -11,13 +11,29 @@ const changes = z.record(z.string(), z.unknown());
 
 const SCHEMAS = {
   create_transaction: z.looseObject({ v: version, clientId: z.string(), splits: z.array(z.looseObject({})) }),
-  update_transaction: z.looseObject({ v: version, groupId: z.string(), transactionJournalId: z.string(), expectedUpdatedAt: z.string(), changes }),
+  update_transaction: z.looseObject({
+    v: version, groupId: z.string(), transactionJournalId: z.string(), expectedUpdatedAt: z.string(), changes,
+    splits: z.array(z.looseObject({})).optional(), groupTitle: z.string().optional(),
+  }),
   recurring_review: z.looseObject({ v: version, groupId: z.string(), transactionJournalId: z.string(), expectedUpdatedAt: z.string().optional(), changes }),
   delete_transaction: z.looseObject({ v: version, groupId: z.string(), expectedUpdatedAt: z.string().optional() }),
   attach_receipt: z.looseObject({ v: version, transactionJournalId: z.string(), receiptImagePath: z.string(), attachmentId: z.string().optional() }),
   update_account: z.looseObject({
     v: version, accountId: z.string(), setEnvelopeMarker: z.boolean().optional(), active: z.boolean().optional(),
     order: z.number().optional(), edit: changes.optional(),
+  }),
+  save_planned: z.looseObject({
+    v: version, key: z.string(),
+    fields: z.looseObject({
+      name: z.string(), type: z.enum(['withdrawal', 'deposit', 'transfer']), amount: z.string(), currencyCode: z.string(),
+      date: z.string(), repeats: z.boolean(), frequency: z.string(), every: z.number(), tags: z.array(z.string()),
+    }),
+    before: z.looseObject({}).nullable(),
+    billId: z.string().nullish(), ruleId: z.string().nullish(), recurrenceId: z.string().nullish(),
+  }),
+  delete_planned: z.looseObject({
+    v: version, key: z.string(), name: z.string(),
+    billId: z.string().nullish(), ruleId: z.string().nullish(), recurrenceId: z.string().nullish(),
   }),
 } satisfies Record<OutboxKind, z.ZodType>;
 

@@ -7,6 +7,7 @@ import { logLine } from '../utils/log';
 import { setAccountOrder } from '../settings/appSettings';
 import { addDecimal } from '../api/ff3/decimal';
 import { normkey } from '../lookup/normkey';
+import { splitsFromGroup, writeSplits } from '../transactions/splitsJson';
 
 const PAGE_SIZE = 100;
 
@@ -196,8 +197,7 @@ export function searchKeyOf(parts: (string | null | undefined)[]): string {
 export function cachedRowFromGroup(group: TransactionRead, syncedAt: string): CachedTransactionInsert | null {
   // One row per group (cachedTransactions is keyed by groupId). A split transaction is shown as
   // one entry: the splits' total (when they share a currency) under the group's title, with the
-  // first split's accounts and category. Edits still go to the first journal, so the detail
-  // screen doesn't offer to change a split group's amount.
+  // first split's accounts and category. Every split is kept in splitsJson for the detail screen.
   const splits = group.attributes.transactions;
   const journal = splits[0];
   if (!journal) return null;
@@ -230,6 +230,7 @@ export function cachedRowFromGroup(group: TransactionRead, syncedAt: string): Ca
     budgetName: extra.budget_name ?? null,
     budgetId: extra.budget_id != null ? String(extra.budget_id) : null,
     splitCount: splits.length,
+    splitsJson: writeSplits(splitsFromGroup(group)),
     searchKey: searchKeyOf([description, ...splits.map((s) => s.description), sourceName, destinationName]),
     tagsJson: JSON.stringify(journal.tags ?? []),
     notes: journal.notes ?? null,

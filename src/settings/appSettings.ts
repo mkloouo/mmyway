@@ -22,6 +22,7 @@ const KEYS = {
   accountOrder: 'account_order',
   balancesStale: 'balances_stale',
   locale: 'locale',
+  plannedMode: 'planned_mode',
 } as const;
 
 async function getSetting(db: OutboxDb, key: string): Promise<string | null> {
@@ -144,3 +145,11 @@ export function parseLocale(raw: string | null | undefined): AppLocale {
 }
 export const getLocale = async (db: OutboxDb) => parseLocale(await getSetting(db, KEYS.locale));
 export const setLocale = (db: OutboxDb, value: AppLocale) => setSetting(db, KEYS.locale, value);
+
+/** The Planned tab's view: `simple` (one row per name, editable) or `detailed` (FF3's objects as they are). */
+export type PlannedMode = 'simple' | 'detailed';
+export const PLANNED_MODE_KEY = KEYS.plannedMode;
+export function parsePlannedMode(raw: string | null | undefined): PlannedMode {
+  return raw === 'detailed' ? 'detailed' : 'simple';
+}
+export const setPlannedMode = (db: OutboxDb, value: PlannedMode) => setSetting(db, KEYS.plannedMode, value);

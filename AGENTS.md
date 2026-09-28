@@ -44,6 +44,11 @@ pipeline.
 - `src/suggest/` — ranks candidate values for an in-progress entry. Pure, offline, no tokens.
 - `src/receipt/` — provider chain (local OpenAI-compatible model, then Gemini) that turns a
   photo into a draft. Never call a provider with a live key from a test — mock `fetch`.
+- `src/splits/` — split transactions: the tracked total and slider allocation (`allocate.ts`,
+  minor units as BigInt) and the detail screen's split model (`editSplits.ts`). A split group is
+  always sent whole — FF3 deletes the splits a PUT leaves out.
+- `src/planned/` — the Planned tab: FF3 bills/rules/recurrences cached in `planned_objects`, the
+  simple view's name-matched trio (`model.ts`), and their queued save/delete (`replay.ts`).
 - `src/inbox/` — the capture → parsed → confirmed → synced state machine shared by manual
   entries, receipts, and recurring-transaction reviews.
 - `app/` — expo-router screens: amount-first capture, an Inbox

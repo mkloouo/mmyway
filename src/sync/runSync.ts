@@ -20,6 +20,7 @@ import { pruneReferenceData, reapplyQueuedAccountEdits } from './referenceHygien
 import { pullUnreviewedRecurring } from './recurringReview';
 import { retryPendingReceipts } from '../receipt/toDraft';
 import { logLine } from '../utils/log';
+import { pullPlanned } from '../planned/objects';
 
 export interface SyncSummary {
   signedIn: boolean;
@@ -140,6 +141,17 @@ async function doSync(db: OutboxDb, mode: SyncMode): Promise<SyncSummary> {
       summary.failedAt = replay.failedAt;
 
       if (full) summary.recurringCreated = await pullUnreviewedRecurring(db, client, { since: lastSyncedAt });
+
+      // The Planned tab's subscriptions, rules and recurring transactions — after the replay, so
+      // a planned edit that just landed isn't overwritten by the copy from before it. A failure
+      // here leaves the tab showing the last pull; it doesn't fail the sync.
+      if (full) {
+        try {
+          await pullPlanned(db, client);
+        } catch (err) {
+          logLine('warn', `planned pull failed: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
 
       if (replay.succeeded.length > 0 && await getBalancesStale(db)) {
         // A failure here must not turn a replay that landed into a failed sync; the flag stays

@@ -2,6 +2,7 @@
 // §6.2's Save & ✓, and Confirm all's filter). Pure — no db access — so every screen and test uses
 // the same rule.
 import type { Draft } from './draft';
+import { leftover } from '../splits/allocate';
 
 export interface DraftReadiness {
   ready: boolean;
@@ -33,6 +34,16 @@ export function draftReadiness(draft: Draft): DraftReadiness {
   }
   if (draft.type === 'deposit') {
     if (isBlank(draft.sourceName) && isBlank(draft.sourceId)) missing.push('payee');
+  }
+
+  const extras = draft.extraSplits ?? [];
+  if (extras.length > 0) {
+    if (extras.some((s) => isZeroAmount(s.amount))) missing.push('split amount');
+    if (draft.type !== 'transfer' && extras.some((s) => isBlank(s.payeeName) && isBlank(s.payeeId))) missing.push('split payee');
+    // The splits must add up to the total the user tracks (src/splits/allocate.ts's leftover).
+    if (draft.total !== undefined && leftover(draft.total, [draft.amount, ...extras.map((s) => s.amount)], 12) !== 0n) {
+      missing.push('split total');
+    }
   }
 
   return { ready: missing.length === 0, missing };

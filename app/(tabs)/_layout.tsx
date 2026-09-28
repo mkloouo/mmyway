@@ -34,6 +34,13 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="planned"
+        options={{
+          title: tr('planned.title'),
+          tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline" color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: tr('settings.title'),

@@ -8,6 +8,9 @@ const MISSING_KEYS: Record<string, string> = {
   'source account': 'sourceAccount',
   'destination account': 'destinationAccount',
   payee: 'payee',
+  'split amount': 'splitAmount',
+  'split payee': 'splitPayee',
+  'split total': 'splitTotal',
 };
 
 function fieldList(missing: string[]): string {

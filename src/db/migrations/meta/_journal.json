@@ -64,6 +64,13 @@
       "when": 1790590355080,
       "tag": "0008_blue_surge",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1790600552889,
+      "tag": "0009_milky_sinister_six",
+      "breakpoints": true
     }
   ]
 }
