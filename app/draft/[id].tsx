@@ -7,6 +7,7 @@ import { useShake } from '../../src/ui/feedback';
 import { useLocalSearchParams, router } from 'expo-router';
 import { eq } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
+import { useBudgets, useCategories, useCurrencies } from '../../src/db/useReferenceData';
 import { pickDateTime } from '../../src/ui/pickDate';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
@@ -34,13 +35,7 @@ import {
 } from '../../src/ui/AllocationSheet';
 import { currencyOf } from '../../src/ui/money';
 import { haptics } from '../../src/ui/haptics';
-import {
-  inboxItems,
-  outboxOperations,
-  referenceCategories,
-  referenceBudgets,
-  referenceCurrencies,
-} from '../../src/db/schema';
+import { inboxItems, outboxOperations } from '../../src/db/schema';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { confirmInboxItem, undoConfirm } from '../../src/inbox/createManualEntry';
 import { askPhotoSource, pickPhoto } from '../../src/receipt/pickPhoto';
@@ -88,9 +83,9 @@ export default function DraftScreen() {
     id,
   ]);
   const assetAccounts = useAssetAccounts() ?? [];
-  const { data: categories } = useLiveQuery(db.select().from(referenceCategories));
-  const { data: budgets } = useLiveQuery(db.select().from(referenceBudgets));
-  const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
+  const categories = useCategories();
+  const budgets = useBudgets();
+  const currencies = useCurrencies();
 
   const row = rows?.[0];
   // A confirmed entry whose create is still waiting in the queue can be taken back — the same
@@ -129,7 +124,6 @@ export default function DraftScreen() {
   const [payeeSheetOpen, setPayeeSheetOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [photoOpen, setPhotoOpen] = useState(false);
-  const [confirming, setConfirming] = useState(false);
   const [snackbar, setSnackbar] = useState<SnackbarEntry | null>(null);
   const dismissSnackbar = useCallback(() => setSnackbar(null), []);
   // Split editing (page 0 is the draft's own fields, 1..N its extraSplits).
@@ -158,7 +152,7 @@ export default function DraftScreen() {
     );
   }
 
-  const currency = currencyOf(currencies ?? [], draft.currencyCode);
+  const currency = currencyOf(currencies, draft.currencyCode);
   const dp = currency.decimalPlaces;
   const readiness = draftReadiness(draft);
   const splitMode = isSplitDraft(draft);
@@ -245,22 +239,16 @@ export default function DraftScreen() {
   }
 
   const handleConfirm = act(tr('inbox.confirm'), async () => {
-    if (confirming || !readiness.ready) {
-      if (!readiness.ready) {
-        haptics.warn();
-        shake();
-      }
+    if (!readiness.ready) {
+      haptics.warn();
+      shake();
       return;
     }
-    setConfirming(true);
-    try {
-      await confirmInboxItem(db, id);
-      haptics.tick();
-      router.back();
-    } finally {
-      setConfirming(false);
-    }
+    await confirmInboxItem(db, id);
+    haptics.tick();
+    router.back();
   });
+  const confirming = act.pending(tr('inbox.confirm'));
 
   const handleDeleteDraft = act(tr('common.delete'), async () => {
     setMenuOpen(false);
@@ -361,9 +349,9 @@ export default function DraftScreen() {
       onDatePress={openDatePicker}
       readOnly={readOnly}
       accounts={assetAccounts}
-      currencies={currencies ?? []}
-      categories={categories ?? []}
-      budgets={budgets ?? []}
+      currencies={currencies}
+      categories={categories}
+      budgets={budgets}
     />
   );
 
@@ -426,9 +414,9 @@ export default function DraftScreen() {
             onDatePress={openDatePicker}
             readOnly={readOnly}
             accounts={assetAccounts}
-            currencies={currencies ?? []}
-            categories={categories ?? []}
-            budgets={budgets ?? []}
+            currencies={currencies}
+            categories={categories}
+            budgets={budgets}
           />
         ) : (
           detailRows

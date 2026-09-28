@@ -7,6 +7,7 @@ import { usePopOnChange } from '../../src/ui/feedback';
 import { Collapsible, leaveThen } from '../../src/ui/Collapsible';
 import { useNavigation } from 'expo-router';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
+import { useCurrencies } from '../../src/db/useReferenceData';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useDb } from '../../src/providers/DbProvider';
 import { SearchField } from '../../src/ui/SearchField';
@@ -66,6 +67,8 @@ import { readSplits } from '../../src/transactions/splitsJson';
 import { readDraft } from '../../src/inbox/draftJson';
 import { draftTotal } from '../../src/inbox/draftSplits';
 import { landingItems, matchesActivityFilter } from '../../src/transactions/pinnedRows';
+import { useSelection } from '../../src/ui/useSelection';
+import { useHasSyncedBefore } from '../../src/sync/useHasSyncedBefore';
 import { dayDate, isBalanceStale, localDay } from '../../src/utils/day';
 
 const FILTERS: { labelKey: string; type: ActivityTypeFilter }[] = [
@@ -243,14 +246,11 @@ export default function ActivityScreen() {
   const [accountFilter, setAccountFilter] = useState<string | null>(null);
 
   const assetAccounts = useAssetAccounts() ?? [];
-  const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
+  const currencies = useCurrencies();
   const { data: outbox } = useLiveQuery(
     db.select().from(outboxOperations).where(ne(outboxOperations.kind, 'update_account')),
   );
-  // Just "has anything ever synced" — .limit(1) instead of loading the whole cached table.
-  const { data: cachedTxProbe } = useLiveQuery(
-    db.select({ id: cachedTransactions.groupId }).from(cachedTransactions).limit(1),
-  );
+  const hasSyncedBefore = useHasSyncedBefore();
 
   const { sections, dataKey, loadMore, loadingMore, atEnd } = useTransactionPage({
     search,
@@ -273,17 +273,8 @@ export default function ActivityScreen() {
   const pull = usePullToRefresh(resetExhausted);
 
   // Multi-select (long-press a row): bulk delete, each as its own conflict-checked outbox delete.
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const selecting = selectedIds.size > 0;
-  const toggleSelected = useCallback((groupId: string) => {
-    setSelectedIds((cur) => {
-      const next = new Set(cur);
-      if (next.has(groupId)) next.delete(groupId);
-      else next.add(groupId);
-      return next;
-    });
-  }, []);
-  const [leavingIds, setLeavingIds] = useState<Set<string>>(new Set());
+  const { selectedIds, selecting, toggleSelected, clearSelection, leavingIds, setLeavingIds } =
+    useSelection();
   const deleteSelected = act(tr('common.delete'), async () => {
     const ids = [...selectedIds];
     if (
@@ -294,7 +285,7 @@ export default function ActivityScreen() {
       ))
     )
       return;
-    setSelectedIds(new Set());
+    clearSelection();
     // The rows fold away first, then the deletes are queued (which takes them out of the list).
     leaveThen(ids, setLeavingIds, () => deleteCachedTransactions(db, ids));
   });
@@ -599,7 +590,7 @@ export default function ActivityScreen() {
 
   // undefined until the first read lands, so a synced-but-empty Activity doesn't flash "Nothing
   // cached yet" before flipping to "No results" once the probe resolves.
-  const hasSyncedBefore = cachedTxProbe === undefined ? undefined : cachedTxProbe.length > 0;
+
   const hasResults = displaySections.length > 0;
 
   return (
@@ -614,7 +605,7 @@ export default function ActivityScreen() {
               <BarIconButton
                 icon="close"
                 label={tr('inbox.cancelSelection')}
-                onPress={() => setSelectedIds(new Set())}
+                onPress={clearSelection}
               />
             }
             right={
@@ -795,7 +786,7 @@ const ActivityRow = memo(function ActivityRow({
   item: ActivityItem;
   selecting: boolean;
   selected: boolean;
-  currencies: Currencies | undefined;
+  currencies: Currencies;
   onPress: (item: ActivityItem) => void;
   onLongPress: (item: ActivityItem) => void;
 }) {
@@ -820,7 +811,7 @@ const ActivityRow = memo(function ActivityRow({
   // The mark pops as it toggles, alongside the tick haptic (src/ui/feedback.ts).
   const markPop = usePopOnChange(selected, 1.4);
   const splitLines = queued ? item.splits : remote ? [] : cachedSplitLines(item);
-  const currency = currencyOf(currencies ?? [], item.currencyCode);
+  const currency = currencyOf(currencies, item.currencyCode);
   return (
     <Pressable
       onPress={() => onPress(item)}
@@ -909,7 +900,7 @@ const BalanceStrip = memo(function BalanceStrip({
   accounts: ReferenceAccountRow[];
   selectedId: string | null;
   onToggle: (id: string) => void;
-  currencies: Currencies | undefined;
+  currencies: Currencies;
   pendingAccounts: Set<string>;
 }) {
   const t = useTheme();
@@ -952,7 +943,7 @@ const BalanceCard = memo(function BalanceCard({
   account: ReferenceAccountRow;
   selected: boolean;
   pending: boolean;
-  currencies: Currencies | undefined;
+  currencies: Currencies;
   onToggle: (id: string) => void;
 }) {
   const t = useTheme();
@@ -979,7 +970,7 @@ const BalanceCard = memo(function BalanceCard({
       </View>
       <RollingMoney
         amount={a.currentBalance ?? '0'}
-        currency={currencyOf(currencies ?? [], a.currencyCode)}
+        currency={currencyOf(currencies, a.currencyCode)}
         size="heading"
       />
       <Text style={[t.type.label, { color: t.color.textFaint }]}>
@@ -996,7 +987,7 @@ const DayHeader = memo(function DayHeader({
 }: {
   sectionKey: string;
   totals: DisplaySection['totals'];
-  currencies: Currencies | undefined;
+  currencies: Currencies;
 }) {
   const t = useTheme();
   const { t: tr } = useTranslation();
@@ -1007,9 +998,7 @@ const DayHeader = memo(function DayHeader({
         totals.length > 0 ? (
           <Text style={[t.type.label, { color: t.color.textMuted }]}>
             {totals
-              .map((tot) =>
-                formatMoney(tot.amount, currencyOf(currencies ?? [], tot.currencyCode ?? '')),
-              )
+              .map((tot) => formatMoney(tot.amount, currencyOf(currencies, tot.currencyCode ?? '')))
               .join(' · ')}
           </Text>
         ) : undefined

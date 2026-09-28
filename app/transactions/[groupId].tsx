@@ -8,6 +8,7 @@ import { Image, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { eq, ne } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
+import { useBudgets, useCategories, useCurrencies } from '../../src/db/useReferenceData';
 import { pickDateTime } from '../../src/ui/pickDate';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
@@ -35,14 +36,7 @@ import { currencyOf, formatMoney } from '../../src/ui/money';
 import { conflictFields } from '../../src/transactions/conflictDiff';
 import { relativeTime } from '../../src/ui/relativeTime';
 import { applyDigit, type KeypadKey } from '../../src/capture/amountInput';
-import {
-  cachedTransactions,
-  inboxItems,
-  outboxOperations,
-  referenceCategories,
-  referenceBudgets,
-  referenceCurrencies,
-} from '../../src/db/schema';
+import { cachedTransactions, inboxItems, outboxOperations } from '../../src/db/schema';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import type { UpdateTransactionPayload } from '../../src/sync/outbox';
 import { queueTransactionDelete, queueTransactionEdit } from '../../src/transactions/queueEdit';
@@ -118,9 +112,9 @@ export default function TransactionDetailScreen() {
   // every account for display, but only offer active ones when picking a new one.
   const allAssetAccounts = useAssetAccounts({ includeInactive: true }) ?? [];
   const activeAssetAccounts = useAssetAccounts() ?? [];
-  const { data: categories } = useLiveQuery(db.select().from(referenceCategories));
-  const { data: budgets } = useLiveQuery(db.select().from(referenceBudgets));
-  const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
+  const categories = useCategories();
+  const budgets = useBudgets();
+  const currencies = useCurrencies();
   const row = rows?.[0];
   // The photo this transaction was captured from, if the phone still has it (kept a while after
   // upload, see pruneUploadedReceiptImages): the preview while FF3's own list is unavailable.
@@ -164,7 +158,6 @@ export default function TransactionDetailScreen() {
   const [changes, setChanges] = useState<Partial<TransactionSplit>>({});
   const [amountSheetOpen, setAmountSheetOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
   /** The file:// uri of the photo open full screen. */
   const [photo, setPhoto] = useState<string | null>(null);
   // Split editing: null means "as cached / as queued".
@@ -201,7 +194,7 @@ export default function TransactionDetailScreen() {
     return payloadGroupId(op.kind, op.payloadJson) === groupId;
   });
 
-  const currency = currencyOf(currencies ?? [], row.currencyCode);
+  const currency = currencyOf(currencies, row.currencyCode);
   const dp = currency.decimalPlaces;
   // An edit saved earlier but not yet in FF3: shown as the current values (under this screen's
   // own unsaved `changes`), so reopening a just-saved transaction doesn't show the old ones.
@@ -256,10 +249,7 @@ export default function TransactionDetailScreen() {
     allAssetAccounts.find((a) => a.name === row.destinationName)?.id ??
     null;
   const effectiveBudgetId =
-    shown.budget_id ??
-    row.budgetId ??
-    (budgets ?? []).find((b) => b.name === row.budgetName)?.id ??
-    null;
+    shown.budget_id ?? row.budgetId ?? budgets.find((b) => b.name === row.budgetName)?.id ?? null;
   const effectiveCategoryName = shown.category_name ?? row.categoryName ?? null;
   const effectiveDate = shown.date ? new Date(shown.date) : new Date(row.date);
   const effectiveNotes = shown.notes ?? row.notes ?? null;
@@ -453,7 +443,7 @@ export default function TransactionDetailScreen() {
     source_id: row.sourceId ?? allAssetAccounts.find((a) => a.name === row.sourceName)?.id,
     destination_id:
       row.destinationId ?? allAssetAccounts.find((a) => a.name === row.destinationName)?.id,
-    budget_id: row.budgetId ?? (budgets ?? []).find((b) => b.name === row.budgetName)?.id,
+    budget_id: row.budgetId ?? budgets.find((b) => b.name === row.budgetName)?.id,
     ...pendingEdit?.changes,
   };
 
@@ -482,25 +472,20 @@ export default function TransactionDetailScreen() {
         return;
       }
       if (rest !== 0n) return;
-      setSaving(true);
-      try {
-        await queueSplitEdit(db, {
-          groupId: row!.groupId,
-          transactionJournalId: row!.journalId,
-          expectedUpdatedAt: row!.updatedAt,
-          changes: {
-            amount: total,
-            description: groupTitle,
-            ...(changes.date ? { date: changes.date } : {}),
-          },
-          splits: payloadSplits,
-          groupTitle,
-          ...(removed.length ? { removedJournalIds: removed } : {}),
-        });
-        router.back();
-      } finally {
-        setSaving(false);
-      }
+      await queueSplitEdit(db, {
+        groupId: row!.groupId,
+        transactionJournalId: row!.journalId,
+        expectedUpdatedAt: row!.updatedAt,
+        changes: {
+          amount: total,
+          description: groupTitle,
+          ...(changes.date ? { date: changes.date } : {}),
+        },
+        splits: payloadSplits,
+        groupTitle,
+        ...(removed.length ? { removedJournalIds: removed } : {}),
+      });
+      router.back();
       return;
     }
     const toSend = changedFields(changes, baseline);
@@ -508,14 +493,10 @@ export default function TransactionDetailScreen() {
       router.back();
       return;
     }
-    setSaving(true);
-    try {
-      await queueTransactionEdit(db, row!, toSend);
-      router.back();
-    } finally {
-      setSaving(false);
-    }
+    await queueTransactionEdit(db, row!, toSend);
+    router.back();
   });
+  const saving = act.pending(tr('common.save'));
 
   const onDuplicate = act(tr('transaction.duplicate'), async () => {
     setMenuOpen(false);
@@ -537,7 +518,7 @@ export default function TransactionDetailScreen() {
       ? []
       : conflictFields(pending.changes ?? {}, row, {
           accountName: (accountId) => allAssetAccounts.find((a) => a.id === accountId)?.name,
-          budgetName: (budgetId) => (budgets ?? []).find((b) => b.id === budgetId)?.name,
+          budgetName: (budgetId) => budgets.find((b) => b.id === budgetId)?.name,
           money: (amount) => formatMoney(amount, currency),
         });
     return (
@@ -684,9 +665,9 @@ export default function TransactionDetailScreen() {
           onDatePress={openDatePicker}
           accounts={allAssetAccounts}
           pickableAccounts={activeAssetAccounts}
-          currencies={currencies ?? []}
-          categories={categories ?? []}
-          budgets={budgets ?? []}
+          currencies={currencies}
+          categories={categories}
+          budgets={budgets}
         />
         {splits.length > 1 && (
           <View style={{ paddingHorizontal: t.space.lg }}>
@@ -806,9 +787,9 @@ export default function TransactionDetailScreen() {
                 onDatePress={openDatePicker}
                 accounts={allAssetAccounts}
                 pickableAccounts={activeAssetAccounts}
-                currencies={currencies ?? []}
-                categories={categories ?? []}
-                budgets={budgets ?? []}
+                currencies={currencies}
+                categories={categories}
+                budgets={budgets}
               />
             </>
           )}

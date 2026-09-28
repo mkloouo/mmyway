@@ -13,6 +13,7 @@ import { pickPhoto, type PhotoSource } from '../src/receipt/pickPhoto';
 import { requestSync, SYNC_DELAY } from '../src/sync/syncTrigger';
 import { TextField } from '../src/ui/TextField';
 import { errorMessage } from '../src/utils/errorMessage';
+import { useAction } from '../src/ui/useAction';
 
 function SourceTile({
   icon,
@@ -60,52 +61,47 @@ export default function ReceiptScreen() {
   const [hint, setHint] = useState('');
   const [hintSheetOpen, setHintSheetOpen] = useState(false);
   const [showChooser, setShowChooser] = useState(false);
-  const [busy, setBusy] = useState(false);
+  const act = useAction();
+  const busy = act.pending(tr('photo.addReceiptPhoto'));
   const autoLaunched = useRef(false);
 
-  async function capture(from: PhotoSource) {
-    if (busy) return;
-    setBusy(true);
+  const capture = act(tr('photo.addReceiptPhoto'), async (from: PhotoSource) => {
     setShowChooser(false);
-    try {
-      const photo = await pickPhoto(from);
-      if (!photo) {
-        setShowChooser(true);
-        return;
-      }
-
-      // Nothing below waits on the photo being hashed, copied or read: the screen closes as soon as
-      // the picker hands the photo over, so the next receipt is one tap away. The card appears in
-      // the Inbox ("Reading receipt…") when the insert lands, and fills in when the parse does.
-      if (attachToJournalId) {
-        // C2: attaching to an already-synced transaction — no inbox item, no parsing, just the upload.
-        attachReceiptToJournal(db, { uri: photo.uri, transactionJournalId: attachToJournalId })
-          .then(() => requestSync(SYNC_DELAY.afterWrite))
-          .catch((err) => Alert.alert(tr('receipt.attachFailed'), errorMessage(err)));
-        router.back();
-        return;
-      }
-
-      captureReceipt(db, { uri: photo.uri, base64: photo.base64, hint: hint || undefined })
-        .then((result) => {
-          if (result.kind === 'duplicate') {
-            Alert.alert(tr('receipt.duplicateTitle'), tr('receipt.duplicateBody'), [
-              { text: tr('common.ok'), style: 'cancel' },
-              { text: tr('receipt.openIt'), onPress: () => router.push(`/draft/${result.itemId}`) },
-            ]);
-          }
-        })
-        .catch((err) => Alert.alert(tr('receipt.saveFailed'), errorMessage(err)));
-      router.replace('/');
-    } finally {
-      setBusy(false);
+    const photo = await pickPhoto(from);
+    if (!photo) {
+      setShowChooser(true);
+      return;
     }
-  }
+
+    // Nothing below waits on the photo being hashed, copied or read: the screen closes as soon as
+    // the picker hands the photo over, so the next receipt is one tap away. The card appears in
+    // the Inbox ("Reading receipt…") when the insert lands, and fills in when the parse does.
+    if (attachToJournalId) {
+      // C2: attaching to an already-synced transaction — no inbox item, no parsing, just the upload.
+      attachReceiptToJournal(db, { uri: photo.uri, transactionJournalId: attachToJournalId })
+        .then(() => requestSync(SYNC_DELAY.afterWrite))
+        .catch((err) => Alert.alert(tr('receipt.attachFailed'), errorMessage(err)));
+      router.back();
+      return;
+    }
+
+    captureReceipt(db, { uri: photo.uri, base64: photo.base64, hint: hint || undefined })
+      .then((result) => {
+        if (result.kind === 'duplicate') {
+          Alert.alert(tr('receipt.duplicateTitle'), tr('receipt.duplicateBody'), [
+            { text: tr('common.ok'), style: 'cancel' },
+            { text: tr('receipt.openIt'), onPress: () => router.push(`/draft/${result.itemId}`) },
+          ]);
+        }
+      })
+      .catch((err) => Alert.alert(tr('receipt.saveFailed'), errorMessage(err)));
+    router.replace('/');
+  });
 
   useEffect(() => {
     if (autoLaunched.current) return;
     autoLaunched.current = true;
-    capture(source === 'gallery' ? 'gallery' : 'camera');
+    void capture(source === 'gallery' ? 'gallery' : 'camera');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -140,13 +136,13 @@ export default function ReceiptScreen() {
             <SourceTile
               icon="camera"
               label={tr('photo.camera')}
-              onPress={() => capture('camera')}
+              onPress={() => void capture('camera')}
               disabled={busy}
             />
             <SourceTile
               icon="images"
               label={tr('photo.gallery')}
-              onPress={() => capture('gallery')}
+              onPress={() => void capture('gallery')}
               disabled={busy}
             />
           </View>

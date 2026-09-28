@@ -7,6 +7,7 @@ import { Collapsible, leaveThen } from '../../src/ui/Collapsible';
 import { useTranslation } from 'react-i18next';
 import { inArray } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
+import { useCurrencies } from '../../src/db/useReferenceData';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
 import {
@@ -49,7 +50,7 @@ import { requestSync } from '../../src/sync/syncTrigger';
 import { parseDecimalInput, trimDecimal } from '../../src/api/ff3/decimal';
 import { reportErrors } from '../../src/ui/reportError';
 import { useSync, useSignedIn, usePullToRefresh } from '../../src/sync/useSync';
-import { outboxOperations, referenceCurrencies, cachedTransactions } from '../../src/db/schema';
+import { outboxOperations } from '../../src/db/schema';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { generateId } from '../../src/utils/id';
 import { navigateOnce } from '../../src/ui/navigateOnce';
@@ -59,6 +60,8 @@ import { AccountPickerSheet } from '../../src/ui/AccountPickerSheet';
 import { TextField } from '../../src/ui/TextField';
 import { useAction } from '../../src/ui/useAction';
 import { ConfirmCard, ReviewCard, AttentionCard, QueuedCard } from '../../src/ui/InboxCards';
+import { useSelection } from '../../src/ui/useSelection';
+import { useHasSyncedBefore } from '../../src/sync/useHasSyncedBefore';
 
 type SectionKey = 'attention' | 'confirm' | 'review' | 'queued';
 type SectionRow = AttentionItem | InboxItemRow | QueuedChange | ConfirmEntry;
@@ -78,11 +81,8 @@ export default function InboxScreen() {
       .from(outboxOperations)
       .where(inArray(outboxOperations.status, ['pending', 'failed'])),
   );
-  const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
-  // Just "has anything ever synced" — .limit(1) instead of loading the whole cached table.
-  const { data: cachedTxProbe } = useLiveQuery(
-    db.select({ id: cachedTransactions.groupId }).from(cachedTransactions).limit(1),
-  );
+  const currencies = useCurrencies();
+  const hasSyncedBefore = useHasSyncedBefore();
   const { status, summary, syncNow } = useSync();
   const pull = usePullToRefresh();
 
@@ -118,19 +118,20 @@ export default function InboxScreen() {
     foreign: { amount: string; currencyCode: string } | null;
   } | null>(null);
   const [pickingReviewAccount, setPickingReviewAccount] = useState(false);
-  const [savingReview, setSavingReview] = useState(false);
 
   // Multi-select (long-press a card): bulk confirm or delete.
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const selecting = selectedIds.size > 0;
+  const {
+    selectedIds,
+    selecting,
+    toggleSelected: toggle,
+    clearSelection,
+    leavingIds,
+    setLeavingIds,
+  } = useSelection();
+  // A card here has no long-press pop of its own, so the tick comes from the toggle.
   function toggleSelected(id: string) {
     haptics.tick();
-    setSelectedIds((cur) => {
-      const next = new Set(cur);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+    toggle(id);
   }
 
   // A swiped-away draft disappears at once and is only really deleted after its Undo window —
@@ -148,8 +149,7 @@ export default function InboxScreen() {
       timers.clear();
     };
   }, [db]);
-  // Cards fold away (Collapsible) before they leave the list, so the rest slide up smoothly.
-  const [leavingIds, setLeavingIds] = useState<Set<string>>(new Set());
+
   function forgetLeaving(ids: string[]) {
     setLeavingIds((cur) => new Set([...cur].filter((id) => !ids.includes(id))));
   }
@@ -275,14 +275,14 @@ export default function InboxScreen() {
   });
   function deleteSelected() {
     const ids = [...selectedIds];
-    setSelectedIds(new Set());
+    clearSelection();
     deleteWithUndo(ids);
   }
   async function confirmSelected() {
     const ready = visibleToConfirm.filter(
       (entry) => selectedIds.has(entry.id) && entry.confirmable,
     );
-    setSelectedIds(new Set());
+    clearSelection();
     if (ready.length === 0) {
       haptics.warn();
       setSnackbar({ id: generateId(), message: tr('inbox.noneReady') });
@@ -363,33 +363,27 @@ export default function InboxScreen() {
       : null;
   const editAmountResult = editingReview ? parseDecimalInput(editingReview.amount) : null;
   const editAmountInvalid = !!editingReview?.amount && !!editAmountResult && !editAmountResult.ok;
-  // A double-tap here used to enqueue two recurring_review operations.
-  async function saveEditReview() {
-    if (!editingReview || savingReview || !editAmountResult?.ok) return;
-    setSavingReview(true);
-    try {
-      await reportErrors(
-        tr('common.save'),
-        async () => {
-          await editRecurringReview(db, editingReview.id, {
-            amount: editAmountResult.value,
-            currency_code: editCurrencyCode,
-            ...(editingReview.accountId ? { source_id: editingReview.accountId } : {}),
-            ...(editForeign
-              ? {
-                  foreign_amount: editForeign.amount,
-                  foreign_currency_code: editForeign.currencyCode,
-                }
-              : {}),
-          });
-          setEditingReview(null);
-        },
-        (message) => setSnackbar({ id: generateId(), message }),
-      );
-    } finally {
-      setSavingReview(false);
-    }
-  }
+  // A double-tap here used to enqueue two recurring_review operations; `act` drops the second.
+  const saveEditReview = act(
+    tr('common.save'),
+    async () => {
+      if (!editingReview || !editAmountResult?.ok) return;
+      await editRecurringReview(db, editingReview.id, {
+        amount: editAmountResult.value,
+        currency_code: editCurrencyCode,
+        ...(editingReview.accountId ? { source_id: editingReview.accountId } : {}),
+        ...(editForeign
+          ? {
+              foreign_amount: editForeign.amount,
+              foreign_currency_code: editForeign.currencyCode,
+            }
+          : {}),
+      });
+      setEditingReview(null);
+    },
+    (message) => setSnackbar({ id: generateId(), message }),
+  );
+  const savingReview = act.pending(tr('common.save'));
 
   const allSections: { key: SectionKey; title: string; data: SectionRow[] }[] = [
     { key: 'attention', title: tr('inbox.sectionAttention'), data: needsAttention },
@@ -428,7 +422,6 @@ export default function InboxScreen() {
     hasCredentials === true && summary && !summary.ff3Reachable && pendingOutboxCount > 0;
   // undefined until the first read lands, so a synced-but-empty Inbox doesn't flash "Nothing
   // synced yet" before flipping to "Inbox zero" once the probe resolves.
-  const hasSyncedBefore = cachedTxProbe === undefined ? undefined : cachedTxProbe.length > 0;
 
   return (
     <Screen>
@@ -440,7 +433,7 @@ export default function InboxScreen() {
               <BarIconButton
                 icon="close"
                 label={tr('inbox.cancelSelection')}
-                onPress={() => setSelectedIds(new Set())}
+                onPress={clearSelection}
               />
             }
             right={
@@ -600,7 +593,7 @@ export default function InboxScreen() {
                     item={entry.item}
                     draft={entry.draft}
                     readiness={entry.readiness}
-                    currencies={currencies ?? []}
+                    currencies={currencies}
                     onOpen={() => navigateOnce(`/draft/${entry.id}`)}
                     onConfirm={() => confirmSingle(entry.item)}
                     onDelete={() => deleteWithUndo([entry.id])}
@@ -618,7 +611,7 @@ export default function InboxScreen() {
               return (
                 <ReviewCard
                   item={row}
-                  currencies={currencies ?? []}
+                  currencies={currencies}
                   onApprove={() =>
                     reportErrors(
                       tr('inbox.approve'),
@@ -667,7 +660,7 @@ export default function InboxScreen() {
                 {tr('inbox.chargedAs', {
                   amount: formatMoney(
                     editForeign.amount,
-                    currencyOf(currencies ?? [], editForeign.currencyCode),
+                    currencyOf(currencies, editForeign.currencyCode),
                   ),
                 })}
               </Text>
@@ -698,7 +691,7 @@ export default function InboxScreen() {
         onClose={() => setPickingReviewAccount(false)}
         title={tr('fields.from')}
         accounts={assetAccounts}
-        currencies={currencies ?? []}
+        currencies={currencies}
         onSelect={(a) => setEditingReview((cur) => (cur ? { ...cur, accountId: a.id } : cur))}
       />
     </Screen>

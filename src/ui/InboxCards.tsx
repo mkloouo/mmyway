@@ -14,6 +14,7 @@ import { haptics } from './haptics';
 import { currencyOf } from './money';
 import { categoryColor } from './categoryColor';
 import { needsLabel } from './readinessLabel';
+import { useAction } from './useAction';
 import type { AttentionItem, InboxItemRow, QueuedChange } from '../inbox/useInboxSections';
 import type { DraftReadiness } from '../inbox/readiness';
 import type { Draft } from '../inbox/draft';
@@ -234,7 +235,8 @@ export function ReviewCard({
 }) {
   const t = useTheme();
   const { t: tr } = useTranslation();
-  const [approving, setApproving] = useState(false);
+  const act = useAction();
+  const approving = act.pending(tr('inbox.approve'));
   const journal = readReviewJournal(item.draftJson);
   const dateLabel = journal.date
     ? new Date(journal.date).toLocaleDateString(appLocale(), { day: 'numeric', month: 'short' })
@@ -242,15 +244,10 @@ export function ReviewCard({
   // Planned in another currency: shown as planned, and approving first asks what was charged.
   const foreign = reviewForeign(journal);
 
-  async function approve() {
+  const runApprove = act(tr('inbox.approve'), onApprove);
+  function approve() {
     if (foreign) return onEdit();
-    if (approving) return;
-    setApproving(true);
-    try {
-      await onApprove();
-    } finally {
-      setApproving(false);
-    }
+    void runApprove();
   }
 
   return (

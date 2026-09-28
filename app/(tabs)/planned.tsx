@@ -8,6 +8,7 @@ import { FlatList, RefreshControl, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useDb } from '../../src/providers/DbProvider';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
+import { useCurrencies } from '../../src/db/useReferenceData';
 import { useTheme } from '../../src/ui/theme';
 import {
   Screen,
@@ -21,7 +22,7 @@ import {
 import { PendingDot } from '../../src/ui/PendingDot';
 import { currencyOf } from '../../src/ui/money';
 import { categoryColor } from '../../src/ui/categoryColor';
-import { appSettings, referenceCurrencies } from '../../src/db/schema';
+import { appSettings } from '../../src/db/schema';
 import {
   PLANNED_MODE_KEY,
   parsePlannedMode,
@@ -50,7 +51,7 @@ export default function PlannedScreen() {
   // a push after a write, reconnecting) as if the list had been pulled.
   const pull = usePullToRefresh();
   const { objects, items, loaded } = usePlanned();
-  const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
+  const currencies = useCurrencies();
   const { data: modeRows } = useLiveQuery(
     db.select().from(appSettings).where(eq(appSettings.key, PLANNED_MODE_KEY)),
   );
@@ -149,7 +150,7 @@ export default function PlannedScreen() {
                   </Text>
                   <Money
                     amount={f.amount}
-                    currency={currencyOf(currencies ?? [], f.currencyCode)}
+                    currency={currencyOf(currencies, f.currencyCode)}
                     type={f.type}
                     size="heading"
                   />

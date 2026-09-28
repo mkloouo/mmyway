@@ -6,6 +6,7 @@ import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { eq, inArray } from 'drizzle-orm';
 import { useLiveQuery } from '../src/db/useLiveQuery';
+import { useCategories, useCurrencies } from '../src/db/useReferenceData';
 import { useDb } from '../src/providers/DbProvider';
 import { useTheme } from '../src/ui/theme';
 import {
@@ -25,13 +26,7 @@ import { currencyOf, formatMoney } from '../src/ui/money';
 import { parseDecimalInput } from '../src/api/ff3/decimal';
 import { relativeTime } from '../src/ui/relativeTime';
 import { haptics } from '../src/ui/haptics';
-import {
-  referenceAccounts,
-  referenceCategories,
-  referenceCurrencies,
-  outboxOperations,
-  appSettings,
-} from '../src/db/schema';
+import { referenceAccounts, outboxOperations, appSettings } from '../src/db/schema';
 import { hasEnvelopeMarker } from '../src/accounts/envelopeMarker';
 import { useAssetAccounts } from '../src/accounts/useAssetAccounts';
 import { computeSweep, driftByCurrency, type SweepRow } from '../src/reconcile/sweep';
@@ -69,8 +64,8 @@ export default function CountScreen() {
   const keyboardHeight = useKeyboardHeight();
 
   const { data: accountRows } = useLiveQuery(db.select().from(referenceAccounts));
-  const { data: categories } = useLiveQuery(db.select().from(referenceCategories));
-  const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
+  const categories = useCategories();
+  const currencies = useCurrencies();
   const allAccounts = accountRows ?? [];
   const envelopeAccounts = (useAssetAccounts() ?? []).filter((a) => hasEnvelopeMarker(a.notes));
   const expenseAccounts = allAccounts.filter((a) => a.type === 'expense');
@@ -99,7 +94,6 @@ export default function CountScreen() {
   const [denomCounts, setDenomCounts] = useState<Record<string, number>>({});
   const [reviewOpen, setReviewOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [confirming, setConfirming] = useState(false);
 
   const [shortfallAccountId, setShortfallAccountIdState] = useState<string | null>(null);
   const [surplusAccountId, setSurplusAccountIdState] = useState<string | null>(null);
@@ -129,7 +123,7 @@ export default function CountScreen() {
         const raw = counts[a.id] ?? '';
         return (
           !!raw.trim() &&
-          !parseDecimalInput(raw, currencyOf(currencies ?? [], a.currencyCode).decimalPlaces).ok
+          !parseDecimalInput(raw, currencyOf(currencies, a.currencyCode).decimalPlaces).ok
         );
       })
       .map((a) => a.id),
@@ -137,7 +131,7 @@ export default function CountScreen() {
   const sweepRows: SweepRow[] = envelopeAccounts.map((a) => {
     const raw = counts[a.id] ?? '';
     const result = raw.trim()
-      ? parseDecimalInput(raw, currencyOf(currencies ?? [], a.currencyCode).decimalPlaces)
+      ? parseDecimalInput(raw, currencyOf(currencies, a.currencyCode).decimalPlaces)
       : null;
     return {
       accountId: a.id,
@@ -158,31 +152,26 @@ export default function CountScreen() {
   const stale = isBalanceStale(oldestBalanceDate);
 
   const confirmReview = act(tr('inbox.confirm'), async () => {
-    if (confirming) return;
-    setConfirming(true);
-    try {
-      // Re-read at the moment of booking: a write can be queued, or a sync land, while the
-      // review sheet is open.
-      const current = await readCountBlocker(db);
-      if (current) {
-        setReviewOpen(false);
-        Alert.alert(tr('count.outOfDateTitle'), describeCountBlocker(current));
-        return;
-      }
-      for (const adjustment of adjustments) {
-        await createAndConfirmAdjustment(db, adjustment, {
-          shortfallAccountId,
-          surplusAccountId,
-          categoryName: reconcileCategory,
-        });
-      }
-      haptics.tick();
+    // Re-read at the moment of booking: a write can be queued, or a sync land, while the
+    // review sheet is open.
+    const current = await readCountBlocker(db);
+    if (current) {
       setReviewOpen(false);
-      router.back();
-    } finally {
-      setConfirming(false);
+      Alert.alert(tr('count.outOfDateTitle'), describeCountBlocker(current));
+      return;
     }
+    for (const adjustment of adjustments) {
+      await createAndConfirmAdjustment(db, adjustment, {
+        shortfallAccountId,
+        surplusAccountId,
+        categoryName: reconcileCategory,
+      });
+    }
+    haptics.tick();
+    setReviewOpen(false);
+    router.back();
   });
+  const confirming = act.pending(tr('inbox.confirm'));
 
   function openDenomPad(accountId: string) {
     setDenomAccountId(accountId);
@@ -281,7 +270,7 @@ export default function CountScreen() {
             keyboardShouldPersistTaps="handled"
           >
             {envelopeAccounts.map((a) => {
-              const currency = currencyOf(currencies ?? [], a.currencyCode);
+              const currency = currencyOf(currencies, a.currencyCode);
               const counted = counts[a.id] ?? '';
               const invalid = invalidCounts.has(a.id);
               const adjustment = adjustments.find((adj) => adj.accountId === a.id);
@@ -364,7 +353,7 @@ export default function CountScreen() {
               <Text style={[t.type.label, { color: t.color.textMuted, textAlign: 'center' }]}>
                 {tr('count.drift', {
                   amounts: drift
-                    .map((d) => formatMoney(d.amount, currencyOf(currencies ?? [], d.currencyCode)))
+                    .map((d) => formatMoney(d.amount, currencyOf(currencies, d.currencyCode)))
                     .join(' · '),
                 })}
               </Text>
@@ -445,7 +434,7 @@ export default function CountScreen() {
               label={account?.name ?? a.accountId}
               value={`${a.type === 'withdrawal' ? '−' : '+'}${formatMoney(
                 a.amount,
-                currencyOf(currencies ?? [], a.currencyCode),
+                currencyOf(currencies, a.currencyCode),
               )}`}
               tone={a.type === 'withdrawal' ? 'danger' : 'default'}
             />
@@ -514,7 +503,7 @@ export default function CountScreen() {
               setReconcileCategoryState(null);
             })}
           />
-          {(categories ?? []).map((c) => (
+          {categories.map((c) => (
             <Chip
               key={c.id}
               label={c.name}
