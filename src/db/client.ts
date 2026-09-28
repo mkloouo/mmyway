@@ -37,12 +37,15 @@ export function getDb(): ExpoSQLiteDatabase<typeof schema> {
     console.error('could not set WAL/busy_timeout', err);
   }
   cached = drizzleExpo(sqlite, { schema }) as ExpoSQLiteDatabase<typeof schema>;
-  migrationDone = migrateExpoSqlite(cached, migrations).then(() => null, (err: unknown) => {
-    // Every later query would break in ways that look unrelated, so the app must not run on
-    // this schema: DbProvider shows a blocking screen with the Diagnostics log instead.
-    console.error('migration failed', err);
-    return err instanceof Error ? err : new Error(String(err));
-  });
+  migrationDone = migrateExpoSqlite(cached, migrations).then(
+    () => null,
+    (err: unknown) => {
+      // Every later query would break in ways that look unrelated, so the app must not run on
+      // this schema: DbProvider shows a blocking screen with the Diagnostics log instead.
+      console.error('migration failed', err);
+      return err instanceof Error ? err : new Error(String(err));
+    },
+  );
   return cached;
 }
 

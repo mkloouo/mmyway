@@ -6,7 +6,11 @@ import i18n from '../i18n';
  * is triggered — a button, a row's ✕, or a completed swipe. Resolves false on cancel and on an
  * Android back-dismiss.
  */
-export function confirmDestructive(title: string, actionLabel: string, message?: string): Promise<boolean> {
+export function confirmDestructive(
+  title: string,
+  actionLabel: string,
+  message?: string,
+): Promise<boolean> {
   return new Promise((resolve) => {
     Alert.alert(
       title,

@@ -16,7 +16,11 @@ const REVIEWED_TAG = 'mmyway-reviewed';
 /** How far before the last sync (or now, on a first sync) a recurring pull reaches back. */
 const RECURRING_LOOKBACK_DAYS = 14;
 
-export async function pullUnreviewedRecurring(db: OutboxDb, client: FF3Client, opts: { since?: string | null } = {}): Promise<number> {
+export async function pullUnreviewedRecurring(
+  db: OutboxDb,
+  client: FF3Client,
+  opts: { since?: string | null } = {},
+): Promise<number> {
   // FF3 marks a transaction its recurrence engine booked with the journal's recurrence_id — it
   // adds no tag, so the old `/v1/tags/recurring` fetch never saw one. There's no filter for it,
   // so every transaction in the window is fetched and the rest skipped.
@@ -29,21 +33,36 @@ export async function pullUnreviewedRecurring(db: OutboxDb, client: FF3Client, o
   from.setDate(from.getDate() - RECURRING_LOOKBACK_DAYS);
   const to = new Date();
   to.setFullYear(to.getFullYear() + 1);
-  const groups = await fetchAll<TransactionRead>(client, `/v1/transactions?start=${from.toISOString().slice(0, 10)}&end=${to.toISOString().slice(0, 10)}`);
+  const groups = await fetchAll<TransactionRead>(
+    client,
+    `/v1/transactions?start=${from.toISOString().slice(0, 10)}&end=${to.toISOString().slice(0, 10)}`,
+  );
   let created = 0;
   const now = new Date().toISOString();
 
   for (const group of groups) {
     const journal = group.attributes.transactions[0];
-    if (!journal || (journal as { recurrence_id?: string | number | null }).recurrence_id == null || journal.tags?.includes(REVIEWED_TAG)) continue;
+    if (
+      !journal ||
+      (journal as { recurrence_id?: string | number | null }).recurrence_id == null ||
+      journal.tags?.includes(REVIEWED_TAG)
+    )
+      continue;
 
-    const [existing] = await db.select().from(inboxItems).where(eq(inboxItems.ff3GroupId, group.id));
+    const [existing] = await db
+      .select()
+      .from(inboxItems)
+      .where(eq(inboxItems.ff3GroupId, group.id));
     if (existing) {
       // A card pulled before the planned currency was recorded picks it up on the next sync.
       if (existing.state !== 'confirmed') continue;
       const stored = readReviewJournal(existing.draftJson);
       const updated = await withPlannedForeign(db, stored);
-      if (updated !== stored) await db.update(inboxItems).set({ draftJson: writeDraft(updated), updatedAt: now }).where(eq(inboxItems.id, existing.id));
+      if (updated !== stored)
+        await db
+          .update(inboxItems)
+          .set({ draftJson: writeDraft(updated), updatedAt: now })
+          .where(eq(inboxItems.id, existing.id));
       continue;
     }
 
@@ -51,8 +70,12 @@ export async function pullUnreviewedRecurring(db: OutboxDb, client: FF3Client, o
     // undefined against real API responses despite what TransactionSplit's type claims. Fix it
     // once here so every downstream reader (approve/edit/delete, all of which JSON.parse this
     // draftJson) sees a correct value without having to know about the mismatch.
-    const groupUpdatedAt = (group.attributes as { updated_at?: string }).updated_at ?? journal.updated_at;
-    const reviewJournal = await withPlannedForeign(db, readReviewJournal(writeDraft({ ...journal, updated_at: groupUpdatedAt })));
+    const groupUpdatedAt =
+      (group.attributes as { updated_at?: string }).updated_at ?? journal.updated_at;
+    const reviewJournal = await withPlannedForeign(
+      db,
+      readReviewJournal(writeDraft({ ...journal, updated_at: groupUpdatedAt })),
+    );
 
     await db.insert(inboxItems).values({
       id: generateId(),
@@ -81,8 +104,16 @@ async function decideRecurringReview(
   const [item] = await db.select().from(inboxItems).where(eq(inboxItems.id, inboxItemId));
   if (!item?.ff3GroupId) throw new Error(`recurring review item ${inboxItemId} has no ff3GroupId`);
   const journal = readReviewJournal(item.draftJson);
-  await enqueueOperation(db, { id: generateId(), inboxItemId, kind, payload: decide(item.ff3GroupId, journal) });
-  await db.update(inboxItems).set({ state: 'synced', updatedAt: new Date().toISOString() }).where(eq(inboxItems.id, inboxItemId));
+  await enqueueOperation(db, {
+    id: generateId(),
+    inboxItemId,
+    kind,
+    payload: decide(item.ff3GroupId, journal),
+  });
+  await db
+    .update(inboxItems)
+    .set({ state: 'synced', updatedAt: new Date().toISOString() })
+    .where(eq(inboxItems.id, inboxItemId));
 }
 
 export async function approveRecurringReview(db: OutboxDb, inboxItemId: string): Promise<void> {
@@ -92,15 +123,32 @@ export async function approveRecurringReview(db: OutboxDb, inboxItemId: string):
 // R2/R3: approve with corrections (amount, currency, account) in the same PUT that adds the
 // reviewed tag — one partial update keyed by transaction_journal_id; a plain approve is this
 // with no corrections.
-export async function editRecurringReview(db: OutboxDb, inboxItemId: string, changes: Partial<TransactionSplit>): Promise<void> {
-  const [item] = await db.select({ draftJson: inboxItems.draftJson }).from(inboxItems).where(eq(inboxItems.id, inboxItemId));
-  const plannedDate = item && !changes.date ? await plannedDateFor(db, readReviewJournal(item.draftJson)) : null;
-  await decideRecurringReview(db, inboxItemId, (groupId, journal) => ({
-    groupId,
-    transactionJournalId: journal.transaction_journal_id,
-    expectedUpdatedAt: journal.updated_at,
-    changes: { ...changes, ...(plannedDate ? { date: plannedDate } : {}), tags: [...(journal.tags ?? []), REVIEWED_TAG] },
-  }), 'recurring_review');
+export async function editRecurringReview(
+  db: OutboxDb,
+  inboxItemId: string,
+  changes: Partial<TransactionSplit>,
+): Promise<void> {
+  const [item] = await db
+    .select({ draftJson: inboxItems.draftJson })
+    .from(inboxItems)
+    .where(eq(inboxItems.id, inboxItemId));
+  const plannedDate =
+    item && !changes.date ? await plannedDateFor(db, readReviewJournal(item.draftJson)) : null;
+  await decideRecurringReview(
+    db,
+    inboxItemId,
+    (groupId, journal) => ({
+      groupId,
+      transactionJournalId: journal.transaction_journal_id,
+      expectedUpdatedAt: journal.updated_at,
+      changes: {
+        ...changes,
+        ...(plannedDate ? { date: plannedDate } : {}),
+        tags: [...(journal.tags ?? []), REVIEWED_TAG],
+      },
+    }),
+    'recurring_review',
+  );
 }
 
 /**
@@ -120,16 +168,24 @@ type RecurrenceAttributes = {
 };
 
 /** The cached recurrence that booked a journal: by the journal's recurrence id, else by title. */
-async function recurrenceFor(db: OutboxDb, journal: ReviewJournal): Promise<RecurrenceAttributes | undefined> {
+async function recurrenceFor(
+  db: OutboxDb,
+  journal: ReviewJournal,
+): Promise<RecurrenceAttributes | undefined> {
   const recurrenceId = (journal as { recurrence_id?: string | number | null }).recurrence_id;
   if (recurrenceId != null) {
-    const [row] = await db.select().from(plannedObjects).where(eq(plannedObjects.key, plannedKey('recurrence', String(recurrenceId))));
+    const [row] = await db
+      .select()
+      .from(plannedObjects)
+      .where(eq(plannedObjects.key, plannedKey('recurrence', String(recurrenceId))));
     if (row) return readPlannedRow(row)?.attributes as RecurrenceAttributes | undefined;
   }
   if (!journal.description) return undefined;
   const rows = await db.select().from(plannedObjects).where(eq(plannedObjects.kind, 'recurrence'));
   const match = rows.find((r) => normkey(r.name) === normkey(journal.description!));
-  return match ? readPlannedRow(match)?.attributes as RecurrenceAttributes | undefined : undefined;
+  return match
+    ? (readPlannedRow(match)?.attributes as RecurrenceAttributes | undefined)
+    : undefined;
 }
 
 /**
@@ -140,10 +196,20 @@ async function recurrenceFor(db: OutboxDb, journal: ReviewJournal): Promise<Recu
 async function withPlannedForeign(db: OutboxDb, journal: ReviewJournal): Promise<ReviewJournal> {
   if (journal.foreign_amount && journal.foreign_currency_code) return journal;
   const planned = (await recurrenceFor(db, journal))?.transactions?.[0];
-  if (!planned?.amount || !planned.currency_code || planned.currency_code === journal.currency_code) return journal;
-  return { ...journal, foreign_amount: planned.amount, foreign_currency_code: planned.currency_code };
+  if (!planned?.amount || !planned.currency_code || planned.currency_code === journal.currency_code)
+    return journal;
+  return {
+    ...journal,
+    foreign_amount: planned.amount,
+    foreign_currency_code: planned.currency_code,
+  };
 }
 
 export async function deleteRecurringReview(db: OutboxDb, inboxItemId: string): Promise<void> {
-  await decideRecurringReview(db, inboxItemId, (groupId, journal) => ({ groupId, expectedUpdatedAt: journal.updated_at }), 'delete_transaction');
+  await decideRecurringReview(
+    db,
+    inboxItemId,
+    (groupId, journal) => ({ groupId, expectedUpdatedAt: journal.updated_at }),
+    'delete_transaction',
+  );
 }

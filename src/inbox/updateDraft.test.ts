@@ -8,8 +8,12 @@ describe('updateDraft', () => {
   it('preserves isNewPayee across a save that changes other fields', async () => {
     const db = createTestDb();
     const { inboxItemId } = await createManualEntry(db as any, {
-      type: 'withdrawal', amount: '10.00', currencyCode: 'PLN', date: new Date().toISOString(),
-      description: 'coffee', merchantRawInput: 'Costa',
+      type: 'withdrawal',
+      amount: '10.00',
+      currencyCode: 'PLN',
+      date: new Date().toISOString(),
+      description: 'coffee',
+      merchantRawInput: 'Costa',
     });
 
     await updateDraft(db as any, inboxItemId, { notes: 'extra shot' });
@@ -23,8 +27,12 @@ describe('updateDraft', () => {
   it('throws on an already-synced item', async () => {
     const db = createTestDb();
     const { inboxItemId } = await createManualEntry(db as any, {
-      type: 'withdrawal', amount: '10.00', currencyCode: 'PLN', date: new Date().toISOString(),
-      description: 'coffee', merchantRawInput: 'Costa',
+      type: 'withdrawal',
+      amount: '10.00',
+      currencyCode: 'PLN',
+      date: new Date().toISOString(),
+      description: 'coffee',
+      merchantRawInput: 'Costa',
     });
     await confirmInboxItem(db as any, inboxItemId);
     await db.update(inboxItems).set({ state: 'synced' }).where(eq(inboxItems.id, inboxItemId));
@@ -35,8 +43,12 @@ describe('updateDraft', () => {
   it('throws on an already-confirmed item, before sync even runs', async () => {
     const db = createTestDb();
     const { inboxItemId } = await createManualEntry(db as any, {
-      type: 'withdrawal', amount: '10.00', currencyCode: 'PLN', date: new Date().toISOString(),
-      description: 'coffee', merchantRawInput: 'Costa',
+      type: 'withdrawal',
+      amount: '10.00',
+      currencyCode: 'PLN',
+      date: new Date().toISOString(),
+      description: 'coffee',
+      merchantRawInput: 'Costa',
     });
     await confirmInboxItem(db as any, inboxItemId);
 
@@ -48,15 +60,21 @@ describe('deleteInboxItem', () => {
   it('removes the inbox row and any outbox op still pointing at it', async () => {
     const db = createTestDb();
     const { inboxItemId } = await createManualEntry(db as any, {
-      type: 'withdrawal', amount: '10.00', currencyCode: 'PLN', date: new Date().toISOString(),
-      description: 'coffee', merchantRawInput: 'Costa',
+      type: 'withdrawal',
+      amount: '10.00',
+      currencyCode: 'PLN',
+      date: new Date().toISOString(),
+      description: 'coffee',
+      merchantRawInput: 'Costa',
     });
     await confirmInboxItem(db as any, inboxItemId);
     expect(await db.select().from(outboxOperations)).toHaveLength(1);
 
     await deleteInboxItem(db as any, inboxItemId);
 
-    expect(await db.select().from(inboxItems).where(eq(inboxItems.id, inboxItemId))).toHaveLength(0);
+    expect(await db.select().from(inboxItems).where(eq(inboxItems.id, inboxItemId))).toHaveLength(
+      0,
+    );
     expect(await db.select().from(outboxOperations)).toHaveLength(0);
   });
 });

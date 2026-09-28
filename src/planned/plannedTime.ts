@@ -17,7 +17,11 @@ export function readPlannedTime(notes: string | null | undefined): string | null
 
 /** The notes without the marker line: what the user wrote. */
 export function stripPlannedTime(notes: string | null | undefined): string | null {
-  const rest = (notes ?? '').split('\n').filter((line) => !MARKER.test(line)).join('\n').trim();
+  const rest = (notes ?? '')
+    .split('\n')
+    .filter((line) => !MARKER.test(line))
+    .join('\n')
+    .trim();
   return rest || null;
 }
 
@@ -36,5 +40,11 @@ export function atPlannedTime(bookedDate: string, time: string): string | null {
   const day = /^(\d{4})-(\d{2})-(\d{2})/.exec(bookedDate);
   const clock = /^(\d{2}):(\d{2})$/.exec(time);
   if (!day || !clock) return null;
-  return new Date(Number(day[1]), Number(day[2]) - 1, Number(day[3]), Number(clock[1]), Number(clock[2])).toISOString();
+  return new Date(
+    Number(day[1]),
+    Number(day[2]) - 1,
+    Number(day[3]),
+    Number(clock[1]),
+    Number(clock[2]),
+  ).toISOString();
 }

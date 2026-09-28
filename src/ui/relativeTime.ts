@@ -32,7 +32,9 @@ export function describeSyncTime(iso: string | null | undefined, now: Date = new
   if (at >= startOfToday) return i18n.t('time.todayAt', { time });
   if (at >= startOfYesterday) return i18n.t('time.yesterdayAt', { time });
   const day = at.toLocaleDateString(appLocale(), {
-    day: 'numeric', month: 'short', ...(at.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}),
+    day: 'numeric',
+    month: 'short',
+    ...(at.getFullYear() !== now.getFullYear() ? { year: 'numeric' } : {}),
   });
   return i18n.t('time.dayAt', { day, time });
 }

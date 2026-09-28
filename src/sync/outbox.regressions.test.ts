@@ -8,7 +8,9 @@ import { enqueueOperation, internalReferenceFor, recoverInFlight, replayOutbox }
 
 function deferred() {
   let resolve!: () => void;
-  const promise = new Promise<void>((r) => { resolve = r; });
+  const promise = new Promise<void>((r) => {
+    resolve = r;
+  });
   return { promise, resolve };
 }
 
@@ -17,15 +19,23 @@ function group(id: string, extra: { internal_reference?: string; updated_at?: st
     id,
     attributes: {
       updated_at: extra.updated_at,
-      transactions: [{ transaction_journal_id: `j-${id}`, internal_reference: extra.internal_reference }],
+      transactions: [
+        { transaction_journal_id: `j-${id}`, internal_reference: extra.internal_reference },
+      ],
     },
   };
 }
 
 async function confirmedEntry(db: ReturnType<typeof createTestDb>, description: string) {
   const { inboxItemId } = await createManualEntry(db as any, {
-    type: 'withdrawal', amount: '1', currencyCode: 'PLN', date: '2026-09-27T10:00:00Z', description,
-    merchantRawInput: description, forceNewPayee: true, sourceId: '1',
+    type: 'withdrawal',
+    amount: '1',
+    currencyCode: 'PLN',
+    date: '2026-09-27T10:00:00Z',
+    description,
+    merchantRawInput: description,
+    forceNewPayee: true,
+    sourceId: '1',
   });
   const confirm = await confirmInboxItem(db as any, inboxItemId);
   return { inboxItemId, confirm };
@@ -34,7 +44,11 @@ async function confirmedEntry(db: ReturnType<typeof createTestDb>, description: 
 describe('create idempotency', () => {
   it('sends the client id as internal_reference, not as a group title', async () => {
     const db = createTestDb();
-    await enqueueOperation(db, { id: 'op-1', kind: 'create_transaction', payload: { clientId: 'c1', splits: [{ description: 'x' } as any] } });
+    await enqueueOperation(db, {
+      id: 'op-1',
+      kind: 'create_transaction',
+      payload: { clientId: 'c1', splits: [{ description: 'x' } as any] },
+    });
     const client = { request: jest.fn(async () => ({ data: group('g1') })) };
     await replayOutbox(db as any, client as any);
     const body = JSON.parse((client.request.mock.calls[0] as any)[1].body);
@@ -45,7 +59,11 @@ describe('create idempotency', () => {
   it('a create that landed but lost its response is recorded as synced on retry, and the queue moves on', async () => {
     const db = createTestDb();
     const { inboxItemId } = await confirmedEntry(db, 'lost response');
-    await enqueueOperation(db, { id: 'next', kind: 'update_account', payload: { accountId: 'a', active: true } });
+    await enqueueOperation(db, {
+      id: 'next',
+      kind: 'update_account',
+      payload: { accountId: 'a', active: true },
+    });
 
     const reference = internalReferenceFor(inboxItemId);
     let posts = 0;
@@ -56,8 +74,10 @@ describe('create idempotency', () => {
           if (posts === 1) throw new TypeError('Network request failed'); // server committed it
           throw new FF3RequestError(422, '{"message":"Duplicate of transaction #77."}');
         }
-        if (path === '/v1/transactions/77') return { data: group('77', { internal_reference: reference }) };
-        if (path.startsWith('/v1/search/accounts')) return { data: [{ id: '5', attributes: { name: 'lost response', type: 'expense' } }] };
+        if (path === '/v1/transactions/77')
+          return { data: group('77', { internal_reference: reference }) };
+        if (path.startsWith('/v1/search/accounts'))
+          return { data: [{ id: '5', attributes: { name: 'lost response', type: 'expense' } }] };
         return {};
       }),
     };
@@ -72,13 +92,14 @@ describe('create idempotency', () => {
     expect(item).toMatchObject({ state: 'synced', ff3GroupId: '77' });
   });
 
-  it('a duplicate of someone else\'s transaction stays a failure', async () => {
+  it("a duplicate of someone else's transaction stays a failure", async () => {
     const db = createTestDb();
     await confirmedEntry(db, 'real duplicate');
     const client = {
       request: jest.fn(async (path: string, init?: RequestInit) => {
         if (init?.method === 'POST') throw new FF3RequestError(422, 'Duplicate of transaction #5.');
-        if (path === '/v1/transactions/5') return { data: group('5', { internal_reference: 'something-else' }) };
+        if (path === '/v1/transactions/5')
+          return { data: group('5', { internal_reference: 'something-else' }) };
         throw new FF3RequestError(404, '');
       }),
     };
@@ -115,15 +136,31 @@ describe('claiming', () => {
 
   it('two concurrent replays never send the same op twice', async () => {
     const db = createTestDb();
-    await enqueueOperation(db, { id: 'op-1', kind: 'create_transaction', payload: { clientId: 'c1', splits: [] } });
-    const client = { request: jest.fn(async () => { await new Promise((r) => setTimeout(r, 5)); return { data: group('g1') }; }) };
-    await Promise.all([replayOutbox(db as any, client as any), replayOutbox(db as any, client as any)]);
+    await enqueueOperation(db, {
+      id: 'op-1',
+      kind: 'create_transaction',
+      payload: { clientId: 'c1', splits: [] },
+    });
+    const client = {
+      request: jest.fn(async () => {
+        await new Promise((r) => setTimeout(r, 5));
+        return { data: group('g1') };
+      }),
+    };
+    await Promise.all([
+      replayOutbox(db as any, client as any),
+      replayOutbox(db as any, client as any),
+    ]);
     expect(client.request).toHaveBeenCalledTimes(1);
   });
 
   it('an op left in_flight by a killed process is retried after recovery', async () => {
     const db = createTestDb();
-    await enqueueOperation(db, { id: 'op-1', kind: 'create_transaction', payload: { clientId: 'c1', splits: [] } });
+    await enqueueOperation(db, {
+      id: 'op-1',
+      kind: 'create_transaction',
+      payload: { clientId: 'c1', splits: [] },
+    });
     await db.update(outboxOperations).set({ status: 'in_flight' });
     await recoverInFlight(db as any);
     const client = { request: jest.fn(async () => ({ data: group('g1') })) };
@@ -142,12 +179,32 @@ describe('claiming', () => {
 });
 
 describe('edits and deletes', () => {
-  const cached = { groupId: 'g1', journalId: 'j1', type: 'withdrawal', date: '2026-01-01', amount: '10.00', currencyCode: 'PLN', description: 't', tagsJson: '[]', updatedAt: 'v1', syncedAt: 's' };
+  const cached = {
+    groupId: 'g1',
+    journalId: 'j1',
+    type: 'withdrawal',
+    date: '2026-01-01',
+    amount: '10.00',
+    currencyCode: 'PLN',
+    description: 't',
+    tagsJson: '[]',
+    updatedAt: 'v1',
+    syncedAt: 's',
+  };
 
   it('detects a server-side edit the cache could not see (outside the catch-up window)', async () => {
     const db = createTestDb();
     await db.insert(cachedTransactions).values(cached);
-    await enqueueOperation(db, { id: 'op-1', kind: 'update_transaction', payload: { groupId: 'g1', transactionJournalId: 'j1', expectedUpdatedAt: 'v1', changes: { amount: '20.00' } } });
+    await enqueueOperation(db, {
+      id: 'op-1',
+      kind: 'update_transaction',
+      payload: {
+        groupId: 'g1',
+        transactionJournalId: 'j1',
+        expectedUpdatedAt: 'v1',
+        changes: { amount: '20.00' },
+      },
+    });
     const client = {
       request: jest.fn(async (_path: string, init?: RequestInit) => {
         if (init?.method === 'PUT') throw new Error('must not overwrite');
@@ -161,7 +218,17 @@ describe('edits and deletes', () => {
   it('a second offline edit of the same transaction does not conflict with the first', async () => {
     const db = createTestDb();
     await db.insert(cachedTransactions).values(cached);
-    const edit = (id: string, amount: string) => enqueueOperation(db, { id, kind: 'update_transaction', payload: { groupId: 'g1', transactionJournalId: 'j1', expectedUpdatedAt: 'v1', changes: { amount } } });
+    const edit = (id: string, amount: string) =>
+      enqueueOperation(db, {
+        id,
+        kind: 'update_transaction',
+        payload: {
+          groupId: 'g1',
+          transactionJournalId: 'j1',
+          expectedUpdatedAt: 'v1',
+          changes: { amount },
+        },
+      });
     await edit('op-1', '20.00');
     await edit('op-2', '30.00');
 
@@ -179,8 +246,16 @@ describe('edits and deletes', () => {
   it('a delete removes the cached row, and a delete of something already gone succeeds', async () => {
     const db = createTestDb();
     await db.insert(cachedTransactions).values(cached);
-    await enqueueOperation(db, { id: 'op-1', kind: 'delete_transaction', payload: { groupId: 'g1', expectedUpdatedAt: 'v1' } });
-    const client = { request: jest.fn(async () => { throw new FF3RequestError(404, ''); }) };
+    await enqueueOperation(db, {
+      id: 'op-1',
+      kind: 'delete_transaction',
+      payload: { groupId: 'g1', expectedUpdatedAt: 'v1' },
+    });
+    const client = {
+      request: jest.fn(async () => {
+        throw new FF3RequestError(404, '');
+      }),
+    };
     const result = await replayOutbox(db as any, client as any);
     expect(result.succeeded).toEqual(['op-1']);
     expect(await db.select().from(cachedTransactions)).toHaveLength(0);
@@ -191,13 +266,23 @@ describe('receipt upload', () => {
   it('a failed upload retries the upload alone, never creating a second attachment', async () => {
     jest.resetModules();
     jest.doMock('expo-file-system', () => ({
-      File: class { exists = true; constructor(public uri: string) {} async arrayBuffer() { return new ArrayBuffer(1); } },
+      File: class {
+        exists = true;
+        constructor(public uri: string) {}
+        async arrayBuffer() {
+          return new ArrayBuffer(1);
+        }
+      },
     }));
     // A fresh module registry, so outbox's lazy require picks up the doMock above.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { replayOutbox: replay, enqueueOperation: enqueue } = require('./outbox');
     const db = createTestDb();
-    await enqueue(db, { id: 'op-1', kind: 'attach_receipt', payload: { transactionJournalId: 'j1', receiptImagePath: 'file:///data/receipts/r.png' } });
+    await enqueue(db, {
+      id: 'op-1',
+      kind: 'attach_receipt',
+      payload: { transactionJournalId: 'j1', receiptImagePath: 'file:///data/receipts/r.png' },
+    });
 
     let uploads = 0;
     const client = {
@@ -223,29 +308,82 @@ describe('receipt upload', () => {
 describe('error text', () => {
   it('shows FF3 messages, not raw JSON', () => {
     const { describeFF3Error: d } = jest.requireActual('./outbox');
-    expect(d(new FF3RequestError(401, '{"message":"Unauthenticated.","exception":"AuthenticationException"}'))).toBe('Unauthenticated. (401)');
-    expect(d(new FF3RequestError(422, '{"message":"The given data was invalid.","errors":{"transactions.0.amount":["The amount must be more than zero."]}}')))
-      .toBe('The given data was invalid. — The amount must be more than zero. (422)');
-    expect(d(new FF3RequestError(502, '<html>Bad gateway</html>'))).toBe('Firefly III answered 502');
+    expect(
+      d(
+        new FF3RequestError(
+          401,
+          '{"message":"Unauthenticated.","exception":"AuthenticationException"}',
+        ),
+      ),
+    ).toBe('Unauthenticated. (401)');
+    expect(
+      d(
+        new FF3RequestError(
+          422,
+          '{"message":"The given data was invalid.","errors":{"transactions.0.amount":["The amount must be more than zero."]}}',
+        ),
+      ),
+    ).toBe('The given data was invalid. — The amount must be more than zero. (422)');
+    expect(d(new FF3RequestError(502, '<html>Bad gateway</html>'))).toBe(
+      'Firefly III answered 502',
+    );
   });
 });
 
 describe('conflict details', () => {
-  it('stores the server\'s current copy so the conflict screen can compare it', async () => {
+  it("stores the server's current copy so the conflict screen can compare it", async () => {
     const db = createTestDb();
-    await db.insert(cachedTransactions).values({ groupId: 'g1', journalId: 'j1', type: 'withdrawal', date: '2026-01-01', amount: '10.00', currencyCode: 'PLN', description: 'old', tagsJson: '[]', updatedAt: 'v1', syncedAt: 's' });
-    await enqueueOperation(db, { id: 'op-1', kind: 'update_transaction', payload: { groupId: 'g1', transactionJournalId: 'j1', expectedUpdatedAt: 'v1', changes: { notes: 'mine' } } });
+    await db
+      .insert(cachedTransactions)
+      .values({
+        groupId: 'g1',
+        journalId: 'j1',
+        type: 'withdrawal',
+        date: '2026-01-01',
+        amount: '10.00',
+        currencyCode: 'PLN',
+        description: 'old',
+        tagsJson: '[]',
+        updatedAt: 'v1',
+        syncedAt: 's',
+      });
+    await enqueueOperation(db, {
+      id: 'op-1',
+      kind: 'update_transaction',
+      payload: {
+        groupId: 'g1',
+        transactionJournalId: 'j1',
+        expectedUpdatedAt: 'v1',
+        changes: { notes: 'mine' },
+      },
+    });
     const serverGroup = {
       id: 'g1',
       attributes: {
         updated_at: 'v2',
-        transactions: [{ transaction_journal_id: 'j1', type: 'withdrawal', date: '2026-01-01', amount: '15.000000000000', currency_code: 'PLN', description: 'edited in web', notes: 'theirs', tags: [] }],
+        transactions: [
+          {
+            transaction_journal_id: 'j1',
+            type: 'withdrawal',
+            date: '2026-01-01',
+            amount: '15.000000000000',
+            currency_code: 'PLN',
+            description: 'edited in web',
+            notes: 'theirs',
+            tags: [],
+          },
+        ],
       },
     };
     const client = { request: jest.fn(async () => ({ data: serverGroup })) };
     await replayOutbox(db as any, client as any);
     const [row] = await db.select().from(cachedTransactions);
-    expect(row).toMatchObject({ updatedAt: 'v2', amount: '15.000000000000', description: 'edited in web', notes: 'theirs' });
+    expect(row).toMatchObject({
+      updatedAt: 'v2',
+      amount: '15.000000000000',
+      description: 'edited in web',
+      notes: 'theirs',
+    });
   });
 });
 
@@ -255,16 +393,45 @@ describe('receipt photo cleanup', () => {
     const db = createTestDb();
     const base = { kind: 'receipt' as const, draftJson: '{}', createdAt: 'c' };
     await db.insert(inboxItems).values([
-      { ...base, id: 'old', state: 'synced' as const, receiptImagePath: 'file:///x/receipts/old.jpg', updatedAt: '2026-08-01T00:00:00Z' },
-      { ...base, id: 'recent', state: 'synced' as const, receiptImagePath: 'file:///x/receipts/recent.jpg', updatedAt: '2026-09-20T00:00:00Z' },
-      { ...base, id: 'old-queued', state: 'synced', receiptImagePath: 'file:///x/receipts/q.jpg', updatedAt: '2026-08-01T00:00:00Z' },
+      {
+        ...base,
+        id: 'old',
+        state: 'synced' as const,
+        receiptImagePath: 'file:///x/receipts/old.jpg',
+        updatedAt: '2026-08-01T00:00:00Z',
+      },
+      {
+        ...base,
+        id: 'recent',
+        state: 'synced' as const,
+        receiptImagePath: 'file:///x/receipts/recent.jpg',
+        updatedAt: '2026-09-20T00:00:00Z',
+      },
+      {
+        ...base,
+        id: 'old-queued',
+        state: 'synced',
+        receiptImagePath: 'file:///x/receipts/q.jpg',
+        updatedAt: '2026-08-01T00:00:00Z',
+      },
     ]);
-    await enqueueOperation(db, { id: 'up', inboxItemId: 'old-queued', kind: 'attach_receipt', payload: {} });
+    await enqueueOperation(db, {
+      id: 'up',
+      inboxItemId: 'old-queued',
+      kind: 'attach_receipt',
+      payload: {},
+    });
 
     await pruneUploadedReceiptImages(db, new Date('2026-09-27T00:00:00Z'));
 
-    const paths = Object.fromEntries((await db.select().from(inboxItems)).map((i) => [i.id, i.receiptImagePath]));
-    expect(paths).toEqual({ old: null, recent: 'file:///x/receipts/recent.jpg', 'old-queued': 'file:///x/receipts/q.jpg' });
+    const paths = Object.fromEntries(
+      (await db.select().from(inboxItems)).map((i) => [i.id, i.receiptImagePath]),
+    );
+    expect(paths).toEqual({
+      old: null,
+      recent: 'file:///x/receipts/recent.jpg',
+      'old-queued': 'file:///x/receipts/q.jpg',
+    });
   });
 });
 
@@ -272,14 +439,34 @@ describe('references deleted in FF3', () => {
   it('hands a create back to the Inbox when its category is gone, and keeps the queue moving', async () => {
     const db = createTestDb();
     const { referenceCategories, referenceAccounts } = jest.requireActual('../db/schema');
-    await db.insert(referenceAccounts).values({ id: '1', name: 'Cash', type: 'asset', currencyCode: 'PLN', active: true, syncedAt: 's' });
+    await db
+      .insert(referenceAccounts)
+      .values({
+        id: '1',
+        name: 'Cash',
+        type: 'asset',
+        currencyCode: 'PLN',
+        active: true,
+        syncedAt: 's',
+      });
     await db.insert(referenceCategories).values({ id: 'c1', name: 'Groceries', syncedAt: 's' });
     const { inboxItemId } = await createManualEntry(db as any, {
-      type: 'withdrawal', amount: '1', currencyCode: 'PLN', date: '2026-09-27T10:00:00Z', description: 'x',
-      merchantRawInput: 'x', forceNewPayee: true, sourceId: '1', categoryName: 'Deleted in web',
+      type: 'withdrawal',
+      amount: '1',
+      currencyCode: 'PLN',
+      date: '2026-09-27T10:00:00Z',
+      description: 'x',
+      merchantRawInput: 'x',
+      forceNewPayee: true,
+      sourceId: '1',
+      categoryName: 'Deleted in web',
     });
     await confirmInboxItem(db as any, inboxItemId);
-    await enqueueOperation(db, { id: 'next', kind: 'update_account', payload: { accountId: '1', active: true } });
+    await enqueueOperation(db, {
+      id: 'next',
+      kind: 'update_account',
+      payload: { accountId: '1', active: true },
+    });
     const client = { request: jest.fn(async () => ({})) };
 
     const result = await replayOutbox(db as any, client as any);

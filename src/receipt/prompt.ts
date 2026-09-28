@@ -12,23 +12,44 @@ export function receiptJsonSchema(categoryNames: string[], currencyCodes: string
     required: ['confidence', 'payment_method', 'card_network'],
     properties: {
       amount: { type: ['number', 'null'] },
-      currency: currencyCodes.length > 0 ? nullable({ type: 'string', enum: currencyCodes }) : { type: ['string', 'null'] },
+      currency:
+        currencyCodes.length > 0
+          ? nullable({ type: 'string', enum: currencyCodes })
+          : { type: ['string', 'null'] },
       merchant: { type: ['string', 'null'] },
-      date: { type: ['string', 'null'], format: 'date', description: 'ISO 8601 date, e.g. 2026-08-26' },
-      time: { type: ['string', 'null'], pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$', description: 'HH:mm, 24-hour, e.g. 20:54' },
-      category: categoryNames.length > 0 ? nullable({ type: 'string', enum: categoryNames }) : { type: ['string', 'null'] },
+      date: {
+        type: ['string', 'null'],
+        format: 'date',
+        description: 'ISO 8601 date, e.g. 2026-08-26',
+      },
+      time: {
+        type: ['string', 'null'],
+        pattern: '^([01][0-9]|2[0-3]):[0-5][0-9]$',
+        description: 'HH:mm, 24-hour, e.g. 20:54',
+      },
+      category:
+        categoryNames.length > 0
+          ? nullable({ type: 'string', enum: categoryNames })
+          : { type: ['string', 'null'] },
       items: {
         type: ['array', 'null'],
         items: {
           type: 'object',
           additionalProperties: false,
           required: ['title', 'count', 'price'],
-          properties: { title: { type: 'string' }, count: { type: 'number' }, price: { type: 'number' } },
+          properties: {
+            title: { type: 'string' },
+            count: { type: 'number' },
+            price: { type: 'number' },
+          },
         },
       },
       confidence: { type: 'string', enum: ['high', 'medium', 'low', 'none'] },
       payment_method: { type: 'string', enum: ['unknown', 'cash', 'card'] },
-      card_network: nullable({ type: 'string', enum: ['visa', 'mastercard', 'maestro', 'amex', 'other'] }),
+      card_network: nullable({
+        type: 'string',
+        enum: ['visa', 'mastercard', 'maestro', 'amex', 'other'],
+      }),
     },
   };
 }

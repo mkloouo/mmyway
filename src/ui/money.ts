@@ -44,7 +44,11 @@ function group(whole: string, separator: string): string {
  * Polish number format, `'1,234.50 zł'` on one set to English (US).
  * A fraction longer than the currency's scale is kept, never rounded away silently.
  */
-export function formatMoney(amount: string, currency: DisplayCurrency, separators: NumberSeparators = deviceSeparators()): string {
+export function formatMoney(
+  amount: string,
+  currency: DisplayCurrency,
+  separators: NumberSeparators = deviceSeparators(),
+): string {
   const trimmed = (amount ?? '').trim();
   const negative = trimmed.startsWith('-') || trimmed.startsWith(MINUS);
   const unsigned = negative ? trimmed.slice(1) : trimmed;
@@ -52,10 +56,13 @@ export function formatMoney(amount: string, currency: DisplayCurrency, separator
   const whole = rawWhole.replace(/\D/g, '');
   const fraction = rawFraction.replace(/\D/g, '');
   const trimmedFraction = fraction.replace(/0+$/, '');
-  const scaled = trimmedFraction.length >= currency.decimalPlaces
-    ? trimmedFraction
-    : trimmedFraction.padEnd(currency.decimalPlaces, '0');
-  const body = scaled ? `${group(whole, separators.group)}${separators.decimal}${scaled}` : group(whole, separators.group);
+  const scaled =
+    trimmedFraction.length >= currency.decimalPlaces
+      ? trimmedFraction
+      : trimmedFraction.padEnd(currency.decimalPlaces, '0');
+  const body = scaled
+    ? `${group(whole, separators.group)}${separators.decimal}${scaled}`
+    : group(whole, separators.group);
 
   return `${negative ? MINUS : ''}${body}${currency.symbol ? ` ${currency.symbol}` : ''}`;
 }
@@ -65,10 +72,17 @@ export function formatMoney(amount: string, currency: DisplayCurrency, separator
  * entered, a bare trailing separator kept. `formatMoney` pads the fraction to the currency's
  * scale, which hid every keystroke behind "0,00" until the user reached that many digits.
  */
-export function formatAmountInput(amount: string, currency: DisplayCurrency, separators: NumberSeparators = deviceSeparators()): string {
+export function formatAmountInput(
+  amount: string,
+  currency: DisplayCurrency,
+  separators: NumberSeparators = deviceSeparators(),
+): string {
   const [rawWhole = '', rawFraction] = amount.split('.');
   const whole = group(rawWhole.replace(/\D/g, ''), separators.group);
-  const body = rawFraction === undefined ? whole : `${whole}${separators.decimal}${rawFraction.replace(/\D/g, '')}`;
+  const body =
+    rawFraction === undefined
+      ? whole
+      : `${whole}${separators.decimal}${rawFraction.replace(/\D/g, '')}`;
   return `${body}${currency.symbol ? ` ${currency.symbol}` : ''}`;
 }
 
@@ -84,7 +98,12 @@ export function signFor(type: 'withdrawal' | 'deposit' | 'transfer'): string {
  * yet synced (a draft mid-entry, before the next pull) falls back to 2 decimal places with the
  * code itself as the symbol, rather than failing to render.
  */
-export function currencyOf(currencies: { code: string; symbol: string; decimalPlaces: number }[], code: string): DisplayCurrency {
+export function currencyOf(
+  currencies: { code: string; symbol: string; decimalPlaces: number }[],
+  code: string,
+): DisplayCurrency {
   const found = currencies.find((c) => c.code === code);
-  return found ? { symbol: found.symbol, decimalPlaces: found.decimalPlaces } : { symbol: code, decimalPlaces: 2 };
+  return found
+    ? { symbol: found.symbol, decimalPlaces: found.decimalPlaces }
+    : { symbol: code, decimalPlaces: 2 };
 }

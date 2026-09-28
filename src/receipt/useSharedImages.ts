@@ -51,7 +51,10 @@ export function useSharedImages(): void {
           } catch (err) {
             // One unreadable file must not wedge the share target: `processing` used to stay
             // true forever and every later share was ignored until a restart.
-            logLine('error', `shared image ${file.path}: ${err instanceof Error ? err.message : String(err)}`);
+            logLine(
+              'error',
+              `shared image ${file.path}: ${err instanceof Error ? err.message : String(err)}`,
+            );
           }
         }
       } finally {

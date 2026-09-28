@@ -12,8 +12,12 @@ export function TextField({ style, invalid, ...props }: TextInputProps & { inval
       {...props}
       style={[
         {
-          borderWidth: 1, borderColor: invalid ? t.color.danger : t.color.border, borderRadius: t.radius.sm,
-          paddingHorizontal: t.space.md, paddingVertical: t.space.sm, color: t.color.text,
+          borderWidth: 1,
+          borderColor: invalid ? t.color.danger : t.color.border,
+          borderRadius: t.radius.sm,
+          paddingHorizontal: t.space.md,
+          paddingVertical: t.space.sm,
+          color: t.color.text,
         },
         style,
       ]}

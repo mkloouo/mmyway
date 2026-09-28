@@ -1,5 +1,14 @@
 import {
-  absorb, applyShares, balance, capsFor, defaultShares, fromMinor, leftover, positionToMinor, sumMinor, toMinor,
+  absorb,
+  applyShares,
+  balance,
+  capsFor,
+  defaultShares,
+  fromMinor,
+  leftover,
+  positionToMinor,
+  sumMinor,
+  toMinor,
 } from './allocate';
 
 describe('minor units', () => {

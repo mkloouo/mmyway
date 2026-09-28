@@ -45,14 +45,15 @@ export function divideDecimal(a: string, b: string, precision: number): string {
   const denominator = toMinorUnits(b);
   if (denominator.minor === 0n) return '0';
   const scaleDiff = denominator.scale - numerator.scale + precision;
-  const scaledNumerator = scaleDiff >= 0 ? numerator.minor * 10n ** BigInt(scaleDiff) : numerator.minor;
-  const scaledDenominator = scaleDiff >= 0 ? denominator.minor : denominator.minor * 10n ** BigInt(-scaleDiff);
+  const scaledNumerator =
+    scaleDiff >= 0 ? numerator.minor * 10n ** BigInt(scaleDiff) : numerator.minor;
+  const scaledDenominator =
+    scaleDiff >= 0 ? denominator.minor : denominator.minor * 10n ** BigInt(-scaleDiff);
   return fromMinorUnits(scaledNumerator / scaledDenominator, precision);
 }
 
 export type DecimalInputResult =
-  | { ok: true; value: string }
-  | { ok: false; reason: 'empty' | 'invalid' | 'too_many_decimals' };
+  { ok: true; value: string } | { ok: false; reason: 'empty' | 'invalid' | 'too_many_decimals' };
 
 /**
  * The one gate every typed amount goes through before it reaches this file's arithmetic, a draft
@@ -69,7 +70,8 @@ export function parseDecimalInput(raw: string, decimalPlaces?: number): DecimalI
   if (!match) return { ok: false, reason: 'invalid' };
   const whole = (match[1] ?? '').replace(/^0+(?=\d)/, '') || '0';
   const fraction = match[2] ?? '';
-  if (decimalPlaces !== undefined && fraction.length > decimalPlaces) return { ok: false, reason: 'too_many_decimals' };
+  if (decimalPlaces !== undefined && fraction.length > decimalPlaces)
+    return { ok: false, reason: 'too_many_decimals' };
   return { ok: true, value: fraction ? `${whole}.${fraction}` : whole };
 }
 

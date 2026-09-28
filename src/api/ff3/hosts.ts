@@ -43,9 +43,10 @@ export async function resolveAddress(
   remembered: string | null,
   probe: (address: string) => Promise<boolean>,
 ): Promise<ResolveResult> {
-  const ordered = remembered && addresses.includes(remembered)
-    ? [remembered, ...addresses.filter((a) => a !== remembered)]
-    : addresses;
+  const ordered =
+    remembered && addresses.includes(remembered)
+      ? [remembered, ...addresses.filter((a) => a !== remembered)]
+      : addresses;
 
   const results: AddressProbeResult[] = [];
   for (const address of ordered) {
@@ -63,11 +64,18 @@ const DEFAULT_TIMEOUT_MS = 4000;
  * Clears its own timer once the probe settles either way — an uncleared `setTimeout` is a
  * dangling handle that keeps a test runner (and, in principle, the JS engine) alive for no reason.
  */
-export function withTimeout(probe: (address: string) => Promise<boolean>, timeoutMs = DEFAULT_TIMEOUT_MS): (address: string) => Promise<boolean> {
-  return (address) => new Promise<boolean>((resolve) => {
-    const timer = setTimeout(() => resolve(false), timeoutMs);
-    probe(address)
-      .catch(() => false)
-      .then((ok) => { clearTimeout(timer); resolve(ok); });
-  });
+export function withTimeout(
+  probe: (address: string) => Promise<boolean>,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+): (address: string) => Promise<boolean> {
+  return (address) =>
+    new Promise<boolean>((resolve) => {
+      const timer = setTimeout(() => resolve(false), timeoutMs);
+      probe(address)
+        .catch(() => false)
+        .then((ok) => {
+          clearTimeout(timer);
+          resolve(ok);
+        });
+    });
 }

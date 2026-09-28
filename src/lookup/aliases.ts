@@ -20,30 +20,44 @@ export interface Alias {
   targetName: string;
 }
 
-export type AliasMatch = { matched: true; alias: Alias } | { matched: false; normalizedKey: string };
+export type AliasMatch =
+  { matched: true; alias: Alias } | { matched: false; normalizedKey: string };
 
-export async function matchAlias(db: OutboxDb, kind: string, rawInput: string): Promise<AliasMatch> {
+export async function matchAlias(
+  db: OutboxDb,
+  kind: string,
+  rawInput: string,
+): Promise<AliasMatch> {
   const key = normkey(rawInput);
-  const rows = await db.select().from(aliases).where(and(eq(aliases.kind, kind), eq(aliases.normalizedKey, key)));
+  const rows = await db
+    .select()
+    .from(aliases)
+    .where(and(eq(aliases.kind, kind), eq(aliases.normalizedKey, key)));
   const exact = rows[0];
   if (!exact) return { matched: false, normalizedKey: key };
   return { matched: true, alias: exact as Alias };
 }
 
-export async function upsertAlias(db: OutboxDb, input: { kind: string; rawInput: string; targetId: string | null; targetName: string }): Promise<void> {
+export async function upsertAlias(
+  db: OutboxDb,
+  input: { kind: string; rawInput: string; targetId: string | null; targetName: string },
+): Promise<void> {
   const key = normkey(input.rawInput);
-  await db.insert(aliases).values({
-    id: `${input.kind}:${key}`,
-    kind: input.kind,
-    normalizedKey: key,
-    rawInput: input.rawInput,
-    targetId: input.targetId,
-    targetName: input.targetName,
-    createdAt: new Date().toISOString(),
-  }).onConflictDoUpdate({
-    target: aliases.id,
-    set: { rawInput: input.rawInput, targetId: input.targetId, targetName: input.targetName },
-  });
+  await db
+    .insert(aliases)
+    .values({
+      id: `${input.kind}:${key}`,
+      kind: input.kind,
+      normalizedKey: key,
+      rawInput: input.rawInput,
+      targetId: input.targetId,
+      targetName: input.targetName,
+      createdAt: new Date().toISOString(),
+    })
+    .onConflictDoUpdate({
+      target: aliases.id,
+      set: { rawInput: input.rawInput, targetId: input.targetId, targetName: input.targetName },
+    });
 }
 
 export async function removeAlias(db: OutboxDb, kind: string, rawInput: string): Promise<void> {
@@ -67,10 +81,22 @@ export function withPayeeAlias(draft: Draft, alias: Pick<Alias, 'targetId' | 'ta
   const raw = draftPayeeName(draft);
   const readAs = raw && raw !== alias.targetName ? raw : undefined;
   if (draft.type === 'withdrawal') {
-    return { ...draft, destinationName: alias.targetName, destinationId: alias.targetId ?? undefined, isNewPayee: false, payeeReadAs: readAs };
+    return {
+      ...draft,
+      destinationName: alias.targetName,
+      destinationId: alias.targetId ?? undefined,
+      isNewPayee: false,
+      payeeReadAs: readAs,
+    };
   }
   if (draft.type === 'deposit') {
-    return { ...draft, sourceName: alias.targetName, sourceId: undefined, isNewPayee: false, payeeReadAs: readAs };
+    return {
+      ...draft,
+      sourceName: alias.targetName,
+      sourceId: undefined,
+      isNewPayee: false,
+      payeeReadAs: readAs,
+    };
   }
   return draft;
 }
@@ -89,7 +115,11 @@ export async function resolvePayeeAlias(db: OutboxDb, draft: Draft): Promise<Dra
  * by name only — the target may be a payee FF3 hasn't created yet. Returns false when there is
  * nothing to learn (blank, or the same name spelled differently).
  */
-export async function rememberPayeeAlias(db: OutboxDb, rawInput: string, targetName: string): Promise<boolean> {
+export async function rememberPayeeAlias(
+  db: OutboxDb,
+  rawInput: string,
+  targetName: string,
+): Promise<boolean> {
   const key = normkey(rawInput);
   if (!key || key === normkey(targetName)) return false;
   await upsertAlias(db, { kind: PAYEE, rawInput: rawInput.trim(), targetId: null, targetName });

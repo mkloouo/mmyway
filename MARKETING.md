@@ -5,15 +5,19 @@
 ## 1. Store Listing
 
 ### **App Name**
+
 mmyway
 
 ### **Short Description** (80 characters max)
+
 Fast expense capture and receipt scanning for your own Firefly III server.
 
 ### **Category**
+
 - **Primary:** Finance
 
 ### **Tags / Keywords**
+
 firefly iii,expense tracker,receipt scanner,budget,self-hosted,personal finance,offline
 
 ---
@@ -22,7 +26,7 @@ firefly iii,expense tracker,receipt scanner,budget,self-hosted,personal finance,
 
 **Capture Every Expense in Seconds, Straight Into Your Own Firefly III**
 
-*mmyway* is a quick-capture companion for Firefly III, the self-hosted personal finance
+_mmyway_ is a quick-capture companion for Firefly III, the self-hosted personal finance
 manager. Type an amount, pick a payee, done. Or snap a receipt and let the app draft the
 entry for you.
 
@@ -48,20 +52,23 @@ you stay in control of your books.
 - **Activity & Recurring Reviews:** Browse and edit synced transactions, attach receipts, and review recurring ones in the Inbox.
 - **Complete Privacy:** No analytics SDKs, no ads, no third-party tracking.
 
-Spend less time logging and more time knowing where your money goes. Get *mmyway* today!
+Spend less time logging and more time knowing where your money goes. Get _mmyway_ today!
 
 ---
 
 ## 3. Play Console Information
 
 ### **Website**
+
 `https://mkloouo.com`
 
 ### **Email**
+
 `feedback@mkloouo.com`
 
 ### **Privacy Policy URL**
-`https://mkloouo.com/mmyway/privacy` *(link to hosted privacy policy file)*
+
+`https://mkloouo.com/mmyway/privacy` _(link to hosted privacy policy file)_
 
 ---
 
@@ -88,7 +95,7 @@ When completing the **Data safety** form:
 
 ## 6. Reviewer Notes (App Access)
 
-> *mmyway* is a client for a self-hosted Firefly III server.
+> _mmyway_ is a client for a self-hosted Firefly III server.
 >
 > - **Account Credentials:** The app needs a Firefly III address and a personal access
 >   token. Provide a demo instance and token here before submitting.

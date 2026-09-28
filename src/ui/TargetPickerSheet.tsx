@@ -19,12 +19,19 @@ export interface AliasTarget {
 
 function useCandidates(): AliasTarget[] {
   const db = useDb();
-  const { data: accounts } = useLiveQuery(db.select().from(referenceAccounts).where(eq(referenceAccounts.type, 'expense')));
-  return useMemo(() => (accounts ?? []).map((a) => ({ targetId: a.id, targetName: a.name })), [accounts]);
+  const { data: accounts } = useLiveQuery(
+    db.select().from(referenceAccounts).where(eq(referenceAccounts.type, 'expense')),
+  );
+  return useMemo(
+    () => (accounts ?? []).map((a) => ({ targetId: a.id, targetName: a.name })),
+    [accounts],
+  );
 }
 
 export function TargetPickerSheet({
-  visible, onClose, onSelect,
+  visible,
+  onClose,
+  onSelect,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -40,25 +47,43 @@ export function TargetPickerSheet({
     : candidates;
 
   // A payee FF3 doesn't have yet is fine: the expense account is created on first use.
-  const allowFreeText = !!trimmed && !results.some((c) => normkey(c.targetName) === normkey(trimmed));
+  const allowFreeText =
+    !!trimmed && !results.some((c) => normkey(c.targetName) === normkey(trimmed));
 
   return (
     <Sheet
       visible={visible}
-      onClose={() => { setQuery(''); onClose(); }}
+      onClose={() => {
+        setQuery('');
+        onClose();
+      }}
       title={tr('payeeSheet.payee.choose')}
       scroll={false}
-      footer={allowFreeText ? (
-        <Pressable
-          onPress={() => { onSelect({ targetId: null, targetName: trimmed }); setQuery(''); onClose(); }}
-          accessibilityRole="button"
-          style={({ pressed }) => ({ paddingVertical: t.space.md, opacity: pressed ? 0.6 : 1 })}
-        >
-          <Text style={[t.type.body, { color: t.color.accent, fontWeight: '600' }]}>{tr('pickers.useNew', { name: trimmed })}</Text>
-        </Pressable>
-      ) : undefined}
+      footer={
+        allowFreeText ? (
+          <Pressable
+            onPress={() => {
+              onSelect({ targetId: null, targetName: trimmed });
+              setQuery('');
+              onClose();
+            }}
+            accessibilityRole="button"
+            style={({ pressed }) => ({ paddingVertical: t.space.md, opacity: pressed ? 0.6 : 1 })}
+          >
+            <Text style={[t.type.body, { color: t.color.accent, fontWeight: '600' }]}>
+              {tr('pickers.useNew', { name: trimmed })}
+            </Text>
+          </Pressable>
+        ) : undefined
+      }
     >
-      <SearchField value={query} onChangeText={setQuery} placeholder={tr('payeeSheet.payee.search')} autoFocus style={{ marginBottom: t.space.sm }} />
+      <SearchField
+        value={query}
+        onChangeText={setQuery}
+        placeholder={tr('payeeSheet.payee.search')}
+        autoFocus
+        style={{ marginBottom: t.space.sm }}
+      />
       <FlatList
         data={results}
         keyExtractor={(item) => item.targetId ?? item.targetName}
@@ -67,17 +92,33 @@ export function TargetPickerSheet({
         contentContainerStyle={{ paddingRight: t.space.md }}
         renderItem={({ item }) => (
           <Pressable
-            onPress={() => { onSelect(item); setQuery(''); onClose(); }}
+            onPress={() => {
+              onSelect(item);
+              setQuery('');
+              onClose();
+            }}
             style={({ pressed }) => ({
-              paddingVertical: t.space.sm, borderTopWidth: 1, borderTopColor: t.color.border, opacity: pressed ? 0.6 : 1,
+              paddingVertical: t.space.sm,
+              borderTopWidth: 1,
+              borderTopColor: t.color.border,
+              opacity: pressed ? 0.6 : 1,
             })}
           >
-            <Text style={[t.type.body, { color: t.color.text }]} numberOfLines={1}>{item.targetName}</Text>
+            <Text style={[t.type.body, { color: t.color.text }]} numberOfLines={1}>
+              {item.targetName}
+            </Text>
           </Pressable>
         )}
-        ListEmptyComponent={(
-          <Text style={[t.type.body, { color: t.color.textFaint, paddingVertical: t.space.lg, textAlign: 'center' }]}>{tr('pickers.noMatches')}</Text>
-        )}
+        ListEmptyComponent={
+          <Text
+            style={[
+              t.type.body,
+              { color: t.color.textFaint, paddingVertical: t.space.lg, textAlign: 'center' },
+            ]}
+          >
+            {tr('pickers.noMatches')}
+          </Text>
+        }
       />
     </Sheet>
   );

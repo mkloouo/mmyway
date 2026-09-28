@@ -36,7 +36,12 @@ export default function AccountsScreen() {
   // By id among the accounts on screen, not by list index: with inactive ones hidden, an index
   // swap would jump over (or swap with) an account the user can't see.
   const move = act(tr('accounts.reorder'), async (id: string, delta: -1 | 1) => {
-    const next = moveAmongVisible(allAccounts.map((a) => a.id), visible.map((a) => a.id), id, delta);
+    const next = moveAmongVisible(
+      allAccounts.map((a) => a.id),
+      visible.map((a) => a.id),
+      id,
+      delta,
+    );
     if (next) await reorderAccounts(db, next);
   });
 
@@ -44,7 +49,7 @@ export default function AccountsScreen() {
     <Screen bottom>
       <AppBar
         title={tr('accounts.title')}
-        right={(
+        right={
           <>
             <BarIconButton
               icon={showInactive ? 'eye-outline' : 'eye-off-outline'}
@@ -52,12 +57,24 @@ export default function AccountsScreen() {
               onPress={() => setShowInactive((v) => !v)}
             />
             {reordering ? (
-              <Button title={tr('common.done')} variant="ghost" size="bar" onPress={() => setReordering(false)} />
+              <Button
+                title={tr('common.done')}
+                variant="ghost"
+                size="bar"
+                onPress={() => setReordering(false)}
+              />
             ) : (
-              <BarIconButton icon="swap-vertical" label={tr('accounts.reorder')} onPress={() => { setReordering(true); setSearch(''); }} />
+              <BarIconButton
+                icon="swap-vertical"
+                label={tr('accounts.reorder')}
+                onPress={() => {
+                  setReordering(true);
+                  setSearch('');
+                }}
+              />
             )}
           </>
-        )}
+        }
       />
       {reordering ? (
         <Text style={[t.type.label, { color: t.color.textMuted, paddingHorizontal: t.space.lg }]}>
@@ -65,7 +82,11 @@ export default function AccountsScreen() {
         </Text>
       ) : (
         <View style={{ paddingHorizontal: t.space.lg }}>
-          <SearchField value={search} onChangeText={setSearch} placeholder={tr('pickers.searchAccounts')} />
+          <SearchField
+            value={search}
+            onChangeText={setSearch}
+            placeholder={tr('pickers.searchAccounts')}
+          />
         </View>
       )}
       <FlatList
@@ -78,19 +99,42 @@ export default function AccountsScreen() {
             onPress={reordering ? undefined : () => navigateOnce(`/accounts/${item.id}`)}
             onLongPress={() => navigateOnce(`/accounts/${item.id}`)}
             longPressPop
-            style={item.active ? undefined : { opacity: 0.5 }}>
+            style={item.active ? undefined : { opacity: 0.5 }}
+          >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
               <PendingDot visible={pendingAccounts.has(item.id)} />
-              <Text style={[t.type.body, { color: t.color.text, flex: 1 }]} numberOfLines={1}>{item.name}</Text>
+              <Text style={[t.type.body, { color: t.color.text, flex: 1 }]} numberOfLines={1}>
+                {item.name}
+              </Text>
               {!item.active && <Chip label={tr('accounts.inactive')} />}
               {hasEnvelopeMarker(item.notes) && <Chip label={tr('accounts.envelope')} />}
               {reordering ? (
                 <View style={{ flexDirection: 'row', gap: t.space.xs }}>
-                  <Pressable onPress={() => move(item.id, -1)} disabled={index === 0} accessibilityRole="button" accessibilityLabel={tr('accounts.moveUp', { name: item.name })} hitSlop={8}>
-                    <Ionicons name="chevron-up" size={22} color={index === 0 ? t.color.textFaint : t.color.accent} />
+                  <Pressable
+                    onPress={() => move(item.id, -1)}
+                    disabled={index === 0}
+                    accessibilityRole="button"
+                    accessibilityLabel={tr('accounts.moveUp', { name: item.name })}
+                    hitSlop={8}
+                  >
+                    <Ionicons
+                      name="chevron-up"
+                      size={22}
+                      color={index === 0 ? t.color.textFaint : t.color.accent}
+                    />
                   </Pressable>
-                  <Pressable onPress={() => move(item.id, 1)} disabled={index === visible.length - 1} accessibilityRole="button" accessibilityLabel={tr('accounts.moveDown', { name: item.name })} hitSlop={8}>
-                    <Ionicons name="chevron-down" size={22} color={index === visible.length - 1 ? t.color.textFaint : t.color.accent} />
+                  <Pressable
+                    onPress={() => move(item.id, 1)}
+                    disabled={index === visible.length - 1}
+                    accessibilityRole="button"
+                    accessibilityLabel={tr('accounts.moveDown', { name: item.name })}
+                    hitSlop={8}
+                  >
+                    <Ionicons
+                      name="chevron-down"
+                      size={22}
+                      color={index === visible.length - 1 ? t.color.textFaint : t.color.accent}
+                    />
                   </Pressable>
                 </View>
               ) : (
@@ -99,9 +143,19 @@ export default function AccountsScreen() {
             </View>
           </Card>
         )}
-        ListEmptyComponent={<Text style={[t.type.body, { color: t.color.textFaint, textAlign: 'center', paddingTop: t.space.xl }]}>{allAccounts.length > 0 && !showInactive ? tr('accounts.allInactiveHidden') : tr('accounts.empty')}</Text>}
+        ListEmptyComponent={
+          <Text
+            style={[
+              t.type.body,
+              { color: t.color.textFaint, textAlign: 'center', paddingTop: t.space.xl },
+            ]}
+          >
+            {allAccounts.length > 0 && !showInactive
+              ? tr('accounts.allInactiveHidden')
+              : tr('accounts.empty')}
+          </Text>
+        }
       />
-
     </Screen>
   );
 }

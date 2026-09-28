@@ -12,7 +12,11 @@ export async function probeLocalModel(address: string): Promise<boolean> {
   }
 }
 
-export function createLocalProvider(config: { baseUrl: string; model: string; timeoutMs?: number }): ReceiptProvider {
+export function createLocalProvider(config: {
+  baseUrl: string;
+  model: string;
+  timeoutMs?: number;
+}): ReceiptProvider {
   return {
     name: 'local',
     async extract({ imageBase64, hint, categoryNames, currencyCodes = [] }) {
@@ -29,10 +33,22 @@ export function createLocalProvider(config: { baseUrl: string; model: string; ti
               { role: 'system', content: receiptPrompt(hint) },
               {
                 role: 'user',
-                content: [{ type: 'image_url', image_url: { url: `data:${imageMimeType(imageBase64)};base64,${imageBase64}` } }],
+                content: [
+                  {
+                    type: 'image_url',
+                    image_url: { url: `data:${imageMimeType(imageBase64)};base64,${imageBase64}` },
+                  },
+                ],
               },
             ],
-            response_format: { type: 'json_schema', json_schema: { name: 'receipt', schema: receiptJsonSchema(categoryNames, currencyCodes), strict: false } },
+            response_format: {
+              type: 'json_schema',
+              json_schema: {
+                name: 'receipt',
+                schema: receiptJsonSchema(categoryNames, currencyCodes),
+                strict: false,
+              },
+            },
           }),
         });
         if (!response.ok) throw new Error(`local provider HTTP ${response.status}`);
@@ -68,13 +84,16 @@ function amountOf(value: unknown): string | null {
 const CONFIDENCE_WORDS: Record<string, number> = { high: 0.9, medium: 0.6, low: 0.3, none: 0 };
 function confidenceOf(value: unknown): number {
   if (typeof value === 'number' && Number.isFinite(value)) return Math.min(1, Math.max(0, value));
-  if (typeof value === 'string' && value.toLowerCase() in CONFIDENCE_WORDS) return CONFIDENCE_WORDS[value.toLowerCase()]!;
+  if (typeof value === 'string' && value.toLowerCase() in CONFIDENCE_WORDS)
+    return CONFIDENCE_WORDS[value.toLowerCase()]!;
   return 0;
 }
 
 /** confidence "none": the model says the picture isn't a receipt at all. */
 export function isNotAReceipt(raw: unknown): boolean {
-  return !!raw && typeof raw === 'object' && (raw as { confidence?: unknown }).confidence === 'none';
+  return (
+    !!raw && typeof raw === 'object' && (raw as { confidence?: unknown }).confidence === 'none'
+  );
 }
 
 function matching(value: unknown, pattern: RegExp): string | null {
@@ -94,7 +113,10 @@ function normalizeExtraction(raw: any): ReceiptExtraction {
   const items = Array.isArray(value.items) ? value.items : [];
   return {
     amount: amountOf(value.amount),
-    currency: matching(typeof value.currency === 'string' ? value.currency.trim().toUpperCase() : null, /^[A-Z]{3}$/),
+    currency: matching(
+      typeof value.currency === 'string' ? value.currency.trim().toUpperCase() : null,
+      /^[A-Z]{3}$/,
+    ),
     merchant: textOf(value.merchant),
     date: matching(value.date, /^\d{4}-\d{2}-\d{2}$/),
     time: matching(value.time, /^\d{2}:\d{2}$/),
@@ -106,7 +128,10 @@ function normalizeExtraction(raw: any): ReceiptExtraction {
       return price === null ? [] : [{ title: item.title, count, price }];
     }),
     confidence: confidenceOf(value.confidence),
-    paymentMethod: value.payment_method === 'cash' || value.payment_method === 'card' ? value.payment_method : 'unknown',
+    paymentMethod:
+      value.payment_method === 'cash' || value.payment_method === 'card'
+        ? value.payment_method
+        : 'unknown',
     cardNetwork: textOf(value.card_network),
     notAReceipt: isNotAReceipt(value) || undefined,
   };

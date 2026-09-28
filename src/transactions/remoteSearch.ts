@@ -6,7 +6,10 @@ import { cachedTransactions } from '../db/schema';
 import { cachedRowFromGroup } from '../sync/referenceData';
 import type { OutboxDb } from '../sync/outbox';
 
-export async function searchTransactions(client: FF3Client, query: string): Promise<TransactionRead[]> {
+export async function searchTransactions(
+  client: FF3Client,
+  query: string,
+): Promise<TransactionRead[]> {
   const response = await client.request<{ data: TransactionRead[] }>(
     `/v1/search/transactions?query=${encodeURIComponent(query)}&limit=50&page=1`,
   );
@@ -17,6 +20,9 @@ export async function searchTransactions(client: FF3Client, query: string): Prom
 export async function cacheRemoteResult(db: OutboxDb, group: TransactionRead): Promise<boolean> {
   const row = cachedRowFromGroup(group, new Date().toISOString());
   if (!row) return false;
-  await db.insert(cachedTransactions).values(row).onConflictDoUpdate({ target: cachedTransactions.groupId, set: row });
+  await db
+    .insert(cachedTransactions)
+    .values(row)
+    .onConflictDoUpdate({ target: cachedTransactions.groupId, set: row });
   return true;
 }

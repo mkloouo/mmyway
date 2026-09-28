@@ -8,7 +8,8 @@ import { reportErrors } from './reportError';
 export function useAction(onError?: (message: string) => void) {
   return useCallback(
     <A extends unknown[]>(action: string, fn: (...args: A) => Promise<void>) =>
-      (...args: A): Promise<void> => reportErrors(action, () => fn(...args), onError ?? ((message) => Alert.alert(message))),
+      (...args: A): Promise<void> =>
+        reportErrors(action, () => fn(...args), onError ?? ((message) => Alert.alert(message))),
     [onError],
   );
 }

@@ -15,18 +15,25 @@ export interface ReceiptExtraction {
 
 export interface ReceiptProvider {
   name: string;
-  extract(input: { imageBase64: string; hint?: string; categoryNames: string[]; currencyCodes?: string[] }): Promise<ReceiptExtraction>;
+  extract(input: {
+    imageBase64: string;
+    hint?: string;
+    categoryNames: string[];
+    currencyCodes?: string[];
+  }): Promise<ReceiptExtraction>;
 }
 
-export type ReceiptChainResult = {
-  ok: true;
-  providerName: string;
-  extraction: ReceiptExtraction;
-} | {
-  ok: false;
-  // unreachable: nothing answered (offline, PC asleep, timeout) — worth retrying on a later sync.
-  // failed: at least one provider answered but gave nothing usable — retrying the same image
-  // won't help, so the receipt is shown as an error instead of "Reading receipt…" forever.
-  reason: 'all_providers_unreachable' | 'all_providers_failed';
-  errors: string[]; // one line per provider, for the error card and the log
-};
+export type ReceiptChainResult =
+  | {
+      ok: true;
+      providerName: string;
+      extraction: ReceiptExtraction;
+    }
+  | {
+      ok: false;
+      // unreachable: nothing answered (offline, PC asleep, timeout) — worth retrying on a later sync.
+      // failed: at least one provider answered but gave nothing usable — retrying the same image
+      // won't help, so the receipt is shown as an error instead of "Reading receipt…" forever.
+      reason: 'all_providers_unreachable' | 'all_providers_failed';
+      errors: string[]; // one line per provider, for the error card and the log
+    };

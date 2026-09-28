@@ -12,9 +12,21 @@ describe('retry backoff', () => {
 
   it('a failed op is not re-sent until its next attempt time, and blocks the ops after it', async () => {
     const db = createTestDb();
-    await enqueueOperation(db, { id: 'op-1', kind: 'update_account', payload: { accountId: 'a', active: false } });
-    await enqueueOperation(db, { id: 'op-2', kind: 'update_account', payload: { accountId: 'b', active: false } });
-    const client = { request: jest.fn(async () => { throw new TypeError('Network request failed'); }) };
+    await enqueueOperation(db, {
+      id: 'op-1',
+      kind: 'update_account',
+      payload: { accountId: 'a', active: false },
+    });
+    await enqueueOperation(db, {
+      id: 'op-2',
+      kind: 'update_account',
+      payload: { accountId: 'b', active: false },
+    });
+    const client = {
+      request: jest.fn(async () => {
+        throw new TypeError('Network request failed');
+      }),
+    };
 
     await replayOutbox(db as any, client as any);
     expect(client.request).toHaveBeenCalledTimes(1);

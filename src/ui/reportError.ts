@@ -6,7 +6,11 @@ import { logLine } from '../utils/log';
  * release build otherwise drops silently) and hands the screen a message for its own toast or
  * snackbar. `action` names the button, e.g. "Confirm" -> "Confirm failed" (already translated by the caller).
  */
-export async function reportErrors(action: string, fn: () => Promise<void>, onError: (message: string) => void): Promise<void> {
+export async function reportErrors(
+  action: string,
+  fn: () => Promise<void>,
+  onError: (message: string) => void,
+): Promise<void> {
   try {
     await fn();
   } catch (err) {

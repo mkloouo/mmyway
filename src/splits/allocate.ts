@@ -55,7 +55,13 @@ export function defaultShares(target: bigint, caps: readonly bigint[]): bigint[]
  * split first) so the shares still sum to `target`; when they can't give enough, the moved one
  * is held back to what fits. Every share stays within 0..cap.
  */
-export function balance(shares: readonly bigint[], caps: readonly bigint[], target: bigint, index: number, wanted: bigint): bigint[] {
+export function balance(
+  shares: readonly bigint[],
+  caps: readonly bigint[],
+  target: bigint,
+  index: number,
+  wanted: bigint,
+): bigint[] {
   const next = [...shares];
   const cap = caps[index] ?? 0n;
   let value = wanted < 0n ? 0n : wanted > cap ? cap : wanted;
@@ -88,8 +94,15 @@ export function balance(shares: readonly bigint[], caps: readonly bigint[], targ
  * Applies the shares to the split amounts: `sign` -1 takes them away (a new split's amount, a
  * lowered total), +1 adds them (a raised total, a lowered split's difference).
  */
-export function applyShares(amounts: readonly string[], shares: readonly bigint[], sign: 1 | -1, decimalPlaces: number): string[] {
-  return amounts.map((a, i) => fromMinor(toMinor(a, decimalPlaces) + BigInt(sign) * (shares[i] ?? 0n), decimalPlaces));
+export function applyShares(
+  amounts: readonly string[],
+  shares: readonly bigint[],
+  sign: 1 | -1,
+  decimalPlaces: number,
+): string[] {
+  return amounts.map((a, i) =>
+    fromMinor(toMinor(a, decimalPlaces) + BigInt(sign) * (shares[i] ?? 0n), decimalPlaces),
+  );
 }
 
 /**
@@ -98,7 +111,12 @@ export function applyShares(amounts: readonly string[], shares: readonly bigint[
  * taken from them leaves each at least one minor unit, since a split of zero isn't a split.
  * `exclude` is the split whose amount was just typed — it keeps what the user entered.
  */
-export function capsFor(amounts: readonly string[], delta: bigint, decimalPlaces: number, exclude?: number): bigint[] {
+export function capsFor(
+  amounts: readonly string[],
+  delta: bigint,
+  decimalPlaces: number,
+  exclude?: number,
+): bigint[] {
   return amounts.map((a, i) => {
     if (i === exclude) return 0n;
     if (delta > 0n) return delta;
@@ -112,7 +130,12 @@ export function capsFor(amounts: readonly string[], delta: bigint, decimalPlaces
  * when split 1 is the one whose amount was just typed). Null when that would leave the absorbing
  * split at zero or below — the sliders decide then.
  */
-export function absorb(amounts: readonly string[], delta: bigint, decimalPlaces: number, exclude?: number): string[] | null {
+export function absorb(
+  amounts: readonly string[],
+  delta: bigint,
+  decimalPlaces: number,
+  exclude?: number,
+): string[] | null {
   if (delta === 0n) return [...amounts];
   const index = exclude === 0 ? 1 : 0;
   const current = amounts[index];

@@ -8,7 +8,10 @@ import { logLine } from '../utils/log';
 const CACHE_DIR = 'ff3-attachments';
 
 /** A local file:// uri for the attachment, downloading it the first time. */
-export async function attachmentFile(attachmentId: string, source: { uri: string; headers: Record<string, string> }): Promise<string> {
+export async function attachmentFile(
+  attachmentId: string,
+  source: { uri: string; headers: Record<string, string> },
+): Promise<string> {
   // Lazy require: see outbox.ts's attach_receipt branch.
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { Directory, File, Paths } = require('expo-file-system');
@@ -18,10 +21,16 @@ export async function attachmentFile(attachmentId: string, source: { uri: string
   const file = new File(dir, attachmentId.replace(/[^\w-]/g, '_'));
   if (file.exists && file.size > 0) return file.uri;
   try {
-    const downloaded = await File.downloadFileAsync(source.uri, file, { headers: source.headers, idempotent: true });
+    const downloaded = await File.downloadFileAsync(source.uri, file, {
+      headers: source.headers,
+      idempotent: true,
+    });
     return downloaded.uri;
   } catch (err) {
-    logLine('error', `attachment ${attachmentId} download failed: ${err instanceof Error ? err.message : String(err)}`);
+    logLine(
+      'error',
+      `attachment ${attachmentId} download failed: ${err instanceof Error ? err.message : String(err)}`,
+    );
     if (file.exists) file.delete();
     throw err;
   }

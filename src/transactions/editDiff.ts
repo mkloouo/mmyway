@@ -18,7 +18,8 @@ function amountKey(value: unknown): string {
 function comparable(key: string, value: unknown): string {
   if (key === 'amount' || key === 'foreign_amount') return amountKey(value);
   if (key === 'date') return value ? String(new Date(String(value)).getTime()) : '';
-  if (key === 'tags') return JSON.stringify([...((value as string[] | null | undefined) ?? [])].sort());
+  if (key === 'tags')
+    return JSON.stringify([...((value as string[] | null | undefined) ?? [])].sort());
   // No note, an empty one and a cleared one are the same; likewise any other empty text.
   if (value === undefined || value === null || value === '') return '';
   return String(value);
@@ -38,7 +39,8 @@ export function changedFields(changes: Changes, baseline: Changes): Changes {
   for (const [key, value] of Object.entries(changes)) {
     // Undefined is left out of the request body anyway: counted, it queued an edit of nothing.
     if (value === undefined) continue;
-    if (comparable(key, value) === comparable(key, (baseline as Record<string, unknown>)[key])) continue;
+    if (comparable(key, value) === comparable(key, (baseline as Record<string, unknown>)[key]))
+      continue;
     out[key] = key === 'notes' ? sendableNotes(value as string | null | undefined) : value;
   }
   return out as Changes;
@@ -53,7 +55,11 @@ export function sameSplits(a: readonly object[], b: readonly object[]): boolean 
   return a.every((split, i) => {
     const other = b[i]!;
     const keys = new Set([...Object.keys(split), ...Object.keys(other)]);
-    return [...keys].every((k) => comparable(k, (split as Record<string, unknown>)[k]) === comparable(k, (other as Record<string, unknown>)[k]));
+    return [...keys].every(
+      (k) =>
+        comparable(k, (split as Record<string, unknown>)[k]) ===
+        comparable(k, (other as Record<string, unknown>)[k]),
+    );
   });
 }
 

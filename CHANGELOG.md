@@ -7,6 +7,7 @@
 - The app is now called **Money My Way**.
 
 ### Splits
+
 - **Split** next to Save (and next to Confirm on a draft) adds a split: type its amount and it
   comes out of split 1. **Choose which splits give it** shows sliders instead, one per split,
   always adding up to the new amount.
@@ -21,6 +22,7 @@
   sync instead of turning into a conflict.
 
 ### Activity
+
 - A split transaction lists its splits under its row: category (or description) and amount for
   the first three, and how many more there are.
 - Account balances roll to their new value after a sync instead of jumping.
@@ -34,6 +36,7 @@
   tags and all — and opens it for review.
 
 ### Inbox
+
 - A recurring transaction planned in another currency than its account's (7.99 USD paid from a
   PLN account) shows its planned amount on the review card. Approving asks what was actually
   charged ("7.99 $ was charged as ..."), and saves both amounts to Firefly III.
@@ -51,6 +54,7 @@
   first edit is sent updates that edit instead of queueing a second one. Tap one to open it.
 
 ### Planned
+
 - A new **Planned** tab. The simple view lists each planned payment — a subscription, rule and
   recurring transaction sharing one name — once, with its category, and edits the three together:
   name, from and to, exact amount and currency
@@ -67,6 +71,7 @@
   separately, exactly as they are there; tap one to see everything about it.
 
 ### Fixed
+
 - A transaction Firefly III books from a recurring transaction now shows up in the Inbox for
   review, including one triggered early from Firefly III's Recurring page. Before, none ever
   arrived.
@@ -101,6 +106,7 @@
 ## [1.2.0] - 2026-09-28
 
 ### Accounts
+
 - Each account now has its own page: tap or long-press it in Settings → Accounts, or long-press
   its balance card on Activity. Change its name, currency, role (default, shared, savings, credit
   card with its monthly payment date, or cash wallet), whether it's active, a cash envelope or in
@@ -114,26 +120,31 @@
   phone ticks and the card pops, like every other confirmation.
 
 ### Activity
+
 - Search ignores case and accents: "żabka" finds "Żabka", in Polish and Cyrillic too.
 - Filtering by an account keeps working after the account is renamed, or when two accounts share
   a name.
 - A split transaction shows its total under its title, instead of only its first part.
 
 ### Receipts
+
 - Photos are scaled down to 1600 px before they're read and uploaded: faster with a local model,
   cheaper with Gemini, and smaller attachments in Firefly III.
 - Settings → Gemini key says when receipt photos go to Google.
 
 ### Sync and offline
+
 - Going back online sends what was queued at once, without reopening the app.
 - mmyway also syncs in the background, about every 15 minutes when Android allows it.
 - A change Firefly III keeps refusing is retried after a pause that grows to an hour, instead of
   on every sync. **Retry now** in the Inbox still sends it at once.
 
 ### Cash count
+
 - Denominations for GBP, CHF, CZK, HUF, SEK, NOK, DKK, RON, CAD and JPY.
 
 ### Look and feel
+
 - Smoother exits: confirmed, deleted and swiped-away Inbox cards and deleted Activity rows fold
   away, and the rest slide up instead of jumping. In Capture, the saved amount floats up and fades
   while the cleared field fades in.
@@ -144,11 +155,13 @@
 - Every text field shares one look.
 
 ### Privacy
+
 - The app's database is no longer included in Android's Google Drive backups. A new phone signs in
   and syncs from Firefly III.
 - A shared diagnostics log hides amounts, payees, accounts and notes.
 
 ### Fixed
+
 - Currency pickers offer only the currencies enabled in your Firefly III (your primary currency
   first), not every currency it knows, BTC included.
 - With no default currency set in Settings, a new entry uses your Firefly III primary currency
@@ -161,6 +174,7 @@
 - Tapping the Activity tab again scrolls back to the top.
 
 ### Settings
+
 - **Language**: mmyway now follows your phone's language, or you can pick one in Settings →
   Language (System, English or Українська). Dates and times follow the language you pick.
   Text that isn't translated yet shows in English.
@@ -168,6 +182,7 @@
 ## [1.1.0] - 2026-09-28
 
 ### Look
+
 - Change the app name to what I meant to call this app.
 - New app icon: a white stepped arrow on indigo. On Android 13+ it follows your themed-icon colours.
 - The launch screen now shows the same arrow in a circle, on a light or dark background to match
@@ -181,6 +196,7 @@ a model, and an Inbox where every entry waits for your confirmation before it re
 It works offline and sends everything once your server answers. It replaces a Telegram capture bot.
 
 ### Capture
+
 - Amount-first: a big keypad, then the payee. Expense, Income or Transfer.
 - Payee chips come from your Firefly III history, most recently used first, and bring their usual
   category and account with them. Search finds any payee, including through your aliases.
@@ -192,6 +208,7 @@ It works offline and sends everything once your server answers. It replaces a Te
   The screen stays open for the next entry.
 
 ### Receipts
+
 - Take a photo, pick one from the gallery, or share an image from any app to mmyway.
 - Read by your own OpenAI-compatible model (LM Studio, for example) first, then Google Gemini
   if it's set up. Categories and currencies come from your Firefly III, never a fixed list.
@@ -204,6 +221,7 @@ It works offline and sends everything once your server answers. It replaces a Te
   with export and import.
 
 ### Inbox
+
 - An approval queue: **Needs attention**, **To confirm**, **To review**. Empty sections hide.
 - Swipe right to confirm, left to delete (with Undo). Long-press to select several; Confirm all.
 - Recurring transactions Firefly III created since your last sync come in to review: approve,
@@ -212,6 +230,7 @@ It works offline and sends everything once your server answers. It replaces a Te
   that changed in Firefly III meanwhile opens a side-by-side view: keep yours or use theirs.
 
 ### Activity
+
 - A balance card for each asset account (tap one to filter), then All, Spending, Income and Moves.
 - Transactions grouped by day with daily totals; scrolling past what's on the phone loads older
   history from Firefly III. Search falls back to Firefly III's own search the same way.
@@ -220,12 +239,14 @@ It works offline and sends everything once your server answers. It replaces a Te
   delete several.
 
 ### Cash count
+
 - Mark asset accounts as cash envelopes, then count them all in one pass, by amount or with a
   denomination pad (PLN, EUR, USD, UAH). One confirm books one adjustment per envelope that's off.
 - The count waits until every queued change has reached Firefly III and balances are re-read,
   so offline spending is never booked twice as drift.
 
 ### Sync and offline
+
 - Everything works offline. Changes go out in order as soon as Firefly III answers, each exactly
   once, even when a connection drops mid-send.
 - Edits and deletes check whether the transaction changed in Firefly III first, and ask instead
@@ -236,6 +257,7 @@ It works offline and sends everything once your server answers. It replaces a Te
   pull-to-refresh. Transactions deleted in Firefly III disappear from the phone too.
 
 ### Settings
+
 - Sign in with your Firefly III address and a personal access token. Sign-out waits until
   nothing is queued, then clears that server's data from the phone.
 - Default account, currency and the account cash payments use; receipt readers.
@@ -245,6 +267,7 @@ It works offline and sends everything once your server answers. It replaces a Te
 - Light and dark theme follow the system.
 
 ### Install
+
 - Needs Firefly III with API version 6.3.2 or later, and Android.
 - Each release has one APK per processor type and a universal one. Most phones want
   `arm64-v8a`; if unsure, use `universal`. Check downloads against `SHA256SUMS`.
@@ -252,10 +275,10 @@ It works offline and sends everything once your server answers. It replaces a Te
   reads them; see PRIVACY.md in the repository.
 
 ### Known limitations
+
 - Split transactions show only their first split in Activity and its totals.
 - The budget isn't suggested from payee history yet.
 - Activity search matches Polish and Cyrillic letters only in the same case ("żabka" doesn't
   find "Żabka").
 - Nothing syncs by itself when the network comes back; the next launch, change or pull does.
 - Android only, English only, and amounts are formatted Polish style (1 234,56).
-

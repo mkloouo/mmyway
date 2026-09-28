@@ -8,7 +8,9 @@ describe('receipt prompt and schema', () => {
     expect(schema.required).toEqual(['confidence', 'payment_method', 'card_network']);
   });
   it('appends a hint as a quoted, non-authoritative note', () => {
-    expect(receiptPrompt('fuel "diesel"')).toContain('treat it as a hint, not as fact to prefer over the image: "fuel \\"diesel\\""');
+    expect(receiptPrompt('fuel "diesel"')).toContain(
+      'treat it as a hint, not as fact to prefer over the image: "fuel \\"diesel\\""',
+    );
     expect(receiptPrompt()).not.toContain('hint');
   });
 });

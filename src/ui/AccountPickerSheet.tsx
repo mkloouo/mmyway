@@ -17,7 +17,13 @@ export interface AccountPickerAccount {
 }
 
 export function AccountPickerSheet({
-  visible, onClose, title, accounts, currencies, excludeId, onSelect,
+  visible,
+  onClose,
+  title,
+  accounts,
+  currencies,
+  excludeId,
+  onSelect,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -35,8 +41,22 @@ export function AccountPickerSheet({
   const results = filterAccounts(candidates, query);
 
   return (
-    <Sheet visible={visible} onClose={() => { setQuery(''); onClose(); }} title={title} scroll={false}>
-      <SearchField value={query} onChangeText={setQuery} placeholder={tr('pickers.searchAccounts')} autoFocus style={{ marginBottom: t.space.sm }} />
+    <Sheet
+      visible={visible}
+      onClose={() => {
+        setQuery('');
+        onClose();
+      }}
+      title={title}
+      scroll={false}
+    >
+      <SearchField
+        value={query}
+        onChangeText={setQuery}
+        placeholder={tr('pickers.searchAccounts')}
+        autoFocus
+        style={{ marginBottom: t.space.sm }}
+      />
       <FlatList
         data={results}
         keyExtractor={(item) => item.id}
@@ -45,13 +65,24 @@ export function AccountPickerSheet({
         contentContainerStyle={{ paddingRight: t.space.md }}
         renderItem={({ item }) => (
           <Pressable
-            onPress={() => { onSelect(item); setQuery(''); onClose(); }}
+            onPress={() => {
+              onSelect(item);
+              setQuery('');
+              onClose();
+            }}
             style={({ pressed }) => ({
-              flexDirection: 'row', alignItems: 'center', gap: t.space.md,
-              paddingVertical: t.space.sm, borderTopWidth: 1, borderTopColor: t.color.border, opacity: pressed ? 0.6 : 1,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: t.space.md,
+              paddingVertical: t.space.sm,
+              borderTopWidth: 1,
+              borderTopColor: t.color.border,
+              opacity: pressed ? 0.6 : 1,
             })}
           >
-            <Text style={[t.type.body, { color: t.color.text, flex: 1 }]} numberOfLines={1}>{item.name}</Text>
+            <Text style={[t.type.body, { color: t.color.text, flex: 1 }]} numberOfLines={1}>
+              {item.name}
+            </Text>
             {item.currentBalance != null && (
               <Text style={[t.type.label, { color: t.color.textMuted }]}>
                 {formatMoney(item.currentBalance, currencyOf(currencies, item.currencyCode))}
@@ -59,9 +90,16 @@ export function AccountPickerSheet({
             )}
           </Pressable>
         )}
-        ListEmptyComponent={(
-          <Text style={[t.type.body, { color: t.color.textFaint, paddingVertical: t.space.lg, textAlign: 'center' }]}>{tr('pickers.noMatches')}</Text>
-        )}
+        ListEmptyComponent={
+          <Text
+            style={[
+              t.type.body,
+              { color: t.color.textFaint, paddingVertical: t.space.lg, textAlign: 'center' },
+            ]}
+          >
+            {tr('pickers.noMatches')}
+          </Text>
+        }
       />
     </Sheet>
   );

@@ -1,7 +1,8 @@
 // The keypad's reducer (design §6.2). Builds a decimal string digit by digit — never through
 // `parseFloat` (AGENTS.md). `current` and the return value are always a valid decimal-string
 // prefix: no sign (the type carries that), at most one `.`, fraction capped at `decimalPlaces`.
-export type KeypadKey = '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '00' | ',' | '.' | '⌫';
+export type KeypadKey =
+  '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '00' | ',' | '.' | '⌫';
 
 /**
  * FF3 returns amounts with twelve fraction digits ("12.000000000000"). Editing one on the keypad

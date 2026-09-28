@@ -34,13 +34,19 @@ export function createFF3Client({ baseUrl, apiToken }: FF3ClientConfig): FF3Clie
     imageSource(path: string) {
       // The same Accept as request(): FF3's API refuses a request whose Accept header it doesn't
       // list, and a download sent none.
-      return { uri: `${apiRoot}${path}`, headers: { Authorization: `Bearer ${apiToken}`, Accept: 'application/json' } };
+      return {
+        uri: `${apiRoot}${path}`,
+        headers: { Authorization: `Bearer ${apiToken}`, Accept: 'application/json' },
+      };
     },
   };
 }
 
 export class FF3RequestError extends Error {
-  constructor(public status: number, public body: string) {
+  constructor(
+    public status: number,
+    public body: string,
+  ) {
     super(`FF3 request failed: ${status}`);
   }
 }

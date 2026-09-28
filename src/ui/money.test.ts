@@ -1,4 +1,10 @@
-import { formatMoney, formatAmountInput, signFor, currencyOf, type NumberSeparators } from './money';
+import {
+  formatMoney,
+  formatAmountInput,
+  signFor,
+  currencyOf,
+  type NumberSeparators,
+} from './money';
 
 // The phone's number format is passed explicitly so these don't depend on the test machine's.
 const PL: NumberSeparators = { group: '\u202F', decimal: ',' };
@@ -32,7 +38,7 @@ describe('formatMoney', () => {
   it('keeps non-zero fraction longer then a currency scale', () => {
     expect(formatMoney('12.000000000', PLN, PL)).toBe('12,00 zł');
     expect(formatMoney('12.000000040', PLN, PL)).toBe('12,00000004 zł');
-  })
+  });
 });
 
 describe('formatAmountInput', () => {
@@ -55,7 +61,10 @@ describe('signFor', () => {
 });
 
 describe('currencyOf', () => {
-  const currencies = [{ code: 'PLN', symbol: 'zł', decimalPlaces: 2 }, { code: 'JPY', symbol: '¥', decimalPlaces: 0 }];
+  const currencies = [
+    { code: 'PLN', symbol: 'zł', decimalPlaces: 2 },
+    { code: 'JPY', symbol: '¥', decimalPlaces: 0 },
+  ];
 
   it('finds a synced currency by code', () => {
     expect(currencyOf(currencies, 'JPY')).toEqual({ symbol: '¥', decimalPlaces: 0 });
@@ -67,7 +76,7 @@ describe('currencyOf', () => {
 });
 
 describe('number format', () => {
-  it('follows the phone\'s separators', () => {
+  it("follows the phone's separators", () => {
     expect(formatMoney('1234.5', { symbol: 'zł', decimalPlaces: 2 }, US)).toBe('1,234.50 zł');
     expect(formatAmountInput('1234.5', { symbol: '$', decimalPlaces: 2 }, US)).toBe('1,234.5 $');
   });

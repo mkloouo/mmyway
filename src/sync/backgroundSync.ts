@@ -28,6 +28,9 @@ export async function registerBackgroundSync(): Promise<void> {
     if (status !== BackgroundTask.BackgroundTaskStatus.Available) return;
     await BackgroundTask.registerTaskAsync(BACKGROUND_SYNC_TASK, { minimumInterval: 15 });
   } catch (err) {
-    logLine('warn', `could not register background sync: ${err instanceof Error ? err.message : String(err)}`);
+    logLine(
+      'warn',
+      `could not register background sync: ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
 }

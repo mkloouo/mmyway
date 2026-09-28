@@ -31,42 +31,62 @@ async function getSetting(db: OutboxDb, key: string): Promise<string | null> {
 }
 
 async function setSetting(db: OutboxDb, key: string, value: string): Promise<void> {
-  await db.insert(appSettings).values({ key, value }).onConflictDoUpdate({ target: appSettings.key, set: { value } });
+  await db
+    .insert(appSettings)
+    .values({ key, value })
+    .onConflictDoUpdate({ target: appSettings.key, set: { value } });
 }
 
 /**
  * The settings that describe one FF3 instance rather than the user's preferences: they must not
  * carry over when the app is pointed at another instance (src/sync/instanceData.ts).
  */
-export const INSTANCE_SETTING_KEYS: readonly string[] = [KEYS.ff3ActiveHost, KEYS.lastSyncedAt, KEYS.accountOrder, KEYS.balancesStale];
+export const INSTANCE_SETTING_KEYS: readonly string[] = [
+  KEYS.ff3ActiveHost,
+  KEYS.lastSyncedAt,
+  KEYS.accountOrder,
+  KEYS.balancesStale,
+];
 
-export const getDefaultSourceAccountId = (db: OutboxDb) => getSetting(db, KEYS.defaultSourceAccountId);
-export const setDefaultSourceAccountId = (db: OutboxDb, value: string) => setSetting(db, KEYS.defaultSourceAccountId, value);
+export const getDefaultSourceAccountId = (db: OutboxDb) =>
+  getSetting(db, KEYS.defaultSourceAccountId);
+export const setDefaultSourceAccountId = (db: OutboxDb, value: string) =>
+  setSetting(db, KEYS.defaultSourceAccountId, value);
 
 // Which asset account a cash receipt's source is (design §6.6) — a dedicated setting, not the
 // `/cash/i` name match buildReceiptDraftReference used to fall back on.
 export const getCashAccountId = (db: OutboxDb) => getSetting(db, KEYS.cashAccountId);
-export const setCashAccountId = (db: OutboxDb, value: string) => setSetting(db, KEYS.cashAccountId, value);
+export const setCashAccountId = (db: OutboxDb, value: string) =>
+  setSetting(db, KEYS.cashAccountId, value);
 
 // The cash count's adjustment payees (design §6.9): an expense account for a shortfall, a
 // revenue account for a surplus, picked once from the reference tables.
-export const getReconcileShortfallAccountId = (db: OutboxDb) => getSetting(db, KEYS.reconcileShortfallAccountId);
-export const setReconcileShortfallAccountId = (db: OutboxDb, value: string) => setSetting(db, KEYS.reconcileShortfallAccountId, value);
+export const getReconcileShortfallAccountId = (db: OutboxDb) =>
+  getSetting(db, KEYS.reconcileShortfallAccountId);
+export const setReconcileShortfallAccountId = (db: OutboxDb, value: string) =>
+  setSetting(db, KEYS.reconcileShortfallAccountId, value);
 
-export const getReconcileSurplusAccountId = (db: OutboxDb) => getSetting(db, KEYS.reconcileSurplusAccountId);
-export const setReconcileSurplusAccountId = (db: OutboxDb, value: string) => setSetting(db, KEYS.reconcileSurplusAccountId, value);
+export const getReconcileSurplusAccountId = (db: OutboxDb) =>
+  getSetting(db, KEYS.reconcileSurplusAccountId);
+export const setReconcileSurplusAccountId = (db: OutboxDb, value: string) =>
+  setSetting(db, KEYS.reconcileSurplusAccountId, value);
 
-export const getReconcileCategoryName = (db: OutboxDb) => getSetting(db, KEYS.reconcileCategoryName);
-export const setReconcileCategoryName = (db: OutboxDb, value: string) => setSetting(db, KEYS.reconcileCategoryName, value);
+export const getReconcileCategoryName = (db: OutboxDb) =>
+  getSetting(db, KEYS.reconcileCategoryName);
+export const setReconcileCategoryName = (db: OutboxDb, value: string) =>
+  setSetting(db, KEYS.reconcileCategoryName, value);
 
 export const getDefaultCurrencyCode = (db: OutboxDb) => getSetting(db, KEYS.defaultCurrencyCode);
-export const setDefaultCurrencyCode = (db: OutboxDb, value: string) => setSetting(db, KEYS.defaultCurrencyCode, value);
+export const setDefaultCurrencyCode = (db: OutboxDb, value: string) =>
+  setSetting(db, KEYS.defaultCurrencyCode, value);
 
 export const getLocalModelBaseUrl = (db: OutboxDb) => getSetting(db, KEYS.localModelBaseUrl);
-export const setLocalModelBaseUrl = (db: OutboxDb, value: string) => setSetting(db, KEYS.localModelBaseUrl, value);
+export const setLocalModelBaseUrl = (db: OutboxDb, value: string) =>
+  setSetting(db, KEYS.localModelBaseUrl, value);
 
 export const getLocalModelName = (db: OutboxDb) => getSetting(db, KEYS.localModelName);
-export const setLocalModelName = (db: OutboxDb, value: string) => setSetting(db, KEYS.localModelName, value);
+export const setLocalModelName = (db: OutboxDb, value: string) =>
+  setSetting(db, KEYS.localModelName, value);
 
 // Several addresses per server (design §6.6): same idea as src/api/ff3/hosts.ts's ff3_hosts, but
 // non-secret so it lives in app_settings rather than SecureStore. Reading falls back to the
@@ -84,21 +104,26 @@ export async function getLocalModelBaseUrls(db: OutboxDb): Promise<string[]> {
   const legacy = await getLocalModelBaseUrl(db);
   return legacy ? [legacy] : [];
 }
-export const setLocalModelBaseUrls = (db: OutboxDb, list: string[]) => setSetting(db, KEYS.localModelBaseUrls, JSON.stringify(list));
+export const setLocalModelBaseUrls = (db: OutboxDb, list: string[]) =>
+  setSetting(db, KEYS.localModelBaseUrls, JSON.stringify(list));
 
 export const getLocalModelActiveUrl = (db: OutboxDb) => getSetting(db, KEYS.localModelActiveUrl);
-export const setLocalModelActiveUrl = (db: OutboxDb, value: string) => setSetting(db, KEYS.localModelActiveUrl, value);
+export const setLocalModelActiveUrl = (db: OutboxDb, value: string) =>
+  setSetting(db, KEYS.localModelActiveUrl, value);
 
 export const getFf3ActiveHost = (db: OutboxDb) => getSetting(db, KEYS.ff3ActiveHost);
-export const setFf3ActiveHost = (db: OutboxDb, value: string) => setSetting(db, KEYS.ff3ActiveHost, value);
+export const setFf3ActiveHost = (db: OutboxDb, value: string) =>
+  setSetting(db, KEYS.ff3ActiveHost, value);
 
 export const getLastSyncedAt = (db: OutboxDb) => getSetting(db, KEYS.lastSyncedAt);
-export const setLastSyncedAt = (db: OutboxDb, value: string) => setSetting(db, KEYS.lastSyncedAt, value);
+export const setLastSyncedAt = (db: OutboxDb, value: string) =>
+  setSetting(db, KEYS.lastSyncedAt, value);
 
 export async function getUseServerTime(db: OutboxDb): Promise<boolean> {
   return (await getSetting(db, KEYS.useServerTime)) === '1';
 }
-export const setUseServerTime = (db: OutboxDb, value: boolean) => setSetting(db, KEYS.useServerTime, value ? '1' : '0');
+export const setUseServerTime = (db: OutboxDb, value: boolean) =>
+  setSetting(db, KEYS.useServerTime, value ? '1' : '0');
 
 /** The settings key accountOrder lives under, for a live query of it (src/accounts/useAssetAccounts.ts). */
 export const ACCOUNT_ORDER_KEY = KEYS.accountOrder;
@@ -119,7 +144,8 @@ export function parseAccountOrder(raw: string | null | undefined): Record<string
 export async function getAccountOrder(db: OutboxDb): Promise<Record<string, number>> {
   return parseAccountOrder(await getSetting(db, KEYS.accountOrder));
 }
-export const setAccountOrder = (db: OutboxDb, order: Record<string, number>) => setSetting(db, KEYS.accountOrder, JSON.stringify(order));
+export const setAccountOrder = (db: OutboxDb, order: Record<string, number>) =>
+  setSetting(db, KEYS.accountOrder, JSON.stringify(order));
 
 /** The settings key balancesStale lives under, for a live query of it (app/count.tsx). */
 export const BALANCES_STALE_KEY = KEYS.balancesStale;
@@ -132,7 +158,8 @@ export const BALANCES_STALE_KEY = KEYS.balancesStale;
 export async function getBalancesStale(db: OutboxDb): Promise<boolean> {
   return (await getSetting(db, KEYS.balancesStale)) === '1';
 }
-export const setBalancesStale = (db: OutboxDb, value: boolean) => setSetting(db, KEYS.balancesStale, value ? '1' : '0');
+export const setBalancesStale = (db: OutboxDb, value: boolean) =>
+  setSetting(db, KEYS.balancesStale, value ? '1' : '0');
 
 /** The settings key the UI language lives under, for a live query of it (src/i18n/LocaleSync.tsx). */
 export const LOCALE_KEY = KEYS.locale;
@@ -152,4 +179,5 @@ export const PLANNED_MODE_KEY = KEYS.plannedMode;
 export function parsePlannedMode(raw: string | null | undefined): PlannedMode {
   return raw === 'detailed' ? 'detailed' : 'simple';
 }
-export const setPlannedMode = (db: OutboxDb, value: PlannedMode) => setSetting(db, KEYS.plannedMode, value);
+export const setPlannedMode = (db: OutboxDb, value: PlannedMode) =>
+  setSetting(db, KEYS.plannedMode, value);

@@ -12,7 +12,14 @@ import { useTheme } from './theme';
 import { formatMoney, type DisplayCurrency } from './money';
 import { applyDigit, type KeypadKey } from '../capture/amountInput';
 import {
-  applyShares, balance, capsFor, defaultShares, fromMinor, minorToPosition, positionToMinor, toMinor,
+  applyShares,
+  balance,
+  capsFor,
+  defaultShares,
+  fromMinor,
+  minorToPosition,
+  positionToMinor,
+  toMinor,
 } from '../splits/allocate';
 
 export type AllocationMode =
@@ -27,7 +34,14 @@ export interface AllocationResult {
 }
 
 export function AllocationSheet({
-  visible, mode, amounts, labels, currency, type, onDone, onClose,
+  visible,
+  mode,
+  amounts,
+  labels,
+  currency,
+  type,
+  onDone,
+  onClose,
 }: {
   visible: boolean;
   mode: AllocationMode;
@@ -43,7 +57,8 @@ export function AllocationSheet({
   const dp = currency.decimalPlaces;
 
   const [typed, setTyped] = useState('0');
-  const target = mode.kind === 'newSplit' ? toMinor(typed, dp) : (mode.delta < 0n ? -mode.delta : mode.delta);
+  const target =
+    mode.kind === 'newSplit' ? toMinor(typed, dp) : mode.delta < 0n ? -mode.delta : mode.delta;
   const delta = mode.kind === 'newSplit' ? -target : mode.delta;
   const caps = capsFor(amounts, delta, dp, mode.kind === 'leftover' ? mode.exclude : undefined);
   const sign: 1 | -1 = delta > 0n ? 1 : -1;
@@ -51,8 +66,12 @@ export function AllocationSheet({
 
   // Mounted fresh for each use (the screens render it only while open), so the starting state
   // is set here: the amount step for a new split, default shares for a leftover.
-  const [step, setStep] = useState<'amount' | 'shares'>(mode.kind === 'newSplit' ? 'amount' : 'shares');
-  const [shares, setShares] = useState<bigint[]>(() => (mode.kind === 'newSplit' ? [] : defaultShares(target, caps) ?? caps.map(() => 0n)));
+  const [step, setStep] = useState<'amount' | 'shares'>(
+    mode.kind === 'newSplit' ? 'amount' : 'shares',
+  );
+  const [shares, setShares] = useState<bigint[]>(() =>
+    mode.kind === 'newSplit' ? [] : (defaultShares(target, caps) ?? caps.map(() => 0n)),
+  );
 
   /** "Choose splits": the sliders, starting from the default. */
   function chooseSplits() {
@@ -70,12 +89,18 @@ export function AllocationSheet({
   }
 
   function done() {
-    onDone({ amounts: applyShares(amounts, shares, sign, dp), newAmount: mode.kind === 'newSplit' ? fromMinor(target, dp) : undefined });
+    onDone({
+      amounts: applyShares(amounts, shares, sign, dp),
+      newAmount: mode.kind === 'newSplit' ? fromMinor(target, dp) : undefined,
+    });
   }
 
-  const title = mode.kind === 'newSplit'
-    ? tr('splits.newSplitTitle')
-    : sign > 0 ? tr('splits.assignLeftoverTitle') : tr('splits.takeBackTitle');
+  const title =
+    mode.kind === 'newSplit'
+      ? tr('splits.newSplitTitle')
+      : sign > 0
+        ? tr('splits.assignLeftoverTitle')
+        : tr('splits.takeBackTitle');
 
   if (step === 'amount') {
     const tooMuch = target > 0n && !fits;
@@ -93,7 +118,12 @@ export function AllocationSheet({
           onSave={takeDefault}
         />
         {amounts.length > 1 && (
-          <Button title={tr('splits.chooseSplits')} variant="secondary" onPress={chooseSplits} disabled={target === 0n || tooMuch} />
+          <Button
+            title={tr('splits.chooseSplits')}
+            variant="secondary"
+            onPress={chooseSplits}
+            disabled={target === 0n || tooMuch}
+          />
         )}
       </Sheet>
     );
@@ -105,7 +135,9 @@ export function AllocationSheet({
       visible={visible}
       onClose={onClose}
       title={title}
-      footer={<Button title={tr('common.done')} onPress={done} disabled={!fits || sum !== target} />}
+      footer={
+        <Button title={tr('common.done')} onPress={done} disabled={!fits || sum !== target} />
+      }
     >
       <Text style={[t.type.body, { color: t.color.textMuted }]}>
         {!fits
@@ -114,30 +146,39 @@ export function AllocationSheet({
             ? tr('splits.giveHint', { amount: formatMoney(fromMinor(target, dp), currency) })
             : tr('splits.takeHint', { amount: formatMoney(fromMinor(target, dp), currency) })}
       </Text>
-      {fits && amounts.map((amount, i) => {
-        const share = shares[i] ?? 0n;
-        const cap = caps[i] ?? 0n;
-        const after = fromMinor(toMinor(amount, dp) + BigInt(sign) * share, dp);
-        return (
-          <View key={i} style={{ gap: t.space.xs }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: t.space.md }}>
-              <Text style={[t.type.body, { color: t.color.text, flex: 1 }]} numberOfLines={1}>{labels[i]}</Text>
-              <Text style={[t.type.body, t.type.money, { color: t.color.text }]}>
-                {`${sign > 0 ? '+' : '−'}${formatMoney(fromMinor(share, dp), currency)}`}
+      {fits &&
+        amounts.map((amount, i) => {
+          const share = shares[i] ?? 0n;
+          const cap = caps[i] ?? 0n;
+          const after = fromMinor(toMinor(amount, dp) + BigInt(sign) * share, dp);
+          return (
+            <View key={i} style={{ gap: t.space.xs }}>
+              <View
+                style={{ flexDirection: 'row', justifyContent: 'space-between', gap: t.space.md }}
+              >
+                <Text style={[t.type.body, { color: t.color.text, flex: 1 }]} numberOfLines={1}>
+                  {labels[i]}
+                </Text>
+                <Text style={[t.type.body, t.type.money, { color: t.color.text }]}>
+                  {`${sign > 0 ? '+' : '−'}${formatMoney(fromMinor(share, dp), currency)}`}
+                </Text>
+              </View>
+              <Slider
+                value={minorToPosition(share, cap)}
+                disabled={cap === 0n}
+                accessibilityLabel={labels[i]}
+                onChange={(position) =>
+                  setShares((current) =>
+                    balance(current, caps, target, i, positionToMinor(position, cap)),
+                  )
+                }
+              />
+              <Text style={[t.type.label, { color: t.color.textMuted }]}>
+                {tr('splits.becomes', { amount: formatMoney(after, currency) })}
               </Text>
             </View>
-            <Slider
-              value={minorToPosition(share, cap)}
-              disabled={cap === 0n}
-              accessibilityLabel={labels[i]}
-              onChange={(position) => setShares((current) => balance(current, caps, target, i, positionToMinor(position, cap)))}
-            />
-            <Text style={[t.type.label, { color: t.color.textMuted }]}>
-              {tr('splits.becomes', { amount: formatMoney(after, currency) })}
-            </Text>
-          </View>
-        );
-      })}
+          );
+        })}
     </Sheet>
   );
 }

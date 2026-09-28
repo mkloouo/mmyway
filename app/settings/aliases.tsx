@@ -38,7 +38,9 @@ export default function AliasesScreen() {
   // normkey, like every other search: toLowerCase alone missed "Żabka" for "żabka".
   const needle = normkey(search);
   const visible = needle
-    ? rows.filter((r) => normkey(r.rawInput).includes(needle) || normkey(r.targetName).includes(needle))
+    ? rows.filter(
+        (r) => normkey(r.rawInput).includes(needle) || normkey(r.targetName).includes(needle),
+      )
     : rows;
 
   function openAddSheet() {
@@ -49,14 +51,29 @@ export default function AliasesScreen() {
 
   const saveAlias = act(tr('common.save'), async () => {
     if (!rawInput.trim() || !pickedTarget) return;
-    await upsertAlias(db, { kind: PAYEE, rawInput: rawInput.trim(), targetId: pickedTarget.targetId, targetName: pickedTarget.targetName });
+    await upsertAlias(db, {
+      kind: PAYEE,
+      rawInput: rawInput.trim(),
+      targetId: pickedTarget.targetId,
+      targetName: pickedTarget.targetName,
+    });
     setAddSheetOpen(false);
   });
 
-  const confirmRemove = act(tr('addresses.remove'), async (row: { kind: string; rawInput: string; targetName: string }) => {
-    if (!await confirmDestructive(tr('aliases.removeTitle', { raw: row.rawInput }), tr('addresses.remove'), tr('aliases.removeBody', { target: row.targetName }))) return;
-    await removeAlias(db, row.kind, row.rawInput);
-  });
+  const confirmRemove = act(
+    tr('addresses.remove'),
+    async (row: { kind: string; rawInput: string; targetName: string }) => {
+      if (
+        !(await confirmDestructive(
+          tr('aliases.removeTitle', { raw: row.rawInput }),
+          tr('addresses.remove'),
+          tr('aliases.removeBody', { target: row.targetName }),
+        ))
+      )
+        return;
+      await removeAlias(db, row.kind, row.rawInput);
+    },
+  );
 
   const onExport = act(tr('aliases.exportOrImport'), async () => {
     setTransferJson(await exportAliasesJson(db));
@@ -68,8 +85,10 @@ export default function AliasesScreen() {
     const result = await importAliasesJson(db, transferJson);
     Alert.alert(
       tr('aliases.importCompleteTitle'),
-      tr('aliases.importComplete', { imported: result.imported, collisions: result.collisions.length })
-        + (result.skipped > 0 ? ` ${tr('aliases.importSkipped', { count: result.skipped })}` : ''),
+      tr('aliases.importComplete', {
+        imported: result.imported,
+        collisions: result.collisions.length,
+      }) + (result.skipped > 0 ? ` ${tr('aliases.importSkipped', { count: result.skipped })}` : ''),
     );
     setTransferSheetOpen(false);
   });
@@ -78,9 +97,13 @@ export default function AliasesScreen() {
     <Screen bottom>
       <AppBar
         title={tr('aliases.title')}
-        right={(
-          <BarIconButton icon="ellipsis-horizontal" label={tr('aliases.exportOrImport')} onPress={onExport} />
-        )}
+        right={
+          <BarIconButton
+            icon="ellipsis-horizontal"
+            label={tr('aliases.exportOrImport')}
+            onPress={onExport}
+          />
+        }
       />
       <View style={{ paddingHorizontal: t.space.lg, gap: t.space.sm }}>
         <SearchField value={search} onChangeText={setSearch} placeholder={tr('aliases.search')} />
@@ -91,14 +114,37 @@ export default function AliasesScreen() {
         keyExtractor={(row) => row.id}
         contentContainerStyle={{ padding: t.space.lg, gap: t.space.xs }}
         renderItem={({ item }) => (
-          <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: t.space.sm, borderBottomWidth: 1, borderBottomColor: t.color.border }}>
-            <Text style={[t.type.body, { color: t.color.text, flex: 1 }]} numberOfLines={1}>{item.rawInput} → {item.targetName}</Text>
-            <Pressable onPress={() => confirmRemove(item)} accessibilityRole="button" accessibilityLabel={tr('addresses.removeAddress', { address: item.rawInput })}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              paddingVertical: t.space.sm,
+              borderBottomWidth: 1,
+              borderBottomColor: t.color.border,
+            }}
+          >
+            <Text style={[t.type.body, { color: t.color.text, flex: 1 }]} numberOfLines={1}>
+              {item.rawInput} → {item.targetName}
+            </Text>
+            <Pressable
+              onPress={() => confirmRemove(item)}
+              accessibilityRole="button"
+              accessibilityLabel={tr('addresses.removeAddress', { address: item.rawInput })}
+            >
               <Text style={[t.type.body, { color: t.color.danger }]}>✕</Text>
             </Pressable>
           </View>
         )}
-        ListEmptyComponent={<Text style={[t.type.body, { color: t.color.textFaint, paddingTop: t.space.xl, textAlign: 'center' }]}>{tr('aliases.empty')}</Text>}
+        ListEmptyComponent={
+          <Text
+            style={[
+              t.type.body,
+              { color: t.color.textFaint, paddingTop: t.space.xl, textAlign: 'center' },
+            ]}
+          >
+            {tr('aliases.empty')}
+          </Text>
+        }
       />
 
       <Pressable
@@ -106,8 +152,17 @@ export default function AliasesScreen() {
         accessibilityRole="button"
         accessibilityLabel={tr('aliases.add')}
         style={({ pressed }) => ({
-          position: 'absolute', right: t.space.lg, bottom: t.space.lg, width: 56, height: 56, borderRadius: t.radius.pill,
-          backgroundColor: t.color.accent, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.7 : 1, elevation: 3,
+          position: 'absolute',
+          right: t.space.lg,
+          bottom: t.space.lg,
+          width: 56,
+          height: 56,
+          borderRadius: t.radius.pill,
+          backgroundColor: t.color.accent,
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: pressed ? 0.7 : 1,
+          elevation: 3,
         })}
       >
         <Text style={[t.type.title, { color: t.color.onAccent }]}>＋</Text>
@@ -117,7 +172,13 @@ export default function AliasesScreen() {
         visible={addSheetOpen}
         onClose={() => setAddSheetOpen(false)}
         title={tr('aliases.newTitle')}
-        footer={<Button title={tr('common.save')} onPress={saveAlias} disabled={!rawInput.trim() || !pickedTarget} />}
+        footer={
+          <Button
+            title={tr('common.save')}
+            onPress={saveAlias}
+            disabled={!rawInput.trim() || !pickedTarget}
+          />
+        }
       >
         <TextField
           value={rawInput}
@@ -133,13 +194,19 @@ export default function AliasesScreen() {
         />
       </Sheet>
 
-      <TargetPickerSheet visible={targetSheetOpen} onClose={() => setTargetSheetOpen(false)} onSelect={setPickedTarget} />
+      <TargetPickerSheet
+        visible={targetSheetOpen}
+        onClose={() => setTargetSheetOpen(false)}
+        onSelect={setPickedTarget}
+      />
 
       <Sheet
         visible={transferSheetOpen}
         onClose={() => setTransferSheetOpen(false)}
         title={tr('aliases.transferTitle')}
-        footer={<Button title={tr('aliases.importButton')} onPress={onImport} disabled={!transferJson} />}
+        footer={
+          <Button title={tr('aliases.importButton')} onPress={onImport} disabled={!transferJson} />
+        }
       >
         <TextField
           value={transferJson}

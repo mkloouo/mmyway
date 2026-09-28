@@ -12,7 +12,10 @@ export type ReferenceAccountRow = typeof referenceAccounts.$inferSelect;
 
 /** Pure half of useAssetAccounts, for tests and non-hook callers. */
 /** Sorted by FF3's own account order (Settings → Accounts → Reorder), then by name. */
-export function selectAssetAccounts(rows: ReferenceAccountRow[], opts: { includeInactive?: boolean; order?: Record<string, number> } = {}): ReferenceAccountRow[] {
+export function selectAssetAccounts(
+  rows: ReferenceAccountRow[],
+  opts: { includeInactive?: boolean; order?: Record<string, number> } = {},
+): ReferenceAccountRow[] {
   const order = opts.order ?? {};
   const rank = (a: ReferenceAccountRow) => order[a.id] ?? Number.MAX_SAFE_INTEGER;
   return rows
@@ -21,14 +24,21 @@ export function selectAssetAccounts(rows: ReferenceAccountRow[], opts: { include
 }
 
 /** undefined until the first read lands (see src/db/useLiveQuery.ts). */
-export function useAssetAccounts(opts: { includeInactive?: boolean } = {}): ReferenceAccountRow[] | undefined {
+export function useAssetAccounts(
+  opts: { includeInactive?: boolean } = {},
+): ReferenceAccountRow[] | undefined {
   const db = useDb();
   const { data } = useLiveQuery(db.select().from(referenceAccounts));
-  const { data: orderRows } = useLiveQuery(db.select().from(appSettings).where(eq(appSettings.key, ACCOUNT_ORDER_KEY)));
+  const { data: orderRows } = useLiveQuery(
+    db.select().from(appSettings).where(eq(appSettings.key, ACCOUNT_ORDER_KEY)),
+  );
   const includeInactive = !!opts.includeInactive;
   const rawOrder = orderRows?.[0]?.value;
   return useMemo(
-    () => (data ? selectAssetAccounts(data, { includeInactive, order: parseAccountOrder(rawOrder) }) : undefined),
+    () =>
+      data
+        ? selectAssetAccounts(data, { includeInactive, order: parseAccountOrder(rawOrder) })
+        : undefined,
     [data, includeInactive, rawOrder],
   );
 }

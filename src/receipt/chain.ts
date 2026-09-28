@@ -22,5 +22,9 @@ export async function runProviderChain(
       // try the next provider in the chain
     }
   }
-  return { ok: false, reason: anyAnswered ? 'all_providers_failed' : 'all_providers_unreachable', errors };
+  return {
+    ok: false,
+    reason: anyAnswered ? 'all_providers_failed' : 'all_providers_unreachable',
+    errors,
+  };
 }

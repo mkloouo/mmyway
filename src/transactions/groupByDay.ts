@@ -48,8 +48,18 @@ export function groupByDay<T extends DayTransaction>(rows: T[]): DaySection<T>[]
     for (const row of data) {
       if (row.type === 'transfer') continue;
       const signed = row.type === 'withdrawal' ? `-${row.amount}` : row.amount;
-      totalsByCurrency.set(row.currencyCode, addDecimal(totalsByCurrency.get(row.currencyCode) ?? '0', signed));
+      totalsByCurrency.set(
+        row.currencyCode,
+        addDecimal(totalsByCurrency.get(row.currencyCode) ?? '0', signed),
+      );
     }
-    return { key, data, totals: [...totalsByCurrency.entries()].map(([currencyCode, amount]) => ({ currencyCode, amount })) };
+    return {
+      key,
+      data,
+      totals: [...totalsByCurrency.entries()].map(([currencyCode, amount]) => ({
+        currencyCode,
+        amount,
+      })),
+    };
   });
 }

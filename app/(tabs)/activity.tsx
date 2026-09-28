@@ -11,15 +11,37 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useDb } from '../../src/providers/DbProvider';
 import { SearchField } from '../../src/ui/SearchField';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, AppBar, BarRow, BarIconButton, SectionHeader, Card, Chip, Money, EmptyState, Sheet, Row, Button } from '../../src/ui/components';
+import {
+  Screen,
+  AppBar,
+  BarRow,
+  BarIconButton,
+  SectionHeader,
+  Card,
+  Chip,
+  Money,
+  EmptyState,
+  Sheet,
+  Row,
+  Button,
+} from '../../src/ui/components';
 import { CaptureDock } from '../../src/ui/CaptureDock';
 import { currencyOf, formatMoney } from '../../src/ui/money';
 import { categoryColor } from '../../src/ui/categoryColor';
 import { relativeTime } from '../../src/ui/relativeTime';
-import { useTransactionPage, type ActivityTypeFilter, type CachedTransactionRow } from '../../src/transactions/useTransactionPage';
+import {
+  useTransactionPage,
+  type ActivityTypeFilter,
+  type CachedTransactionRow,
+} from '../../src/transactions/useTransactionPage';
 import { useLoadOlderHistory, usePullToRefresh } from '../../src/sync/useSync';
 import { getClient } from '../../src/api/ff3/session';
-import { referenceCurrencies, outboxOperations, cachedTransactions, inboxItems } from '../../src/db/schema';
+import {
+  referenceCurrencies,
+  outboxOperations,
+  cachedTransactions,
+  inboxItems,
+} from '../../src/db/schema';
 import { useAssetAccounts, type ReferenceAccountRow } from '../../src/accounts/useAssetAccounts';
 import type { CreateTransactionPayload } from '../../src/sync/outbox';
 import type { TransactionRead, TransactionSplit } from '../../src/api/ff3/types';
@@ -30,7 +52,11 @@ import { addDecimal } from '../../src/api/ff3/decimal';
 import { deleteCachedTransactions } from '../../src/sync/outbox';
 import { and, desc, eq, inArray, isNotNull, max, ne } from 'drizzle-orm';
 import { haptics } from '../../src/ui/haptics';
-import { pendingEdits, applyPendingEdit, type PendingEditStatus } from '../../src/transactions/pendingEdits';
+import {
+  pendingEdits,
+  applyPendingEdit,
+  type PendingEditStatus,
+} from '../../src/transactions/pendingEdits';
 import { payloadGroupId, readPayload } from '../../src/sync/payloadJson';
 import { useAction } from '../../src/ui/useAction';
 import { PendingDot } from '../../src/ui/PendingDot';
@@ -52,12 +78,20 @@ const STALE_MS = 24 * 60 * 60 * 1000;
 /** Split lines shown under a split transaction's row before "+N more". */
 const MAX_SPLIT_LINES = 3;
 const REMOTE_SECTION_KEY = 'ff3-search';
-const PENDING_LABEL_KEYS: Record<PendingEditStatus, string> = { queued: 'draft.queued', failed: 'activity.notSent', conflict: 'inbox.conflict' };
+const PENDING_LABEL_KEYS: Record<PendingEditStatus, string> = {
+  queued: 'draft.queued',
+  failed: 'activity.notSent',
+  conflict: 'inbox.conflict',
+};
 
 /** A cached row, plus the state of any edit to it that is saved here but not yet in FF3. */
 type ActivityCachedRow = CachedTransactionRow & { pendingStatus?: PendingEditStatus };
 type ActivityItem = ActivityCachedRow | QueuedRow | RemoteResultRow;
-interface DisplaySection { key: string; totals: { currencyCode: string; amount: string }[]; data: ActivityItem[] }
+interface DisplaySection {
+  key: string;
+  totals: { currencyCode: string; amount: string }[];
+  data: ActivityItem[];
+}
 type Currencies = (typeof referenceCurrencies.$inferSelect)[];
 
 interface QueuedRow {
@@ -135,7 +169,9 @@ function dayTitle(key: string): string {
   if (key === localDayKey(yesterday)) return i18n.t('capture.yesterday').toUpperCase();
   const [y, m, d] = key.split('-').map(Number);
   // Always with the year: scrolling back past January otherwise gave two identical "14 SEP"s.
-  return new Date(y!, m! - 1, d!).toLocaleDateString(appLocale(), { day: 'numeric', month: 'short', year: 'numeric' }).toUpperCase();
+  return new Date(y!, m! - 1, d!)
+    .toLocaleDateString(appLocale(), { day: 'numeric', month: 'short', year: 'numeric' })
+    .toUpperCase();
 }
 
 function sumAmounts(splits: TransactionSplit[]): string {
@@ -148,16 +184,33 @@ function landingRow(inboxItemId: string, draftJson: string): QueuedRow | null {
     const d = readDraft(draftJson);
     const extras = d.extraSplits ?? [];
     return {
-      queued: true, landing: true, groupId: `landing:${inboxItemId}`, inboxItemId,
-      description: extras.length ? (d.groupTitle || d.description) : d.description,
-      amount: draftTotal(d), currencyCode: d.currencyCode, type: d.type,
-      sourceId: d.sourceId ?? null, destinationId: d.destinationId ?? null,
-      sourceName: d.sourceName ?? null, destinationName: d.destinationName ?? null,
-      categoryName: extras.length ? null : d.categoryName ?? null,
-      splits: extras.length ? [
-        { label: d.categoryName || d.description, amount: d.amount, categoryName: d.categoryName ?? null },
-        ...extras.map((s) => ({ label: s.categoryName || s.description, amount: s.amount, categoryName: s.categoryName ?? null })),
-      ] : [],
+      queued: true,
+      landing: true,
+      groupId: `landing:${inboxItemId}`,
+      inboxItemId,
+      description: extras.length ? d.groupTitle || d.description : d.description,
+      amount: draftTotal(d),
+      currencyCode: d.currencyCode,
+      type: d.type,
+      sourceId: d.sourceId ?? null,
+      destinationId: d.destinationId ?? null,
+      sourceName: d.sourceName ?? null,
+      destinationName: d.destinationName ?? null,
+      categoryName: extras.length ? null : (d.categoryName ?? null),
+      splits: extras.length
+        ? [
+            {
+              label: d.categoryName || d.description,
+              amount: d.amount,
+              categoryName: d.categoryName ?? null,
+            },
+            ...extras.map((s) => ({
+              label: s.categoryName || s.description,
+              amount: s.amount,
+              categoryName: s.categoryName ?? null,
+            })),
+          ]
+        : [],
     };
   } catch {
     return null;
@@ -167,7 +220,11 @@ function landingRow(inboxItemId: string, draftJson: string): QueuedRow | null {
 /** A cached split transaction's splits, for the lines under its row. */
 function cachedSplitLines(row: CachedTransactionRow): SplitLine[] {
   if (row.splitCount < 2) return [];
-  return (readSplits(row.splitsJson) ?? []).map((s) => ({ label: s.categoryName || s.description, amount: s.amount, categoryName: s.categoryName }));
+  return (readSplits(row.splitsJson) ?? []).map((s) => ({
+    label: s.categoryName || s.description,
+    amount: s.amount,
+    categoryName: s.categoryName,
+  }));
 }
 
 export default function ActivityScreen() {
@@ -187,16 +244,27 @@ export default function ActivityScreen() {
 
   const assetAccounts = useAssetAccounts() ?? [];
   const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
-  const { data: outbox } = useLiveQuery(db.select().from(outboxOperations).where(ne(outboxOperations.kind, 'update_account')));
+  const { data: outbox } = useLiveQuery(
+    db.select().from(outboxOperations).where(ne(outboxOperations.kind, 'update_account')),
+  );
   // Just "has anything ever synced" — .limit(1) instead of loading the whole cached table.
-  const { data: cachedTxProbe } = useLiveQuery(db.select({ id: cachedTransactions.groupId }).from(cachedTransactions).limit(1));
+  const { data: cachedTxProbe } = useLiveQuery(
+    db.select({ id: cachedTransactions.groupId }).from(cachedTransactions).limit(1),
+  );
 
-  const { sections, dataKey, loadMore, loadingMore, atEnd } = useTransactionPage({ search, type, accountId: accountFilter });
+  const { sections, dataKey, loadMore, loadingMore, atEnd } = useTransactionPage({
+    search,
+    type,
+    accountId: accountFilter,
+  });
   const { loadOlder, loadingOlder, exhausted, reset: resetExhausted } = useLoadOlderHistory();
   // The local cache runs out before real history does — reaching the end of what's cached pulls
   // a further chunk from FF3 instead of just stopping (see useLoadOlderHistory).
   function handleEndReached() {
-    if (!atEnd) { loadMore(); return; }
+    if (!atEnd) {
+      loadMore();
+      return;
+    }
     if (!exhausted) void loadOlder();
   }
   const reachedRealEnd = atEnd && exhausted;
@@ -210,14 +278,22 @@ export default function ActivityScreen() {
   const toggleSelected = useCallback((groupId: string) => {
     setSelectedIds((cur) => {
       const next = new Set(cur);
-      if (next.has(groupId)) next.delete(groupId); else next.add(groupId);
+      if (next.has(groupId)) next.delete(groupId);
+      else next.add(groupId);
       return next;
     });
   }, []);
   const [leavingIds, setLeavingIds] = useState<Set<string>>(new Set());
   const deleteSelected = act(tr('common.delete'), async () => {
     const ids = [...selectedIds];
-    if (!await confirmDestructive(tr('activity.deleteTitle', { count: ids.length }), tr('common.delete'), tr('activity.deleteBody'))) return;
+    if (
+      !(await confirmDestructive(
+        tr('activity.deleteTitle', { count: ids.length }),
+        tr('common.delete'),
+        tr('activity.deleteBody'),
+      ))
+    )
+      return;
     setSelectedIds(new Set());
     // The rows fold away first, then the deletes are queued (which takes them out of the list).
     leaveThen(ids, setLeavingIds, () => deleteCachedTransactions(db, ids));
@@ -225,10 +301,14 @@ export default function ActivityScreen() {
 
   // A FF3 search result isn't in the local cache; store the copy we already have, then open it.
   // Memoized: onRowPress below depends on it, and the rows only stay memoized while that is stable.
-  const openRemote = useMemo(() => act(tr('activity.search'), async (item: RemoteResultRow) => {
-    if (!await cacheRemoteResult(db, item.group)) return;
-    navigateOnce(`/transactions/${item.groupId}`);
-  }), [act, db, tr]);
+  const openRemote = useMemo(
+    () =>
+      act(tr('activity.search'), async (item: RemoteResultRow) => {
+        if (!(await cacheRemoteResult(db, item.group))) return;
+        navigateOnce(`/transactions/${item.groupId}`);
+      }),
+    [act, db, tr],
+  );
 
   // Once local search runs out of cached rows to page through, FF3's own search covers what
   // hasn't been pulled into cachedTransactions yet — kept as a separate section rather than
@@ -237,7 +317,9 @@ export default function ActivityScreen() {
   // Only ever holds a *finished* fetch (never "loading") — "loading" is derived below from
   // whether this still matches remoteQuery, rather than set eagerly at the top of the effect.
   const [fetchedSearch, setFetchedSearch] = useState<
-    { query: string; status: 'done'; rows: RemoteResultRow[] } | { query: string; status: 'error' | 'offline' } | null
+    | { query: string; status: 'done'; rows: RemoteResultRow[] }
+    | { query: string; status: 'error' | 'offline' }
+    | null
   >(null);
   useEffect(() => {
     if (!remoteQuery) return;
@@ -257,13 +339,17 @@ export default function ActivityScreen() {
         if (!cancelled) setFetchedSearch({ status: 'error', query: remoteQuery });
       }
     })();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [db, remoteQuery]);
   // Once the query changes, the fetch above hasn't re-run yet — falling back to "loading" here
   // instead of resetting fetchedSearch avoids a stale result flashing under the new query.
-  const remoteSearch: RemoteSearchState = !remoteQuery ? { status: 'idle' }
-    : fetchedSearch?.query === remoteQuery ? fetchedSearch
-    : { status: 'loading', query: remoteQuery };
+  const remoteSearch: RemoteSearchState = !remoteQuery
+    ? { status: 'idle' }
+    : fetchedSearch?.query === remoteQuery
+      ? fetchedSearch
+      : { status: 'loading', query: remoteQuery };
 
   // Everything read from the outbox, parsed once per outbox change rather than on every render —
   // a selection tap re-renders this screen, and re-parsing every queued payload each time was
@@ -271,61 +357,109 @@ export default function ActivityScreen() {
   const { queuedRows, pendingDeletes, edits } = useMemo(() => {
     const ops = outbox ?? [];
     const queued: QueuedRow[] = ops
-      .filter((op) => op.kind === 'create_transaction' && (op.status === 'pending' || op.status === 'in_flight'))
+      .filter(
+        (op) =>
+          op.kind === 'create_transaction' &&
+          (op.status === 'pending' || op.status === 'in_flight'),
+      )
       .map((op): QueuedRow | null => {
         // An unreadable payload fails its own operation (Inbox, Needs attention); it mustn't take
         // the whole list down with it.
         let payload: CreateTransactionPayload;
-        try { payload = readPayload<CreateTransactionPayload>(op.kind, op.payloadJson); } catch { return null; }
+        try {
+          payload = readPayload<CreateTransactionPayload>(op.kind, op.payloadJson);
+        } catch {
+          return null;
+        }
         const split = payload.splits[0];
         if (!split) return null;
         const many = payload.splits.length > 1;
         return {
-          queued: true, groupId: op.id, inboxItemId: op.inboxItemId,
+          queued: true,
+          groupId: op.id,
+          inboxItemId: op.inboxItemId,
           description: many ? (payload.groupTitle ?? split.description) : split.description,
           amount: many ? sumAmounts(payload.splits) : split.amount,
-          currencyCode: split.currency_code ?? '', type: split.type,
+          currencyCode: split.currency_code ?? '',
+          type: split.type,
           sourceId: split.source_id != null ? String(split.source_id) : null,
           destinationId: split.destination_id != null ? String(split.destination_id) : null,
-          sourceName: split.source_name ?? null, destinationName: split.destination_name ?? null,
-          categoryName: many ? null : split.category_name ?? null,
-          splits: many ? payload.splits.map((s) => ({ label: s.category_name || s.description, amount: s.amount, categoryName: s.category_name ?? null })) : [],
+          sourceName: split.source_name ?? null,
+          destinationName: split.destination_name ?? null,
+          categoryName: many ? null : (split.category_name ?? null),
+          splits: many
+            ? payload.splits.map((s) => ({
+                label: s.category_name || s.description,
+                amount: s.amount,
+                categoryName: s.category_name ?? null,
+              }))
+            : [],
         };
       })
       .filter((r): r is QueuedRow => !!r);
     // A queued delete takes the row out right away — it used to sit there, unchanged, until a
     // pull-to-refresh after the delete had gone through.
-    const deletes = new Set(ops
-      .filter((op) => op.kind === 'delete_transaction' && op.status !== 'failed')
-      .map((op) => payloadGroupId(op.kind, op.payloadJson))
-      .filter((id): id is string => !!id));
+    const deletes = new Set(
+      ops
+        .filter((op) => op.kind === 'delete_transaction' && op.status !== 'failed')
+        .map((op) => payloadGroupId(op.kind, op.payloadJson))
+        .filter((id): id is string => !!id),
+    );
     return { queuedRows: queued, pendingDeletes: deletes, edits: pendingEdits(ops) };
   }, [outbox]);
 
   // Entries the Inbox sent to FF3 lately. A queued row and the synced row that replaces it are
   // listed under one key (the inbox item's), and until the synced copy is in the list the sent
   // entry stays on screen from its draft — it used to vanish between the two.
-  const { data: sentItems } = useLiveQuery(db.select({
-    id: inboxItems.id, kind: inboxItems.kind, draftJson: inboxItems.draftJson, ff3GroupId: inboxItems.ff3GroupId, updatedAt: inboxItems.updatedAt,
-  }).from(inboxItems).where(and(eq(inboxItems.state, 'synced'), isNotNull(inboxItems.ff3GroupId))).orderBy(desc(inboxItems.updatedAt)).limit(30));
-  const inboxByGroup = useMemo(() => new Map((sentItems ?? []).map((i) => [i.ff3GroupId!, i.id])), [sentItems]);
+  const { data: sentItems } = useLiveQuery(
+    db
+      .select({
+        id: inboxItems.id,
+        kind: inboxItems.kind,
+        draftJson: inboxItems.draftJson,
+        ff3GroupId: inboxItems.ff3GroupId,
+        updatedAt: inboxItems.updatedAt,
+      })
+      .from(inboxItems)
+      .where(and(eq(inboxItems.state, 'synced'), isNotNull(inboxItems.ff3GroupId)))
+      .orderBy(desc(inboxItems.updatedAt))
+      .limit(30),
+  );
+  const inboxByGroup = useMemo(
+    () => new Map((sentItems ?? []).map((i) => [i.ff3GroupId!, i.id])),
+    [sentItems],
+  );
   // Whether a sent entry has reached the cache is asked of the whole cache, never of the filtered
   // list (src/transactions/pinnedRows.ts has the bug this caused).
   const sentGroupIds = (sentItems ?? []).map((i) => i.ff3GroupId!);
   const { data: sentCached } = useLiveQuery(
-    db.select({ id: cachedTransactions.groupId }).from(cachedTransactions).where(inArray(cachedTransactions.groupId, sentGroupIds)),
+    db
+      .select({ id: cachedTransactions.groupId })
+      .from(cachedTransactions)
+      .where(inArray(cachedTransactions.groupId, sentGroupIds)),
     [sentGroupIds.join(',')],
   );
-  const { data: caughtUpRows } = useLiveQuery(db.select({ at: max(cachedTransactions.syncedAt) }).from(cachedTransactions));
+  const { data: caughtUpRows } = useLiveQuery(
+    db.select({ at: max(cachedTransactions.syncedAt) }).from(cachedTransactions),
+  );
   const cacheFacts = useMemo(
-    () => (sentCached && caughtUpRows ? { groupIds: new Set(sentCached.map((r) => r.id)), caughtUpAt: caughtUpRows[0]?.at ?? null } : null),
+    () =>
+      sentCached && caughtUpRows
+        ? {
+            groupIds: new Set(sentCached.map((r) => r.id)),
+            caughtUpAt: caughtUpRows[0]?.at ?? null,
+          }
+        : null,
     [sentCached, caughtUpRows],
   );
-  const rowKey = useCallback((row: ActivityItem) => {
-    if ('queued' in row) return row.inboxItemId ? `inbox:${row.inboxItemId}` : row.groupId;
-    const inboxId = inboxByGroup.get(row.groupId);
-    return inboxId ? `inbox:${inboxId}` : row.groupId;
-  }, [inboxByGroup]);
+  const rowKey = useCallback(
+    (row: ActivityItem) => {
+      if ('queued' in row) return row.inboxItemId ? `inbox:${row.inboxItemId}` : row.groupId;
+      const inboxId = inboxByGroup.get(row.groupId);
+      return inboxId ? `inbox:${inboxId}` : row.groupId;
+    },
+    [inboxByGroup],
+  );
 
   const remoteRows = remoteSearch.status === 'done' ? remoteSearch.rows : null;
   const displaySections = useMemo(() => {
@@ -336,7 +470,9 @@ export default function ActivityScreen() {
       .filter((r): r is QueuedRow => !!r);
     // Pinned rows follow the same filters as the cached ones: they used to show under every account.
     const filter = { type, accountId: accountFilter, search };
-    const pinned = [...queuedRows, ...landingRows].filter((row) => matchesActivityFilter(row, filter));
+    const pinned = [...queuedRows, ...landingRows].filter((row) =>
+      matchesActivityFilter(row, filter),
+    );
     const result: DisplaySection[] = sections
       .map((s): DisplaySection => ({
         key: s.key,
@@ -359,53 +495,96 @@ export default function ActivityScreen() {
       result.push({ key: REMOTE_SECTION_KEY, totals: [], data: remoteRows });
     }
     return result;
-  }, [sections, pendingDeletes, edits, queuedRows, remoteRows, sentItems, cacheFacts, type, accountFilter, search]);
+  }, [
+    sections,
+    pendingDeletes,
+    edits,
+    queuedRows,
+    remoteRows,
+    sentItems,
+    cacheFacts,
+    type,
+    accountFilter,
+    search,
+  ]);
 
   // Rows get callbacks that only change when selection mode starts or ends (when every row
   // re-renders anyway), so a memoized row re-renders only when its own selected state changes —
   // not every row on every tap.
-  const onRowPress = useCallback((item: ActivityItem) => {
-    // A queued entry isn't in FF3 yet: open it as its Inbox draft, where a still-waiting one can
-    // be cancelled.
-    if ('queued' in item) { if (item.inboxItemId) navigateOnce(`/draft/${item.inboxItemId}`); return; }
-    if (selecting) { toggleSelected(item.groupId); return; }
-    if ('remote' in item) { void openRemote(item); return; }
-    navigateOnce(`/transactions/${item.groupId}`);
-  }, [selecting, toggleSelected, openRemote]);
-  const onRowLongPress = useCallback((item: ActivityItem) => {
-    void haptics.tick();
-    toggleSelected(item.groupId);
-  }, [toggleSelected]);
-  const renderItem = useCallback(({ item }: { item: ActivityItem }) => (
-    <Collapsible collapsed={leavingIds.has(item.groupId)}>
-      <ActivityRow
-        item={item}
-        selecting={selecting}
-        selected={selectedIds.has(item.groupId)}
-        currencies={currencies}
-        onPress={onRowPress}
-        onLongPress={onRowLongPress}
-      />
-    </Collapsible>
-  ), [selecting, selectedIds, currencies, onRowPress, onRowLongPress, leavingIds]);
+  const onRowPress = useCallback(
+    (item: ActivityItem) => {
+      // A queued entry isn't in FF3 yet: open it as its Inbox draft, where a still-waiting one can
+      // be cancelled.
+      if ('queued' in item) {
+        if (item.inboxItemId) navigateOnce(`/draft/${item.inboxItemId}`);
+        return;
+      }
+      if (selecting) {
+        toggleSelected(item.groupId);
+        return;
+      }
+      if ('remote' in item) {
+        void openRemote(item);
+        return;
+      }
+      navigateOnce(`/transactions/${item.groupId}`);
+    },
+    [selecting, toggleSelected, openRemote],
+  );
+  const onRowLongPress = useCallback(
+    (item: ActivityItem) => {
+      void haptics.tick();
+      toggleSelected(item.groupId);
+    },
+    [toggleSelected],
+  );
+  const renderItem = useCallback(
+    ({ item }: { item: ActivityItem }) => (
+      <Collapsible collapsed={leavingIds.has(item.groupId)}>
+        <ActivityRow
+          item={item}
+          selecting={selecting}
+          selected={selectedIds.has(item.groupId)}
+          currencies={currencies}
+          onPress={onRowPress}
+          onLongPress={onRowLongPress}
+        />
+      </Collapsible>
+    ),
+    [selecting, selectedIds, currencies, onRowPress, onRowLongPress, leavingIds],
+  );
   // Stable, and the header memoized: an inline one re-rendered every header, each formatting its
   // date again, on every tap on the screen (a filter chip, a balance card, a selection).
-  const renderSectionHeader = useCallback(({ section }: { section: DisplaySection }) => (
-    <DayHeader sectionKey={section.key} totals={section.totals} currencies={currencies} />
-  ), [currencies]);
-  const toggleAccountFilter = useCallback((id: string) => setAccountFilter((cur) => (cur === id ? null : id)), []);
+  const renderSectionHeader = useCallback(
+    ({ section }: { section: DisplaySection }) => (
+      <DayHeader sectionKey={section.key} totals={section.totals} currencies={currencies} />
+    ),
+    [currencies],
+  );
+  const toggleAccountFilter = useCallback(
+    (id: string) => setAccountFilter((cur) => (cur === id ? null : id)),
+    [],
+  );
 
   // The listener is added once but reads the current sections through a ref: it used to close
   // over the first render's (empty) list and never scroll.
   const hasSectionsRef = useRef(false);
-  useEffect(() => { hasSectionsRef.current = displaySections.length > 0; }, [displaySections]);
   useEffect(() => {
-    const unsubscribe = (navigation as unknown as { addListener: (event: string, cb: () => void) => () => void })
-      .addListener('tabPress', () => {
-        if (navigation.isFocused() && hasSectionsRef.current) {
-          listRef.current?.scrollToLocation({ sectionIndex: 0, itemIndex: 0, animated: true, viewOffset: 0 });
-        }
-      });
+    hasSectionsRef.current = displaySections.length > 0;
+  }, [displaySections]);
+  useEffect(() => {
+    const unsubscribe = (
+      navigation as unknown as { addListener: (event: string, cb: () => void) => () => void }
+    ).addListener('tabPress', () => {
+      if (navigation.isFocused() && hasSectionsRef.current) {
+        listRef.current?.scrollToLocation({
+          sectionIndex: 0,
+          itemIndex: 0,
+          animated: true,
+          viewOffset: 0,
+        });
+      }
+    });
     return unsubscribe;
   }, [navigation]);
 
@@ -422,8 +601,21 @@ export default function ActivityScreen() {
         {selecting ? (
           <AppBar
             title={tr('inbox.selected', { count: selectedIds.size })}
-            left={<BarIconButton icon="close" label={tr('inbox.cancelSelection')} onPress={() => setSelectedIds(new Set())} />}
-            right={<Button title={tr('common.delete')} variant="danger" size="bar" onPress={deleteSelected} />}
+            left={
+              <BarIconButton
+                icon="close"
+                label={tr('inbox.cancelSelection')}
+                onPress={() => setSelectedIds(new Set())}
+              />
+            }
+            right={
+              <Button
+                title={tr('common.delete')}
+                variant="danger"
+                size="bar"
+                onPress={deleteSelected}
+              />
+            }
           />
         ) : searchOpen ? (
           <BarRow>
@@ -432,19 +624,32 @@ export default function ActivityScreen() {
               onChangeText={setSearch}
               placeholder={tr('activity.searchPlaceholder')}
               autoFocus
-              onClear={() => { setSearch(''); setAccountFilter(null); setType('all'); setSearchOpen(false); }}
+              onClear={() => {
+                setSearch('');
+                setAccountFilter(null);
+                setType('all');
+                setSearchOpen(false);
+              }}
               style={{ flex: 1 }}
             />
           </BarRow>
         ) : (
           <AppBar
             title={tr('activity.title')}
-            right={(
+            right={
               <>
-                <BarIconButton icon="search" label={tr('activity.search')} onPress={() => setSearchOpen(true)} />
-                <BarIconButton icon="ellipsis-horizontal" label={tr('capture.more')} onPress={() => setMenuOpen(true)} />
+                <BarIconButton
+                  icon="search"
+                  label={tr('activity.search')}
+                  onPress={() => setSearchOpen(true)}
+                />
+                <BarIconButton
+                  icon="ellipsis-horizontal"
+                  label={tr('capture.more')}
+                  onPress={() => setMenuOpen(true)}
+                />
               </>
-            )}
+            }
           />
         )}
 
@@ -458,17 +663,37 @@ export default function ActivityScreen() {
           />
         )}
 
-        <View style={{ flexDirection: 'row', paddingHorizontal: t.space.lg, gap: t.space.sm, paddingBottom: t.space.sm }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            paddingHorizontal: t.space.lg,
+            gap: t.space.sm,
+            paddingBottom: t.space.sm,
+          }}
+        >
           {FILTERS.map((f) => (
-            <Chip key={f.type} label={tr(f.labelKey)} selected={type === f.type} onPress={() => setType(f.type)} />
+            <Chip
+              key={f.type}
+              label={tr(f.labelKey)}
+              selected={type === f.type}
+              onPress={() => setType(f.type)}
+            />
           ))}
         </View>
 
         {hasSyncedBefore === false && !hasResults && (
-          <EmptyState glyph="↻" title={tr('activity.nothingCachedTitle')} hint={tr('activity.nothingCachedHint')} />
+          <EmptyState
+            glyph="↻"
+            title={tr('activity.nothingCachedTitle')}
+            hint={tr('activity.nothingCachedHint')}
+          />
         )}
         {hasSyncedBefore === true && !hasResults && (
-          <EmptyState glyph="🔍" title={tr('activity.noResultsTitle')} hint={tr('activity.noResultsHint')} />
+          <EmptyState
+            glyph="🔍"
+            title={tr('activity.noResultsTitle')}
+            hint={tr('activity.noResultsHint')}
+          />
         )}
 
         {hasResults && (
@@ -497,35 +722,76 @@ export default function ActivityScreen() {
             initialNumToRender={12}
             maxToRenderPerBatch={8}
             windowSize={7}
-            ListFooterComponent={(
+            ListFooterComponent={
               <>
                 {!reachedRealEnd && (
-                  <Text style={[t.type.label, { color: t.color.textFaint, textAlign: 'center', paddingVertical: t.space.lg }]}>
+                  <Text
+                    style={[
+                      t.type.label,
+                      {
+                        color: t.color.textFaint,
+                        textAlign: 'center',
+                        paddingVertical: t.space.lg,
+                      },
+                    ]}
+                  >
                     {loadingMore || loadingOlder ? tr('activity.loadingMore') : ' '}
                   </Text>
                 )}
                 {remoteSearch.status === 'loading' && (
-                  <Text style={[t.type.label, { color: t.color.textFaint, textAlign: 'center', paddingVertical: t.space.lg }]}>
+                  <Text
+                    style={[
+                      t.type.label,
+                      {
+                        color: t.color.textFaint,
+                        textAlign: 'center',
+                        paddingVertical: t.space.lg,
+                      },
+                    ]}
+                  >
                     {tr('activity.searching')}
                   </Text>
                 )}
                 {remoteSearch.status === 'offline' && (
-                  <Text style={[t.type.label, { color: t.color.textFaint, textAlign: 'center', paddingVertical: t.space.lg }]}>
+                  <Text
+                    style={[
+                      t.type.label,
+                      {
+                        color: t.color.textFaint,
+                        textAlign: 'center',
+                        paddingVertical: t.space.lg,
+                      },
+                    ]}
+                  >
                     {tr('activity.searchOffline')}
                   </Text>
                 )}
                 {remoteSearch.status === 'error' && (
-                  <Text style={[t.type.label, { color: t.color.warn, textAlign: 'center', paddingVertical: t.space.lg }]}>
+                  <Text
+                    style={[
+                      t.type.label,
+                      { color: t.color.warn, textAlign: 'center', paddingVertical: t.space.lg },
+                    ]}
+                  >
                     {tr('activity.searchFailed')}
                   </Text>
                 )}
                 {remoteSearch.status === 'done' && remoteSearch.rows.length === 0 && (
-                  <Text style={[t.type.label, { color: t.color.textFaint, textAlign: 'center', paddingVertical: t.space.lg }]}>
+                  <Text
+                    style={[
+                      t.type.label,
+                      {
+                        color: t.color.textFaint,
+                        textAlign: 'center',
+                        paddingVertical: t.space.lg,
+                      },
+                    ]}
+                  >
                     {tr('activity.nothingMore')}
                   </Text>
                 )}
               </>
-            )}
+            }
           />
         )}
 
@@ -533,14 +799,27 @@ export default function ActivityScreen() {
       </View>
 
       <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={tr('activity.title')}>
-        <Row first label={tr('count.title')} icon="cash-outline" onPress={() => { setMenuOpen(false); navigateOnce('/count'); }} />
+        <Row
+          first
+          label={tr('count.title')}
+          icon="cash-outline"
+          onPress={() => {
+            setMenuOpen(false);
+            navigateOnce('/count');
+          }}
+        />
       </Sheet>
     </Screen>
   );
 }
 
 const ActivityRow = memo(function ActivityRow({
-  item, selecting, selected, currencies, onPress, onLongPress,
+  item,
+  selecting,
+  selected,
+  currencies,
+  onPress,
+  onLongPress,
 }: {
   item: ActivityItem;
   selecting: boolean;
@@ -556,9 +835,16 @@ const ActivityRow = memo(function ActivityRow({
   // (which only reads cachedTransactions) to open.
   const remote = 'remote' in item;
   const pendingStatus = !queued && !remote ? item.pendingStatus : undefined;
-  const description = item.description || (item.type === 'withdrawal' ? item.destinationName : item.sourceName) || '—';
+  const description =
+    item.description ||
+    (item.type === 'withdrawal' ? item.destinationName : item.sourceName) ||
+    '—';
   const accountLeg = item.type === 'deposit' ? item.sourceName : item.destinationName;
-  const dotColor = item.categoryName ? categoryColor(item.categoryName, t.dark) : (item.type === 'transfer' ? t.color.transfer : t.color.textFaint);
+  const dotColor = item.categoryName
+    ? categoryColor(item.categoryName, t.dark)
+    : item.type === 'transfer'
+      ? t.color.transfer
+      : t.color.textFaint;
   const selectable = !queued && !remote;
   // The mark pops as it toggles, alongside the tick haptic (src/ui/feedback.ts).
   const markPop = usePopOnChange(selected, 1.4);
@@ -571,30 +857,64 @@ const ActivityRow = memo(function ActivityRow({
       // 500ms by default, which felt like the long-press hadn't registered.
       delayLongPress={300}
       style={({ pressed }) => ({
-        flexDirection: 'row', alignItems: 'center', gap: t.space.sm,
-        paddingHorizontal: t.space.lg, paddingVertical: t.space.sm, opacity: pressed ? 0.6 : 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: t.space.sm,
+        paddingHorizontal: t.space.lg,
+        paddingVertical: t.space.sm,
+        opacity: pressed ? 0.6 : 1,
         backgroundColor: selected ? t.color.accentSoft : undefined,
       })}
     >
       <Animated.View style={markPop}>
-        {selecting && selectable
-          ? <Ionicons name={selected ? 'checkmark-circle' : 'ellipse-outline'} size={20} color={selected ? t.color.accent : t.color.textFaint} />
-          : <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor }} />}
+        {selecting && selectable ? (
+          <Ionicons
+            name={selected ? 'checkmark-circle' : 'ellipse-outline'}
+            size={20}
+            color={selected ? t.color.accent : t.color.textFaint}
+          />
+        ) : (
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor }} />
+        )}
       </Animated.View>
       <View style={{ flex: 1 }}>
-        <Text style={[t.type.body, { color: t.color.text }]} numberOfLines={1}>{description}</Text>
+        <Text style={[t.type.body, { color: t.color.text }]} numberOfLines={1}>
+          {description}
+        </Text>
         <Text style={[t.type.label, { color: t.color.textMuted }]} numberOfLines={1}>
-          {[splitLines.length ? tr('splits.count', { count: splitLines.length }) : item.categoryName, accountLeg].filter(Boolean).join(' · ') || (queued ? tr('draft.queued') : '—')}
+          {[
+            splitLines.length
+              ? tr('splits.count', { count: splitLines.length })
+              : item.categoryName,
+            accountLeg,
+          ]
+            .filter(Boolean)
+            .join(' · ') || (queued ? tr('draft.queued') : '—')}
         </Text>
         {splitLines.slice(0, MAX_SPLIT_LINES).map((s, i) => (
           <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.xs }}>
-            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: s.categoryName ? categoryColor(s.categoryName, t.dark) : t.color.textFaint }} />
-            <Text style={[t.type.label, { color: t.color.textMuted, flex: 1 }]} numberOfLines={1}>{s.label || '—'}</Text>
-            <Text style={[t.type.label, t.type.money, { color: t.color.textMuted }]}>{formatMoney(s.amount, currency)}</Text>
+            <View
+              style={{
+                width: 6,
+                height: 6,
+                borderRadius: 3,
+                backgroundColor: s.categoryName
+                  ? categoryColor(s.categoryName, t.dark)
+                  : t.color.textFaint,
+              }}
+            />
+            <Text style={[t.type.label, { color: t.color.textMuted, flex: 1 }]} numberOfLines={1}>
+              {s.label || '—'}
+            </Text>
+            <Text style={[t.type.label, t.type.money, { color: t.color.textMuted }]}>
+              {formatMoney(s.amount, currency)}
+            </Text>
           </View>
         ))}
         {splitLines.length > MAX_SPLIT_LINES && (
-          <Text style={[t.type.label, { color: t.color.textFaint }]}>{tr('splits.more', { count: splitLines.length - MAX_SPLIT_LINES })}</Text>
+          <Text style={[t.type.label, { color: t.color.textFaint }]}>
+            {tr('splits.more', { count: splitLines.length - MAX_SPLIT_LINES })}
+          </Text>
         )}
       </View>
       {queued && !item.landing && <Chip label={tr('draft.queued')} tone="warn" />}
@@ -609,7 +929,11 @@ const ActivityRow = memo(function ActivityRow({
  * card (and restart none of their rolls, but format all their dates), when only two change.
  */
 const BalanceStrip = memo(function BalanceStrip({
-  accounts, selectedId, onToggle, currencies, pendingAccounts,
+  accounts,
+  selectedId,
+  onToggle,
+  currencies,
+  pendingAccounts,
 }: {
   accounts: ReferenceAccountRow[];
   selectedId: string | null;
@@ -626,7 +950,12 @@ const BalanceStrip = memo(function BalanceStrip({
       horizontal
       showsHorizontalScrollIndicator={false}
       style={{ flexGrow: 0, flexShrink: 0 }}
-      contentContainerStyle={{ paddingHorizontal: t.space.lg, gap: t.space.sm, paddingTop: t.space.xs, paddingBottom: t.space.sm }}
+      contentContainerStyle={{
+        paddingHorizontal: t.space.lg,
+        gap: t.space.sm,
+        paddingTop: t.space.xs,
+        paddingBottom: t.space.sm,
+      }}
     >
       {accounts.map((a) => (
         <BalanceCard
@@ -643,7 +972,11 @@ const BalanceStrip = memo(function BalanceStrip({
 });
 
 const BalanceCard = memo(function BalanceCard({
-  account: a, selected, pending, currencies, onToggle,
+  account: a,
+  selected,
+  pending,
+  currencies,
+  onToggle,
 }: {
   account: ReferenceAccountRow;
   selected: boolean;
@@ -653,7 +986,9 @@ const BalanceCard = memo(function BalanceCard({
 }) {
   const t = useTheme();
   const { t: tr } = useTranslation();
-  const stale = a.currentBalanceDate ? new Date().getTime() - new Date(a.currentBalanceDate).getTime() > STALE_MS : true;
+  const stale = a.currentBalanceDate
+    ? new Date().getTime() - new Date(a.currentBalanceDate).getTime() > STALE_MS
+    : true;
   return (
     <Card
       onPress={() => onToggle(a.id)}
@@ -661,19 +996,35 @@ const BalanceCard = memo(function BalanceCard({
       delayLongPress={300}
       longPressPop
       accessibilityHint={tr('account.openHint')}
-      style={{ borderColor: selected ? t.color.accent : t.color.border, minWidth: 120, opacity: stale ? 0.5 : 1 }}
+      style={{
+        borderColor: selected ? t.color.accent : t.color.border,
+        minWidth: 120,
+        opacity: stale ? 0.5 : 1,
+      }}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.xs }}>
-        <Text style={[t.type.label, { color: t.color.textMuted, flexShrink: 1 }]} numberOfLines={1}>{a.name}</Text>
+        <Text style={[t.type.label, { color: t.color.textMuted, flexShrink: 1 }]} numberOfLines={1}>
+          {a.name}
+        </Text>
         <PendingDot visible={pending} />
       </View>
-      <RollingMoney amount={a.currentBalance ?? '0'} currency={currencyOf(currencies ?? [], a.currencyCode)} size="heading" />
-      <Text style={[t.type.label, { color: t.color.textFaint }]}>{tr('count.asOf', { time: relativeTime(a.currentBalanceDate) })}</Text>
+      <RollingMoney
+        amount={a.currentBalance ?? '0'}
+        currency={currencyOf(currencies ?? [], a.currencyCode)}
+        size="heading"
+      />
+      <Text style={[t.type.label, { color: t.color.textFaint }]}>
+        {tr('count.asOf', { time: relativeTime(a.currentBalanceDate) })}
+      </Text>
     </Card>
   );
 });
 
-const DayHeader = memo(function DayHeader({ sectionKey, totals, currencies }: {
+const DayHeader = memo(function DayHeader({
+  sectionKey,
+  totals,
+  currencies,
+}: {
   sectionKey: string;
   totals: DisplaySection['totals'];
   currencies: Currencies | undefined;
@@ -683,11 +1034,17 @@ const DayHeader = memo(function DayHeader({ sectionKey, totals, currencies }: {
   return (
     <SectionHeader
       title={sectionKey === REMOTE_SECTION_KEY ? tr('activity.fromFf3') : dayTitle(sectionKey)}
-      action={totals.length > 0 ? (
-        <Text style={[t.type.label, { color: t.color.textMuted }]}>
-          {totals.map((tot) => formatMoney(tot.amount, currencyOf(currencies ?? [], tot.currencyCode ?? ''))).join(' · ')}
-        </Text>
-      ) : undefined}
+      action={
+        totals.length > 0 ? (
+          <Text style={[t.type.label, { color: t.color.textMuted }]}>
+            {totals
+              .map((tot) =>
+                formatMoney(tot.amount, currencyOf(currencies ?? [], tot.currencyCode ?? '')),
+              )
+              .join(' · ')}
+          </Text>
+        ) : undefined
+      }
     />
   );
 });

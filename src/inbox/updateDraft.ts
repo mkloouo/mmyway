@@ -10,27 +10,43 @@ const NOT_EDITABLE = new Set(['confirmed', 'synced']);
 
 /** Retry on an errored item: back to its retry state; a receipt is re-read by the next sync. */
 export async function retryErroredItem(db: OutboxDb, inboxItemId: string): Promise<void> {
-  await db.update(inboxItems)
-    .set({ state: transition('error', 'retry'), errorMessage: null, updatedAt: new Date().toISOString() })
+  await db
+    .update(inboxItems)
+    .set({
+      state: transition('error', 'retry'),
+      errorMessage: null,
+      updatedAt: new Date().toISOString(),
+    })
     .where(eq(inboxItems.id, inboxItemId));
 }
 
 /** Gives an entry a receipt photo (copied out of the cache); it is uploaded once the transaction exists. */
-export async function attachReceiptImage(db: OutboxDb, inboxItemId: string, uri: string): Promise<void> {
-  await db.update(inboxItems)
+export async function attachReceiptImage(
+  db: OutboxDb,
+  inboxItemId: string,
+  uri: string,
+): Promise<void> {
+  await db
+    .update(inboxItems)
     .set({ receiptImagePath: persistReceiptImage(uri), updatedAt: new Date().toISOString() })
     .where(eq(inboxItems.id, inboxItemId));
 }
 
-export async function updateDraft(db: OutboxDb, inboxItemId: string, patch: Partial<Draft>): Promise<void> {
+export async function updateDraft(
+  db: OutboxDb,
+  inboxItemId: string,
+  patch: Partial<Draft>,
+): Promise<void> {
   const rows = await db.select().from(inboxItems).where(eq(inboxItems.id, inboxItemId));
   const item = rows[0];
   if (!item) throw new Error(`inbox item ${inboxItemId} not found`);
-  if (NOT_EDITABLE.has(item.state)) throw new Error(`cannot update inbox item ${inboxItemId}: already ${item.state}`);
+  if (NOT_EDITABLE.has(item.state))
+    throw new Error(`cannot update inbox item ${inboxItemId}: already ${item.state}`);
 
   const draft = readDraft(item.draftJson);
   const merged: Draft = { ...draft, ...patch };
-  await db.update(inboxItems)
+  await db
+    .update(inboxItems)
     .set({ draftJson: writeDraft(merged), updatedAt: new Date().toISOString() })
     .where(eq(inboxItems.id, inboxItemId));
 }

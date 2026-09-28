@@ -6,10 +6,17 @@ import { cachedTransactions } from '../db/schema';
 import { cachedRowFromGroup } from '../sync/referenceData';
 import type { OutboxDb } from '../sync/outbox';
 
-export async function refreshCachedGroup(db: OutboxDb, client: FF3Client, groupId: string): Promise<boolean> {
+export async function refreshCachedGroup(
+  db: OutboxDb,
+  client: FF3Client,
+  groupId: string,
+): Promise<boolean> {
   const response = await client.request<{ data?: TransactionRead }>(`/v1/transactions/${groupId}`);
   const row = response?.data ? cachedRowFromGroup(response.data, new Date().toISOString()) : null;
   if (!row) return false;
-  await db.insert(cachedTransactions).values(row).onConflictDoUpdate({ target: cachedTransactions.groupId, set: row });
+  await db
+    .insert(cachedTransactions)
+    .values(row)
+    .onConflictDoUpdate({ target: cachedTransactions.groupId, set: row });
   return true;
 }

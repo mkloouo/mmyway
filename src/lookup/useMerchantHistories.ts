@@ -4,16 +4,23 @@ import { useEffect, useState } from 'react';
 import { useDb } from '../providers/DbProvider';
 import { buildMerchantLookup, type MerchantHistory } from './merchantLookup';
 
-export function useMerchantHistories(type: 'withdrawal' | 'deposit' | undefined, { enabled = true } = {}): MerchantHistory[] {
+export function useMerchantHistories(
+  type: 'withdrawal' | 'deposit' | undefined,
+  { enabled = true } = {},
+): MerchantHistory[] {
   const db = useDb();
   const [histories, setHistories] = useState<MerchantHistory[]>([]);
   useEffect(() => {
     if (!enabled) return;
     let cancelled = false;
     buildMerchantLookup(db, { type })
-      .then((map) => { if (!cancelled) setHistories([...map.values()]); })
+      .then((map) => {
+        if (!cancelled) setHistories([...map.values()]);
+      })
       .catch(() => undefined); // suggestions only: an empty list is the fallback
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [db, type, enabled]);
   return histories;
 }

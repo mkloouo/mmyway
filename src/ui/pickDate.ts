@@ -26,14 +26,33 @@ export function pickDate(value: Date, onPick: (picked: Date) => void): void {
  */
 export function pickDateTime(value: Date, onPick: (picked: Date) => void): void {
   pickDate(value, (day) => {
-    const withDay = new Date(day.getFullYear(), day.getMonth(), day.getDate(), value.getHours(), value.getMinutes(), value.getSeconds());
-    if (Platform.OS !== 'android') { onPick(withDay); return; }
+    const withDay = new Date(
+      day.getFullYear(),
+      day.getMonth(),
+      day.getDate(),
+      value.getHours(),
+      value.getMinutes(),
+      value.getSeconds(),
+    );
+    if (Platform.OS !== 'android') {
+      onPick(withDay);
+      return;
+    }
     DateTimePickerAndroid.open({
       value: withDay,
       mode: 'time',
       onChange: (event: { type: string }, picked?: Date) => {
         if (event.type === 'set' && picked) {
-          onPick(new Date(withDay.getFullYear(), withDay.getMonth(), withDay.getDate(), picked.getHours(), picked.getMinutes(), 0));
+          onPick(
+            new Date(
+              withDay.getFullYear(),
+              withDay.getMonth(),
+              withDay.getDate(),
+              picked.getHours(),
+              picked.getMinutes(),
+              0,
+            ),
+          );
         } else {
           onPick(withDay);
         }
@@ -55,7 +74,10 @@ export function pickTime(value: string | null, onPick: (time: string) => void): 
     value: start,
     mode: 'time',
     onChange: (event: { type: string }, picked?: Date) => {
-      if (event.type === 'set' && picked) onPick(`${String(picked.getHours()).padStart(2, '0')}:${String(picked.getMinutes()).padStart(2, '0')}`);
+      if (event.type === 'set' && picked)
+        onPick(
+          `${String(picked.getHours()).padStart(2, '0')}:${String(picked.getMinutes()).padStart(2, '0')}`,
+        );
     },
   });
 }

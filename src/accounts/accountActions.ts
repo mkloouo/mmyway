@@ -8,24 +8,54 @@ import { hasEnvelopeMarker, setEnvelopeMarker } from './envelopeMarker';
 import { getAccountOrder, setAccountOrder } from '../settings/appSettings';
 import type { AccountEdit } from './accountEdit';
 
-export async function setAccountActive(db: OutboxDb, accountId: string, active: boolean): Promise<void> {
+export async function setAccountActive(
+  db: OutboxDb,
+  accountId: string,
+  active: boolean,
+): Promise<void> {
   await db.update(referenceAccounts).set({ active }).where(eq(referenceAccounts.id, accountId));
-  await enqueueOperation(db, { id: generateId(), kind: 'update_account', payload: { accountId, active } });
+  await enqueueOperation(db, {
+    id: generateId(),
+    kind: 'update_account',
+    payload: { accountId, active },
+  });
 }
 
-export async function setAccountEnvelope(db: OutboxDb, accountId: string, on: boolean): Promise<void> {
-  const [account] = await db.select().from(referenceAccounts).where(eq(referenceAccounts.id, accountId));
+export async function setAccountEnvelope(
+  db: OutboxDb,
+  accountId: string,
+  on: boolean,
+): Promise<void> {
+  const [account] = await db
+    .select()
+    .from(referenceAccounts)
+    .where(eq(referenceAccounts.id, accountId));
   if (!account) throw new Error(`account ${accountId} not found`);
   if (hasEnvelopeMarker(account.notes) === on) return;
-  await db.update(referenceAccounts).set({ notes: setEnvelopeMarker(account.notes, on) }).where(eq(referenceAccounts.id, accountId));
-  await enqueueOperation(db, { id: generateId(), kind: 'update_account', payload: { accountId, setEnvelopeMarker: on } });
+  await db
+    .update(referenceAccounts)
+    .set({ notes: setEnvelopeMarker(account.notes, on) })
+    .where(eq(referenceAccounts.id, accountId));
+  await enqueueOperation(db, {
+    id: generateId(),
+    kind: 'update_account',
+    payload: { accountId, setEnvelopeMarker: on },
+  });
 }
 
 /** The account page's Save: patches the local row and queues one FF3 update with the changes. */
-export async function updateAccount(db: OutboxDb, accountId: string, edit: AccountEdit): Promise<void> {
+export async function updateAccount(
+  db: OutboxDb,
+  accountId: string,
+  edit: AccountEdit,
+): Promise<void> {
   if (Object.keys(edit).length === 0) return;
   await db.update(referenceAccounts).set(edit).where(eq(referenceAccounts.id, accountId));
-  await enqueueOperation(db, { id: generateId(), kind: 'update_account', payload: { accountId, edit } });
+  await enqueueOperation(db, {
+    id: generateId(),
+    kind: 'update_account',
+    payload: { accountId, edit },
+  });
 }
 
 /**
@@ -44,6 +74,10 @@ export async function reorderAccounts(db: OutboxDb, orderedIds: string[]): Promi
   if (changed.length === 0) return;
   await setAccountOrder(db, next);
   for (const accountId of changed) {
-    await enqueueOperation(db, { id: generateId(), kind: 'update_account', payload: { accountId, order: next[accountId] } });
+    await enqueueOperation(db, {
+      id: generateId(),
+      kind: 'update_account',
+      payload: { accountId, order: next[accountId] },
+    });
   }
 }

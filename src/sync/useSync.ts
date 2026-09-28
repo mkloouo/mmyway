@@ -29,7 +29,11 @@ export function useSync() {
     syncNow();
   }, [queryClient, syncNow]);
   return {
-    status: query.isFetching ? 'syncing' as const : query.isError ? 'error' as const : 'idle' as const,
+    status: query.isFetching
+      ? ('syncing' as const)
+      : query.isError
+        ? ('error' as const)
+        : ('idle' as const),
     summary: query.data ?? null,
     syncNow,
     credentialsChanged,
@@ -53,12 +57,17 @@ export function useLoadOlderHistory() {
     setLoading(true);
     try {
       const client = await getClient(db);
-      const foundOlder = client ? await pullOlderTransactions(db, client, new Date().toISOString()) : false;
+      const foundOlder = client
+        ? await pullOlderTransactions(db, client, new Date().toISOString())
+        : false;
       if (!foundOlder) setExhausted(true);
     } catch (err) {
       // Left un-exhausted on failure (network blip, host unreachable) so the next scroll retries
       // instead of the list silently pretending history ends here.
-      logLine('error', `loadOlderHistory failed: ${err instanceof Error ? err.message : String(err)}`);
+      logLine(
+        'error',
+        `loadOlderHistory failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
     } finally {
       inFlight.current = false;
       setLoading(false);

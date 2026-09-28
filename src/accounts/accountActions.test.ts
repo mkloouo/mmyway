@@ -11,8 +11,13 @@ describe('reorderAccounts', () => {
     await setAccountOrder(db as any, { a: 1, b: 2, c: 3 });
     await reorderAccounts(db as any, ['b', 'a', 'c']);
     expect(await getAccountOrder(db as any)).toEqual({ b: 1, a: 2, c: 3 });
-    const payloads = (await db.select().from(outboxOperations)).map((op) => readPayload(op.kind, op.payloadJson));
-    expect(payloads).toEqual([{ accountId: 'b', order: 1 }, { accountId: 'a', order: 2 }]);
+    const payloads = (await db.select().from(outboxOperations)).map((op) =>
+      readPayload(op.kind, op.payloadJson),
+    );
+    expect(payloads).toEqual([
+      { accountId: 'b', order: 1 },
+      { accountId: 'a', order: 2 },
+    ]);
   });
   it('keeps a queued move over the server order a pull just wrote', async () => {
     const db = createTestDb();

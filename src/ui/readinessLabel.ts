@@ -14,7 +14,9 @@ const MISSING_KEYS: Record<string, string> = {
 };
 
 function fieldList(missing: string[]): string {
-  return missing.map((m) => (MISSING_KEYS[m] ? i18n.t(`readiness.${MISSING_KEYS[m]}`) : m)).join(', ');
+  return missing
+    .map((m) => (MISSING_KEYS[m] ? i18n.t(`readiness.${MISSING_KEYS[m]}`) : m))
+    .join(', ');
 }
 
 export function needsLabel(missing: string[]): string {

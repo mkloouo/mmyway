@@ -21,7 +21,12 @@ export function Collapsible({ collapsed, children }: { collapsed: boolean; child
       return;
     }
     // Height can't run on the native driver.
-    Animated.timing(anim, { toValue: 0, duration: COLLAPSE_MS, easing: Easing.out(Easing.cubic), useNativeDriver: false }).start();
+    Animated.timing(anim, {
+      toValue: 0,
+      duration: COLLAPSE_MS,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
   }, [collapsed, anim]);
 
   return (
@@ -47,7 +52,10 @@ export function leaveThen(
   setLeaving((cur) => new Set([...cur, ...ids]));
   setTimeout(() => {
     void Promise.resolve(then()).finally(() => {
-      setTimeout(() => setLeaving((cur) => new Set([...cur].filter((id) => !ids.includes(id)))), 1500);
+      setTimeout(
+        () => setLeaving((cur) => new Set([...cur].filter((id) => !ids.includes(id)))),
+        1500,
+      );
     });
   }, COLLAPSE_MS);
 }

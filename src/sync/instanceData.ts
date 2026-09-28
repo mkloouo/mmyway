@@ -5,8 +5,15 @@
 // and payee history.
 import { eq, inArray, sql } from 'drizzle-orm';
 import {
-  appSettings, cachedTransactions, inboxItems, outboxOperations, plannedObjects,
-  referenceAccounts, referenceBudgets, referenceCategories, referenceCurrencies,
+  appSettings,
+  cachedTransactions,
+  inboxItems,
+  outboxOperations,
+  plannedObjects,
+  referenceAccounts,
+  referenceBudgets,
+  referenceCategories,
+  referenceCurrencies,
 } from '../db/schema';
 import i18n from '../i18n';
 import { INSTANCE_SETTING_KEYS } from '../settings/appSettings';
@@ -38,11 +45,20 @@ export function isSameInstance(storedHosts: string[], host: string): boolean {
  */
 export async function clearInstanceData(db: OutboxDb): Promise<void> {
   db.transaction((tx) => {
-    for (const table of [referenceAccounts, referenceCategories, referenceBudgets, referenceCurrencies, cachedTransactions, plannedObjects]) {
+    for (const table of [
+      referenceAccounts,
+      referenceCategories,
+      referenceBudgets,
+      referenceCurrencies,
+      cachedTransactions,
+      plannedObjects,
+    ]) {
       tx.delete(table).run();
     }
     tx.delete(inboxItems).where(eq(inboxItems.kind, 'recurring_review')).run();
-    tx.delete(appSettings).where(inArray(appSettings.key, [...INSTANCE_SETTING_KEYS])).run();
+    tx.delete(appSettings)
+      .where(inArray(appSettings.key, [...INSTANCE_SETTING_KEYS]))
+      .run();
   });
 }
 

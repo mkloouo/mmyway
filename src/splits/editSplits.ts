@@ -25,24 +25,36 @@ export interface EditableSplit {
 
 export function fromCached(split: CachedSplit): EditableSplit {
   return {
-    journalId: split.journalId, amount: split.amount, description: split.description,
-    sourceId: split.sourceId, sourceName: split.sourceName,
-    destinationId: split.destinationId, destinationName: split.destinationName,
-    categoryName: split.categoryName, budgetId: split.budgetId, notes: split.notes, tags: split.tags,
+    journalId: split.journalId,
+    amount: split.amount,
+    description: split.description,
+    sourceId: split.sourceId,
+    sourceName: split.sourceName,
+    destinationId: split.destinationId,
+    destinationName: split.destinationName,
+    categoryName: split.categoryName,
+    budgetId: split.budgetId,
+    notes: split.notes,
+    tags: split.tags,
     internalReference: split.internalReference ?? null,
   };
 }
 
-const text = (value: unknown): string | null => (value == null || value === '' ? null : String(value));
+const text = (value: unknown): string | null =>
+  value == null || value === '' ? null : String(value);
 
 export function fromQueued(split: QueuedSplit): EditableSplit {
   return {
     journalId: text(split.transaction_journal_id) ?? undefined,
     amount: split.amount ?? '0',
     description: split.description ?? '',
-    sourceId: text(split.source_id), sourceName: text(split.source_name),
-    destinationId: text(split.destination_id), destinationName: text(split.destination_name),
-    categoryName: text(split.category_name), budgetId: text(split.budget_id), notes: text(split.notes),
+    sourceId: text(split.source_id),
+    sourceName: text(split.source_name),
+    destinationId: text(split.destination_id),
+    destinationName: text(split.destination_name),
+    categoryName: text(split.category_name),
+    budgetId: text(split.budget_id),
+    notes: text(split.notes),
     tags: split.tags ?? [],
     internalReference: text((split as { internal_reference?: unknown }).internal_reference),
   };
@@ -57,11 +69,18 @@ export function sharedEnds(type: TxType): { source: boolean; destination: boolea
  * A change to a field every split shares (the date is sent per split too) goes to all of them;
  * anything else only to split `index`.
  */
-export function patchSplit(splits: readonly EditableSplit[], index: number, patch: Partial<EditableSplit>, type: TxType): EditableSplit[] {
+export function patchSplit(
+  splits: readonly EditableSplit[],
+  index: number,
+  patch: Partial<EditableSplit>,
+  type: TxType,
+): EditableSplit[] {
   const ends = sharedEnds(type);
   const shared: Partial<EditableSplit> = {};
-  if (ends.source && ('sourceId' in patch || 'sourceName' in patch)) Object.assign(shared, pick(patch, ['sourceId', 'sourceName']));
-  if (ends.destination && ('destinationId' in patch || 'destinationName' in patch)) Object.assign(shared, pick(patch, ['destinationId', 'destinationName']));
+  if (ends.source && ('sourceId' in patch || 'sourceName' in patch))
+    Object.assign(shared, pick(patch, ['sourceId', 'sourceName']));
+  if (ends.destination && ('destinationId' in patch || 'destinationName' in patch))
+    Object.assign(shared, pick(patch, ['destinationId', 'destinationName']));
   return splits.map((s, i) => (i === index ? { ...s, ...patch } : { ...s, ...shared }));
 }
 
@@ -77,10 +96,16 @@ function pick<T extends object, K extends keyof T>(value: T, keys: K[]): Partial
  */
 export function newSplit(first: EditableSplit, amount: string, description: string): EditableSplit {
   return {
-    amount, description,
-    sourceId: first.sourceId, sourceName: first.sourceName,
-    destinationId: first.destinationId, destinationName: first.destinationName,
-    categoryName: null, budgetId: null, notes: null, tags: [],
+    amount,
+    description,
+    sourceId: first.sourceId,
+    sourceName: first.sourceName,
+    destinationId: first.destinationId,
+    destinationName: first.destinationName,
+    categoryName: null,
+    budgetId: null,
+    notes: null,
+    tags: [],
     internalReference: first.internalReference ?? null,
   };
 }

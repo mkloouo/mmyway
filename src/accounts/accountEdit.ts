@@ -2,7 +2,13 @@
 // FF3. Keys are reference_accounts column names, so the same object patches the local row.
 import type { ReferenceAccountRow } from './useAssetAccounts';
 
-export const ACCOUNT_ROLES = ['defaultAsset', 'sharedAsset', 'savingAsset', 'ccAsset', 'cashWalletAsset'] as const;
+export const ACCOUNT_ROLES = [
+  'defaultAsset',
+  'sharedAsset',
+  'savingAsset',
+  'ccAsset',
+  'cashWalletAsset',
+] as const;
 export type AccountRole = (typeof ACCOUNT_ROLES)[number];
 
 /** FF3 has one credit-card type; it is required with the ccAsset role. */
@@ -38,7 +44,9 @@ export function formFromAccount(row: ReferenceAccountRow): AccountForm {
   return {
     name: row.name,
     currencyCode: row.currencyCode,
-    accountRole: (ACCOUNT_ROLES as readonly string[]).includes(row.accountRole ?? '') ? row.accountRole as AccountRole : 'defaultAsset',
+    accountRole: (ACCOUNT_ROLES as readonly string[]).includes(row.accountRole ?? '')
+      ? (row.accountRole as AccountRole)
+      : 'defaultAsset',
     includeNetWorth: row.includeNetWorth,
     openingBalance: row.openingBalance,
     openingBalanceDate: row.openingBalanceDate,
@@ -62,10 +70,13 @@ export function diffAccountEdit(before: AccountForm, after: AccountForm): Accoun
   const edit: AccountEdit = {};
   if (after.name.trim() !== before.name) edit.name = after.name.trim();
   if (after.currencyCode !== before.currencyCode) edit.currencyCode = after.currencyCode;
-  if (after.includeNetWorth !== before.includeNetWorth) edit.includeNetWorth = after.includeNetWorth;
-  if (amountKey(after.virtualBalance) !== amountKey(before.virtualBalance)) edit.virtualBalance = amountKey(after.virtualBalance) || null;
-  const openingChanged = amountKey(after.openingBalance) !== amountKey(before.openingBalance)
-    || after.openingBalanceDate !== before.openingBalanceDate;
+  if (after.includeNetWorth !== before.includeNetWorth)
+    edit.includeNetWorth = after.includeNetWorth;
+  if (amountKey(after.virtualBalance) !== amountKey(before.virtualBalance))
+    edit.virtualBalance = amountKey(after.virtualBalance) || null;
+  const openingChanged =
+    amountKey(after.openingBalance) !== amountKey(before.openingBalance) ||
+    after.openingBalanceDate !== before.openingBalanceDate;
   if (openingChanged) {
     const amount = amountKey(after.openingBalance) || null;
     edit.openingBalance = amount;
@@ -87,7 +98,9 @@ export function diffAccountEdit(before: AccountForm, after: AccountForm): Accoun
 }
 
 /** Why the form can't be saved yet, or null. */
-export function accountFormProblem(form: AccountForm): 'name' | 'openingBalanceDate' | 'monthlyPaymentDate' | null {
+export function accountFormProblem(
+  form: AccountForm,
+): 'name' | 'openingBalanceDate' | 'monthlyPaymentDate' | null {
   if (!form.name.trim()) return 'name';
   if (amountKey(form.openingBalance) && !form.openingBalanceDate) return 'openingBalanceDate';
   if (form.accountRole === 'ccAsset' && !form.monthlyPaymentDate) return 'monthlyPaymentDate';

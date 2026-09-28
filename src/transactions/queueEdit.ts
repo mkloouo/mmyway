@@ -4,13 +4,25 @@ import { cachedTransactions } from '../db/schema';
 import { enqueueOperation, type OutboxDb, type UpdateTransactionPayload } from '../sync/outbox';
 import { generateId } from '../utils/id';
 
-type CachedRow = Pick<typeof cachedTransactions.$inferSelect, 'groupId' | 'journalId' | 'updatedAt'>;
+type CachedRow = Pick<
+  typeof cachedTransactions.$inferSelect,
+  'groupId' | 'journalId' | 'updatedAt'
+>;
 
-export async function queueTransactionEdit(db: OutboxDb, row: CachedRow, changes: UpdateTransactionPayload['changes']): Promise<void> {
+export async function queueTransactionEdit(
+  db: OutboxDb,
+  row: CachedRow,
+  changes: UpdateTransactionPayload['changes'],
+): Promise<void> {
   await enqueueOperation(db, {
     id: generateId(),
     kind: 'update_transaction',
-    payload: { groupId: row.groupId, transactionJournalId: row.journalId, expectedUpdatedAt: row.updatedAt, changes },
+    payload: {
+      groupId: row.groupId,
+      transactionJournalId: row.journalId,
+      expectedUpdatedAt: row.updatedAt,
+      changes,
+    },
   });
 }
 

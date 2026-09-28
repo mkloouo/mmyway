@@ -2,7 +2,12 @@
 // an account past its neighbour *on screen*, and every hidden account keeps its place relative to
 // the others — swapping by list index would have jumped over, or swapped with, accounts the user
 // can't see.
-export function moveAmongVisible(allIds: string[], visibleIds: string[], id: string, delta: -1 | 1): string[] | null {
+export function moveAmongVisible(
+  allIds: string[],
+  visibleIds: string[],
+  id: string,
+  delta: -1 | 1,
+): string[] | null {
   const at = visibleIds.indexOf(id);
   const neighbour = at < 0 ? undefined : visibleIds[at + delta];
   if (!neighbour) return null;

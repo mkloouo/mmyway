@@ -32,16 +32,31 @@ type Action =
 
 export function initialCaptureForm(now: Date = new Date()): CaptureForm {
   return {
-    type: 'withdrawal', amount: '0', currencyCode: null, date: now, dateMode: 'today',
-    merchantRawInput: '', forceNewPayee: false, sourceId: null, destinationId: null,
-    categoryName: null, budgetId: null, description: '', notes: '', sharedWith: '', foreignAmount: '', photoUri: null,
+    type: 'withdrawal',
+    amount: '0',
+    currencyCode: null,
+    date: now,
+    dateMode: 'today',
+    merchantRawInput: '',
+    forceNewPayee: false,
+    sourceId: null,
+    destinationId: null,
+    categoryName: null,
+    budgetId: null,
+    description: '',
+    notes: '',
+    sharedWith: '',
+    foreignAmount: '',
+    photoUri: null,
   };
 }
 
 export function captureFormReducer(state: CaptureForm, action: Action): CaptureForm {
   switch (action.kind) {
     case 'set':
-      return state[action.field] === action.value ? state : { ...state, [action.field]: action.value };
+      return state[action.field] === action.value
+        ? state
+        : { ...state, [action.field]: action.value };
     case 'update':
       return { ...state, [action.field]: action.updater(state[action.field] as never) };
     case 'saved':
@@ -52,16 +67,21 @@ export function captureFormReducer(state: CaptureForm, action: Action): CaptureF
 }
 
 type Setter<T> = (value: T | ((current: T) => T)) => void;
-type Setters = { [K in keyof CaptureForm as `set${Capitalize<K & string>}`]: Setter<CaptureForm[K]> };
+type Setters = {
+  [K in keyof CaptureForm as `set${Capitalize<K & string>}`]: Setter<CaptureForm[K]>;
+};
 
 export function useCaptureForm(): CaptureForm & Setters & { markSaved: () => void } {
   const [form, dispatch] = useReducer(captureFormReducer, undefined, () => initialCaptureForm());
   const setters = useMemo(() => {
     const out: Record<string, Setter<unknown>> = {};
     for (const field of Object.keys(initialCaptureForm()) as (keyof CaptureForm)[]) {
-      out[`set${field[0]!.toUpperCase()}${field.slice(1)}`] = (value) => dispatch(typeof value === 'function'
-        ? { kind: 'update', field, updater: value as (current: never) => unknown }
-        : { kind: 'set', field, value });
+      out[`set${field[0]!.toUpperCase()}${field.slice(1)}`] = (value) =>
+        dispatch(
+          typeof value === 'function'
+            ? { kind: 'update', field, updater: value as (current: never) => unknown }
+            : { kind: 'set', field, value },
+        );
     }
     return out as unknown as Setters;
   }, []);

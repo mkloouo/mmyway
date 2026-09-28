@@ -30,13 +30,16 @@ export function withAmounts(draft: Draft, amounts: string[]): Partial<Draft> {
   const extras = draft.extraSplits ?? [];
   return {
     amount: amounts[0] ?? draft.amount,
-    ...(extras.length > 0 ? { extraSplits: extras.map((s, i) => ({ ...s, amount: amounts[i + 1] ?? s.amount })) } : {}),
+    ...(extras.length > 0
+      ? { extraSplits: extras.map((s, i) => ({ ...s, amount: amounts[i + 1] ?? s.amount })) }
+      : {}),
   };
 }
 
 /** The payee of split 1, which a new split starts with. */
 function firstPayee(draft: Draft): Pick<DraftSplit, 'payeeName' | 'payeeId'> {
-  if (draft.type === 'withdrawal') return { payeeName: draft.destinationName, payeeId: draft.destinationId };
+  if (draft.type === 'withdrawal')
+    return { payeeName: draft.destinationName, payeeId: draft.destinationId };
   if (draft.type === 'deposit') return { payeeName: draft.sourceName, payeeId: draft.sourceId };
   return {};
 }
@@ -46,7 +49,12 @@ function firstPayee(draft: Draft): Pick<DraftSplit, 'payeeName' | 'payeeId'> {
  * sheet's result). The total is tracked from here on, at what it was before the split.
  */
 export function addSplit(draft: Draft, amounts: string[], newAmount: string): Partial<Draft> {
-  const split: DraftSplit = { amount: newAmount, description: draft.description, isNewPayee: draft.isNewPayee, ...firstPayee(draft) };
+  const split: DraftSplit = {
+    amount: newAmount,
+    description: draft.description,
+    isNewPayee: draft.isNewPayee,
+    ...firstPayee(draft),
+  };
   const base = withAmounts(draft, amounts);
   return {
     ...base,
@@ -56,8 +64,14 @@ export function addSplit(draft: Draft, amounts: string[], newAmount: string): Pa
   };
 }
 
-export function patchExtraSplit(draft: Draft, index: number, patch: Partial<DraftSplit>): Partial<Draft> {
-  return { extraSplits: (draft.extraSplits ?? []).map((s, i) => (i === index ? { ...s, ...patch } : s)) };
+export function patchExtraSplit(
+  draft: Draft,
+  index: number,
+  patch: Partial<DraftSplit>,
+): Partial<Draft> {
+  return {
+    extraSplits: (draft.extraSplits ?? []).map((s, i) => (i === index ? { ...s, ...patch } : s)),
+  };
 }
 
 /**
@@ -68,5 +82,10 @@ export function patchExtraSplit(draft: Draft, index: number, patch: Partial<Draf
 export function removeExtraSplit(draft: Draft, index: number): Partial<Draft> {
   const extras = (draft.extraSplits ?? []).filter((_, i) => i !== index - 1);
   if (extras.length > 0) return { extraSplits: extras };
-  return { extraSplits: undefined, total: undefined, groupTitle: undefined, amount: draftTotal(draft) };
+  return {
+    extraSplits: undefined,
+    total: undefined,
+    groupTitle: undefined,
+    amount: draftTotal(draft),
+  };
 }

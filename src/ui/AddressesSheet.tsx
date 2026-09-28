@@ -13,7 +13,13 @@ import { useAction } from './useAction';
 type Status = 'idle' | 'probing' | 'ok' | 'down' | 'never_reached';
 
 export function AddressesSheet({
-  visible, onClose, title, addresses, activeAddress, onSave, probe,
+  visible,
+  onClose,
+  title,
+  addresses,
+  activeAddress,
+  onSave,
+  probe,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -70,7 +76,8 @@ export function AddressesSheet({
 
   async function removeAddress(address: string) {
     if (busy) return;
-    if (!await confirmDestructive(tr('addresses.removeTitle'), tr('addresses.remove'), address)) return;
+    if (!(await confirmDestructive(tr('addresses.removeTitle'), tr('addresses.remove'), address)))
+      return;
     setBusy(true);
     try {
       const next = list.filter((a) => a !== address);
@@ -109,21 +116,60 @@ export function AddressesSheet({
     <Sheet visible={visible} onClose={onClose} title={title}>
       <View style={{ gap: t.space.sm }}>
         {list.map((address) => (
-          <View key={address} style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
-            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor(status[address]) }} />
-            <Text style={[t.type.body, { color: t.color.text, flex: 1 }]} numberOfLines={1}>{address}</Text>
-            {address === activeAddress && <Text style={[t.type.label, { color: t.color.accent }]}>{tr('addresses.inUse')}</Text>}
-            {status[address] === 'never_reached' && <Text style={[t.type.label, { color: t.color.warn }]}>{tr('addresses.neverReached')}</Text>}
-            <Pressable onPress={() => act(tr('addresses.makePrimary', { address }), makePrimary)(address)} disabled={busy} accessibilityRole="button" accessibilityLabel={tr('addresses.makePrimary', { address })}>
-              <Text style={[t.type.body, { color: t.color.textMuted, opacity: busy ? 0.4 : 1 }]}>▲</Text>
+          <View
+            key={address}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}
+          >
+            <View
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: dotColor(status[address]),
+              }}
+            />
+            <Text style={[t.type.body, { color: t.color.text, flex: 1 }]} numberOfLines={1}>
+              {address}
+            </Text>
+            {address === activeAddress && (
+              <Text style={[t.type.label, { color: t.color.accent }]}>{tr('addresses.inUse')}</Text>
+            )}
+            {status[address] === 'never_reached' && (
+              <Text style={[t.type.label, { color: t.color.warn }]}>
+                {tr('addresses.neverReached')}
+              </Text>
+            )}
+            <Pressable
+              onPress={() => act(tr('addresses.makePrimary', { address }), makePrimary)(address)}
+              disabled={busy}
+              accessibilityRole="button"
+              accessibilityLabel={tr('addresses.makePrimary', { address })}
+            >
+              <Text style={[t.type.body, { color: t.color.textMuted, opacity: busy ? 0.4 : 1 }]}>
+                ▲
+              </Text>
             </Pressable>
-            <Pressable onPress={() => act(tr('addresses.remove'), removeAddress)(address)} disabled={busy} accessibilityRole="button" accessibilityLabel={tr('addresses.removeAddress', { address })}>
-              <Text style={[t.type.body, { color: t.color.danger, opacity: busy ? 0.4 : 1 }]}>✕</Text>
+            <Pressable
+              onPress={() => act(tr('addresses.remove'), removeAddress)(address)}
+              disabled={busy}
+              accessibilityRole="button"
+              accessibilityLabel={tr('addresses.removeAddress', { address })}
+            >
+              <Text style={[t.type.body, { color: t.color.danger, opacity: busy ? 0.4 : 1 }]}>
+                ✕
+              </Text>
             </Pressable>
           </View>
         ))}
 
-        <View style={{ flexDirection: 'row', gap: t.space.sm, alignItems: 'center', paddingTop: t.space.sm }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            gap: t.space.sm,
+            alignItems: 'center',
+            paddingTop: t.space.sm,
+          }}
+        >
           <TextField
             value={newAddress}
             onChangeText={setNewAddress}
@@ -133,8 +179,18 @@ export function AddressesSheet({
             style={{ flex: 1 }}
           />
         </View>
-        <Button title={adding ? tr('addresses.adding') : tr('addresses.add')} variant="secondary" onPress={act(tr('addresses.add'), addAddress)} disabled={adding || !newAddress.trim()} />
-        <Button title={testingAll ? tr('addresses.testing') : tr('addresses.testAll')} variant="ghost" onPress={act(tr('addresses.testAll'), testAll)} disabled={testingAll || list.length === 0} />
+        <Button
+          title={adding ? tr('addresses.adding') : tr('addresses.add')}
+          variant="secondary"
+          onPress={act(tr('addresses.add'), addAddress)}
+          disabled={adding || !newAddress.trim()}
+        />
+        <Button
+          title={testingAll ? tr('addresses.testing') : tr('addresses.testAll')}
+          variant="ghost"
+          onPress={act(tr('addresses.testAll'), testAll)}
+          disabled={testingAll || list.length === 0}
+        />
       </View>
     </Sheet>
   );

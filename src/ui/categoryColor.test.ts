@@ -11,7 +11,16 @@ describe('categoryColor', () => {
   });
 
   it('spreads a realistic category list over several hues', () => {
-    const names = ['Groceries', 'Medicine', 'Doctors', 'Cat', 'Beauty', 'Car Fuel', 'Pastime', 'House Supplies'];
+    const names = [
+      'Groceries',
+      'Medicine',
+      'Doctors',
+      'Cat',
+      'Beauty',
+      'Car Fuel',
+      'Pastime',
+      'House Supplies',
+    ];
     expect(new Set(names.map((n) => categoryColor(n))).size).toBeGreaterThan(4);
   });
 });

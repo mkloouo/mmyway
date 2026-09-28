@@ -1,4 +1,9 @@
-import { receiptToDraft, receiptLocalDate, buildReceiptDraftReference, type ReceiptDraftReference } from './toDraft';
+import {
+  receiptToDraft,
+  receiptLocalDate,
+  buildReceiptDraftReference,
+  type ReceiptDraftReference,
+} from './toDraft';
 import { normalizeExtraction } from './providers/local';
 import { createTestDb } from '../db/testDb';
 import { setCashAccountId, setDefaultSourceAccountId } from '../settings/appSettings';
@@ -13,21 +18,38 @@ const reference: ReceiptDraftReference = {
 describe('receiptToDraft', () => {
   it('maps a confident extraction to a withdrawal with the payment method preset', () => {
     const extraction = normalizeExtraction({
-      amount: '42.50', currency: 'PLN', merchant: 'Żabka', date: '2026-09-15', category: 'Groceries',
-      items: [{ title: 'Milk', count: 2, price: '4.00' }], confidence: 0.9, payment_method: 'cash',
+      amount: '42.50',
+      currency: 'PLN',
+      merchant: 'Żabka',
+      date: '2026-09-15',
+      category: 'Groceries',
+      items: [{ title: 'Milk', count: 2, price: '4.00' }],
+      confidence: 0.9,
+      payment_method: 'cash',
     });
     const draft = receiptToDraft(extraction, reference);
     expect(draft).toMatchObject({
-      type: 'withdrawal', amount: '42.50', currencyCode: 'PLN', categoryName: 'Groceries',
-      destinationName: 'Żabka', isNewPayee: true, sourceId: 'acc-cash',
+      type: 'withdrawal',
+      amount: '42.50',
+      currencyCode: 'PLN',
+      categoryName: 'Groceries',
+      destinationName: 'Żabka',
+      isNewPayee: true,
+      sourceId: 'acc-cash',
     });
     expect(draft.notes).toBe('2x Milk (4.00)');
   });
 
   it('ignores an unknown extra field and leaves the currency blank when it is not synced (not a throw)', () => {
     const extraction = normalizeExtraction({
-      amount: '10.00', currency: 'USD', merchant: 'Test', date: '2026-09-15', category: null,
-      items: [], confidence: 0.9, payment_method: 'card',
+      amount: '10.00',
+      currency: 'USD',
+      merchant: 'Test',
+      date: '2026-09-15',
+      category: null,
+      items: [],
+      confidence: 0.9,
+      payment_method: 'card',
       totally_unexpected_field: { nested: true },
     });
     expect(() => receiptToDraft(extraction, reference)).not.toThrow();
@@ -38,8 +60,14 @@ describe('receiptToDraft', () => {
 
   it('leaves the currency blank when confidence is too low even if the currency is known', () => {
     const extraction = normalizeExtraction({
-      amount: '10.00', currency: 'PLN', merchant: 'Test', date: '2026-09-15', category: null,
-      items: [], confidence: 0.1, payment_method: 'unknown',
+      amount: '10.00',
+      currency: 'PLN',
+      merchant: 'Test',
+      date: '2026-09-15',
+      category: null,
+      items: [],
+      confidence: 0.1,
+      payment_method: 'unknown',
     });
     const draft = receiptToDraft(extraction, reference);
     expect(draft.currencyCode).toBe('');
@@ -48,8 +76,14 @@ describe('receiptToDraft', () => {
 
   it('leaves category empty when the extracted category is not a synced reference category', () => {
     const extraction = normalizeExtraction({
-      amount: '10.00', currency: 'PLN', merchant: 'Test', date: '2026-09-15', category: 'Made Up Category',
-      items: [], confidence: 0.9, payment_method: 'cash',
+      amount: '10.00',
+      currency: 'PLN',
+      merchant: 'Test',
+      date: '2026-09-15',
+      category: 'Made Up Category',
+      items: [],
+      confidence: 0.9,
+      payment_method: 'cash',
     });
     const draft = receiptToDraft(extraction, reference);
     expect(draft.categoryName).toBeUndefined();
@@ -57,8 +91,14 @@ describe('receiptToDraft', () => {
 
   it('flags the fields it still populated despite low confidence', () => {
     const extraction = normalizeExtraction({
-      amount: '42.50', currency: 'PLN', merchant: 'Żabka', date: '2026-09-15', category: null,
-      items: [], confidence: 0.2, payment_method: 'unknown',
+      amount: '42.50',
+      currency: 'PLN',
+      merchant: 'Żabka',
+      date: '2026-09-15',
+      category: null,
+      items: [],
+      confidence: 0.2,
+      payment_method: 'unknown',
     });
     const draft = receiptToDraft(extraction, reference);
     expect(draft.lowConfidenceFields).toEqual(['amount', 'payee', 'date']);
@@ -66,8 +106,14 @@ describe('receiptToDraft', () => {
 
   it('leaves lowConfidenceFields unset for a confident extraction', () => {
     const extraction = normalizeExtraction({
-      amount: '42.50', currency: 'PLN', merchant: 'Żabka', date: '2026-09-15', category: 'Groceries',
-      items: [], confidence: 0.9, payment_method: 'cash',
+      amount: '42.50',
+      currency: 'PLN',
+      merchant: 'Żabka',
+      date: '2026-09-15',
+      category: 'Groceries',
+      items: [],
+      confidence: 0.9,
+      payment_method: 'cash',
     });
     const draft = receiptToDraft(extraction, reference);
     expect(draft.lowConfidenceFields).toBeUndefined();
@@ -83,8 +129,14 @@ describe('buildReceiptDraftReference', () => {
     expect(reference.cashAccountId).toBe('acc-cash-drawer');
 
     const extraction = normalizeExtraction({
-      amount: '10.00', currency: 'PLN', merchant: 'Test', date: '2026-09-15', category: null,
-      items: [], confidence: 0.9, payment_method: 'cash',
+      amount: '10.00',
+      currency: 'PLN',
+      merchant: 'Test',
+      date: '2026-09-15',
+      category: null,
+      items: [],
+      confidence: 0.9,
+      payment_method: 'cash',
     });
     expect(receiptToDraft(extraction, reference).sourceId).toBe('acc-cash-drawer');
   });
@@ -95,8 +147,14 @@ describe('buildReceiptDraftReference', () => {
     expect(reference.cashAccountId).toBeUndefined();
 
     const extraction = normalizeExtraction({
-      amount: '10.00', currency: 'PLN', merchant: 'Test', date: '2026-09-15', category: null,
-      items: [], confidence: 0.9, payment_method: 'cash',
+      amount: '10.00',
+      currency: 'PLN',
+      merchant: 'Test',
+      date: '2026-09-15',
+      category: null,
+      items: [],
+      confidence: 0.9,
+      payment_method: 'cash',
     });
     expect(receiptToDraft(extraction, reference).sourceId).toBeUndefined();
   });

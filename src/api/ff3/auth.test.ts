@@ -4,7 +4,9 @@ function mockFetchOnce(status: number, body: unknown, contentType = 'application
   global.fetch = jest.fn().mockResolvedValue({
     ok: status >= 200 && status < 300,
     status,
-    headers: { get: (name: string) => (name.toLowerCase() === 'content-type' ? contentType : null) },
+    headers: {
+      get: (name: string) => (name.toLowerCase() === 'content-type' ? contentType : null),
+    },
     json: async () => body,
   }) as unknown as typeof fetch;
 }

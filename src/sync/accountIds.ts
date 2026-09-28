@@ -25,18 +25,25 @@ export function accountResolver(client: FF3Client) {
   const known = new Map<string, Promise<string>>();
 
   async function lookUp(name: string, payeeType: 'expense' | 'revenue' | null): Promise<string> {
-    const query = new URLSearchParams({ query: name, field: 'name', type: payeeType ?? 'all', limit: '100' });
+    const query = new URLSearchParams({
+      query: name,
+      field: 'name',
+      type: payeeType ?? 'all',
+      limit: '100',
+    });
     const found = await client.request<{ data: Found[] }>(`/v1/search/accounts?${query}`);
-    const candidates = (found.data ?? []).filter((a) => (payeeType
-      ? a.attributes.type === payeeType
-      : !PAYEE_TYPES.includes(a.attributes.type)));
+    const candidates = (found.data ?? []).filter((a) =>
+      payeeType ? a.attributes.type === payeeType : !PAYEE_TYPES.includes(a.attributes.type),
+    );
     // The search matches parts of names; only the account with this exact name will do.
-    const match = candidates.find((a) => a.attributes.name === name)
-      ?? candidates.find((a) => a.attributes.name.toLowerCase() === name.toLowerCase());
+    const match =
+      candidates.find((a) => a.attributes.name === name) ??
+      candidates.find((a) => a.attributes.name.toLowerCase() === name.toLowerCase());
     if (match) return String(match.id);
     if (!payeeType) throw new Error(`There is no account named "${name}" in Firefly III.`);
     const created = await client.request<{ data: { id: string } }>('/v1/accounts', {
-      method: 'POST', body: JSON.stringify({ name, type: payeeType }),
+      method: 'POST',
+      body: JSON.stringify({ name, type: payeeType }),
     });
     return String(created.data.id);
   }
@@ -63,7 +70,11 @@ type AccountEnds = {
  * The split as FF3 is sent it: each end that has only a name gets the id for it, and names are
  * dropped wherever there is an id. `fallbackType` is for a partial edit that doesn't carry its type.
  */
-export async function withAccountIds<T extends AccountEnds>(resolve: AccountResolver, split: T, fallbackType?: TxType): Promise<T & AccountEnds> {
+export async function withAccountIds<T extends AccountEnds>(
+  resolve: AccountResolver,
+  split: T,
+  fallbackType?: TxType,
+): Promise<T & AccountEnds> {
   const out: T & AccountEnds = { ...split };
   const type = (split.type ?? fallbackType) as TxType | undefined;
   for (const end of ['source', 'destination'] as const) {

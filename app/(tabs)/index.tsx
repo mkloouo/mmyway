@@ -9,19 +9,41 @@ import { inArray } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, AppBar, BarIconButton, SectionHeader, Button, StatusPill, EmptyState, Sheet } from '../../src/ui/components';
+import {
+  Screen,
+  AppBar,
+  BarIconButton,
+  SectionHeader,
+  Button,
+  StatusPill,
+  EmptyState,
+  Sheet,
+} from '../../src/ui/components';
 import { currencyOf, formatMoney } from '../../src/ui/money';
 import { CaptureDock } from '../../src/ui/CaptureDock';
 import { SyncSheet } from '../../src/ui/SyncSheet';
 import { haptics } from '../../src/ui/haptics';
 import { Snackbar, type SnackbarEntry } from '../../src/ui/Snackbar';
 import { relativeTime } from '../../src/ui/relativeTime';
-import { useInboxSections, type AttentionItem, type InboxItemRow, type QueuedChange } from '../../src/inbox/useInboxSections';
+import {
+  useInboxSections,
+  type AttentionItem,
+  type InboxItemRow,
+  type QueuedChange,
+} from '../../src/inbox/useInboxSections';
 import { draftReadiness } from '../../src/inbox/readiness';
-import { confirmInboxItem, undoConfirm, type ConfirmResult } from '../../src/inbox/createManualEntry';
+import {
+  confirmInboxItem,
+  undoConfirm,
+  type ConfirmResult,
+} from '../../src/inbox/createManualEntry';
 import { deleteInboxItem, retryErroredItem } from '../../src/inbox/updateDraft';
 import { confirmDestructive } from '../../src/ui/confirm';
-import { approveRecurringReview, editRecurringReview, deleteRecurringReview } from '../../src/sync/recurringReview';
+import {
+  approveRecurringReview,
+  editRecurringReview,
+  deleteRecurringReview,
+} from '../../src/sync/recurringReview';
 import { discardOperation, retryOperationNow } from '../../src/sync/outbox';
 import { requestSync } from '../../src/sync/syncTrigger';
 import { parseDecimalInput, trimDecimal } from '../../src/api/ff3/decimal';
@@ -32,7 +54,8 @@ import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { generateId } from '../../src/utils/id';
 import { navigateOnce } from '../../src/ui/navigateOnce';
 import { appLocale } from '../../src/i18n';
-import { readDraft, readReviewJournal, reviewForeign } from '../../src/inbox/draftJson'; import { AccountPickerSheet } from '../../src/ui/AccountPickerSheet';
+import { readDraft, readReviewJournal, reviewForeign } from '../../src/inbox/draftJson';
+import { AccountPickerSheet } from '../../src/ui/AccountPickerSheet';
 import { TextField } from '../../src/ui/TextField';
 import { useAction } from '../../src/ui/useAction';
 import { ConfirmCard, ReviewCard, AttentionCard, QueuedCard } from '../../src/ui/InboxCards';
@@ -49,10 +72,17 @@ export default function InboxScreen() {
   const act = useAction();
   const { needsAttention, toConfirm, toReview, queued } = useInboxSections();
   // Only what the pill counts — not every payload in the queue.
-  const { data: outbox } = useLiveQuery(db.select({ id: outboxOperations.id }).from(outboxOperations).where(inArray(outboxOperations.status, ['pending', 'failed'])));
+  const { data: outbox } = useLiveQuery(
+    db
+      .select({ id: outboxOperations.id })
+      .from(outboxOperations)
+      .where(inArray(outboxOperations.status, ['pending', 'failed'])),
+  );
   const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
   // Just "has anything ever synced" — .limit(1) instead of loading the whole cached table.
-  const { data: cachedTxProbe } = useLiveQuery(db.select({ id: cachedTransactions.groupId }).from(cachedTransactions).limit(1));
+  const { data: cachedTxProbe } = useLiveQuery(
+    db.select({ id: cachedTransactions.groupId }).from(cachedTransactions).limit(1),
+  );
   const { status, summary, syncNow } = useSync();
   const pull = usePullToRefresh();
 
@@ -81,7 +111,11 @@ export default function InboxScreen() {
   const [confirmingAll, setConfirmingAll] = useState(false);
   const [confirmProgress, setConfirmProgress] = useState({ done: 0, total: 0 });
   const [editingReview, setEditingReview] = useState<{
-    id: string; amount: string; currencyCode: string; accountId: string | null; foreign: { amount: string; currencyCode: string } | null;
+    id: string;
+    amount: string;
+    currencyCode: string;
+    accountId: string | null;
+    foreign: { amount: string; currencyCode: string } | null;
   } | null>(null);
   const [pickingReviewAccount, setPickingReviewAccount] = useState(false);
   const [savingReview, setSavingReview] = useState(false);
@@ -93,7 +127,8 @@ export default function InboxScreen() {
     haptics.tick();
     setSelectedIds((cur) => {
       const next = new Set(cur);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   }
@@ -105,7 +140,13 @@ export default function InboxScreen() {
   useEffect(() => {
     const timers = deleteTimers.current;
     // Leaving the screen commits whatever is still waiting.
-    return () => { for (const [id, timer] of timers) { clearTimeout(timer); void deleteInboxItem(db, id); } timers.clear(); };
+    return () => {
+      for (const [id, timer] of timers) {
+        clearTimeout(timer);
+        void deleteInboxItem(db, id);
+      }
+      timers.clear();
+    };
   }, [db]);
   // Cards fold away (Collapsible) before they leave the list, so the rest slide up smoothly.
   const [leavingIds, setLeavingIds] = useState<Set<string>>(new Set());
@@ -115,18 +156,25 @@ export default function InboxScreen() {
   function deleteWithUndo(ids: string[]) {
     leaveThen(ids, setLeavingIds, () => setHiddenIds((cur) => new Set([...cur, ...ids])));
     for (const id of ids) {
-      deleteTimers.current.set(id, setTimeout(() => {
-        deleteTimers.current.delete(id);
-        void deleteInboxItem(db, id);
-      }, UNDO_WINDOW_MS));
+      deleteTimers.current.set(
+        id,
+        setTimeout(() => {
+          deleteTimers.current.delete(id);
+          void deleteInboxItem(db, id);
+        }, UNDO_WINDOW_MS),
+      );
     }
     haptics.tick();
     setSnackbar({
       id: generateId(),
-      message: ids.length > 1 ? tr('inbox.deletedCount', { count: ids.length }) : tr('inbox.deleted'),
+      message:
+        ids.length > 1 ? tr('inbox.deletedCount', { count: ids.length }) : tr('inbox.deleted'),
       actionLabel: tr('common.undo'),
       onAction: () => {
-        for (const id of ids) { clearTimeout(deleteTimers.current.get(id)); deleteTimers.current.delete(id); }
+        for (const id of ids) {
+          clearTimeout(deleteTimers.current.get(id));
+          deleteTimers.current.delete(id);
+        }
         setHiddenIds((cur) => new Set([...cur].filter((id) => !ids.includes(id))));
         forgetLeaving(ids);
       },
@@ -136,10 +184,15 @@ export default function InboxScreen() {
   function showConfirmedSnackbar(batch: { id: string; result: ConfirmResult }[]) {
     setSnackbar({
       id: generateId(),
-      message: batch.length > 1 ? tr('inbox.confirmedCount', { count: batch.length }) : tr('inbox.confirmed'),
+      message:
+        batch.length > 1
+          ? tr('inbox.confirmedCount', { count: batch.length })
+          : tr('inbox.confirmed'),
       actionLabel: tr('common.undo'),
       onAction: async () => {
-        const outcomes = await Promise.all(batch.map(({ id, result }) => undoConfirm(db, id, result)));
+        const outcomes = await Promise.all(
+          batch.map(({ id, result }) => undoConfirm(db, id, result)),
+        );
         forgetLeaving(batch.map(({ id }) => id));
         setSnackbar({
           id: generateId(),
@@ -151,10 +204,19 @@ export default function InboxScreen() {
 
   function confirmSingle(item: InboxItemRow) {
     haptics.tick();
-    leaveThen([item.id], setLeavingIds, () => reportErrors(tr('inbox.confirm'), async () => {
-      const result = await confirmInboxItem(db, item.id);
-      showConfirmedSnackbar([{ id: item.id, result }]);
-    }, (message) => { forgetLeaving([item.id]); setSnackbar({ id: generateId(), message }); }));
+    leaveThen([item.id], setLeavingIds, () =>
+      reportErrors(
+        tr('inbox.confirm'),
+        async () => {
+          const result = await confirmInboxItem(db, item.id);
+          showConfirmedSnackbar([{ id: item.id, result }]);
+        },
+        (message) => {
+          forgetLeaving([item.id]);
+          setSnackbar({ id: generateId(), message });
+        },
+      ),
+    );
   }
 
   const visibleToConfirm = toConfirm.filter((item) => !hiddenIds.has(item.id));
@@ -170,16 +232,26 @@ export default function InboxScreen() {
     const batch: { id: string; result: ConfirmResult }[] = [];
     let failed = false;
     try {
-      await reportErrors(tr('inbox.confirmAll'), async () => {
-        for (const item of readyToConfirm) {
-          const result = await confirmInboxItem(db, item.id);
-          batch.push({ id: item.id, result });
-          setConfirmProgress((p) => ({ ...p, done: p.done + 1 }));
-        }
-      }, (message) => {
-        failed = true;
-        setSnackbar({ id: generateId(), message: batch.length > 0 ? tr('inbox.failedAfter', { message, count: batch.length }) : message });
-      });
+      await reportErrors(
+        tr('inbox.confirmAll'),
+        async () => {
+          for (const item of readyToConfirm) {
+            const result = await confirmInboxItem(db, item.id);
+            batch.push({ id: item.id, result });
+            setConfirmProgress((p) => ({ ...p, done: p.done + 1 }));
+          }
+        },
+        (message) => {
+          failed = true;
+          setSnackbar({
+            id: generateId(),
+            message:
+              batch.length > 0
+                ? tr('inbox.failedAfter', { message, count: batch.length })
+                : message,
+          });
+        },
+      );
     } finally {
       setConfirmingAll(false);
     }
@@ -194,7 +266,14 @@ export default function InboxScreen() {
     requestSync();
   });
   const discardError = act(tr('inbox.discard'), async (id: string) => {
-    if (!await confirmDestructive(tr('inbox.discardItemTitle'), tr('inbox.discard'), tr('inbox.discardItemBody'))) return;
+    if (
+      !(await confirmDestructive(
+        tr('inbox.discardItemTitle'),
+        tr('inbox.discard'),
+        tr('inbox.discardItemBody'),
+      ))
+    )
+      return;
     await deleteInboxItem(db, id);
   });
   function deleteSelected() {
@@ -203,7 +282,12 @@ export default function InboxScreen() {
     deleteWithUndo(ids);
   }
   async function confirmSelected() {
-    const ready = visibleToConfirm.filter((item) => selectedIds.has(item.id) && !(item.kind === 'receipt' && item.state === 'captured') && draftReadiness(readDraft(item.draftJson)).ready);
+    const ready = visibleToConfirm.filter(
+      (item) =>
+        selectedIds.has(item.id) &&
+        !(item.kind === 'receipt' && item.state === 'captured') &&
+        draftReadiness(readDraft(item.draftJson)).ready,
+    );
     setSelectedIds(new Set());
     if (ready.length === 0) {
       haptics.warn();
@@ -214,14 +298,29 @@ export default function InboxScreen() {
     const ids = ready.map((item) => item.id);
     leaveThen(ids, setLeavingIds, async () => {
       const batch: { id: string; result: ConfirmResult }[] = [];
-      await reportErrors(tr('inbox.confirm'), async () => {
-        for (const item of ready) batch.push({ id: item.id, result: await confirmInboxItem(db, item.id) });
-      }, (message) => { forgetLeaving(ids.filter((id) => !batch.some((b) => b.id === id))); setSnackbar({ id: generateId(), message }); });
+      await reportErrors(
+        tr('inbox.confirm'),
+        async () => {
+          for (const item of ready)
+            batch.push({ id: item.id, result: await confirmInboxItem(db, item.id) });
+        },
+        (message) => {
+          forgetLeaving(ids.filter((id) => !batch.some((b) => b.id === id)));
+          setSnackbar({ id: generateId(), message });
+        },
+      );
       if (batch.length > 0) showConfirmedSnackbar(batch);
     });
   }
   const discardReview = act(tr('common.delete'), async (id: string) => {
-    if (!await confirmDestructive(tr('inbox.deleteReviewTitle'), tr('common.delete'), tr('inbox.deleteReviewBody'))) return;
+    if (
+      !(await confirmDestructive(
+        tr('inbox.deleteReviewTitle'),
+        tr('common.delete'),
+        tr('inbox.deleteReviewBody'),
+      ))
+    )
+      return;
     await deleteRecurringReview(db, id);
   });
   const retryOpNow = act(tr('inbox.retryNow'), async (opId: string) => {
@@ -229,7 +328,14 @@ export default function InboxScreen() {
     syncNow();
   });
   const discardOp = act(tr('inbox.discard'), async (opId: string) => {
-    if (!await confirmDestructive(tr('inbox.discardChangeTitle'), tr('inbox.discard'), tr('inbox.discardChangeBody'))) return;
+    if (
+      !(await confirmDestructive(
+        tr('inbox.discardChangeTitle'),
+        tr('inbox.discard'),
+        tr('inbox.discardChangeBody'),
+      ))
+    )
+      return;
     await discardOperation(db, opId);
   });
   function resolveConflict(groupId: string) {
@@ -240,13 +346,27 @@ export default function InboxScreen() {
     const journal = readReviewJournal(item.draftJson);
     const foreign = reviewForeign(journal);
     // FF3 booked the planned 7.99 USD as 7.99 PLN — that number isn't the charge, so start empty.
-    const amount = foreign && journal.amount && trimDecimal(journal.amount) === trimDecimal(foreign.amount) ? '' : trimDecimal(journal.amount ?? '');
-    setEditingReview({ id: item.id, amount, currencyCode: journal.currency_code ?? '', accountId: journal.source_id ?? null, foreign });
+    const amount =
+      foreign && journal.amount && trimDecimal(journal.amount) === trimDecimal(foreign.amount)
+        ? ''
+        : trimDecimal(journal.amount ?? '');
+    setEditingReview({
+      id: item.id,
+      amount,
+      currencyCode: journal.currency_code ?? '',
+      accountId: journal.source_id ?? null,
+      foreign,
+    });
   }
-  const editAccount = editingReview ? assetAccounts.find((a) => a.id === editingReview.accountId) : undefined;
+  const editAccount = editingReview
+    ? assetAccounts.find((a) => a.id === editingReview.accountId)
+    : undefined;
   // The currency is the account's: picking another account changes it.
   const editCurrencyCode = editAccount?.currencyCode ?? editingReview?.currencyCode ?? '';
-  const editForeign = editingReview?.foreign && editingReview.foreign.currencyCode !== editCurrencyCode ? editingReview.foreign : null;
+  const editForeign =
+    editingReview?.foreign && editingReview.foreign.currencyCode !== editCurrencyCode
+      ? editingReview.foreign
+      : null;
   const editAmountResult = editingReview ? parseDecimalInput(editingReview.amount) : null;
   const editAmountInvalid = !!editingReview?.amount && !!editAmountResult && !editAmountResult.ok;
   // A double-tap here used to enqueue two recurring_review operations.
@@ -254,15 +374,24 @@ export default function InboxScreen() {
     if (!editingReview || savingReview || !editAmountResult?.ok) return;
     setSavingReview(true);
     try {
-      await reportErrors(tr('common.save'), async () => {
-        await editRecurringReview(db, editingReview.id, {
-          amount: editAmountResult.value,
-          currency_code: editCurrencyCode,
-          ...(editingReview.accountId ? { source_id: editingReview.accountId } : {}),
-          ...(editForeign ? { foreign_amount: editForeign.amount, foreign_currency_code: editForeign.currencyCode } : {}),
-        });
-        setEditingReview(null);
-      }, (message) => setSnackbar({ id: generateId(), message }));
+      await reportErrors(
+        tr('common.save'),
+        async () => {
+          await editRecurringReview(db, editingReview.id, {
+            amount: editAmountResult.value,
+            currency_code: editCurrencyCode,
+            ...(editingReview.accountId ? { source_id: editingReview.accountId } : {}),
+            ...(editForeign
+              ? {
+                  foreign_amount: editForeign.amount,
+                  foreign_currency_code: editForeign.currencyCode,
+                }
+              : {}),
+          });
+          setEditingReview(null);
+        },
+        (message) => setSnackbar({ id: generateId(), message }),
+      );
     } finally {
       setSavingReview(false);
     }
@@ -276,25 +405,44 @@ export default function InboxScreen() {
   ];
   const sections = allSections.filter((s) => s.data.length > 0);
 
-  const pillState: 'ok' | 'syncing' | 'queued' | 'offline' | 'error' = status === 'syncing' ? 'syncing'
-    : hasCredentials === false ? 'offline'
-    : summary?.error ? 'error'
-    : summary && !summary.ff3Reachable ? 'offline'
-    : pendingOutboxCount > 0 ? 'queued'
-    : 'ok';
-  const pillLabel = status === 'syncing' ? tr('sync.syncing')
-    : hasCredentials === false ? tr('sync.notSignedIn')
-    : summary?.error ? tr('sync.error')
-    : summary && !summary.ff3Reachable ? tr('sync.offline')
-    : pendingOutboxCount > 0 ? tr('sync.queued', { count: pendingOutboxCount })
-    : relativeTime(summary?.lastSyncedAt);
+  const pillState: 'ok' | 'syncing' | 'queued' | 'offline' | 'error' =
+    status === 'syncing'
+      ? 'syncing'
+      : hasCredentials === false
+        ? 'offline'
+        : summary?.error
+          ? 'error'
+          : summary && !summary.ff3Reachable
+            ? 'offline'
+            : pendingOutboxCount > 0
+              ? 'queued'
+              : 'ok';
+  const pillLabel =
+    status === 'syncing'
+      ? tr('sync.syncing')
+      : hasCredentials === false
+        ? tr('sync.notSignedIn')
+        : summary?.error
+          ? tr('sync.error')
+          : summary && !summary.ff3Reachable
+            ? tr('sync.offline')
+            : pendingOutboxCount > 0
+              ? tr('sync.queued', { count: pendingOutboxCount })
+              : relativeTime(summary?.lastSyncedAt);
 
   const subtitleParts: string[] = [];
-  if (toConfirm.length > 0) subtitleParts.push(tr('inbox.toConfirmCount', { count: toConfirm.length }));
-  if (toReview.length > 0) subtitleParts.push(tr('inbox.toReviewCount', { count: toReview.length }));
-  const dateTitle = new Date().toLocaleDateString(appLocale(), { weekday: 'long', day: 'numeric', month: 'short' });
+  if (toConfirm.length > 0)
+    subtitleParts.push(tr('inbox.toConfirmCount', { count: toConfirm.length }));
+  if (toReview.length > 0)
+    subtitleParts.push(tr('inbox.toReviewCount', { count: toReview.length }));
+  const dateTitle = new Date().toLocaleDateString(appLocale(), {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'short',
+  });
 
-  const showOfflineBanner = hasCredentials === true && summary && !summary.ff3Reachable && pendingOutboxCount > 0;
+  const showOfflineBanner =
+    hasCredentials === true && summary && !summary.ff3Reachable && pendingOutboxCount > 0;
   // undefined until the first read lands, so a synced-but-empty Inbox doesn't flash "Nothing
   // synced yet" before flipping to "Inbox zero" once the probe resolves.
   const hasSyncedBefore = cachedTxProbe === undefined ? undefined : cachedTxProbe.length > 0;
@@ -305,30 +453,58 @@ export default function InboxScreen() {
         {selecting ? (
           <AppBar
             title={tr('inbox.selected', { count: selectedIds.size })}
-            left={<BarIconButton icon="close" label={tr('inbox.cancelSelection')} onPress={() => setSelectedIds(new Set())} />}
-            right={(
+            left={
+              <BarIconButton
+                icon="close"
+                label={tr('inbox.cancelSelection')}
+                onPress={() => setSelectedIds(new Set())}
+              />
+            }
+            right={
               <>
-                <Button title={tr('inbox.confirm')} variant="secondary" size="bar" onPress={confirmSelected} />
-                <Button title={tr('common.delete')} variant="danger" size="bar" onPress={deleteSelected} />
+                <Button
+                  title={tr('inbox.confirm')}
+                  variant="secondary"
+                  size="bar"
+                  onPress={confirmSelected}
+                />
+                <Button
+                  title={tr('common.delete')}
+                  variant="danger"
+                  size="bar"
+                  onPress={deleteSelected}
+                />
               </>
-            )}
+            }
           />
         ) : (
-        <AppBar
-          title={dateTitle}
-          subtitle={subtitleParts.length > 0 ? subtitleParts.join(' · ') : undefined}
-          right={(
-            <Pressable onPress={() => setSyncSheetOpen(true)} accessibilityRole="button" accessibilityLabel={tr('sync.statusLabel')}>
-              <Animated.View style={pillPop}>
-                <StatusPill state={pillState} label={pillLabel} />
-              </Animated.View>
-            </Pressable>
-          )}
-        />
+          <AppBar
+            title={dateTitle}
+            subtitle={subtitleParts.length > 0 ? subtitleParts.join(' · ') : undefined}
+            right={
+              <Pressable
+                onPress={() => setSyncSheetOpen(true)}
+                accessibilityRole="button"
+                accessibilityLabel={tr('sync.statusLabel')}
+              >
+                <Animated.View style={pillPop}>
+                  <StatusPill state={pillState} label={pillLabel} />
+                </Animated.View>
+              </Pressable>
+            }
+          />
         )}
         {!!showOfflineBanner && (
-          <View style={{ backgroundColor: t.color.warnSoft, paddingHorizontal: t.space.lg, paddingVertical: t.space.sm }}>
-            <Text style={[t.type.label, { color: t.color.warn }]}>⚑ {tr('inbox.offlineBanner', { count: pendingOutboxCount })}</Text>
+          <View
+            style={{
+              backgroundColor: t.color.warnSoft,
+              paddingHorizontal: t.space.lg,
+              paddingVertical: t.space.sm,
+            }}
+          >
+            <Text style={[t.type.label, { color: t.color.warn }]}>
+              ⚑ {tr('inbox.offlineBanner', { count: pendingOutboxCount })}
+            </Text>
           </View>
         )}
 
@@ -340,44 +516,80 @@ export default function InboxScreen() {
           refreshing={pull.refreshing}
           onRefresh={pull.onRefresh}
           contentContainerStyle={{ paddingBottom: 140 }}
-          ListEmptyComponent={(
+          ListEmptyComponent={
             <>
               {hasCredentials === false && (
                 <EmptyState
                   glyph="⚡"
                   title={tr('inbox.connectTitle')}
                   hint={tr('inbox.connectHint')}
-                  action={<Button title={tr('inbox.goToSettings')} onPress={() => navigateOnce('/settings')} />}
+                  action={
+                    <Button
+                      title={tr('inbox.goToSettings')}
+                      onPress={() => navigateOnce('/settings')}
+                    />
+                  }
                 />
               )}
               {hasCredentials === true && hasSyncedBefore === false && (
-                <EmptyState glyph="↻" title={tr('inbox.nothingSyncedTitle')} hint={tr('inbox.nothingSyncedHint')} />
+                <EmptyState
+                  glyph="↻"
+                  title={tr('inbox.nothingSyncedTitle')}
+                  hint={tr('inbox.nothingSyncedHint')}
+                />
               )}
               {hasCredentials === true && hasSyncedBefore === true && (
                 <EmptyState
                   glyph="✓"
                   title={tr('inbox.zeroTitle')}
                   hint={tr('inbox.zeroHint')}
-                  action={(
+                  action={
                     <View style={{ flexDirection: 'row', gap: t.space.md }}>
-                      <Button title={`＋ ${tr('common.add')}`} onPress={() => navigateOnce('/capture')} />
-                      <Button title="📷" variant="secondary" onPress={() => navigateOnce('/receipt')} />
+                      <Button
+                        title={`＋ ${tr('common.add')}`}
+                        onPress={() => navigateOnce('/capture')}
+                      />
+                      <Button
+                        title="📷"
+                        variant="secondary"
+                        onPress={() => navigateOnce('/receipt')}
+                      />
                     </View>
-                  )}
+                  }
                 />
               )}
             </>
-          )}
+          }
           renderSectionHeader={({ section }) => (
             <SectionHeader
               title={section.title}
-              action={section.key === 'confirm' && readyToConfirm.length >= 2 ? (
-                <Pressable onPress={confirmAll} disabled={confirmingAll} accessibilityRole="button">
-                  <Text style={[t.type.label, { color: t.color.accent, fontWeight: '700', opacity: confirmingAll ? 0.5 : 1 }]}>
-                    {confirmingAll ? tr('inbox.confirmingProgress', { done: confirmProgress.done, total: confirmProgress.total }) : tr('inbox.confirmAllCount', { count: readyToConfirm.length })}
-                  </Text>
-                </Pressable>
-              ) : undefined}
+              action={
+                section.key === 'confirm' && readyToConfirm.length >= 2 ? (
+                  <Pressable
+                    onPress={confirmAll}
+                    disabled={confirmingAll}
+                    accessibilityRole="button"
+                  >
+                    <Text
+                      style={[
+                        t.type.label,
+                        {
+                          color: t.color.accent,
+                          fontWeight: '700',
+                          opacity: confirmingAll ? 0.5 : 1,
+                        },
+                      ]}
+                    >
+                      {confirmingAll
+                        ? tr('inbox.confirmingProgress', {
+                            done: confirmProgress.done,
+                            total: confirmProgress.total,
+                          })
+                        : tr('inbox.confirmAllCount', { count: readyToConfirm.length })}
+                    </Text>
+                  </Pressable>
+                ) : undefined
+              }
             />
           )}
           renderItem={({ item, section }) => {
@@ -394,14 +606,21 @@ export default function InboxScreen() {
                 />
               );
             }
-            if (section.key === 'queued') return <QueuedCard change={item as QueuedChange} onOpen={navigateOnce} />;
+            if (section.key === 'queued')
+              return <QueuedCard change={item as QueuedChange} onOpen={navigateOnce} />;
             const row = item as InboxItemRow;
             if (section.key === 'review') {
               return (
                 <ReviewCard
                   item={row}
                   currencies={currencies ?? []}
-                  onApprove={() => reportErrors(tr('inbox.approve'), () => approveRecurringReview(db, row.id), (message) => setSnackbar({ id: generateId(), message }))}
+                  onApprove={() =>
+                    reportErrors(
+                      tr('inbox.approve'),
+                      () => approveRecurringReview(db, row.id),
+                      (message) => setSnackbar({ id: generateId(), message }),
+                    )
+                  }
                   onEdit={() => startEditReview(row)}
                   onDelete={() => discardReview(row.id)}
                 />
@@ -415,7 +634,11 @@ export default function InboxScreen() {
                   onOpen={() => navigateOnce(`/draft/${row.id}`)}
                   onConfirm={() => confirmSingle(row)}
                   onDelete={() => deleteWithUndo([row.id])}
-                  selection={{ active: selecting, selected: selectedIds.has(row.id), toggle: () => toggleSelected(row.id) }}
+                  selection={{
+                    active: selecting,
+                    selected: selectedIds.has(row.id),
+                    toggle: () => toggleSelected(row.id),
+                  }}
                 />
               </Collapsible>
             );
@@ -439,24 +662,44 @@ export default function InboxScreen() {
         visible={!!editingReview}
         onClose={() => setEditingReview(null)}
         title={tr('inbox.editReviewTitle')}
-        footer={<Button title={savingReview ? tr('common.saving') : tr('inbox.saveAndApprove')} disabled={savingReview || !editAmountResult?.ok} onPress={saveEditReview} />}
+        footer={
+          <Button
+            title={savingReview ? tr('common.saving') : tr('inbox.saveAndApprove')}
+            disabled={savingReview || !editAmountResult?.ok}
+            onPress={saveEditReview}
+          />
+        }
       >
         {!!editingReview && (
           <>
             {editForeign && (
               <Text style={[t.type.body, { color: t.color.text }]}>
-                {tr('inbox.chargedAs', { amount: formatMoney(editForeign.amount, currencyOf(currencies ?? [], editForeign.currencyCode)) })}
+                {tr('inbox.chargedAs', {
+                  amount: formatMoney(
+                    editForeign.amount,
+                    currencyOf(currencies ?? [], editForeign.currencyCode),
+                  ),
+                })}
               </Text>
             )}
             <TextField
-              placeholder={`${tr('fields.amount')}, ${editCurrencyCode}`} value={editingReview.amount} keyboardType="decimal-pad"
-              autoFocus={!!editForeign} invalid={editAmountInvalid}
+              placeholder={`${tr('fields.amount')}, ${editCurrencyCode}`}
+              value={editingReview.amount}
+              keyboardType="decimal-pad"
+              autoFocus={!!editForeign}
+              invalid={editAmountInvalid}
               onChangeText={(v) => setEditingReview((cur) => (cur ? { ...cur, amount: v } : cur))}
             />
             {editAmountInvalid && (
-              <Text style={[t.type.label, { color: t.color.danger }]}>{tr('common.invalidAmount')}</Text>
+              <Text style={[t.type.label, { color: t.color.danger }]}>
+                {tr('common.invalidAmount')}
+              </Text>
             )}
-            <Button title={editAccount?.name ?? tr('fields.from')} variant="secondary" onPress={() => setPickingReviewAccount(true)} />
+            <Button
+              title={editAccount?.name ?? tr('fields.from')}
+              variant="secondary"
+              onPress={() => setPickingReviewAccount(true)}
+            />
           </>
         )}
       </Sheet>

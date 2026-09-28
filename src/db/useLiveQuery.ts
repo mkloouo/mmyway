@@ -10,7 +10,10 @@ import type { AnySQLiteSelect } from 'drizzle-orm/sqlite-core';
 
 const COALESCE_MS = 100;
 
-export function useLiveQuery<T extends Pick<AnySQLiteSelect, '_' | 'then'>>(query: T, deps: unknown[] = []) {
+export function useLiveQuery<T extends Pick<AnySQLiteSelect, '_' | 'then'>>(
+  query: T,
+  deps: unknown[] = [],
+) {
   // undefined until the first read lands, so a screen can tell "still loading" from "empty".
   const [data, setData] = useState<Awaited<T> | undefined>(undefined);
   const [error, setError] = useState<Error>();
@@ -28,11 +31,16 @@ export function useLiveQuery<T extends Pick<AnySQLiteSelect, '_' | 'then'>>(quer
       running = true;
       dirty = false;
       Promise.resolve(query)
-        .then((rows) => {
-          if (cancelled) return;
-          setData(rows as Awaited<T>);
-          setUpdatedAt(new Date());
-        }, (err: Error) => { if (!cancelled) setError(err); })
+        .then(
+          (rows) => {
+            if (cancelled) return;
+            setData(rows as Awaited<T>);
+            setUpdatedAt(new Date());
+          },
+          (err: Error) => {
+            if (!cancelled) setError(err);
+          },
+        )
         .finally(() => {
           running = false;
           if (dirty && !cancelled) schedule();
@@ -44,7 +52,9 @@ export function useLiveQuery<T extends Pick<AnySQLiteSelect, '_' | 'then'>>(quer
     }
 
     run();
-    const listener = addDatabaseChangeListener((event) => { if (event.tableName === tableName) schedule(); });
+    const listener = addDatabaseChangeListener((event) => {
+      if (event.tableName === tableName) schedule();
+    });
     return () => {
       cancelled = true;
       clearTimeout(timer);

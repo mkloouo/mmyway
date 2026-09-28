@@ -10,7 +10,13 @@ import { useTheme } from './theme';
 
 const HEIGHT = 140;
 
-export function ReceiptThumb({ preview, onOpen }: { preview: ReceiptPreview; onOpen: (uri: string) => void }) {
+export function ReceiptThumb({
+  preview,
+  onOpen,
+}: {
+  preview: ReceiptPreview;
+  onOpen: (uri: string) => void;
+}) {
   const t = useTheme();
   const { t: tr } = useTranslation();
   const { headers } = preview.source;
@@ -22,19 +28,32 @@ export function ReceiptThumb({ preview, onOpen }: { preview: ReceiptPreview; onO
     retry: 1,
   });
   const uri = headers ? download.data : preview.source.uri;
-  const box = { width: '100%' as const, height: HEIGHT, borderRadius: t.radius.sm, backgroundColor: t.color.surfaceAlt };
+  const box = {
+    width: '100%' as const,
+    height: HEIGHT,
+    borderRadius: t.radius.sm,
+    backgroundColor: t.color.surfaceAlt,
+  };
 
   if (!uri) {
     return (
       <View style={[box, { alignItems: 'center', justifyContent: 'center', padding: t.space.md }]}>
-        {download.isError
-          ? <Text style={[t.type.label, { color: t.color.textMuted, textAlign: 'center' }]}>{tr('transaction.photoLoadFailed')}</Text>
-          : <ActivityIndicator color={t.color.accent} accessibilityLabel={tr('common.loading')} />}
+        {download.isError ? (
+          <Text style={[t.type.label, { color: t.color.textMuted, textAlign: 'center' }]}>
+            {tr('transaction.photoLoadFailed')}
+          </Text>
+        ) : (
+          <ActivityIndicator color={t.color.accent} accessibilityLabel={tr('common.loading')} />
+        )}
       </View>
     );
   }
   return (
-    <Pressable onPress={() => onOpen(uri)} accessibilityRole="imagebutton" accessibilityLabel={tr('draft.showPhoto')}>
+    <Pressable
+      onPress={() => onOpen(uri)}
+      accessibilityRole="imagebutton"
+      accessibilityLabel={tr('draft.showPhoto')}
+    >
       <Image source={{ uri }} resizeMode="cover" style={box} />
     </Pressable>
   );

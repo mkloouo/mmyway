@@ -24,7 +24,12 @@ import { deletePersistedReceiptImage } from '../receipt/imageFiles';
 import { cachedRowFromGroup } from './referenceData';
 import { readPayload, writePayload } from './payloadJson';
 import { accountResolver, withAccountIds } from './accountIds';
-import { replayDeletePlanned, replaySavePlanned, type DeletePlannedPayload, type SavePlannedPayload } from '../planned/replay';
+import {
+  replayDeletePlanned,
+  replaySavePlanned,
+  type DeletePlannedPayload,
+  type SavePlannedPayload,
+} from '../planned/replay';
 
 export type OutboxKind =
   | 'create_transaction'
@@ -37,7 +42,12 @@ export type OutboxKind =
   | 'delete_planned';
 
 /** The kinds that change an account balance in FF3 once they land; receipts and account edits don't. */
-export const LEDGER_KINDS = ['create_transaction', 'update_transaction', 'delete_transaction', 'recurring_review'] as const satisfies readonly OutboxKind[];
+export const LEDGER_KINDS = [
+  'create_transaction',
+  'update_transaction',
+  'delete_transaction',
+  'recurring_review',
+] as const satisfies readonly OutboxKind[];
 
 export interface CreateTransactionPayload {
   clientId: string; // becomes the duplicate-hash guard
@@ -89,7 +99,15 @@ export interface NewOutboxOperation {
   id: string;
   inboxItemId?: string;
   kind: OutboxKind;
-  payload: CreateTransactionPayload | UpdateTransactionPayload | DeleteTransactionPayload | AttachReceiptPayload | UpdateAccountPayload | SavePlannedPayload | DeletePlannedPayload | Record<string, unknown>;
+  payload:
+    | CreateTransactionPayload
+    | UpdateTransactionPayload
+    | DeleteTransactionPayload
+    | AttachReceiptPayload
+    | UpdateAccountPayload
+    | SavePlannedPayload
+    | DeletePlannedPayload
+    | Record<string, unknown>;
 }
 
 export interface ReplayResult {
@@ -106,22 +124,36 @@ export function retryDelayMs(attempts: number): number {
   return Math.min(RETRY_BASE_MS * 2 ** Math.max(0, attempts - 1), RETRY_MAX_MS);
 }
 
-export type ConflictHandler = (op: { id: string; payload: UpdateTransactionPayload | DeleteTransactionPayload }, serverUpdatedAt: string) => void;
+export type ConflictHandler = (
+  op: { id: string; payload: UpdateTransactionPayload | DeleteTransactionPayload },
+  serverUpdatedAt: string,
+) => void;
 
-async function conflictingUpdatedAt(db: OutboxDb, groupId: string, expectedUpdatedAt: string): Promise<string | null> {
-  const current = (await db.select().from(cachedTransactions).where(eq(cachedTransactions.groupId, groupId)))[0];
+async function conflictingUpdatedAt(
+  db: OutboxDb,
+  groupId: string,
+  expectedUpdatedAt: string,
+): Promise<string | null> {
+  const current = (
+    await db.select().from(cachedTransactions).where(eq(cachedTransactions.groupId, groupId))
+  )[0];
   return current && current.updatedAt !== expectedUpdatedAt ? current.updatedAt : null;
 }
 
-type ServerCopy = { status: 'present'; updatedAt: string | null; group: TransactionRead | null } | { status: 'gone' };
+type ServerCopy =
+  | { status: 'present'; updatedAt: string | null; group: TransactionRead | null }
+  | { status: 'gone' };
 
 // The cache check above is only as fresh as the last pull, and pulls only re-read a short
 // window — an edit to an older transaction in FF3's web UI would never show up there. So an
 // edit or delete also asks the server for its current copy right before sending.
 async function serverCopy(client: FF3Client, groupId: string): Promise<ServerCopy> {
   try {
-    const response = await client.request<{ data?: TransactionRead }>(`/v1/transactions/${groupId}`);
-    const updatedAt = (response?.data?.attributes as { updated_at?: string } | undefined)?.updated_at ?? null;
+    const response = await client.request<{ data?: TransactionRead }>(
+      `/v1/transactions/${groupId}`,
+    );
+    const updatedAt =
+      (response?.data?.attributes as { updated_at?: string } | undefined)?.updated_at ?? null;
     return { status: 'present', updatedAt, group: response?.data ?? null };
   } catch (err) {
     if (err instanceof FF3RequestError && err.status === 404) return { status: 'gone' };
@@ -140,7 +172,8 @@ function duplicateOf(err: unknown): string | null {
 }
 
 function splitReference(group: TransactionRead | undefined): string | null {
-  const split = group?.attributes.transactions[0] as { internal_reference?: string | null } | undefined;
+  const split = group?.attributes.transactions[0] as
+    { internal_reference?: string | null } | undefined;
   return split?.internal_reference ?? null;
 }
 
@@ -149,7 +182,11 @@ function splitReference(group: TransactionRead | undefined): string | null {
 // our own earlier attempt — one that reached the server but whose response was lost. That is a
 // success to record, not a failure to retry forever. FF3 has named both the group and the journal
 // id in that message across versions, so both lookups are tried.
-async function recoverOwnDuplicate(client: FF3Client, id: string, reference: string): Promise<TransactionRead | null> {
+async function recoverOwnDuplicate(
+  client: FF3Client,
+  id: string,
+  reference: string,
+): Promise<TransactionRead | null> {
   for (const path of [`/v1/transactions/${id}`, `/v1/transaction-journals/${id}`]) {
     try {
       const found = await client.request<{ data: TransactionRead }>(path);
@@ -164,16 +201,18 @@ async function recoverOwnDuplicate(client: FF3Client, id: string, reference: str
 function insertOperation(db: OutboxDb, op: NewOutboxOperation): void {
   // The sequence is computed inside the INSERT itself: a read-then-write from JS let two enqueues
   // interleave across an await and take the same number.
-  db.insert(outboxOperations).values({
-    id: op.id,
-    inboxItemId: op.inboxItemId ?? null,
-    kind: op.kind,
-    payloadJson: writePayload(op.payload),
-    status: 'pending',
-    attempts: 0,
-    createdAt: new Date().toISOString(),
-    sequence: sql`(select coalesce(max(${outboxOperations.sequence}), 0) + 1 from ${outboxOperations})`,
-  }).run();
+  db.insert(outboxOperations)
+    .values({
+      id: op.id,
+      inboxItemId: op.inboxItemId ?? null,
+      kind: op.kind,
+      payloadJson: writePayload(op.payload),
+      status: 'pending',
+      attempts: 0,
+      createdAt: new Date().toISOString(),
+      sequence: sql`(select coalesce(max(${outboxOperations.sequence}), 0) + 1 from ${outboxOperations})`,
+    })
+    .run();
 }
 
 /**
@@ -191,7 +230,9 @@ export async function enqueueOperation(db: OutboxDb, op: NewOutboxOperation): Pr
 
 /** Queued operations (in any status) that will change a balance in FF3 when they land. */
 export async function queuedLedgerOpCount(db: OutboxDb): Promise<number> {
-  const [row] = await db.select({ n: sql<number>`count(*)` }).from(outboxOperations)
+  const [row] = await db
+    .select({ n: sql<number>`count(*)` })
+    .from(outboxOperations)
     .where(inArray(outboxOperations.kind, [...LEDGER_KINDS]));
   return Number(row?.n ?? 0);
 }
@@ -203,26 +244,57 @@ export async function queuedLedgerOpCount(db: OutboxDb): Promise<number> {
  * first replay — never while one might be running.
  */
 export async function recoverInFlight(db: OutboxDb): Promise<void> {
-  await db.update(outboxOperations).set({ status: 'pending' }).where(eq(outboxOperations.status, 'in_flight'));
+  await db
+    .update(outboxOperations)
+    .set({ status: 'pending' })
+    .where(eq(outboxOperations.status, 'in_flight'));
 }
 
 async function markConflict(db: OutboxDb, id: string): Promise<void> {
-  await db.update(outboxOperations).set({ status: 'failed', lastError: 'conflict' }).where(eq(outboxOperations.id, id));
+  await db
+    .update(outboxOperations)
+    .set({ status: 'failed', lastError: 'conflict' })
+    .where(eq(outboxOperations.id, id));
 }
 
 // After an edit lands, the server's updated_at moves on. A later queued edit or delete of the
 // same transaction was conflict-checked against the old value — it would now conflict with the
 // user's own previous edit. Rebase those onto the new value, and refresh the cache row.
-async function rebaseLaterEdits(db: OutboxDb, groupId: string, previous: string, next: string | null): Promise<void> {
+async function rebaseLaterEdits(
+  db: OutboxDb,
+  groupId: string,
+  previous: string,
+  next: string | null,
+): Promise<void> {
   if (!next || next === previous) return;
-  await db.update(cachedTransactions).set({ updatedAt: next }).where(eq(cachedTransactions.groupId, groupId));
-  const later = await db.select().from(outboxOperations)
-    .where(and(inArray(outboxOperations.status, ['pending', 'failed']), inArray(outboxOperations.kind, ['update_transaction', 'recurring_review', 'delete_transaction'])));
+  await db
+    .update(cachedTransactions)
+    .set({ updatedAt: next })
+    .where(eq(cachedTransactions.groupId, groupId));
+  const later = await db
+    .select()
+    .from(outboxOperations)
+    .where(
+      and(
+        inArray(outboxOperations.status, ['pending', 'failed']),
+        inArray(outboxOperations.kind, [
+          'update_transaction',
+          'recurring_review',
+          'delete_transaction',
+        ]),
+      ),
+    );
   for (const op of later) {
-    const payload = readPayload<UpdateTransactionPayload | DeleteTransactionPayload>(op.kind, op.payloadJson);
+    const payload = readPayload<UpdateTransactionPayload | DeleteTransactionPayload>(
+      op.kind,
+      op.payloadJson,
+    );
     if (payload.groupId !== groupId || payload.expectedUpdatedAt !== previous) continue;
     payload.expectedUpdatedAt = next;
-    await db.update(outboxOperations).set({ payloadJson: writePayload(payload) }).where(eq(outboxOperations.id, op.id));
+    await db
+      .update(outboxOperations)
+      .set({ payloadJson: writePayload(payload) })
+      .where(eq(outboxOperations.id, op.id));
   }
 }
 
@@ -230,27 +302,44 @@ async function rebaseLaterEdits(db: OutboxDb, groupId: string, previous: string,
 // is sent out of order. Each op is *claimed* (pending/failed -> in_flight) right before it is
 // sent, re-reading it from the table: an op that Undo or Discard removed after this run started
 // is skipped instead of sent, and two concurrent replays can never both send the same op.
-export async function replayOutbox(db: OutboxDb, client: FF3Client, opts: { onConflict?: ConflictHandler } = {}): Promise<ReplayResult> {
+export async function replayOutbox(
+  db: OutboxDb,
+  client: FF3Client,
+  opts: { onConflict?: ConflictHandler } = {},
+): Promise<ReplayResult> {
   const result: ReplayResult = { succeeded: [], conflicted: [], failedAt: null };
   const attempted = new Set<string>();
 
   // Looped: a successful create can queue its receipt upload, which should go out in the same run.
   for (;;) {
-    const pending = (await db.select().from(outboxOperations)
-      .where(inArray(outboxOperations.status, ['pending', 'failed']))
-      .orderBy(asc(outboxOperations.sequence)))
-      .filter((row) => !attempted.has(row.id));
+    const pending = (
+      await db
+        .select()
+        .from(outboxOperations)
+        .where(inArray(outboxOperations.status, ['pending', 'failed']))
+        .orderBy(asc(outboxOperations.sequence))
+    ).filter((row) => !attempted.has(row.id));
     if (pending.length === 0) return result;
 
     for (const candidate of pending) {
       attempted.add(candidate.id);
-      if (candidate.status === 'failed' && candidate.nextAttemptAt && candidate.nextAttemptAt > new Date().toISOString()) {
+      if (
+        candidate.status === 'failed' &&
+        candidate.nextAttemptAt &&
+        candidate.nextAttemptAt > new Date().toISOString()
+      ) {
         result.failedAt = candidate.id; // still backing off; nothing after it may go first
         return result;
       }
-      const [row] = await db.update(outboxOperations)
+      const [row] = await db
+        .update(outboxOperations)
         .set({ status: 'in_flight' })
-        .where(and(eq(outboxOperations.id, candidate.id), inArray(outboxOperations.status, ['pending', 'failed'])))
+        .where(
+          and(
+            eq(outboxOperations.id, candidate.id),
+            inArray(outboxOperations.status, ['pending', 'failed']),
+          ),
+        )
         .returning();
       if (!row) continue; // undone, discarded, or claimed by someone else since the list was read
 
@@ -270,9 +359,17 @@ export async function replayOutbox(db: OutboxDb, client: FF3Client, opts: { onCo
 type OutboxRow = typeof outboxOperations.$inferSelect;
 
 /** An edited transaction's type, for a partial change naming an account without saying it. */
-async function cachedTypeOf(db: OutboxDb, groupId: string): Promise<'withdrawal' | 'deposit' | 'transfer' | undefined> {
-  const [row] = await db.select({ type: cachedTransactions.type }).from(cachedTransactions).where(eq(cachedTransactions.groupId, groupId));
-  return row?.type === 'withdrawal' || row?.type === 'deposit' || row?.type === 'transfer' ? row.type : undefined;
+async function cachedTypeOf(
+  db: OutboxDb,
+  groupId: string,
+): Promise<'withdrawal' | 'deposit' | 'transfer' | undefined> {
+  const [row] = await db
+    .select({ type: cachedTransactions.type })
+    .from(cachedTransactions)
+    .where(eq(cachedTransactions.groupId, groupId));
+  return row?.type === 'withdrawal' || row?.type === 'deposit' || row?.type === 'transfer'
+    ? row.type
+    : undefined;
 }
 
 /**
@@ -291,18 +388,34 @@ async function missingReferences(db: OutboxDb, splits: TransactionSplit[]): Prom
   const budgetIds = new Set(budgets.map((b) => b.id));
   const problems: string[] = [];
   for (const split of splits) {
-    for (const [end, id] of [['source', split.source_id], ['destination', split.destination_id]] as const) {
-      if (id && accountIds.size > 0 && !accountIds.has(String(id))) problems.push(`The ${end} account no longer exists in Firefly III — pick another.`);
+    for (const [end, id] of [
+      ['source', split.source_id],
+      ['destination', split.destination_id],
+    ] as const) {
+      if (id && accountIds.size > 0 && !accountIds.has(String(id)))
+        problems.push(`The ${end} account no longer exists in Firefly III — pick another.`);
     }
-    if (split.category_name && categoryNames.size > 0 && !categoryNames.has(split.category_name.toLowerCase())) {
-      problems.push(`The category "${split.category_name}" no longer exists in Firefly III — pick another.`);
+    if (
+      split.category_name &&
+      categoryNames.size > 0 &&
+      !categoryNames.has(split.category_name.toLowerCase())
+    ) {
+      problems.push(
+        `The category "${split.category_name}" no longer exists in Firefly III — pick another.`,
+      );
     }
-    if (split.budget_id && budgetIds.size > 0 && !budgetIds.has(String(split.budget_id))) problems.push('The budget no longer exists in Firefly III — pick another.');
+    if (split.budget_id && budgetIds.size > 0 && !budgetIds.has(String(split.budget_id)))
+      problems.push('The budget no longer exists in Firefly III — pick another.');
   }
   return problems;
 }
 
-async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: { onConflict?: ConflictHandler }): Promise<'done' | 'conflict' | 'failed' | 'returned'> {
+async function replayOne(
+  db: OutboxDb,
+  client: FF3Client,
+  row: OutboxRow,
+  opts: { onConflict?: ConflictHandler },
+): Promise<'done' | 'conflict' | 'failed' | 'returned'> {
   let payload: unknown;
   try {
     payload = readPayload(row.kind, row.payloadJson);
@@ -313,11 +426,19 @@ async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: 
         // Sending it anyway either fails (a deleted account: a 422 that blocks the queue) or
         // quietly re-creates the thing (FF3 makes a new category from an unknown name). Hand the
         // entry back as a draft that says what to pick again; the rest of the queue carries on.
-        const [item] = await db.select({ kind: inboxItems.kind }).from(inboxItems).where(eq(inboxItems.id, row.inboxItemId));
+        const [item] = await db
+          .select({ kind: inboxItems.kind })
+          .from(inboxItems)
+          .where(eq(inboxItems.id, row.inboxItemId));
         db.transaction((tx) => {
           tx.update(inboxItems)
-            .set({ state: item?.kind === 'receipt' ? 'parsed' : 'captured', errorMessage: missing.join(' '), updatedAt: new Date().toISOString() })
-            .where(eq(inboxItems.id, row.inboxItemId!)).run();
+            .set({
+              state: item?.kind === 'receipt' ? 'parsed' : 'captured',
+              errorMessage: missing.join(' '),
+              updatedAt: new Date().toISOString(),
+            })
+            .where(eq(inboxItems.id, row.inboxItemId!))
+            .run();
           tx.delete(outboxOperations).where(eq(outboxOperations.id, row.id)).run();
         });
         return 'returned';
@@ -333,13 +454,19 @@ async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: 
           body: JSON.stringify({
             error_if_duplicate_hash: true,
             ...(p.groupTitle ? { group_title: p.groupTitle } : {}),
-            transactions: splits.map((split) => ({ ...split, internal_reference: (split as { internal_reference?: string }).internal_reference ?? reference })),
+            transactions: splits.map((split) => ({
+              ...split,
+              internal_reference:
+                (split as { internal_reference?: string }).internal_reference ?? reference,
+            })),
           }),
         });
         created = response.data;
       } catch (err) {
         const duplicateId = duplicateOf(err);
-        const recovered = duplicateId ? await recoverOwnDuplicate(client, duplicateId, reference) : null;
+        const recovered = duplicateId
+          ? await recoverOwnDuplicate(client, duplicateId, reference)
+          : null;
         if (!recovered) throw err;
         created = recovered;
       }
@@ -355,21 +482,36 @@ async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: 
       // op, so Activity swaps the queued row for the synced one without it vanishing until the
       // next pull. An answer missing a field the cache requires is left for that pull instead.
       const synced = created ? cachedRowFromGroup(created, new Date().toISOString()) : null;
-      const cacheable = !!synced && [synced.amount, synced.currencyCode, synced.date, synced.type, synced.journalId].every((v) => typeof v === 'string' && v !== '');
+      const cacheable =
+        !!synced &&
+        [synced.amount, synced.currencyCode, synced.date, synced.type, synced.journalId].every(
+          (v) => typeof v === 'string' && v !== '',
+        );
       db.transaction((tx) => {
         if (synced && cacheable) {
-          tx.insert(cachedTransactions).values(synced).onConflictDoUpdate({ target: cachedTransactions.groupId, set: synced }).run();
+          tx.insert(cachedTransactions)
+            .values(synced)
+            .onConflictDoUpdate({ target: cachedTransactions.groupId, set: synced })
+            .run();
         }
         if (row.inboxItemId) {
           tx.update(inboxItems)
-            .set({ ff3GroupId: created?.id ?? null, state: 'synced', updatedAt: new Date().toISOString() })
-            .where(eq(inboxItems.id, row.inboxItemId)).run();
+            .set({
+              ff3GroupId: created?.id ?? null,
+              state: 'synced',
+              updatedAt: new Date().toISOString(),
+            })
+            .where(eq(inboxItems.id, row.inboxItemId))
+            .run();
           if (item?.receiptImagePath && journal) {
             insertOperation(tx, {
               id: generateId(),
               inboxItemId: row.inboxItemId,
               kind: 'attach_receipt',
-              payload: { transactionJournalId: journal.transaction_journal_id, receiptImagePath: item.receiptImagePath },
+              payload: {
+                transactionJournalId: journal.transaction_journal_id,
+                receiptImagePath: item.receiptImagePath,
+              },
             });
           }
         }
@@ -393,10 +535,15 @@ async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: 
       if (!attachmentId) {
         const created = await client.request<{ data: { id: string } }>('/v1/attachments', {
           method: 'POST',
-          body: JSON.stringify({ filename: receiptFilename(p.receiptImagePath), attachable_type: 'TransactionJournal', attachable_id: p.transactionJournalId }),
+          body: JSON.stringify({
+            filename: receiptFilename(p.receiptImagePath),
+            attachable_type: 'TransactionJournal',
+            attachable_id: p.transactionJournalId,
+          }),
         });
         attachmentId = created.data.id;
-        await db.update(outboxOperations)
+        await db
+          .update(outboxOperations)
           .set({ payloadJson: JSON.stringify({ ...p, attachmentId }) })
           .where(eq(outboxOperations.id, row.id));
       }
@@ -413,7 +560,11 @@ async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: 
       return 'done';
     }
 
-    if (row.kind === 'update_transaction' || row.kind === 'recurring_review' || row.kind === 'delete_transaction') {
+    if (
+      row.kind === 'update_transaction' ||
+      row.kind === 'recurring_review' ||
+      row.kind === 'delete_transaction'
+    ) {
       const p = payload as UpdateTransactionPayload | DeleteTransactionPayload;
       const isDelete = row.kind === 'delete_transaction';
       // A split edit whose update already landed only has its split deletes left: the server's
@@ -427,7 +578,9 @@ async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: 
           return 'conflict';
         }
       }
-      const server: ServerCopy = resumed ? { status: 'present', updatedAt: null, group: null } : await serverCopy(client, p.groupId);
+      const server: ServerCopy = resumed
+        ? { status: 'present', updatedAt: null, group: null }
+        : await serverCopy(client, p.groupId);
       if (server.status === 'gone') {
         if (!isDelete) throw new Error('the transaction no longer exists in Firefly III');
         // Already deleted (in FF3, or by an earlier attempt of this op): the goal is reached.
@@ -439,14 +592,22 @@ async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: 
         // Store the server's whole current copy, not just its timestamp: the conflict screen
         // compares it field by field with the queued change, and a stale cached row made both
         // sides look the same.
-        const fresh = server.group ? cachedRowFromGroup(server.group, new Date().toISOString()) : null;
+        const fresh = server.group
+          ? cachedRowFromGroup(server.group, new Date().toISOString())
+          : null;
         try {
           if (!fresh) throw new Error('no server copy to store');
-          await db.insert(cachedTransactions).values(fresh).onConflictDoUpdate({ target: cachedTransactions.groupId, set: fresh });
+          await db
+            .insert(cachedTransactions)
+            .values(fresh)
+            .onConflictDoUpdate({ target: cachedTransactions.groupId, set: fresh });
         } catch {
           // An incomplete copy (a field the cache requires is missing) must not turn a conflict
           // into a failure — keep at least the new timestamp.
-          await db.update(cachedTransactions).set({ updatedAt: server.updatedAt }).where(eq(cachedTransactions.groupId, p.groupId));
+          await db
+            .update(cachedTransactions)
+            .set({ updatedAt: server.updatedAt })
+            .where(eq(cachedTransactions.groupId, p.groupId));
         }
         opts.onConflict?.({ id: row.id, payload: p }, server.updatedAt);
         await markConflict(db, row.id);
@@ -465,7 +626,9 @@ async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: 
           const resolve = accountResolver(client);
           const groupType = await cachedTypeOf(db, u.groupId);
           const transactions = [];
-          for (const split of u.splits ?? [{ transaction_journal_id: u.transactionJournalId, ...u.changes }]) {
+          for (const split of u.splits ?? [
+            { transaction_journal_id: u.transactionJournalId, ...u.changes },
+          ]) {
             // FF3 rejects a note of length 0; edits queued before that was known still carry ''.
             const cleaned = split.notes === '' ? { ...split, notes: null } : split;
             transactions.push(await withAccountIds(resolve, cleaned, groupType));
@@ -473,17 +636,29 @@ async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: 
           const body = u.splits
             ? { ...(u.groupTitle !== undefined ? { group_title: u.groupTitle } : {}), transactions }
             : { transactions };
-          updated = await client.request<{ data?: TransactionRead }>(`/v1/transactions/${u.groupId}`, {
-            method: 'PUT',
-            body: JSON.stringify(body),
-          });
+          updated = await client.request<{ data?: TransactionRead }>(
+            `/v1/transactions/${u.groupId}`,
+            {
+              method: 'PUT',
+              body: JSON.stringify(body),
+            },
+          );
         }
         if (!u.applied && u.removedJournalIds?.length) {
           // Recorded before the deletes, so a failure in them retries only them.
-          const landed = (updated?.data?.attributes as { updated_at?: string } | undefined)?.updated_at;
-          if (u.expectedUpdatedAt && landed) await rebaseLaterEdits(db, u.groupId, u.expectedUpdatedAt, landed);
-          const progressed: UpdateTransactionPayload = { ...u, applied: true, expectedUpdatedAt: landed ?? u.expectedUpdatedAt };
-          await db.update(outboxOperations).set({ payloadJson: writePayload(progressed) }).where(eq(outboxOperations.id, row.id));
+          const landed = (updated?.data?.attributes as { updated_at?: string } | undefined)
+            ?.updated_at;
+          if (u.expectedUpdatedAt && landed)
+            await rebaseLaterEdits(db, u.groupId, u.expectedUpdatedAt, landed);
+          const progressed: UpdateTransactionPayload = {
+            ...u,
+            applied: true,
+            expectedUpdatedAt: landed ?? u.expectedUpdatedAt,
+          };
+          await db
+            .update(outboxOperations)
+            .set({ payloadJson: writePayload(progressed) })
+            .where(eq(outboxOperations.id, row.id));
           Object.assign(u, progressed);
         }
         for (const journalId of u.removedJournalIds ?? []) {
@@ -497,12 +672,18 @@ async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: 
         const final = u.removedJournalIds?.length
           ? await client.request<{ data?: TransactionRead }>(`/v1/transactions/${u.groupId}`)
           : updated;
-        const next = (final?.data?.attributes as { updated_at?: string } | undefined)?.updated_at ?? null;
+        const next =
+          (final?.data?.attributes as { updated_at?: string } | undefined)?.updated_at ?? null;
         if (u.expectedUpdatedAt) await rebaseLaterEdits(db, u.groupId, u.expectedUpdatedAt, next);
         // A split edit adds, removes and re-numbers splits: the cached row takes FF3's answer at
         // once, so the detail screen doesn't show the old splits until the next pull.
-        const fresh = u.splits && final?.data ? cachedRowFromGroup(final.data, new Date().toISOString()) : null;
-        if (fresh) await db.insert(cachedTransactions).values(fresh).onConflictDoUpdate({ target: cachedTransactions.groupId, set: fresh });
+        const fresh =
+          u.splits && final?.data ? cachedRowFromGroup(final.data, new Date().toISOString()) : null;
+        if (fresh)
+          await db
+            .insert(cachedTransactions)
+            .values(fresh)
+            .onConflictDoUpdate({ target: cachedTransactions.groupId, set: fresh });
       }
       await db.delete(outboxOperations).where(eq(outboxOperations.id, row.id));
       return 'done';
@@ -522,7 +703,10 @@ async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: 
       }
       if (p.active !== undefined) body.active = p.active;
       if (p.order !== undefined) body.order = p.order;
-      await client.request(`/v1/accounts/${p.accountId}`, { method: 'PUT', body: JSON.stringify(body) });
+      await client.request(`/v1/accounts/${p.accountId}`, {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      });
       await db.delete(outboxOperations).where(eq(outboxOperations.id, row.id));
       return 'done';
     }
@@ -541,10 +725,18 @@ async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: 
 
     throw new Error(`unknown outbox operation kind: ${row.kind}`);
   } catch (err) {
-    const message = err instanceof FF3RequestError ? describeFF3Error(err) : err instanceof Error ? err.message : String(err);
-    await db.update(outboxOperations)
+    const message =
+      err instanceof FF3RequestError
+        ? describeFF3Error(err)
+        : err instanceof Error
+          ? err.message
+          : String(err);
+    await db
+      .update(outboxOperations)
       .set({
-        status: 'failed', attempts: row.attempts + 1, lastError: message,
+        status: 'failed',
+        attempts: row.attempts + 1,
+        lastError: message,
         nextAttemptAt: new Date(Date.now() + retryDelayMs(row.attempts + 1)).toISOString(),
       })
       .where(eq(outboxOperations.id, row.id));
@@ -560,35 +752,55 @@ export function describeFF3Error(err: FF3RequestError): string {
   try {
     const body = JSON.parse(err.body) as { message?: string; errors?: Record<string, string[]> };
     const field = body.errors ? Object.values(body.errors).flat()[0] : undefined;
-    const text = [body.message, field].filter((part, i, all) => !!part && all.indexOf(part) === i).join(' — ');
+    const text = [body.message, field]
+      .filter((part, i, all) => !!part && all.indexOf(part) === i)
+      .join(' — ');
     if (text) return `${text} (${err.status})`;
   } catch {
     // not JSON: an HTML error page or empty body
   }
-  return err.body && err.body.length < 200 && !err.body.trimStart().startsWith('<') ? `${err.body} (${err.status})` : `Firefly III answered ${err.status}`;
+  return err.body && err.body.length < 200 && !err.body.trimStart().startsWith('<')
+    ? `${err.body} (${err.status})`
+    : `Firefly III answered ${err.status}`;
 }
 
 function receiptFilename(path: string): string {
   const ext = /\.(jpe?g|png|webp|heic)$/i.exec(path)?.[1]?.toLowerCase();
-  return `receipt.${ext === 'jpeg' ? 'jpg' : ext ?? 'jpg'}`;
+  return `receipt.${ext === 'jpeg' ? 'jpg' : (ext ?? 'jpg')}`;
 }
 
 /** "Retry now" on a failed operation: pending again, skipping its backoff. */
 export async function retryOperationNow(db: OutboxDb, opId: string): Promise<void> {
-  await db.update(outboxOperations).set({ status: 'pending', lastError: null, nextAttemptAt: null }).where(eq(outboxOperations.id, opId));
+  await db
+    .update(outboxOperations)
+    .set({ status: 'pending', lastError: null, nextAttemptAt: null })
+    .where(eq(outboxOperations.id, opId));
 }
 
 /**
  * The conflict screen's "Keep mine": the queued edit or delete is re-checked against the server
  * copy the user just looked at, and goes out again over it.
  */
-export async function keepMineOverServer(db: OutboxDb, opId: string, serverUpdatedAt: string): Promise<void> {
+export async function keepMineOverServer(
+  db: OutboxDb,
+  opId: string,
+  serverUpdatedAt: string,
+): Promise<void> {
   const [op] = await db.select().from(outboxOperations).where(eq(outboxOperations.id, opId));
   if (!op) return;
-  const payload = readPayload<UpdateTransactionPayload | DeleteTransactionPayload>(op.kind, op.payloadJson);
+  const payload = readPayload<UpdateTransactionPayload | DeleteTransactionPayload>(
+    op.kind,
+    op.payloadJson,
+  );
   payload.expectedUpdatedAt = serverUpdatedAt;
-  await db.update(outboxOperations)
-    .set({ status: 'pending', payloadJson: writePayload(payload), lastError: null, nextAttemptAt: null })
+  await db
+    .update(outboxOperations)
+    .set({
+      status: 'pending',
+      payloadJson: writePayload(payload),
+      lastError: null,
+      nextAttemptAt: null,
+    })
     .where(eq(outboxOperations.id, opId));
 }
 
@@ -601,10 +813,16 @@ export async function dropQueuedChange(db: OutboxDb, opId: string): Promise<void
  * Queues a conflict-checked delete for each cached transaction (Activity's multi-select delete).
  */
 export async function deleteCachedTransactions(db: OutboxDb, groupIds: string[]): Promise<void> {
-  const rows = await db.select({ groupId: cachedTransactions.groupId, updatedAt: cachedTransactions.updatedAt })
-    .from(cachedTransactions).where(inArray(cachedTransactions.groupId, groupIds));
+  const rows = await db
+    .select({ groupId: cachedTransactions.groupId, updatedAt: cachedTransactions.updatedAt })
+    .from(cachedTransactions)
+    .where(inArray(cachedTransactions.groupId, groupIds));
   for (const row of rows) {
-    await enqueueOperation(db, { id: generateId(), kind: 'delete_transaction', payload: { groupId: row.groupId, expectedUpdatedAt: row.updatedAt } });
+    await enqueueOperation(db, {
+      id: generateId(),
+      kind: 'delete_transaction',
+      payload: { groupId: row.groupId, expectedUpdatedAt: row.updatedAt },
+    });
   }
 }
 
@@ -620,7 +838,8 @@ export async function discardOperation(db: OutboxDb, opId: string): Promise<void
   if (!op) return;
   await db.delete(outboxOperations).where(eq(outboxOperations.id, opId));
   if (op.kind === 'create_transaction' && op.inboxItemId) {
-    await db.update(inboxItems)
+    await db
+      .update(inboxItems)
       .set({ state: 'captured', updatedAt: new Date().toISOString() })
       .where(eq(inboxItems.id, op.inboxItemId));
   }
@@ -634,12 +853,27 @@ const KEEP_UPLOADED_RECEIPTS_DAYS = 30;
  * megabyte each, several a day). Only for items with no queued upload left, so nothing FF3
  * still needs is removed.
  */
-export async function pruneUploadedReceiptImages(db: OutboxDb, now: Date = new Date()): Promise<void> {
+export async function pruneUploadedReceiptImages(
+  db: OutboxDb,
+  now: Date = new Date(),
+): Promise<void> {
   const cutoff = new Date(now.getTime() - KEEP_UPLOADED_RECEIPTS_DAYS * 86_400_000).toISOString();
-  const old = await db.select({ id: inboxItems.id, path: inboxItems.receiptImagePath }).from(inboxItems)
-    .where(and(eq(inboxItems.state, 'synced'), isNotNull(inboxItems.receiptImagePath), lt(inboxItems.updatedAt, cutoff)));
+  const old = await db
+    .select({ id: inboxItems.id, path: inboxItems.receiptImagePath })
+    .from(inboxItems)
+    .where(
+      and(
+        eq(inboxItems.state, 'synced'),
+        isNotNull(inboxItems.receiptImagePath),
+        lt(inboxItems.updatedAt, cutoff),
+      ),
+    );
   for (const item of old) {
-    const [queued] = await db.select({ id: outboxOperations.id }).from(outboxOperations).where(eq(outboxOperations.inboxItemId, item.id)).limit(1);
+    const [queued] = await db
+      .select({ id: outboxOperations.id })
+      .from(outboxOperations)
+      .where(eq(outboxOperations.inboxItemId, item.id))
+      .limit(1);
     if (queued) continue;
     deletePersistedReceiptImage(item.path);
     await db.update(inboxItems).set({ receiptImagePath: null }).where(eq(inboxItems.id, item.id));

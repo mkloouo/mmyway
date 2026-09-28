@@ -8,7 +8,10 @@ import { readPayload } from '../sync/payloadJson';
 export interface QueuedChangeLookups {
   accountName: (id: string) => string | undefined;
   /** A cached transaction by its group id or (for a receipt upload) its journal id. */
-  transaction: (ref: { groupId?: string; journalId?: string }) => { groupId: string; description: string } | undefined;
+  transaction: (ref: {
+    groupId?: string;
+    journalId?: string;
+  }) => { groupId: string; description: string } | undefined;
 }
 
 export interface QueuedChangeInfo {
@@ -25,25 +28,51 @@ export interface QueuedChangeInfo {
 
 // FF3 transaction fields as a queued edit names them -> the label the detail screen shows them by.
 const TRANSACTION_FIELD_LABELS: Record<string, string> = {
-  amount: 'fields.amount', currency_code: 'fields.currency', date: 'fields.date', description: 'fields.description',
-  category_name: 'fields.category', category_id: 'fields.category', budget_id: 'fields.budget', budget_name: 'fields.budget',
-  source_id: 'fields.from', source_name: 'fields.from', destination_id: 'fields.to', destination_name: 'fields.to',
-  notes: 'fields.note', tags: 'fields.tags',
+  amount: 'fields.amount',
+  currency_code: 'fields.currency',
+  date: 'fields.date',
+  description: 'fields.description',
+  category_name: 'fields.category',
+  category_id: 'fields.category',
+  budget_id: 'fields.budget',
+  budget_name: 'fields.budget',
+  source_id: 'fields.from',
+  source_name: 'fields.from',
+  destination_id: 'fields.to',
+  destination_name: 'fields.to',
+  notes: 'fields.note',
+  tags: 'fields.tags',
 };
 
 // src/accounts/accountEdit.ts's AccountEdit -> the account page's labels.
 const ACCOUNT_FIELD_LABELS: Record<string, string> = {
-  name: 'accounts.name', currencyCode: 'fields.currency', includeNetWorth: 'account.includeNetWorth',
-  virtualBalance: 'account.virtualBalance', openingBalance: 'account.openingBalance', openingBalanceDate: 'account.openingBalanceDate',
-  accountRole: 'account.role', monthlyPaymentDate: 'account.monthlyPaymentDate',
+  name: 'accounts.name',
+  currencyCode: 'fields.currency',
+  includeNetWorth: 'account.includeNetWorth',
+  virtualBalance: 'account.virtualBalance',
+  openingBalance: 'account.openingBalance',
+  openingBalanceDate: 'account.openingBalanceDate',
+  accountRole: 'account.role',
+  monthlyPaymentDate: 'account.monthlyPaymentDate',
 };
 
 // PlannedFields -> the planned editor's labels. `every` is part of the frequency.
 const PLANNED_FIELD_LABELS: Record<string, string> = {
-  name: 'planned.name', amount: 'fields.amount', currencyCode: 'fields.currency', date: 'planned.plannedOn',
-  time: 'planned.time', repeats: 'planned.repeats', frequency: 'planned.frequencyLabel', every: 'planned.frequencyLabel',
-  sourceId: 'fields.from', sourceName: 'fields.from', destinationId: 'fields.to', destinationName: 'fields.to',
-  categoryName: 'fields.category', notes: 'fields.note', tags: 'fields.tags',
+  name: 'planned.name',
+  amount: 'fields.amount',
+  currencyCode: 'fields.currency',
+  date: 'planned.plannedOn',
+  time: 'planned.time',
+  repeats: 'planned.repeats',
+  frequency: 'planned.frequencyLabel',
+  every: 'planned.frequencyLabel',
+  sourceId: 'fields.from',
+  sourceName: 'fields.from',
+  destinationId: 'fields.to',
+  destinationName: 'fields.to',
+  categoryName: 'fields.category',
+  notes: 'fields.note',
+  tags: 'fields.tags',
 };
 
 function labelsOf(keys: Iterable<string>, labels: Record<string, string>): string[] {
@@ -53,20 +82,28 @@ function labelsOf(keys: Iterable<string>, labels: Record<string, string>): strin
 const same = (a: unknown, b: unknown) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
 
 /** The ids of cached transactions the given operations point at, for the lookup query. */
-export function referencedTransactions(ops: readonly { kind: OutboxKind; payloadJson: string }[]): { groupIds: string[]; journalIds: string[] } {
+export function referencedTransactions(ops: readonly { kind: OutboxKind; payloadJson: string }[]): {
+  groupIds: string[];
+  journalIds: string[];
+} {
   const groupIds: string[] = [];
   const journalIds: string[] = [];
   for (const op of ops) {
     const p = safeRead(op.kind, op.payloadJson);
     if (!p) continue;
     if (typeof p.groupId === 'string') groupIds.push(p.groupId);
-    if (op.kind === 'attach_receipt' && typeof p.transactionJournalId === 'string') journalIds.push(p.transactionJournalId);
+    if (op.kind === 'attach_receipt' && typeof p.transactionJournalId === 'string')
+      journalIds.push(p.transactionJournalId);
   }
   return { groupIds, journalIds };
 }
 
 function safeRead(kind: OutboxKind, json: string): Record<string, unknown> | null {
-  try { return readPayload(kind, json); } catch { return null; }
+  try {
+    return readPayload(kind, json);
+  } catch {
+    return null;
+  }
 }
 
 const str = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v : null);
@@ -92,15 +129,26 @@ export function describeQueuedChange(
       const groupId = p.groupId as string;
       const cached = lookups.transaction({ groupId });
       const changes = (p.changes as Record<string, unknown> | undefined) ?? {};
-      const changed = op.kind === 'delete_transaction' ? [] : [
-        ...labelsOf(Object.keys(changes), TRANSACTION_FIELD_LABELS),
-        ...(p.splits ? ['splits.split'] : []),
-      ];
-      return { subject: str(changes.description) ?? cached?.description ?? null, route: `/transactions/${groupId}`, changed };
+      const changed =
+        op.kind === 'delete_transaction'
+          ? []
+          : [
+              ...labelsOf(Object.keys(changes), TRANSACTION_FIELD_LABELS),
+              ...(p.splits ? ['splits.split'] : []),
+            ];
+      return {
+        subject: str(changes.description) ?? cached?.description ?? null,
+        route: `/transactions/${groupId}`,
+        changed,
+      };
     }
     case 'attach_receipt': {
       const cached = lookups.transaction({ journalId: p.transactionJournalId as string });
-      return { subject: cached?.description ?? null, route: cached ? `/transactions/${cached.groupId}` : null, changed: [] };
+      return {
+        subject: cached?.description ?? null,
+        route: cached ? `/transactions/${cached.groupId}` : null,
+        changed: [],
+      };
     }
     case 'update_account': {
       const id = p.accountId as string;
@@ -111,14 +159,27 @@ export function describeQueuedChange(
         ...(p.setEnvelopeMarker !== undefined ? ['accounts.cashEnvelope'] : []),
         ...(p.order !== undefined ? ['inbox.changedOrder'] : []),
       ];
-      return { subject: str(edit.name) ?? lookups.accountName(id) ?? null, route: `/accounts/${id}`, changed };
+      return {
+        subject: str(edit.name) ?? lookups.accountName(id) ?? null,
+        route: `/accounts/${id}`,
+        changed,
+      };
     }
     case 'save_planned': {
       const fields = p.fields as Record<string, unknown>;
       const before = p.before as Record<string, unknown> | null;
       // A new one has no "before": the kind line ("Saving a planned transaction") says it all.
-      const changed = before ? labelsOf(Object.keys(fields).filter((k) => !same(fields[k], before[k])), PLANNED_FIELD_LABELS) : [];
-      return { subject: str(fields.name), route: `/planned/${encodeURIComponent(p.key as string)}`, changed };
+      const changed = before
+        ? labelsOf(
+            Object.keys(fields).filter((k) => !same(fields[k], before[k])),
+            PLANNED_FIELD_LABELS,
+          )
+        : [];
+      return {
+        subject: str(fields.name),
+        route: `/planned/${encodeURIComponent(p.key as string)}`,
+        changed,
+      };
     }
     case 'delete_planned':
       return { subject: str(p.name), route: null, changed: [] };

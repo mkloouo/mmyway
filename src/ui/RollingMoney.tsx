@@ -10,7 +10,12 @@ const DURATION_MS = 700;
 
 const easeOut = (p: number) => 1 - (1 - p) ** 3;
 
-export function RollingMoney({ amount, currency, type, size }: {
+export function RollingMoney({
+  amount,
+  currency,
+  type,
+  size,
+}: {
   amount: string;
   currency: DisplayCurrency;
   type?: 'withdrawal' | 'deposit' | 'transfer';
@@ -32,7 +37,10 @@ export function RollingMoney({ amount, currency, type, size }: {
     const started = Date.now();
     const step = () => {
       const p = Math.min(1, (Date.now() - started) / DURATION_MS);
-      const next = p >= 1 ? amount : fromMinor(from + ((to - from) * BigInt(Math.round(easeOut(p) * 1000))) / 1000n, dp);
+      const next =
+        p >= 1
+          ? amount
+          : fromMinor(from + ((to - from) * BigInt(Math.round(easeOut(p) * 1000))) / 1000n, dp);
       onScreen.current = next;
       setShown(next);
       if (p < 1) frame = requestAnimationFrame(step);

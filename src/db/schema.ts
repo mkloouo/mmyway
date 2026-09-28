@@ -43,40 +43,44 @@ export const referenceCurrencies = sqliteTable('reference_currencies', {
   syncedAt: text('synced_at').notNull(),
 });
 
-export const cachedTransactions = sqliteTable('cached_transactions', {
-  groupId: text('group_id').primaryKey(), // FF3 transaction group id
-  journalId: text('journal_id').notNull(),
-  type: text('type').notNull(), // withdrawal | deposit | transfer
-  date: text('date').notNull(), // ISO 8601
-  amount: text('amount').notNull(), // decimal string, never a number
-  currencyCode: text('currency_code').notNull(),
-  foreignAmount: text('foreign_amount'),
-  foreignCurrencyCode: text('foreign_currency_code'),
-  description: text('description').notNull(),
-  sourceName: text('source_name'),
-  destinationName: text('destination_name'),
-  categoryName: text('category_name'),
-  budgetName: text('budget_name'),
-  // FF3 ids, so a renamed account or two accounts sharing a name don't break filters and edits.
-  sourceId: text('source_id'),
-  destinationId: text('destination_id'),
-  budgetId: text('budget_id'),
-  splitCount: integer('split_count').notNull().default(1), // amount is the splits' total when > 1
-  // Every split of the group (src/transactions/splitsJson.ts). Null on rows cached before it existed:
-  // the detail screen re-reads such a split group from FF3 before editing it.
-  splitsJson: text('splits_json'),
-  searchKey: text('search_key'), // normkey'd description|source|destination, for case/diacritic-blind search
-  tagsJson: text('tags_json').notNull().default('[]'),
-  notes: text('notes'),
-  updatedAt: text('updated_at').notNull(), // FF3's updated_at, for conflict checks
-  syncedAt: text('synced_at').notNull(),
-}, (table) => [
-  // Activity pages newest-first (src/transactions/useTransactionPage.ts). Without it every page
-  // read — each account switch — sorted the whole table, on the JS thread. Only `date` on purpose:
-  // (source_id, date) + (destination_id, date) made SQLite gather and sort all of a busy account's
-  // rows, slower than walking this index and stopping at the page's end.
-  index('cached_transactions_date_idx').on(table.date),
-]);
+export const cachedTransactions = sqliteTable(
+  'cached_transactions',
+  {
+    groupId: text('group_id').primaryKey(), // FF3 transaction group id
+    journalId: text('journal_id').notNull(),
+    type: text('type').notNull(), // withdrawal | deposit | transfer
+    date: text('date').notNull(), // ISO 8601
+    amount: text('amount').notNull(), // decimal string, never a number
+    currencyCode: text('currency_code').notNull(),
+    foreignAmount: text('foreign_amount'),
+    foreignCurrencyCode: text('foreign_currency_code'),
+    description: text('description').notNull(),
+    sourceName: text('source_name'),
+    destinationName: text('destination_name'),
+    categoryName: text('category_name'),
+    budgetName: text('budget_name'),
+    // FF3 ids, so a renamed account or two accounts sharing a name don't break filters and edits.
+    sourceId: text('source_id'),
+    destinationId: text('destination_id'),
+    budgetId: text('budget_id'),
+    splitCount: integer('split_count').notNull().default(1), // amount is the splits' total when > 1
+    // Every split of the group (src/transactions/splitsJson.ts). Null on rows cached before it existed:
+    // the detail screen re-reads such a split group from FF3 before editing it.
+    splitsJson: text('splits_json'),
+    searchKey: text('search_key'), // normkey'd description|source|destination, for case/diacritic-blind search
+    tagsJson: text('tags_json').notNull().default('[]'),
+    notes: text('notes'),
+    updatedAt: text('updated_at').notNull(), // FF3's updated_at, for conflict checks
+    syncedAt: text('synced_at').notNull(),
+  },
+  (table) => [
+    // Activity pages newest-first (src/transactions/useTransactionPage.ts). Without it every page
+    // read — each account switch — sorted the whole table, on the JS thread. Only `date` on purpose:
+    // (source_id, date) + (destination_id, date) made SQLite gather and sort all of a busy account's
+    // rows, slower than walking this index and stopping at the page's end.
+    index('cached_transactions_date_idx').on(table.date),
+  ],
+);
 
 // Status columns carry `enum` for TypeScript only (Drizzle adds no CHECK constraint for text enums).
 export const inboxItems = sqliteTable('inbox_items', {
@@ -95,7 +99,18 @@ export const inboxItems = sqliteTable('inbox_items', {
 export const outboxOperations = sqliteTable('outbox_operations', {
   id: text('id').primaryKey(), // client-generated uuid, doubles as idempotency key
   inboxItemId: text('inbox_item_id'),
-  kind: text('kind', { enum: ['create_transaction', 'update_transaction', 'delete_transaction', 'attach_receipt', 'recurring_review', 'update_account', 'save_planned', 'delete_planned'] }).notNull(),
+  kind: text('kind', {
+    enum: [
+      'create_transaction',
+      'update_transaction',
+      'delete_transaction',
+      'attach_receipt',
+      'recurring_review',
+      'update_account',
+      'save_planned',
+      'delete_planned',
+    ],
+  }).notNull(),
   payloadJson: text('payload_json').notNull(),
   status: text('status', { enum: ['pending', 'in_flight', 'failed', 'done'] }).notNull(),
   attempts: integer('attempts').notNull().default(0),

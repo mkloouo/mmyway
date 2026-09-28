@@ -24,7 +24,9 @@ describe('setEnvelopeMarker', () => {
   });
 
   it('appends the marker on a line of its own, keeping existing text', () => {
-    expect(setEnvelopeMarker('Kept in the bedroom drawer', true)).toBe('Kept in the bedroom drawer\nmmyway-envelope');
+    expect(setEnvelopeMarker('Kept in the bedroom drawer', true)).toBe(
+      'Kept in the bedroom drawer\nmmyway-envelope',
+    );
   });
 
   it('is idempotent when the marker is already set', () => {
@@ -33,7 +35,9 @@ describe('setEnvelopeMarker', () => {
   });
 
   it('removes the marker while leaving every other line untouched', () => {
-    expect(setEnvelopeMarker('Line one\nmmyway-envelope\nLine two', false)).toBe('Line one\nLine two');
+    expect(setEnvelopeMarker('Line one\nmmyway-envelope\nLine two', false)).toBe(
+      'Line one\nLine two',
+    );
   });
 
   it('is a no-op removing an absent marker', () => {

@@ -3,5 +3,6 @@
 module.exports = {
   randomUUID: () => require('node:crypto').randomUUID(),
   CryptoDigestAlgorithm: { SHA256: 'SHA-256' },
-  digestStringAsync: async (_algorithm, data) => require('node:crypto').createHash('sha256').update(data).digest('hex'),
+  digestStringAsync: async (_algorithm, data) =>
+    require('node:crypto').createHash('sha256').update(data).digest('hex'),
 };

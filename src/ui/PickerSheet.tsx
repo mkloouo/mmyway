@@ -13,7 +13,15 @@ export interface PickerOption {
 }
 
 export function PickerSheet({
-  visible, onClose, title, options, selected, onSelect, noneLabel, header, empty,
+  visible,
+  onClose,
+  title,
+  options,
+  selected,
+  onSelect,
+  noneLabel,
+  header,
+  empty,
 }: {
   visible: boolean;
   onClose: () => void;
@@ -40,7 +48,13 @@ export function PickerSheet({
       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
         {!!noneLabel && <Chip label={noneLabel} selected={!selected} onPress={() => pick(null)} />}
         {options.map((o) => (
-          <Chip key={o.key} label={o.label} dotColor={o.dotColor} selected={o.key === selected} onPress={() => pick(o.key)} />
+          <Chip
+            key={o.key}
+            label={o.label}
+            dotColor={o.dotColor}
+            selected={o.key === selected}
+            onPress={() => pick(o.key)}
+          />
         ))}
         {options.length === 0 && empty}
       </View>

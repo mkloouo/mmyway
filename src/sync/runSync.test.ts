@@ -11,7 +11,10 @@ import { logLine } from '../utils/log';
 
 jest.mock('../api/ff3/session', () => ({ clientFor: jest.fn() }));
 jest.mock('../api/ff3/auth', () => ({ readStoredCredentials: jest.fn(), probeAbout: jest.fn() }));
-jest.mock('../api/ff3/hosts', () => ({ ...jest.requireActual('../api/ff3/hosts'), readHosts: jest.fn() }));
+jest.mock('../api/ff3/hosts', () => ({
+  ...jest.requireActual('../api/ff3/hosts'),
+  readHosts: jest.fn(),
+}));
 jest.mock('../settings/secrets', () => ({ readGeminiKey: jest.fn(async () => null) }));
 // The real log writes through expo-file-system, whose Jest mock rejects asynchronously.
 jest.mock('../utils/log', () => ({ logLine: jest.fn() }));
@@ -21,7 +24,9 @@ function buildClient(opts: { failCreate?: boolean; slow?: boolean } = {}) {
     if (opts.slow) await new Promise((r) => setTimeout(r, 20));
     if (path.startsWith('/v1/transactions') && init?.method === 'POST') {
       if (opts.failCreate) throw new Error('network down');
-      return { data: { id: 'g1', attributes: { transactions: [{ transaction_journal_id: 'j1' }] } } };
+      return {
+        data: { id: 'g1', attributes: { transactions: [{ transaction_journal_id: 'j1' }] } },
+      };
     }
     return { data: [] }; // accounts/categories/budgets/currencies + both GET transaction pulls
   });
@@ -31,9 +36,9 @@ function buildClient(opts: { failCreate?: boolean; slow?: boolean } = {}) {
 function signedInWith(hosts: string[], alive: (host: string) => boolean = () => true) {
   (readStoredCredentials as jest.Mock).mockResolvedValue({ host: hosts[0], apiToken: 'tok' });
   (readHosts as jest.Mock).mockResolvedValue(hosts);
-  (probeAbout as jest.Mock).mockImplementation(async (host: string) => (
-    alive(host) ? { ok: true, apiVersion: '6.3.2' } : { ok: false, reason: 'invalid_host' }
-  ));
+  (probeAbout as jest.Mock).mockImplementation(async (host: string) =>
+    alive(host) ? { ok: true, apiVersion: '6.3.2' } : { ok: false, reason: 'invalid_host' },
+  );
 }
 
 describe('runSync', () => {
@@ -56,7 +61,8 @@ describe('runSync', () => {
 
     expect(summary.replaySucceeded).toBe(0);
     const transactionGets = client.request.mock.calls.filter(
-      ([path, init]) => path.startsWith('/v1/transactions') && !path.includes('&end=') && init?.method !== 'POST',
+      ([path, init]) =>
+        path.startsWith('/v1/transactions') && !path.includes('&end=') && init?.method !== 'POST',
     );
     // one from pullReferenceData's own pullRecentTransactions call — no second, conditional re-pull.
     expect(transactionGets).toHaveLength(1);
@@ -66,7 +72,11 @@ describe('runSync', () => {
     signedInWith(['https://ff3.example.com']);
     (clientFor as jest.Mock).mockReturnValue(buildClient({ failCreate: true }));
     const db = createTestDb();
-    await enqueueOperation(db, { id: 'op-1', kind: 'create_transaction', payload: { clientId: 'c1', splits: [] } });
+    await enqueueOperation(db, {
+      id: 'op-1',
+      kind: 'create_transaction',
+      payload: { clientId: 'c1', splits: [] },
+    });
 
     const summary = await runSync(db as any);
 
@@ -76,7 +86,10 @@ describe('runSync', () => {
   });
 
   it('builds its client from the address that answered this sync, not a remembered one', async () => {
-    signedInWith(['https://dead.example.com', 'https://alive.example.com'], (h) => h === 'https://alive.example.com');
+    signedInWith(
+      ['https://dead.example.com', 'https://alive.example.com'],
+      (h) => h === 'https://alive.example.com',
+    );
     (clientFor as jest.Mock).mockReturnValue(buildClient());
 
     const summary = await runSync(createTestDb() as any);
@@ -90,11 +103,20 @@ describe('runSync', () => {
   it('offline is signed in and unreachable, not "not signed in", and sends nothing', async () => {
     signedInWith(['https://ff3.example.com'], () => false);
     const db = createTestDb();
-    await enqueueOperation(db, { id: 'op-1', kind: 'create_transaction', payload: { clientId: 'c1', splits: [] } });
+    await enqueueOperation(db, {
+      id: 'op-1',
+      kind: 'create_transaction',
+      payload: { clientId: 'c1', splits: [] },
+    });
 
     const summary = await runSync(db as any);
 
-    expect(summary).toMatchObject({ signedIn: true, ff3Reachable: false, error: null, lastSyncedAt: null });
+    expect(summary).toMatchObject({
+      signedIn: true,
+      ff3Reachable: false,
+      error: null,
+      lastSyncedAt: null,
+    });
     expect(clientFor).not.toHaveBeenCalled();
   });
 
@@ -126,7 +148,11 @@ describe('runSync', () => {
     const client = buildClient({ slow: true });
     (clientFor as jest.Mock).mockReturnValue(client);
     const db = createTestDb();
-    await enqueueOperation(db, { id: 'op-1', kind: 'create_transaction', payload: { clientId: 'c1', splits: [] } });
+    await enqueueOperation(db, {
+      id: 'op-1',
+      kind: 'create_transaction',
+      payload: { clientId: 'c1', splits: [] },
+    });
 
     const [a, b] = await Promise.all([runSync(db as any), runSync(db as any)]);
 
@@ -139,7 +165,12 @@ describe('runSync', () => {
     async function dbWithAccount() {
       const db = createTestDb();
       await db.insert(referenceAccounts).values({
-        id: 'a1', name: 'Wallet', type: 'asset', currencyCode: 'PLN', currentBalance: '100.00', syncedAt: '2026-01-01T00:00:00Z',
+        id: 'a1',
+        name: 'Wallet',
+        type: 'asset',
+        currencyCode: 'PLN',
+        currentBalance: '100.00',
+        syncedAt: '2026-01-01T00:00:00Z',
       });
       return db;
     }
@@ -148,11 +179,27 @@ describe('runSync', () => {
       return {
         request: jest.fn(async (path: string, init?: RequestInit) => {
           if (path.startsWith('/v1/transactions') && init?.method === 'POST') {
-            return { data: { id: 'g1', attributes: { transactions: [{ transaction_journal_id: 'j1' }] } } };
+            return {
+              data: { id: 'g1', attributes: { transactions: [{ transaction_journal_id: 'j1' }] } },
+            };
           }
           if (path.startsWith('/v1/accounts?type=asset')) {
             if (balance instanceof Error) throw balance;
-            return { data: [{ id: 'a1', attributes: { name: 'Wallet', type: 'asset', currency_code: 'PLN', active: true, current_balance: balance, current_balance_date: '2026-01-02T00:00:00Z' } }] };
+            return {
+              data: [
+                {
+                  id: 'a1',
+                  attributes: {
+                    name: 'Wallet',
+                    type: 'asset',
+                    currency_code: 'PLN',
+                    active: true,
+                    current_balance: balance,
+                    current_balance_date: '2026-01-02T00:00:00Z',
+                  },
+                },
+              ],
+            };
           }
           return { data: [] };
         }),
@@ -167,7 +214,11 @@ describe('runSync', () => {
       signedInWith(['https://ff3.example.com']);
       (clientFor as jest.Mock).mockReturnValue(clientWithBalance('90.00'));
       const db = await dbWithAccount();
-      await enqueueOperation(db, { id: 'op-1', kind: 'create_transaction', payload: { clientId: 'c1', splits: [] } });
+      await enqueueOperation(db, {
+        id: 'op-1',
+        kind: 'create_transaction',
+        payload: { clientId: 'c1', splits: [] },
+      });
 
       const summary = await runSync(db as any, 'push');
 
@@ -180,7 +231,11 @@ describe('runSync', () => {
       signedInWith(['https://ff3.example.com']);
       (clientFor as jest.Mock).mockReturnValue(clientWithBalance(new Error('network down')));
       const db = await dbWithAccount();
-      await enqueueOperation(db, { id: 'op-1', kind: 'create_transaction', payload: { clientId: 'c1', splits: [] } });
+      await enqueueOperation(db, {
+        id: 'op-1',
+        kind: 'create_transaction',
+        payload: { clientId: 'c1', splits: [] },
+      });
 
       const summary = await runSync(db as any, 'push');
 
@@ -195,7 +250,11 @@ describe('runSync', () => {
       signedInWith(['https://ff3.example.com']);
       (clientFor as jest.Mock).mockReturnValue(buildClient({ failCreate: true }));
       const db = await dbWithAccount();
-      await enqueueOperation(db, { id: 'op-1', kind: 'create_transaction', payload: { clientId: 'c1', splits: [] } });
+      await enqueueOperation(db, {
+        id: 'op-1',
+        kind: 'create_transaction',
+        payload: { clientId: 'c1', splits: [] },
+      });
 
       await runSync(db as any, 'push');
 

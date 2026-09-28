@@ -144,13 +144,16 @@ const readPkgVersion = () => JSON.parse(fs.readFileSync('package.json', 'utf8'))
 
 function assertCleanMain() {
   if (out('git', ['branch', '--show-current']) !== 'main') fail('not on main');
-  if (out('git', ['status', '--porcelain']) !== '') fail('working tree is not clean (commit, stash or gitignore first)');
+  if (out('git', ['status', '--porcelain']) !== '')
+    fail('working tree is not clean (commit, stash or gitignore first)');
 }
 
 // CHANGELOG.md's "## [name]" section; [1] is its body, up to the next "## [".
 function changelogSection(changelog, name) {
   const heading = name.replace(/\./g, '\\.');
-  return new RegExp(`^## \\[${heading}\\][^\\n]*\\n([\\s\\S]*?)(?=^## \\[|(?![\\s\\S]))`, 'm').exec(changelog);
+  return new RegExp(`^## \\[${heading}\\][^\\n]*\\n([\\s\\S]*?)(?=^## \\[|(?![\\s\\S]))`, 'm').exec(
+    changelog,
+  );
 }
 
 // ---------- phase 1: preflight ----------
@@ -161,16 +164,23 @@ function preflight() {
 
   const current = readPkgVersion();
   if (!isNewer(version, current)) {
-    const hint = headSubject() === releaseSubject ? ` (HEAD is already "${releaseSubject}" — run with --abort to redo it)` : '';
+    const hint =
+      headSubject() === releaseSubject
+        ? ` (HEAD is already "${releaseSubject}" — run with --abort to redo it)`
+        : '';
     fail(`${version} is not newer than the current ${current}${hint}`);
   }
-  if (succeeds('git', ['rev-parse', '-q', '--verify', `refs/tags/${tag}`])) fail(`tag ${tag} already exists locally`);
+  if (succeeds('git', ['rev-parse', '-q', '--verify', `refs/tags/${tag}`]))
+    fail(`tag ${tag} already exists locally`);
 
   if (hasRemote()) {
     run('git', ['fetch', '--quiet', 'origin']);
-    if (out('git', ['rev-list', '--count', 'HEAD..origin/main']) !== '0') fail('main is behind origin/main — pull first');
-    if (out('git', ['ls-remote', '--tags', 'origin', `refs/tags/${tag}`]) !== '') fail(`tag ${tag} already exists on origin`);
-    if (hasGh() && succeeds('gh', ['release', 'view', tag])) fail(`GitHub release ${tag} already exists`);
+    if (out('git', ['rev-list', '--count', 'HEAD..origin/main']) !== '0')
+      fail('main is behind origin/main — pull first');
+    if (out('git', ['ls-remote', '--tags', 'origin', `refs/tags/${tag}`]) !== '')
+      fail(`tag ${tag} already exists on origin`);
+    if (hasGh() && succeeds('gh', ['release', 'view', tag]))
+      fail(`GitHub release ${tag} already exists`);
   }
 }
 
@@ -192,12 +202,18 @@ function releaseCommit() {
   const m = changelogSection(changelog, 'Unreleased');
   if (!m || m[1].trim() === '') fail('CHANGELOG.md has nothing under [Unreleased]');
   const released = `## [Unreleased]\n\n## [${version}] - ${today()}\n\n${m[1].trim()}\n\n`;
-  fs.writeFileSync('CHANGELOG.md', changelog.slice(0, m.index) + released + changelog.slice(m.index + m[0].length));
+  fs.writeFileSync(
+    'CHANGELOG.md',
+    changelog.slice(0, m.index) + released + changelog.slice(m.index + m[0].length),
+  );
 
   const bump = (file, re) => {
     const text = fs.readFileSync(file, 'utf8');
     if (!re.test(text)) fail(`couldn't find the version string in ${file}`);
-    fs.writeFileSync(file, text.replace(re, (s) => s.replace(/\d+\.\d+\.\d+/, version)));
+    fs.writeFileSync(
+      file,
+      text.replace(re, (s) => s.replace(/\d+\.\d+\.\d+/, version)),
+    );
   };
   bump('package.json', /"version": "\d+\.\d+\.\d+"/);
   bump('app.config.js', /version: '\d+\.\d+\.\d+'/);
@@ -213,7 +229,18 @@ function releaseCommit() {
 function buildAndroid() {
   step('Android build (production, local)');
   const archive = path.join(outDir, 'android-build.tar.gz');
-  run('npx', ['eas-cli', 'build', '--platform', 'android', '--profile', 'production', '--local', '--non-interactive', '--output', archive]);
+  run('npx', [
+    'eas-cli',
+    'build',
+    '--platform',
+    'android',
+    '--profile',
+    'production',
+    '--local',
+    '--non-interactive',
+    '--output',
+    archive,
+  ]);
 
   const raw = path.join(outDir, 'android-raw');
   fs.mkdirSync(raw, { recursive: true });
@@ -227,8 +254,17 @@ function buildAndroid() {
 
   // The universal APK carries every ABI the build targets; there must be
   // exactly one split APK per ABI, each holding only its own native libs.
-  const libAbis = (apk) => new Set(out('unzip', ['-Z1', apk]).split('\n').map((e) => /^lib\/([^/]+)\//.exec(e)?.[1]).filter(Boolean));
-  if (!apks.has('universal')) fail(`no universal APK in the build output (found: ${[...apks.keys()].join(', ') || 'nothing'})`);
+  const libAbis = (apk) =>
+    new Set(
+      out('unzip', ['-Z1', apk])
+        .split('\n')
+        .map((e) => /^lib\/([^/]+)\//.exec(e)?.[1])
+        .filter(Boolean),
+    );
+  if (!apks.has('universal'))
+    fail(
+      `no universal APK in the build output (found: ${[...apks.keys()].join(', ') || 'nothing'})`,
+    );
   const abis = [...libAbis(apks.get('universal'))].sort();
   const splits = [...apks.keys()].filter((k) => k !== 'universal').sort();
   if (abis.length === 0 || abis.join() !== splits.join()) {
@@ -236,16 +272,22 @@ function buildAndroid() {
   }
   for (const abi of splits) {
     const inside = [...libAbis(apks.get(abi))].sort();
-    if (inside.length !== 1 || inside[0] !== abi) fail(`app-${abi}-release.apk contains native libs for [${inside}]`);
+    if (inside.length !== 1 || inside[0] !== abi)
+      fail(`app-${abi}-release.apk contains native libs for [${inside}]`);
   }
 
-  for (const [abi, file] of apks) fs.renameSync(file, path.join(outDir, `${APP}-${tag}-${abi}.apk`));
+  for (const [abi, file] of apks)
+    fs.renameSync(file, path.join(outDir, `${APP}-${tag}-${abi}.apk`));
   fs.rmSync(raw, { recursive: true });
   fs.rmSync(archive);
   console.log(`  ${apks.size} APKs: ${splits.join(', ')} + universal`);
 }
 
-const assetFiles = () => fs.readdirSync(outDir).filter((f) => f.endsWith('.apk')).sort();
+const assetFiles = () =>
+  fs
+    .readdirSync(outDir)
+    .filter((f) => f.endsWith('.apk'))
+    .sort();
 
 function writeChecksums() {
   step('SHA256SUMS');
@@ -260,10 +302,21 @@ function verifyArtifacts() {
   step('Verify artifacts');
   const sums = path.join(outDir, 'SHA256SUMS');
   if (!fs.existsSync(sums)) fail(`${sums} missing — run the build phase first`);
-  const listed = fs.readFileSync(sums, 'utf8').trim().split('\n').map((l) => l.split(/\s+/));
+  const listed = fs
+    .readFileSync(sums, 'utf8')
+    .trim()
+    .split('\n')
+    .map((l) => l.split(/\s+/));
   const files = assetFiles();
-  if (listed.map(([, f]) => f).sort().join() !== files.join()) fail('SHA256SUMS does not match the files in ' + outDir);
-  for (const [hash, f] of listed) if (sha256(path.join(outDir, f)) !== hash) fail(`checksum mismatch for ${f}`);
+  if (
+    listed
+      .map(([, f]) => f)
+      .sort()
+      .join() !== files.join()
+  )
+    fail('SHA256SUMS does not match the files in ' + outDir);
+  for (const [hash, f] of listed)
+    if (sha256(path.join(outDir, f)) !== hash) fail(`checksum mismatch for ${f}`);
   if (!files.some((f) => f.endsWith('-universal.apk'))) fail('universal APK missing');
 }
 
@@ -283,7 +336,8 @@ function releaseNotes() {
 
 function ensureTag() {
   if (succeeds('git', ['rev-parse', '-q', '--verify', `refs/tags/${tag}`])) {
-    if (out('git', ['rev-list', '-n1', tag]) !== out('git', ['rev-parse', 'HEAD'])) fail(`tag ${tag} exists but isn't on HEAD`);
+    if (out('git', ['rev-list', '-n1', tag]) !== out('git', ['rev-parse', 'HEAD']))
+      fail(`tag ${tag} exists but isn't on HEAD`);
     return;
   }
   run('git', ['tag', '-a', tag, '-m', tag]);
@@ -305,7 +359,8 @@ function publish() {
 
   step('Push');
   run('git', ['fetch', '--quiet', 'origin']);
-  if (!succeeds('git', ['merge-base', '--is-ancestor', 'origin/main', 'HEAD'])) fail('origin/main has moved on — not a fast-forward');
+  if (!succeeds('git', ['merge-base', '--is-ancestor', 'origin/main', 'HEAD']))
+    fail('origin/main has moved on — not a fast-forward');
   run('git', ['push', '--atomic', 'origin', 'main', `refs/tags/${tag}`]);
 
   step('GitHub release (draft → published)');
@@ -316,10 +371,23 @@ function publish() {
     run('gh', ['release', 'upload', tag, ...assets, '--clobber']);
     run('gh', ['release', 'edit', tag, '--notes-file', notes]);
   } else {
-    run('gh', ['release', 'create', tag, ...assets, '--draft', '--verify-tag', '--title', tag, '--notes-file', notes]);
+    run('gh', [
+      'release',
+      'create',
+      tag,
+      ...assets,
+      '--draft',
+      '--verify-tag',
+      '--title',
+      tag,
+      '--notes-file',
+      notes,
+    ]);
   }
   run('gh', ['release', 'edit', tag, '--draft=false', '--latest']);
-  console.log(`\n✔ Released ${tag}: ${out('gh', ['release', 'view', tag, '--json', 'url', '-q', '.url'])}`);
+  console.log(
+    `\n✔ Released ${tag}: ${out('gh', ['release', 'view', tag, '--json', 'url', '-q', '.url'])}`,
+  );
 }
 
 // ---------- abort ----------
@@ -328,10 +396,13 @@ function abort() {
   if (headSubject() !== releaseSubject) fail(`HEAD is not "${releaseSubject}" — nothing to abort`);
   if (hasRemote()) {
     run('git', ['fetch', '--quiet', 'origin']);
-    if (succeeds('git', ['merge-base', '--is-ancestor', 'HEAD', 'origin/main'])) fail('the release commit is already on origin/main — too late to abort');
-    if (out('git', ['ls-remote', '--tags', 'origin', `refs/tags/${tag}`]) !== '') fail(`tag ${tag} is already on origin — too late to abort`);
+    if (succeeds('git', ['merge-base', '--is-ancestor', 'HEAD', 'origin/main']))
+      fail('the release commit is already on origin/main — too late to abort');
+    if (out('git', ['ls-remote', '--tags', 'origin', `refs/tags/${tag}`]) !== '')
+      fail(`tag ${tag} is already on origin — too late to abort`);
   }
-  if (succeeds('git', ['rev-parse', '-q', '--verify', `refs/tags/${tag}`])) run('git', ['tag', '-d', tag]);
+  if (succeeds('git', ['rev-parse', '-q', '--verify', `refs/tags/${tag}`]))
+    run('git', ['tag', '-d', tag]);
   run('git', ['reset', '--keep', 'HEAD~1']);
   console.log(`\n✔ Dropped the unpushed "${releaseSubject}" commit; working-tree changes kept.`);
 }

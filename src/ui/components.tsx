@@ -3,8 +3,17 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  Animated, Keyboard, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View,
-  type StyleProp, type ViewStyle,
+  Animated,
+  Keyboard,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -23,7 +32,17 @@ import { haptics } from './haptics';
  * lower field sat under it. The screen shrinks by the keyboard's height instead; its ScrollView,
  * made shorter, scrolls the focused field back into view.
  */
-export function Screen({ children, style, bottom, avoidKeyboard }: { children: ReactNode; style?: StyleProp<ViewStyle>; bottom?: boolean; avoidKeyboard?: boolean }) {
+export function Screen({
+  children,
+  style,
+  bottom,
+  avoidKeyboard,
+}: {
+  children: ReactNode;
+  style?: StyleProp<ViewStyle>;
+  bottom?: boolean;
+  avoidKeyboard?: boolean;
+}) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   // Only screens that ask listen: every tab stays mounted, and each would re-render on every keyboard.
@@ -33,8 +52,11 @@ export function Screen({ children, style, bottom, avoidKeyboard }: { children: R
     <View
       style={[
         {
-          flex: 1, backgroundColor: t.color.bg,
-          paddingTop: insets.top, paddingLeft: insets.left, paddingRight: insets.right,
+          flex: 1,
+          backgroundColor: t.color.bg,
+          paddingTop: insets.top,
+          paddingLeft: insets.left,
+          paddingRight: insets.right,
           paddingBottom: lifted ? keyboardHeight : bottom ? insets.bottom : 0,
         },
         style,
@@ -57,29 +79,57 @@ const BAR_CONTROL_SIZE = 40;
 export function BarRow({ children }: { children: ReactNode }) {
   const t = useTheme();
   return (
-    <View style={{ height: BAR_HEIGHT, flexDirection: 'row', alignItems: 'center', gap: t.space.md, paddingHorizontal: t.space.lg }}>
+    <View
+      style={{
+        height: BAR_HEIGHT,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: t.space.md,
+        paddingHorizontal: t.space.lg,
+      }}
+    >
       {children}
     </View>
   );
 }
 
-export function AppBar({ title, subtitle, left, right }: { title: string; subtitle?: string; left?: ReactNode; right?: ReactNode }) {
+export function AppBar({
+  title,
+  subtitle,
+  left,
+  right,
+}: {
+  title: string;
+  subtitle?: string;
+  left?: ReactNode;
+  right?: ReactNode;
+}) {
   const t = useTheme();
   return (
     <BarRow>
       {left}
       <View style={{ flex: 1 }}>
-        <Text style={[t.type.title, { color: t.color.text }]} numberOfLines={1}>{title}</Text>
-        {!!subtitle && <Text style={[t.type.label, { color: t.color.textMuted }]} numberOfLines={1}>{subtitle}</Text>}
+        <Text style={[t.type.title, { color: t.color.text }]} numberOfLines={1}>
+          {title}
+        </Text>
+        {!!subtitle && (
+          <Text style={[t.type.label, { color: t.color.textMuted }]} numberOfLines={1}>
+            {subtitle}
+          </Text>
+        )}
       </View>
-      {!!right && <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.xs }}>{right}</View>}
+      {!!right && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.xs }}>{right}</View>
+      )}
     </BarRow>
   );
 }
 
 /** The one look for an icon action in a top bar (close, search, more, settings). */
 export function BarIconButton({
-  icon, label, onPress,
+  icon,
+  label,
+  onPress,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
@@ -93,8 +143,12 @@ export function BarIconButton({
       accessibilityLabel={label}
       hitSlop={4}
       style={({ pressed }) => ({
-        width: BAR_CONTROL_SIZE, height: BAR_CONTROL_SIZE, borderRadius: t.radius.pill,
-        alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.6 : 1,
+        width: BAR_CONTROL_SIZE,
+        height: BAR_CONTROL_SIZE,
+        borderRadius: t.radius.pill,
+        alignItems: 'center',
+        justifyContent: 'center',
+        opacity: pressed ? 0.6 : 1,
       })}
     >
       <Ionicons name={icon} size={24} color={t.color.text} />
@@ -105,8 +159,19 @@ export function BarIconButton({
 export function SectionHeader({ title, action }: { title: string; action?: ReactNode }) {
   const t = useTheme();
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: t.space.lg, paddingTop: t.space.xl, paddingBottom: t.space.sm }}>
-      <Text style={[t.type.caption, { color: t.color.textMuted, textTransform: 'uppercase' }]}>{title}</Text>
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: t.space.lg,
+        paddingTop: t.space.xl,
+        paddingBottom: t.space.sm,
+      }}
+    >
+      <Text style={[t.type.caption, { color: t.color.textMuted, textTransform: 'uppercase' }]}>
+        {title}
+      </Text>
       {action}
     </View>
   );
@@ -115,7 +180,14 @@ export function SectionHeader({ title, action }: { title: string; action?: React
 const DEFAULT_LONG_PRESS_MS = 500; // React Native's own default
 
 export function Card({
-  children, style, onPress, onLongPress, delayLongPress = DEFAULT_LONG_PRESS_MS, longPressPop, selected, accessibilityHint,
+  children,
+  style,
+  onPress,
+  onLongPress,
+  delayLongPress = DEFAULT_LONG_PRESS_MS,
+  longPressPop,
+  selected,
+  accessibilityHint,
 }: {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
@@ -138,33 +210,57 @@ export function Card({
   const body = (
     <View
       style={[
-        { backgroundColor: t.color.surface, borderRadius: t.radius.md, borderWidth: 1, borderColor: t.color.border, padding: t.space.lg },
-        selected ? { borderColor: t.color.accent, borderWidth: 2, backgroundColor: t.color.accentSoft } : null,
+        {
+          backgroundColor: t.color.surface,
+          borderRadius: t.radius.md,
+          borderWidth: 1,
+          borderColor: t.color.border,
+          padding: t.space.lg,
+        },
+        selected
+          ? { borderColor: t.color.accent, borderWidth: 2, backgroundColor: t.color.accentSoft }
+          : null,
         style,
       ]}
     >
       {children}
     </View>
   );
-  return onPress || onLongPress
-    ? (
-      <Pressable
-        onPress={onPress}
-        onLongPress={onLongPress && (popOnHold ? () => { void haptics.tick(); pop(); onLongPress(); } : onLongPress)}
-        delayLongPress={delayLongPress}
-        accessibilityState={selected !== undefined ? { selected } : undefined}
-        accessibilityHint={accessibilityHint}
-        style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
-      >
-        {popOnHold ? <Animated.View style={popStyle}>{body}</Animated.View> : body}
-      </Pressable>
-    )
-    : body;
+  return onPress || onLongPress ? (
+    <Pressable
+      onPress={onPress}
+      onLongPress={
+        onLongPress &&
+        (popOnHold
+          ? () => {
+              void haptics.tick();
+              pop();
+              onLongPress();
+            }
+          : onLongPress)
+      }
+      delayLongPress={delayLongPress}
+      accessibilityState={selected !== undefined ? { selected } : undefined}
+      accessibilityHint={accessibilityHint}
+      style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+    >
+      {popOnHold ? <Animated.View style={popStyle}>{body}</Animated.View> : body}
+    </Pressable>
+  ) : (
+    body
+  );
 }
 
 /** A label/value line. Rows stack inside a Card and draw their own hairline separator. */
 export function Row({
-  label, value, icon, leading, chevron, onPress, tone, first,
+  label,
+  value,
+  icon,
+  leading,
+  chevron,
+  onPress,
+  tone,
+  first,
 }: {
   label: string;
   /** Omitted on an action row (Delete, Duplicate): it shows `icon` there instead of a value. */
@@ -178,33 +274,63 @@ export function Row({
   first?: boolean;
 }) {
   const t = useTheme();
-  const valueColor = tone === 'warn' ? t.color.warn : tone === 'danger' ? t.color.danger : t.color.text;
+  const valueColor =
+    tone === 'warn' ? t.color.warn : tone === 'danger' ? t.color.danger : t.color.text;
   const content = (
     <View
       style={{
-        flexDirection: 'row', alignItems: 'center', gap: t.space.md, minHeight: hitSize,
-        paddingVertical: t.space.sm, borderTopWidth: first ? 0 : 1, borderTopColor: t.color.border,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: t.space.md,
+        minHeight: hitSize,
+        paddingVertical: t.space.sm,
+        borderTopWidth: first ? 0 : 1,
+        borderTopColor: t.color.border,
       }}
     >
       {leading}
       <Text style={[t.type.body, { color: t.color.textMuted, flexShrink: 0 }]}>{label}</Text>
       {value !== undefined || !icon ? (
-        <Text style={[t.type.body, { color: valueColor, flex: 1, textAlign: 'right' }]} numberOfLines={1}>
+        <Text
+          style={[t.type.body, { color: valueColor, flex: 1, textAlign: 'right' }]}
+          numberOfLines={1}
+        >
           {value ?? '—'}
         </Text>
       ) : (
         <View style={{ flex: 1, alignItems: 'flex-end' }}>
-          <Ionicons name={icon} size={20} color={tone === 'danger' ? t.color.danger : tone === 'warn' ? t.color.warn : t.color.textMuted} />
+          <Ionicons
+            name={icon}
+            size={20}
+            color={
+              tone === 'danger'
+                ? t.color.danger
+                : tone === 'warn'
+                  ? t.color.warn
+                  : t.color.textMuted
+            }
+          />
         </View>
       )}
       {chevron && <Text style={[t.type.body, { color: t.color.textFaint }]}>›</Text>}
     </View>
   );
-  return onPress ? <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>{content}</Pressable> : content;
+  return onPress ? (
+    <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+      {content}
+    </Pressable>
+  ) : (
+    content
+  );
 }
 
 export function Chip({
-  label, selected, onPress, tone, dotColor, accessibilityLabel,
+  label,
+  selected,
+  onPress,
+  tone,
+  dotColor,
+  accessibilityLabel,
 }: {
   label: string;
   selected?: boolean;
@@ -216,7 +342,8 @@ export function Chip({
 }) {
   const t = useTheme();
   const border = tone === 'warn' ? t.color.warn : selected ? t.color.accent : t.color.border;
-  const fill = tone === 'warn' ? t.color.warnSoft : selected ? t.color.accentSoft : t.color.surfaceAlt;
+  const fill =
+    tone === 'warn' ? t.color.warnSoft : selected ? t.color.accentSoft : t.color.surfaceAlt;
   const text = tone === 'warn' ? t.color.warn : selected ? t.color.accent : t.color.text;
   return (
     <Pressable
@@ -225,20 +352,34 @@ export function Chip({
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ selected: !!selected }}
       style={({ pressed }) => ({
-        flexDirection: 'row', alignItems: 'center', gap: t.space.sm,
-        minHeight: 36, paddingHorizontal: t.space.md, paddingVertical: t.space.sm,
-        borderRadius: t.radius.pill, borderWidth: 1, borderColor: border, backgroundColor: fill,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: t.space.sm,
+        minHeight: 36,
+        paddingHorizontal: t.space.md,
+        paddingVertical: t.space.sm,
+        borderRadius: t.radius.pill,
+        borderWidth: 1,
+        borderColor: border,
+        backgroundColor: fill,
         opacity: pressed ? 0.6 : 1,
       })}
     >
-      {!!dotColor && <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor }} />}
+      {!!dotColor && (
+        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor }} />
+      )}
       <Text style={[t.type.label, { color: text }]}>{label}</Text>
     </Pressable>
   );
 }
 
 export function Button({
-  title, onPress, variant = 'primary', size = 'md', disabled, style,
+  title,
+  onPress,
+  variant = 'primary',
+  size = 'md',
+  disabled,
+  style,
 }: {
   title: string;
   onPress?: () => void;
@@ -249,14 +390,22 @@ export function Button({
   style?: StyleProp<ViewStyle>;
 }) {
   const t = useTheme();
-  const fill = variant === 'primary' ? t.color.accent
-    : variant === 'danger' ? t.color.dangerSoft
-    : variant === 'secondary' ? t.color.surfaceAlt
-    : 'transparent';
-  const label = variant === 'primary' ? t.color.onAccent
-    : variant === 'danger' ? t.color.danger
-    : variant === 'ghost' ? t.color.accent
-    : t.color.text;
+  const fill =
+    variant === 'primary'
+      ? t.color.accent
+      : variant === 'danger'
+        ? t.color.dangerSoft
+        : variant === 'secondary'
+          ? t.color.surfaceAlt
+          : 'transparent';
+  const label =
+    variant === 'primary'
+      ? t.color.onAccent
+      : variant === 'danger'
+        ? t.color.danger
+        : variant === 'ghost'
+          ? t.color.accent
+          : t.color.text;
   return (
     <Pressable
       onPress={onPress}
@@ -268,14 +417,19 @@ export function Button({
           minHeight: size === 'lg' ? 52 : size === 'bar' ? BAR_CONTROL_SIZE : hitSize,
           paddingHorizontal: size === 'bar' ? t.space.lg : t.space.xl,
           borderRadius: t.radius.md,
-          alignItems: 'center', justifyContent: 'center',
+          alignItems: 'center',
+          justifyContent: 'center',
           backgroundColor: fill,
           opacity: disabled ? 0.4 : pressed ? 0.6 : 1,
         },
         style,
       ]}
     >
-      <Text style={[size === 'lg' ? t.type.heading : t.type.body, { color: label, fontWeight: '600' }]}>{title}</Text>
+      <Text
+        style={[size === 'lg' ? t.type.heading : t.type.body, { color: label, fontWeight: '600' }]}
+      >
+        {title}
+      </Text>
     </Pressable>
   );
 }
@@ -285,7 +439,10 @@ export function Button({
  * stores; an already-signed string (a day total from `addDecimal`) keeps its own sign.
  */
 export function Money({
-  amount, currency, type, size = 'body',
+  amount,
+  currency,
+  type,
+  size = 'body',
 }: {
   amount: string;
   currency: DisplayCurrency;
@@ -294,7 +451,8 @@ export function Money({
 }) {
   const t = useTheme();
   const signed = amount.trim().startsWith('-') || amount.trim().startsWith('−');
-  const color = type === 'deposit' ? t.color.income : type === 'transfer' ? t.color.transfer : t.color.text;
+  const color =
+    type === 'deposit' ? t.color.income : type === 'transfer' ? t.color.transfer : t.color.text;
   return (
     <Text style={[t.type[size], t.type.money, { color }]} numberOfLines={1}>
       {(type && !signed ? signFor(type) : '') + formatMoney(amount, currency)}
@@ -302,18 +460,32 @@ export function Money({
   );
 }
 
-export function StatusPill({ state, label }: { state: 'ok' | 'syncing' | 'queued' | 'offline' | 'error'; label: string }) {
+export function StatusPill({
+  state,
+  label,
+}: {
+  state: 'ok' | 'syncing' | 'queued' | 'offline' | 'error';
+  label: string;
+}) {
   const t = useTheme();
-  const dot = state === 'ok' ? t.color.income
-    : state === 'queued' || state === 'syncing' ? t.color.accent
-    : state === 'error' ? t.color.danger
-    : t.color.textFaint;
+  const dot =
+    state === 'ok'
+      ? t.color.income
+      : state === 'queued' || state === 'syncing'
+        ? t.color.accent
+        : state === 'error'
+          ? t.color.danger
+          : t.color.textFaint;
   return (
     <View
       style={{
-        flexDirection: 'row', alignItems: 'center', gap: t.space.sm,
-        paddingHorizontal: t.space.md, paddingVertical: t.space.xs,
-        borderRadius: t.radius.pill, backgroundColor: t.color.surfaceAlt,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: t.space.sm,
+        paddingHorizontal: t.space.md,
+        paddingVertical: t.space.xs,
+        borderRadius: t.radius.pill,
+        backgroundColor: t.color.surfaceAlt,
         // The AppBar title takes flex: 1, so without this the pill gets squeezed and its label
         // is clipped mid-word — "just now" rendered as "just".
         flexShrink: 0,
@@ -356,7 +528,12 @@ export function Pulse({ active, children }: { active: boolean; children: ReactNo
  * Android back closes it, and the keyboard never covers it: every text field in the app is here.
  */
 export function Sheet({
-  visible, title, onClose, children, footer, scroll = true,
+  visible,
+  title,
+  onClose,
+  children,
+  footer,
+  scroll = true,
 }: {
   visible: boolean;
   title: string;
@@ -385,23 +562,52 @@ export function Sheet({
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={{ flex: 1, justifyContent: 'flex-end' }}>
-        <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: t.color.scrim }]} onPress={onClose} accessibilityLabel={tr('common.close')} />
+        <Pressable
+          style={[StyleSheet.absoluteFill, { backgroundColor: t.color.scrim }]}
+          onPress={onClose}
+          accessibilityLabel={tr('common.close')}
+        />
         <View
           style={{
             // A `scroll={false}` body hands us a flex: 1 FlatList that needs a resolved height to
             // fill, not just a ceiling — `maxHeight` alone leaves it collapsed to 0.
             [scroll ? 'maxHeight' : 'height']: '85%',
-            backgroundColor: t.color.surface, overflow: 'hidden',
-            borderTopLeftRadius: t.radius.lg, borderTopRightRadius: t.radius.lg,
-            paddingBottom: keyboardHeight > 0 ? keyboardHeight + t.space.md : t.space.xxl + insets.bottom,
+            backgroundColor: t.color.surface,
+            overflow: 'hidden',
+            borderTopLeftRadius: t.radius.lg,
+            borderTopRightRadius: t.radius.lg,
+            paddingBottom:
+              keyboardHeight > 0 ? keyboardHeight + t.space.md : t.space.xxl + insets.bottom,
           }}
         >
-          <View style={{ alignSelf: 'center', width: 36, height: 4, borderRadius: 2, backgroundColor: t.color.border, marginVertical: t.space.md }} />
-          <Text style={[t.type.heading, { color: t.color.text, paddingHorizontal: t.space.lg, paddingBottom: t.space.md }]}>{title}</Text>
-          {scroll
-            ? <ScrollView contentContainerStyle={bodyPadding} keyboardShouldPersistTaps="handled">{children}</ScrollView>
-            : <View style={[bodyPadding, { flex: 1 }]}>{children}</View>}
-          {!!footer && <View style={{ paddingHorizontal: t.space.lg, paddingTop: t.space.md }}>{footer}</View>}
+          <View
+            style={{
+              alignSelf: 'center',
+              width: 36,
+              height: 4,
+              borderRadius: 2,
+              backgroundColor: t.color.border,
+              marginVertical: t.space.md,
+            }}
+          />
+          <Text
+            style={[
+              t.type.heading,
+              { color: t.color.text, paddingHorizontal: t.space.lg, paddingBottom: t.space.md },
+            ]}
+          >
+            {title}
+          </Text>
+          {scroll ? (
+            <ScrollView contentContainerStyle={bodyPadding} keyboardShouldPersistTaps="handled">
+              {children}
+            </ScrollView>
+          ) : (
+            <View style={[bodyPadding, { flex: 1 }]}>{children}</View>
+          )}
+          {!!footer && (
+            <View style={{ paddingHorizontal: t.space.lg, paddingTop: t.space.md }}>{footer}</View>
+          )}
         </View>
       </View>
     </Modal>
@@ -413,9 +619,18 @@ export function useKeyboardHeight(enabled = true): number {
   const [height, setHeight] = useState(0);
   useEffect(() => {
     if (!enabled) return;
-    const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', (e) => setHeight(e.endCoordinates.height));
-    const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setHeight(0));
-    return () => { show.remove(); hide.remove(); };
+    const show = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => setHeight(e.endCoordinates.height),
+    );
+    const hide = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => setHeight(0),
+    );
+    return () => {
+      show.remove();
+      hide.remove();
+    };
   }, [enabled]);
   return enabled ? height : 0;
 }
@@ -429,28 +644,67 @@ export function Toast({ message }: { message: string | null }) {
   const insets = useSafeAreaInsets();
   if (!message) return null;
   return (
-    <View pointerEvents="none" style={{ position: 'absolute', top: insets.top + t.space.sm, left: t.space.lg, right: t.space.lg, alignItems: 'center' }}>
-      <View style={{ backgroundColor: t.color.text, borderRadius: t.radius.pill, paddingHorizontal: t.space.lg, paddingVertical: t.space.sm }}>
+    <View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        top: insets.top + t.space.sm,
+        left: t.space.lg,
+        right: t.space.lg,
+        alignItems: 'center',
+      }}
+    >
+      <View
+        style={{
+          backgroundColor: t.color.text,
+          borderRadius: t.radius.pill,
+          paddingHorizontal: t.space.lg,
+          paddingVertical: t.space.sm,
+        }}
+      >
         <Text style={[t.type.label, { color: t.color.surface }]}>{message}</Text>
       </View>
     </View>
   );
 }
 
-export function EmptyState({ glyph, title, hint, action }: { glyph: string; title: string; hint?: string; action?: ReactNode }) {
+export function EmptyState({
+  glyph,
+  title,
+  hint,
+  action,
+}: {
+  glyph: string;
+  title: string;
+  hint?: string;
+  action?: ReactNode;
+}) {
   const t = useTheme();
   return (
-    <View style={{ alignItems: 'center', justifyContent: 'center', padding: t.space.xxxl, gap: t.space.md }}>
+    <View
+      style={{
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: t.space.xxxl,
+        gap: t.space.md,
+      }}
+    >
       <View
         style={{
-          width: 72, height: 72, borderRadius: 36, backgroundColor: t.color.accentSoft,
-          alignItems: 'center', justifyContent: 'center',
+          width: 72,
+          height: 72,
+          borderRadius: 36,
+          backgroundColor: t.color.accentSoft,
+          alignItems: 'center',
+          justifyContent: 'center',
         }}
       >
         <Text style={{ fontSize: 30, color: t.color.accent }}>{glyph}</Text>
       </View>
       <Text style={[t.type.heading, { color: t.color.text }]}>{title}</Text>
-      {!!hint && <Text style={[t.type.body, { color: t.color.textMuted, textAlign: 'center' }]}>{hint}</Text>}
+      {!!hint && (
+        <Text style={[t.type.body, { color: t.color.textMuted, textAlign: 'center' }]}>{hint}</Text>
+      )}
       {action}
     </View>
   );

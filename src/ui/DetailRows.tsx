@@ -35,12 +35,24 @@ export interface DetailRowsProps {
   budgets: { id: string; name: string }[];
 }
 
-export function DetailRows({ value, onChange, onDatePress, readOnly, accounts, pickableAccounts, currencies, categories, budgets }: DetailRowsProps) {
+export function DetailRows({
+  value,
+  onChange,
+  onDatePress,
+  readOnly,
+  accounts,
+  pickableAccounts,
+  currencies,
+  categories,
+  budgets,
+}: DetailRowsProps) {
   const t = useTheme();
   const { t: tr } = useTranslation();
   const [categorySheetOpen, setCategorySheetOpen] = useState(false);
   const [budgetSheetOpen, setBudgetSheetOpen] = useState(false);
-  const [accountSheetTarget, setAccountSheetTarget] = useState<'source' | 'destination' | null>(null);
+  const [accountSheetTarget, setAccountSheetTarget] = useState<'source' | 'destination' | null>(
+    null,
+  );
   const [textSheetOpen, setTextSheetOpen] = useState(false);
 
   const sourceAccount = accounts.find((a) => a.id === value.sourceAccountId);
@@ -57,9 +69,18 @@ export function DetailRows({ value, onChange, onDatePress, readOnly, accounts, p
             label={tr('fields.category')}
             value={value.categoryName ?? '—'}
             chevron={!readOnly}
-            leading={value.categoryName ? (
-              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: categoryColor(value.categoryName, t.dark) }} />
-            ) : undefined}
+            leading={
+              value.categoryName ? (
+                <View
+                  style={{
+                    width: 8,
+                    height: 8,
+                    borderRadius: 4,
+                    backgroundColor: categoryColor(value.categoryName, t.dark),
+                  }}
+                />
+              ) : undefined
+            }
             onPress={readOnly ? undefined : () => setCategorySheetOpen(true)}
           />
         )}
@@ -88,21 +109,44 @@ export function DetailRows({ value, onChange, onDatePress, readOnly, accounts, p
             onPress={readOnly ? undefined : () => setBudgetSheetOpen(true)}
           />
         )}
-        <Row label={tr('fields.date')} value={value.dateLabel} chevron={!readOnly} onPress={readOnly ? undefined : onDatePress} />
-        <Row label={tr('fields.note')} value={value.notes || '—'} chevron={!readOnly} onPress={readOnly ? undefined : () => setTextSheetOpen(true)} />
-        <Row label={tr('fields.sharedWith')} value={value.sharedWith || '—'} chevron={!readOnly} onPress={readOnly ? undefined : () => setTextSheetOpen(true)} />
+        <Row
+          label={tr('fields.date')}
+          value={value.dateLabel}
+          chevron={!readOnly}
+          onPress={readOnly ? undefined : onDatePress}
+        />
+        <Row
+          label={tr('fields.note')}
+          value={value.notes || '—'}
+          chevron={!readOnly}
+          onPress={readOnly ? undefined : () => setTextSheetOpen(true)}
+        />
+        <Row
+          label={tr('fields.sharedWith')}
+          value={value.sharedWith || '—'}
+          chevron={!readOnly}
+          onPress={readOnly ? undefined : () => setTextSheetOpen(true)}
+        />
       </Card>
 
       <PickerSheet
-        visible={categorySheetOpen} onClose={() => setCategorySheetOpen(false)} title={tr('fields.category')}
+        visible={categorySheetOpen}
+        onClose={() => setCategorySheetOpen(false)}
+        title={tr('fields.category')}
         options={categories.map((c) => ({ key: c.name, label: c.name }))}
-        selected={value.categoryName} onSelect={(categoryName) => onChange({ categoryName })} noneLabel={tr('common.none')}
+        selected={value.categoryName}
+        onSelect={(categoryName) => onChange({ categoryName })}
+        noneLabel={tr('common.none')}
       />
 
       <PickerSheet
-        visible={budgetSheetOpen} onClose={() => setBudgetSheetOpen(false)} title={tr('fields.budget')}
+        visible={budgetSheetOpen}
+        onClose={() => setBudgetSheetOpen(false)}
+        title={tr('fields.budget')}
         options={budgets.map((b) => ({ key: b.id, label: b.name }))}
-        selected={value.budgetId} onSelect={(budgetId) => onChange({ budgetId })} noneLabel={tr('common.none')}
+        selected={value.budgetId}
+        onSelect={(budgetId) => onChange({ budgetId })}
+        noneLabel={tr('common.none')}
       />
 
       <AccountPickerSheet
@@ -111,8 +155,18 @@ export function DetailRows({ value, onChange, onDatePress, readOnly, accounts, p
         title={accountSheetTarget === 'source' ? tr('fields.from') : tr('fields.to')}
         accounts={accountChoices}
         currencies={currencies}
-        excludeId={accountSheetTarget === 'destination' && value.type === 'transfer' ? value.sourceAccountId : null}
-        onSelect={(a) => onChange(accountSheetTarget === 'source' ? { sourceAccountId: a.id } : { destinationAccountId: a.id })}
+        excludeId={
+          accountSheetTarget === 'destination' && value.type === 'transfer'
+            ? value.sourceAccountId
+            : null
+        }
+        onSelect={(a) =>
+          onChange(
+            accountSheetTarget === 'source'
+              ? { sourceAccountId: a.id }
+              : { destinationAccountId: a.id },
+          )
+        }
       />
 
       <Sheet
@@ -128,7 +182,9 @@ export function DetailRows({ value, onChange, onDatePress, readOnly, accounts, p
           multiline
           style={{ minHeight: 60 }}
         />
-        <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.sm }]}>{tr('fields.sharedWith')}</Text>
+        <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.sm }]}>
+          {tr('fields.sharedWith')}
+        </Text>
         <TextField
           value={value.sharedWith ?? ''}
           onChangeText={(v) => onChange({ sharedWith: v })}

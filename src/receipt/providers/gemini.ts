@@ -6,38 +6,48 @@ import { receiptJsonSchema, receiptPrompt } from '../prompt';
 // models that put a thought (or a thought signature) first.
 function answerText(body: any): string {
   const parts: any[] = body?.candidates?.[0]?.content?.parts ?? [];
-  return parts.filter((p) => typeof p?.text === 'string' && !p.thought).map((p) => p.text).join('');
+  return parts
+    .filter((p) => typeof p?.text === 'string' && !p.thought)
+    .map((p) => p.text)
+    .join('');
 }
 
-export function createGeminiProvider(config: { apiKey: string; model?: string; timeoutMs?: number }): ReceiptProvider {
+export function createGeminiProvider(config: {
+  apiKey: string;
+  model?: string;
+  timeoutMs?: number;
+}): ReceiptProvider {
   const model = config.model ?? 'gemini-3.1-flash-lite';
   return {
     name: 'gemini',
     async extract({ imageBase64, hint, categoryNames, currencyCodes = [] }) {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), config.timeoutMs ?? 30000);
-      const call = (withSchema: boolean) => fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-        {
+      const call = (withSchema: boolean) =>
+        fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
           method: 'POST',
           // The key goes in a header, not the query string, where proxies and logs keep URLs.
           headers: { 'Content-Type': 'application/json', 'x-goog-api-key': config.apiKey },
           signal: controller.signal,
           body: JSON.stringify({
-            contents: [{
-              parts: [
-                { text: receiptPrompt(hint) },
-                { inline_data: { mime_type: imageMimeType(imageBase64), data: imageBase64 } },
-              ],
-            }],
+            contents: [
+              {
+                parts: [
+                  { text: receiptPrompt(hint) },
+                  { inline_data: { mime_type: imageMimeType(imageBase64), data: imageBase64 } },
+                ],
+              },
+            ],
             // Without a schema the model answered in its own shape (`total`, `store`, …) and every
             // field the app reads came back empty — the "0 matched data" receipt.
             generationConfig: withSchema
-              ? { responseMimeType: 'application/json', responseJsonSchema: receiptJsonSchema(categoryNames, currencyCodes) }
+              ? {
+                  responseMimeType: 'application/json',
+                  responseJsonSchema: receiptJsonSchema(categoryNames, currencyCodes),
+                }
               : { responseMimeType: 'application/json' },
           }),
-        },
-      );
+        });
       try {
         let response = await call(true);
         // A model or API version that rejects the schema answers 400; the prompt alone still
