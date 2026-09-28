@@ -6,6 +6,7 @@ import * as TaskManager from 'expo-task-manager';
 import { getDb, getMigrationDone } from '../db/client';
 import { runSync } from './runSync';
 import { logLine } from '../utils/log';
+import { errorMessage } from '../utils/errorMessage';
 
 export const BACKGROUND_SYNC_TASK = 'mmyway-background-sync';
 
@@ -16,7 +17,7 @@ TaskManager.defineTask(BACKGROUND_SYNC_TASK, async () => {
     if (summary.error) logLine('warn', `background sync: ${summary.error}`);
     return BackgroundTask.BackgroundTaskResult.Success;
   } catch (err) {
-    logLine('error', `background sync failed: ${err instanceof Error ? err.message : String(err)}`);
+    logLine('error', `background sync failed: ${errorMessage(err)}`);
     return BackgroundTask.BackgroundTaskResult.Failed;
   }
 });
@@ -28,9 +29,6 @@ export async function registerBackgroundSync(): Promise<void> {
     if (status !== BackgroundTask.BackgroundTaskStatus.Available) return;
     await BackgroundTask.registerTaskAsync(BACKGROUND_SYNC_TASK, { minimumInterval: 15 });
   } catch (err) {
-    logLine(
-      'warn',
-      `could not register background sync: ${err instanceof Error ? err.message : String(err)}`,
-    );
+    logLine('warn', `could not register background sync: ${errorMessage(err)}`);
   }
 }

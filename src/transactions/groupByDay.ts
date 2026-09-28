@@ -1,6 +1,7 @@
 // Groups cached transactions by local calendar day, newest first, with a per-currency day total
 // (design §6.4). Pure, decimal strings only — totals go through `addDecimal`, never a float.
 import { addDecimal } from '../api/ff3/decimal';
+import { localDay } from '../utils/day';
 
 export interface DayTransaction {
   groupId: string;
@@ -21,13 +22,6 @@ export interface DaySection<T extends DayTransaction> {
   data: T[];
 }
 
-function localDayKey(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
 /**
  * A transfer moves money between the user's own accounts — it contributes to neither the day's
  * spend nor its income, so it is excluded from the total (still listed in `data`, unsummed).
@@ -37,7 +31,7 @@ export function groupByDay<T extends DayTransaction>(rows: T[]): DaySection<T>[]
 
   const byDay = new Map<string, T[]>();
   for (const row of sorted) {
-    const key = localDayKey(new Date(row.date));
+    const key = localDay(new Date(row.date));
     const list = byDay.get(key);
     if (list) list.push(row);
     else byDay.set(key, [row]);

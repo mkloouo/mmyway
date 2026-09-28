@@ -48,6 +48,7 @@ import { PickerSheet } from '../../src/ui/PickerSheet';
 import { pickableCurrencies } from '../../src/ui/currencies';
 import { PendingDot } from '../../src/ui/PendingDot';
 import { usePendingAccountIds } from '../../src/accounts/usePendingAccountIds';
+import { dayDate, localDay } from '../../src/utils/day';
 
 const ROLE_LABEL_KEYS: Record<AccountRole, string> = {
   defaultAsset: 'account.roleDefault',
@@ -56,17 +57,6 @@ const ROLE_LABEL_KEYS: Record<AccountRole, string> = {
   ccAsset: 'account.roleCreditCard',
   cashWalletAsset: 'account.roleCashWallet',
 };
-
-/** A picked calendar day as YYYY-MM-DD, in local time (toISOString would shift it to UTC). */
-function dayString(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-function dayDate(day: string | null): Date {
-  if (!day) return new Date();
-  const [y, m, d] = day.split('-').map(Number);
-  return new Date(y!, m! - 1, d!);
-}
 
 function dayLabel(day: string | null): string | null {
   return day
@@ -159,7 +149,7 @@ export default function AccountScreen() {
   });
 
   function pickDay(value: string | null, onPick: (day: string) => void) {
-    pickDate(dayDate(value), (picked) => onPick(dayString(picked)));
+    pickDate(value ? dayDate(value) : new Date(), (picked) => onPick(localDay(picked)));
   }
 
   async function save() {

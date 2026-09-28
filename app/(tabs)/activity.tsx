@@ -66,6 +66,7 @@ import { readSplits } from '../../src/transactions/splitsJson';
 import { readDraft } from '../../src/inbox/draftJson';
 import { draftTotal } from '../../src/inbox/draftSplits';
 import { landingItems, matchesActivityFilter } from '../../src/transactions/pinnedRows';
+import { dayDate, isBalanceStale, localDay } from '../../src/utils/day';
 
 const FILTERS: { labelKey: string; type: ActivityTypeFilter }[] = [
   { labelKey: 'activity.filterAll', type: 'all' },
@@ -74,7 +75,6 @@ const FILTERS: { labelKey: string; type: ActivityTypeFilter }[] = [
   { labelKey: 'activity.filterMoves', type: 'transfer' },
 ];
 
-const STALE_MS = 24 * 60 * 60 * 1000;
 /** Split lines shown under a split transaction's row before "+N more". */
 const MAX_SPLIT_LINES = 3;
 const REMOTE_SECTION_KEY = 'ff3-search';
@@ -158,18 +158,13 @@ type RemoteSearchState =
   | { status: 'error'; query: string }
   | { status: 'offline'; query: string };
 
-function localDayKey(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
 function dayTitle(key: string): string {
   const now = new Date();
   const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-  if (key === localDayKey(now)) return i18n.t('capture.today').toUpperCase();
-  if (key === localDayKey(yesterday)) return i18n.t('capture.yesterday').toUpperCase();
-  const [y, m, d] = key.split('-').map(Number);
+  if (key === localDay(now)) return i18n.t('capture.today').toUpperCase();
+  if (key === localDay(yesterday)) return i18n.t('capture.yesterday').toUpperCase();
   // Always with the year: scrolling back past January otherwise gave two identical "14 SEP"s.
-  return new Date(y!, m! - 1, d!)
+  return dayDate(key)
     .toLocaleDateString(appLocale(), { day: 'numeric', month: 'short', year: 'numeric' })
     .toUpperCase();
 }
@@ -463,7 +458,7 @@ export default function ActivityScreen() {
 
   const remoteRows = remoteSearch.status === 'done' ? remoteSearch.rows : null;
   const displaySections = useMemo(() => {
-    const todayKey = localDayKey(new Date());
+    const todayKey = localDay();
     const queuedInbox = new Set(queuedRows.map((r) => r.inboxItemId));
     const landingRows: QueuedRow[] = landingItems(sentItems ?? [], cacheFacts, queuedInbox)
       .map((i) => landingRow(i.id, i.draftJson))
@@ -986,9 +981,7 @@ const BalanceCard = memo(function BalanceCard({
 }) {
   const t = useTheme();
   const { t: tr } = useTranslation();
-  const stale = a.currentBalanceDate
-    ? new Date().getTime() - new Date(a.currentBalanceDate).getTime() > STALE_MS
-    : true;
+  const stale = isBalanceStale(a.currentBalanceDate);
   return (
     <Card
       onPress={() => onToggle(a.id)}

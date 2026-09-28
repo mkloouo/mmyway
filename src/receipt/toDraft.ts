@@ -10,6 +10,7 @@ import type { ReceiptExtraction } from './types';
 import { logLine } from '../utils/log';
 import { resolvePayeeAlias } from '../lookup/aliases';
 import { writeDraft } from '../inbox/draftJson';
+import { errorMessage } from '../utils/errorMessage';
 
 // Below this confidence, guessing a field the model wasn't sure about does more harm than
 // leaving it blank for the user to fill in on the draft screen.
@@ -218,7 +219,7 @@ export async function retryPendingReceipts(
     } catch (err) {
       logLine(
         'error',
-        `receipt ${row.id}: image unreadable at ${row.receiptImagePath}: ${err instanceof Error ? err.message : String(err)}`,
+        `receipt ${row.id}: image unreadable at ${row.receiptImagePath}: ${errorMessage(err)}`,
       );
       await markReceiptError(
         db,
@@ -230,10 +231,7 @@ export async function retryPendingReceipts(
     try {
       if ((await parseReceiptItem(db, row.id, imageBase64)) === 'parsed') parsed += 1;
     } catch (err) {
-      logLine(
-        'error',
-        `receipt ${row.id}: parse failed: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      logLine('error', `receipt ${row.id}: parse failed: ${errorMessage(err)}`);
     }
   }
   return parsed;

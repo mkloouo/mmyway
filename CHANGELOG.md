@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Count cash now shows the expected balance, the drift and the review rows in the phone's own
+  number format, with the currency's symbol — the same as everywhere else in the app.
+
 ## [1.3.0] - 2026-09-28
 
 - The app is now called **Money My Way**.

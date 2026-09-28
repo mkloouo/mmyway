@@ -85,17 +85,15 @@ describe('savePlanned', () => {
     // A first attempt replaced the recurring transaction (so it has the 12th), then failed on the rule.
     const [op] = await db.select().from(outboxOperations);
     const sent = readPayload<SavePlannedPayload>(op!.kind, op!.payloadJson);
-    await db
-      .update(outboxOperations)
-      .set({
-        status: 'failed',
-        payloadJson: JSON.stringify({
-          ...sent,
-          recurrenceId: '30',
-          recurrenceReplaced: true,
-          v: 1,
-        }),
-      });
+    await db.update(outboxOperations).set({
+      status: 'failed',
+      payloadJson: JSON.stringify({
+        ...sent,
+        recurrenceId: '30',
+        recurrenceReplaced: true,
+        v: 1,
+      }),
+    });
 
     await savePlanned(db as any, inFF3, { ...fields, date: '2026-10-12', amount: '65' });
     const [merged] = await saves(db);

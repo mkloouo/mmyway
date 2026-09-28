@@ -39,6 +39,7 @@ import { pullUnreviewedRecurring } from './recurringReview';
 import { retryPendingReceipts } from '../receipt/toDraft';
 import { logLine } from '../utils/log';
 import { pullPlanned } from '../planned/objects';
+import { errorMessage } from '../utils/errorMessage';
 
 export interface SyncSummary {
   signedIn: boolean;
@@ -210,10 +211,7 @@ async function doSync(db: OutboxDb, mode: SyncMode): Promise<SyncSummary> {
         try {
           await pullPlanned(db, client);
         } catch (err) {
-          logLine(
-            'warn',
-            `planned pull failed: ${err instanceof Error ? err.message : String(err)}`,
-          );
+          logLine('warn', `planned pull failed: ${errorMessage(err)}`);
         }
         // After the planned pull: a review reads its recurrence's planned currency from that cache.
         summary.recurringCreated = await pullUnreviewedRecurring(db, client, {
@@ -228,10 +226,7 @@ async function doSync(db: OutboxDb, mode: SyncMode): Promise<SyncSummary> {
           await pullAccountBalances(db, client);
           await setBalancesStale(db, false);
         } catch (err) {
-          logLine(
-            'warn',
-            `balance re-read after replay failed: ${err instanceof Error ? err.message : String(err)}`,
-          );
+          logLine('warn', `balance re-read after replay failed: ${errorMessage(err)}`);
         }
       }
 
@@ -257,7 +252,7 @@ async function doSync(db: OutboxDb, mode: SyncMode): Promise<SyncSummary> {
       await setLastSyncedAt(db, summary.lastSyncedAt);
     }
   } catch (err) {
-    summary.error = err instanceof Error ? err.message : String(err);
+    summary.error = errorMessage(err);
     logLine(
       'error',
       `sync failed: ${summary.error}${err instanceof Error && err.stack ? `\n${err.stack}` : ''}`,

@@ -2,6 +2,7 @@
 // that: the long side is capped at MAX_SIDE before the image is hashed, stored, sent to the model
 // and uploaded — faster local parsing, cheaper Gemini calls, less memory.
 import { logLine } from '../utils/log';
+import { errorMessage } from '../utils/errorMessage';
 
 export const MAX_SIDE = 1600;
 
@@ -26,10 +27,7 @@ export async function downscaleReceipt(
     });
     return saved.base64 ? { uri: saved.uri, base64: saved.base64 } : null;
   } catch (err) {
-    logLine(
-      'warn',
-      `receipt downscale skipped: ${err instanceof Error ? err.message : String(err)}`,
-    );
+    logLine('warn', `receipt downscale skipped: ${errorMessage(err)}`);
     return null;
   }
 }

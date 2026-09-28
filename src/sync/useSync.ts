@@ -7,6 +7,7 @@ import { pullOlderTransactions } from './referenceData';
 import { runSync } from './runSync';
 import { SYNC_QUERY_KEY } from './syncTrigger';
 import { logLine } from '../utils/log';
+import { errorMessage } from '../utils/errorMessage';
 
 const SIGNED_IN_QUERY_KEY = ['signedIn'];
 
@@ -64,10 +65,7 @@ export function useLoadOlderHistory() {
     } catch (err) {
       // Left un-exhausted on failure (network blip, host unreachable) so the next scroll retries
       // instead of the list silently pretending history ends here.
-      logLine(
-        'error',
-        `loadOlderHistory failed: ${err instanceof Error ? err.message : String(err)}`,
-      );
+      logLine('error', `loadOlderHistory failed: ${errorMessage(err)}`);
     } finally {
       inFlight.current = false;
       setLoading(false);

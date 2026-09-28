@@ -75,15 +75,9 @@ import {
 import { absorb, leftover } from '../../src/splits/allocate';
 import { useMerchantHistories } from '../../src/lookup/useMerchantHistories';
 import { ReceiptThumb } from '../../src/ui/ReceiptThumb';
+import { txTypeLabelKey } from '../../src/transactions/txTypes';
 
 const SHARED_TAG_PREFIX = 'mmyway-shared-';
-// The words the rest of the app uses (capture's type chips), not FF3's "Withdrawal"/"Deposit".
-const TYPE_LABEL_KEYS: Record<string, string> = {
-  withdrawal: 'capture.typeExpense',
-  deposit: 'capture.typeIncome',
-  transfer: 'capture.typeTransfer',
-};
-
 type TxType = 'withdrawal' | 'deposit' | 'transfer';
 
 function parseTags(tagsJson: string): string[] {
@@ -688,7 +682,7 @@ export default function TransactionDetailScreen() {
     <Screen bottom>
       <View style={{ flex: 1 }}>
         <AppBar
-          title={TYPE_LABEL_KEYS[row.type] ? tr(TYPE_LABEL_KEYS[row.type]!) : row.type}
+          title={txTypeLabelKey(row.type) ? tr(txTypeLabelKey(row.type)!) : row.type}
           subtitle={
             pendingEdit
               ? pendingEdit.status === 'queued'

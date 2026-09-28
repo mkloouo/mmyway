@@ -1,5 +1,6 @@
 import i18n from '../i18n';
 import { logLine } from '../utils/log';
+import { errorMessage } from '../utils/errorMessage';
 
 /**
  * Runs a button handler's async work, and on failure logs it (so it's in the diagnostics log a
@@ -14,7 +15,7 @@ export async function reportErrors(
   try {
     await fn();
   } catch (err) {
-    logLine('error', `${action} failed: ${err instanceof Error ? err.message : String(err)}`);
+    logLine('error', `${action} failed: ${errorMessage(err)}`);
     onError(i18n.t('common.actionFailed', { action }));
   }
 }
