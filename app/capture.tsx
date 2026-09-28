@@ -9,7 +9,7 @@ import { pickDateTime } from '../src/ui/pickDate';
 import { useLiveQuery } from '../src/db/useLiveQuery';
 import { useDb } from '../src/providers/DbProvider';
 import { useTheme } from '../src/ui/theme';
-import { Screen, Chip, Button, Sheet, Toast, Row } from '../src/ui/components';
+import { Screen, Chip, Button, Sheet, Toast, Row, BarIconButton } from '../src/ui/components';
 import { Keypad } from '../src/ui/Keypad';
 import { PayeeSheet } from '../src/ui/PayeeSheet';
 import { AccountPickerSheet, type AccountPickerAccount } from '../src/ui/AccountPickerSheet';
@@ -411,13 +411,7 @@ export default function CaptureScreen() {
             paddingTop: t.space.sm,
           }}
         >
-          <Pressable
-            onPress={confirmClose}
-            accessibilityRole="button"
-            accessibilityLabel={tr('common.close')}
-          >
-            <Text style={[t.type.heading, { color: t.color.text }]}>✕</Text>
-          </Pressable>
+          <BarIconButton icon="close" label={tr('common.close')} onPress={confirmClose} />
           <View style={{ flexDirection: 'row', flex: 1, gap: t.space.xs }}>
             {TX_TYPES.map((option) => (
               <Chip
@@ -428,7 +422,11 @@ export default function CaptureScreen() {
               />
             ))}
           </View>
-          <Pressable onPress={() => setCurrencySheetOpen(true)} accessibilityRole="button">
+          <Pressable
+            onPress={() => setCurrencySheetOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel={tr('capture.changeCurrency')}
+          >
             <Text style={[t.type.heading, { color: t.color.text }]}>
               {effectiveCurrencyCode ?? '—'} ▾
             </Text>

@@ -129,7 +129,7 @@ export default function AliasesScreen() {
             <Pressable
               onPress={() => confirmRemove(item)}
               accessibilityRole="button"
-              accessibilityLabel={tr('addresses.removeAddress', { address: item.rawInput })}
+              accessibilityLabel={tr('aliases.removeAlias', { raw: item.rawInput })}
             >
               <Text style={[t.type.body, { color: t.color.danger }]}>✕</Text>
             </Pressable>
