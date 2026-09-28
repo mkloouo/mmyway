@@ -2,6 +2,7 @@
 import { and, asc, eq, gte, inArray, lt } from 'drizzle-orm';
 import { outboxOperations, referenceAccounts, referenceBudgets, referenceCategories, referenceCurrencies } from '../db/schema';
 import { setEnvelopeMarker } from '../accounts/envelopeMarker';
+import type { AccountEdit } from '../accounts/accountEdit';
 import type { OutboxDb, UpdateAccountPayload } from './outbox';
 import { getAccountOrder, setAccountOrder } from '../settings/appSettings';
 
@@ -22,7 +23,7 @@ export async function pruneReferenceData(db: OutboxDb, pullStartedAt: string): P
 
 /**
  * The pull runs before the outbox replay, so an account edit made on the device (the envelope
- * checkbox, the active switch) and not yet sent was overwritten by the server's old copy for one
+ * checkbox, the active switch, the account page) and not yet sent was overwritten by the server's old copy for one
  * sync — the checkbox visibly flipped back. Re-applies every queued account edit, oldest first,
  * on top of what the pull wrote.
  */
@@ -37,7 +38,7 @@ export async function reapplyQueuedAccountEdits(db: OutboxDb): Promise<void> {
     if (p.order !== undefined) { order[p.accountId] = p.order; orderChanged = true; }
     const [account] = await db.select().from(referenceAccounts).where(eq(referenceAccounts.id, p.accountId));
     if (!account) continue;
-    const patch: { active?: boolean; notes?: string } = {};
+    const patch: AccountEdit & { active?: boolean; notes?: string } = { ...p.edit };
     if (p.active !== undefined) patch.active = p.active;
     if (p.setEnvelopeMarker !== undefined) patch.notes = setEnvelopeMarker(account.notes, p.setEnvelopeMarker);
     if (Object.keys(patch).length > 0) await db.update(referenceAccounts).set(patch).where(eq(referenceAccounts.id, p.accountId));

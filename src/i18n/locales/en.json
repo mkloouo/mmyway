@@ -428,5 +428,30 @@
   },
   "tabs": {
     "inbox": "Inbox"
+  },
+  "account": {
+    "title": "Account",
+    "openHint": "Long-press to edit the account",
+    "roleDefault": "Default account",
+    "roleShared": "Shared account",
+    "roleSaving": "Savings account",
+    "roleCreditCard": "Credit card",
+    "roleCashWallet": "Cash wallet",
+    "discardTitle": "Discard your changes to this account?",
+    "problemName": "The account needs a name",
+    "problemOpeningDate": "Pick the date of the opening balance",
+    "problemPaymentDate": "A credit card needs its monthly payment date",
+    "sectionAccount": "Account",
+    "sectionOptions": "Options",
+    "sectionBalances": "Balances",
+    "role": "Account role",
+    "monthlyPaymentDate": "Monthly payment date",
+    "pickDate": "Pick a date",
+    "includeNetWorth": "Include in net worth",
+    "includeNetWorthHint": "Counted in Firefly III’s net worth",
+    "openingBalance": "Opening balance",
+    "openingBalanceDate": "Opening balance date",
+    "virtualBalance": "Virtual balance",
+    "virtualBalanceHint": "Added to the real balance in Firefly III — e.g. a credit limit, or money you set aside."
   }
 }

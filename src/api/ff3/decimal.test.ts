@@ -1,4 +1,4 @@
-import { addDecimal, isNegative, divideDecimal, parseDecimalInput } from './decimal';
+import { addDecimal, isNegative, divideDecimal, parseDecimalInput, parseSignedDecimalInput } from './decimal';
 
 describe('addDecimal', () => {
   it('adds two decimals with matching scale', () => {
@@ -58,5 +58,15 @@ describe('parseDecimalInput', () => {
   it('output always survives the arithmetic helpers', () => {
     const parsed = parseDecimalInput('1 234,5');
     expect(parsed.ok && addDecimal(parsed.value, '0.5')).toBe('1235.0');
+  });
+});
+
+describe('parseSignedDecimalInput', () => {
+  it('accepts a leading minus (either dash) and keeps parseDecimalInput rules', () => {
+    expect(parseSignedDecimalInput('-12,50')).toEqual({ ok: true, value: '-12.50' });
+    expect(parseSignedDecimalInput('−3')).toEqual({ ok: true, value: '-3' });
+    expect(parseSignedDecimalInput('-0')).toEqual({ ok: true, value: '0' });
+    expect(parseSignedDecimalInput('12')).toEqual({ ok: true, value: '12' });
+    expect(parseSignedDecimalInput('--1').ok).toBe(false);
   });
 });

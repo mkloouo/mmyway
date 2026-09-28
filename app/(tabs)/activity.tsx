@@ -356,6 +356,9 @@ export default function ActivityScreen() {
                 <Pressable
                   key={a.id}
                   onPress={() => setAccountFilter((cur) => (cur === a.name ? null : a.name))}
+                  onLongPress={() => navigateOnce(`/accounts/${a.id}`)}
+                  delayLongPress={300}
+                  accessibilityHint={tr('account.openHint')}
                   style={({ pressed }) => ({ opacity: pressed ? 0.6 : stale ? 0.5 : 1 })}
                 >
                   <Card style={{ borderColor: selected ? t.color.accent : t.color.border, minWidth: 120 }}>

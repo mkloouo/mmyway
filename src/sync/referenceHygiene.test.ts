@@ -33,4 +33,13 @@ describe('reapplyQueuedAccountEdits', () => {
     const [row] = await db.select().from(referenceAccounts).where(eq(referenceAccounts.id, 'a1'));
     expect(row).toMatchObject({ active: false, notes: 'server note\nmmyway-envelope' });
   });
+
+  it('keeps a queued account-page edit over the server copy', async () => {
+    const db = createTestDb();
+    await db.insert(referenceAccounts).values(account('a1', '2026-09-27T10:00:01Z'));
+    await enqueueOperation(db, { id: 'op-1', kind: 'update_account', payload: { accountId: 'a1', edit: { name: 'Wallet', virtualBalance: '100' } } });
+    await reapplyQueuedAccountEdits(db as any);
+    const [row] = await db.select().from(referenceAccounts).where(eq(referenceAccounts.id, 'a1'));
+    expect(row).toMatchObject({ name: 'Wallet', virtualBalance: '100' });
+  });
 });

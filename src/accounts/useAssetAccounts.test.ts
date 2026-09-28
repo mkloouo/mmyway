@@ -1,7 +1,9 @@
 import { selectAssetAccounts, type ReferenceAccountRow } from './useAssetAccounts';
 
 function row(id: string, name: string, type: string, active: boolean): ReferenceAccountRow {
-  return { id, name, type, active, currencyCode: 'PLN', currentBalance: null, currentBalanceDate: null, notes: null, syncedAt: '' };
+  return { id, name, type, active, currencyCode: 'PLN', currentBalance: null, currentBalanceDate: null, notes: null,
+    accountRole: null, includeNetWorth: true, openingBalance: null, openingBalanceDate: null, virtualBalance: null,
+    creditCardType: null, monthlyPaymentDate: null, syncedAt: '' };
 }
 
 const rows = [row('1', 'Revolut', 'asset', true), row('2', 'Old bank', 'asset', false), row('3', 'Żabka', 'expense', true), row('4', 'Cash', 'asset', true)];

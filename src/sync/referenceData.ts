@@ -21,6 +21,26 @@ async function fetchAll<T>(client: FF3Client, path: string): Promise<T[]> {
   }
 }
 
+// AccountRead (src/api/ff3/types.ts, pinned) doesn't declare these — narrowed with a local
+// cast at the read site, as recurringReview.ts already does for the group's updated_at.
+type AccountExtraAttributes = {
+  current_balance?: string;
+  current_balance_date?: string;
+  notes?: string | null;
+  account_role?: string | null;
+  include_net_worth?: boolean;
+  opening_balance?: string | null;
+  opening_balance_date?: string | null;
+  virtual_balance?: string | null;
+  credit_card_type?: string | null;
+  monthly_payment_date?: string | null;
+};
+
+/** FF3 answers dates as full ISO timestamps; the account page edits the calendar day. */
+function calendarDay(value: string | null | undefined): string | null {
+  return value ? value.slice(0, 10) : null;
+}
+
 export async function pullReferenceData(db: OutboxDb, client: FF3Client): Promise<void> {
   const now = new Date().toISOString();
 
@@ -35,14 +55,19 @@ export async function pullReferenceData(db: OutboxDb, client: FF3Client): Promis
   // thread, and hundreds of separately committed upserts froze the UI on every app open.
   db.transaction((tx) => {
     for (const account of accountsByType.flat()) {
-      // AccountRead (src/api/ff3/types.ts, pinned) doesn't declare these — narrowed with a local
-      // cast at the read site, as recurringReview.ts already does for the group's updated_at.
-      const extra = account.attributes as { current_balance?: string; current_balance_date?: string; notes?: string | null };
+      const extra = account.attributes as AccountExtraAttributes;
       const row = {
         id: account.id, name: account.attributes.name, type: account.attributes.type,
         currencyCode: account.attributes.currency_code, active: account.attributes.active,
         currentBalance: extra.current_balance ?? null, currentBalanceDate: extra.current_balance_date ?? null,
         notes: extra.notes ?? null,
+        accountRole: extra.account_role ?? null,
+        includeNetWorth: extra.include_net_worth ?? true,
+        openingBalance: extra.opening_balance ?? null,
+        openingBalanceDate: calendarDay(extra.opening_balance_date),
+        virtualBalance: extra.virtual_balance ?? null,
+        creditCardType: extra.credit_card_type ?? null,
+        monthlyPaymentDate: calendarDay(extra.monthly_payment_date),
         syncedAt: now,
       };
       tx.insert(referenceAccounts).values(row).onConflictDoUpdate({ target: referenceAccounts.id, set: row }).run();

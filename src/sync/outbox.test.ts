@@ -141,4 +141,25 @@ describe('replayOutbox', () => {
     expect(client.request).toHaveBeenCalledTimes(1);
     expect(client.request.mock.calls[0]).toEqual(['/v1/accounts/acc-1', { method: 'PUT', body: JSON.stringify({ active: false }) }]);
   });
+
+  it('update_account sends a new position (Reorder) to FF3', async () => {
+    const db = createTestDb();
+    await enqueueOperation(db, { id: 'op-1', kind: 'update_account', payload: { accountId: 'acc-1', order: 3 } });
+    const client = fakeClient({ '/v1/accounts/acc-1': async () => ({}) });
+    await replayOutbox(db as any, client as any);
+    expect(JSON.parse((client.request.mock.calls[0] as unknown as [string, RequestInit])[1].body as string)).toEqual({ order: 3 });
+  });
+
+  it('update_account sends the account page\'s fields under FF3\'s names', async () => {
+    const db = createTestDb();
+    await enqueueOperation(db, {
+      id: 'op-1', kind: 'update_account',
+      payload: { accountId: 'acc-1', edit: { name: 'Wallet', includeNetWorth: false, openingBalance: '-20.5', openingBalanceDate: '2026-01-01', virtualBalance: null } },
+    });
+    const client = fakeClient({ '/v1/accounts/acc-1': async () => ({}) });
+    await replayOutbox(db as any, client as any);
+    expect(JSON.parse((client.request.mock.calls[0] as unknown as [string, RequestInit])[1].body as string)).toEqual({
+      name: 'Wallet', include_net_worth: false, opening_balance: '-20.5', opening_balance_date: '2026-01-01', virtual_balance: null,
+    });
+  });
 });
