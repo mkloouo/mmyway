@@ -16,6 +16,7 @@ import type { AttentionItem, InboxItemRow } from '../inbox/useInboxSections';
 import { draftReadiness } from '../inbox/readiness';
 import type { Draft } from '../inbox/draft';
 import { readDraft, readReviewJournal } from '../inbox/draftJson';
+import { draftTotal, isSplitDraft } from '../inbox/draftSplits';
 import { appLocale } from '../i18n';
 
 function metaLine(parts: (string | null | undefined)[]): string {
@@ -67,7 +68,9 @@ export function ConfirmCard({
     : (draft.type === 'deposit' ? draft.sourceName : draft.destinationName) || draft.description;
   const accountName = draft.type === 'deposit' ? draft.destinationName : draft.sourceName;
   const time = new Date(draft.date).toLocaleTimeString(appLocale(), { hour: '2-digit', minute: '2-digit' });
-  const meta = isTransfer ? metaLine([time]) : metaLine([draft.categoryName, accountName, time]);
+  const splitCount = isSplitDraft(draft) ? (draft.extraSplits?.length ?? 0) + 1 : 0;
+  const splitsLabel = splitCount ? tr('splits.count', { count: splitCount }) : null;
+  const meta = isTransfer ? metaLine([splitsLabel, time]) : metaLine([splitsLabel ?? draft.categoryName, accountName, time]);
   const dotColor = draft.categoryName ? categoryColor(draft.categoryName, t.dark) : t.color.textFaint;
 
   const badges: { label: string; tone?: 'warn' }[] = [];
@@ -84,7 +87,7 @@ export function ConfirmCard({
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
           <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor }} />
           <Text style={[t.type.heading, { color: t.color.text, flex: 1 }]} numberOfLines={1}>{payeeName}</Text>
-          <Money amount={draft.amount || '0'} currency={currencyOf(currencies, draft.currencyCode)} type={draft.type} size="heading" />
+          <Money amount={draftTotal(draft) || '0'} currency={currencyOf(currencies, draft.currencyCode)} type={draft.type} size="heading" />
         </View>
         {!!meta && <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]}>{meta}</Text>}
         {/* Badges and the ✓ share one footer row: the button sits level with "New payee"

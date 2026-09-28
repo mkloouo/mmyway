@@ -1,4 +1,5 @@
-// Draft review (design §6.3) — one legible card for both a manual draft and a receipt.
+// Draft review (design §6.3) — one legible card for both a manual draft and a receipt. A split
+// entry (Split, or a duplicated split transaction) shows its tracked total and one page per split.
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Animated, Alert, Image, Modal, Pressable, ScrollView, Text, View } from 'react-native';
@@ -13,6 +14,9 @@ import { Screen, AppBar, BarIconButton, Card, Chip, Button, Money, StatusPill, S
 import { DetailRows, type DetailRowsValue } from '../../src/ui/DetailRows';
 import { PayeeSheet } from '../../src/ui/PayeeSheet';
 import { Keypad } from '../../src/ui/Keypad';
+import { TextField } from '../../src/ui/TextField';
+import { SplitPager } from '../../src/ui/SplitPager';
+import { AllocationSheet, type AllocationMode, type AllocationResult } from '../../src/ui/AllocationSheet';
 import { currencyOf } from '../../src/ui/money';
 import { haptics } from '../../src/ui/haptics';
 import { inboxItems, outboxOperations, referenceCategories, referenceBudgets, referenceCurrencies } from '../../src/db/schema';
@@ -27,12 +31,14 @@ import { buildMerchantLookup, type MerchantHistory } from '../../src/lookup/merc
 import { matchAlias, rememberPayeeAlias, removeAlias, upsertAlias, PAYEE } from '../../src/lookup/aliases';
 import { Snackbar, type SnackbarEntry } from '../../src/ui/Snackbar';
 import { generateId } from '../../src/utils/id';
-import type { Draft } from '../../src/inbox/draft';
+import type { Draft, DraftSplit } from '../../src/inbox/draft';
 import { navigateOnce } from '../../src/ui/navigateOnce';
 import { missingLabel } from '../../src/ui/readinessLabel';
 import { appLocale } from '../../src/i18n';
 import { readDraft } from '../../src/inbox/draftJson';
 import { useAction } from '../../src/ui/useAction';
+import { addSplit, draftAmounts, draftTotal, isSplitDraft, patchExtraSplit, removeExtraSplit, withAmounts } from '../../src/inbox/draftSplits';
+import { absorb, leftover } from '../../src/splits/allocate';
 
 export default function DraftScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -84,6 +90,12 @@ export default function DraftScreen() {
   const [confirming, setConfirming] = useState(false);
   const [snackbar, setSnackbar] = useState<SnackbarEntry | null>(null);
   const dismissSnackbar = useCallback(() => setSnackbar(null), []);
+  // Split editing (page 0 is the draft's own fields, 1..N its extraSplits).
+  const [page, setPage] = useState(0);
+  const [allocation, setAllocation] = useState<AllocationMode | null>(null);
+  const [keypadFor, setKeypadFor] = useState<number | 'total' | null>(null);
+  const [textFor, setTextFor] = useState<number | 'title' | null>(null);
+  const [extraPayeeFor, setExtraPayeeFor] = useState<number | null>(null);
 
   const readOnly = row ? row.state === 'confirmed' || row.state === 'synced' : false;
   const payeeName = draft ? (draft.type === 'deposit' ? draft.sourceName : draft.destinationName) : undefined;
@@ -98,7 +110,14 @@ export default function DraftScreen() {
   }
 
   const currency = currencyOf(currencies ?? [], draft.currencyCode);
+  const dp = currency.decimalPlaces;
   const readiness = draftReadiness(draft);
+  const splitMode = isSplitDraft(draft);
+  const extras = draft.extraSplits ?? [];
+  const amounts = draftAmounts(draft);
+  const total = draftTotal(draft);
+  const rest = splitMode ? leftover(total, amounts, dp) : 0n;
+  const pageIndex = Math.min(page, extras.length);
 
   function patch(fields: Partial<Draft>) {
     updateDraft(db, id, fields);
@@ -136,6 +155,19 @@ export default function DraftScreen() {
     patch(draftPatch);
   }
 
+  // Split 2..N: the accounts every split shares go to the draft itself, the rest to the split.
+  function handleExtraDetailChange(index: number, change: Partial<DetailRowsValue>) {
+    const own: Partial<DraftSplit> = {};
+    const shared: Partial<Draft> = {};
+    if ('categoryName' in change) own.categoryName = change.categoryName ?? undefined;
+    if ('budgetId' in change) own.budgetId = change.budgetId ?? undefined;
+    if ('notes' in change) own.notes = change.notes ?? undefined;
+    if ('sharedWith' in change) own.sharedWith = change.sharedWith ?? undefined;
+    if ('sourceAccountId' in change) shared.sourceId = change.sourceAccountId ?? undefined;
+    if ('destinationAccountId' in change) shared.destinationId = change.destinationAccountId ?? undefined;
+    patch({ ...shared, ...(Object.keys(own).length ? patchExtraSplit(draft!, index - 1, own) : {}) });
+  }
+
   function openDatePicker() {
     pickDate(new Date(draft!.date), (picked) => patch({ date: buildEntryDate(picked, new Date(draft!.date)).toISOString() }));
   }
@@ -163,6 +195,62 @@ export default function DraftScreen() {
     ]);
   }
 
+  /**
+   * When the splits don't add up to the total, split 1 takes the difference (split 2, if split 1
+   * was just typed); only when it can't are the sliders asked.
+   */
+  function placeLeftover(nextAmounts: string[], nextTotal: string, exclude?: number) {
+    const delta = leftover(nextTotal, nextAmounts, dp);
+    if (delta === 0n || nextAmounts.length < 2) return;
+    const absorbed = absorb(nextAmounts, delta, dp, exclude);
+    if (absorbed) patch(withAmounts(draft!, absorbed));
+    else setAllocation({ kind: 'leftover', delta, exclude });
+  }
+
+  /** The Reassign button: the sliders, whatever split 1 could take. */
+  function askLeftover(nextAmounts: string[], nextTotal: string) {
+    const delta = leftover(nextTotal, nextAmounts, dp);
+    if (delta !== 0n && nextAmounts.length > 1) setAllocation({ kind: 'leftover', delta });
+  }
+
+  function onAllocated(result: AllocationResult) {
+    if (!allocation) return;
+    if (allocation.kind === 'newSplit' && result.newAmount) {
+      patch(addSplit(draft!, result.amounts, result.newAmount));
+      setPage(extras.length + 1);
+    } else {
+      patch(withAmounts(draft!, result.amounts));
+    }
+    setAllocation(null);
+  }
+
+  function removeSplit(index: number) {
+    const next = removeExtraSplit(draft!, index);
+    const nextAmounts = amounts.filter((_, i) => i !== index);
+    const delta = leftover(total, nextAmounts, dp);
+    const absorbed = nextAmounts.length > 1 ? absorb(nextAmounts, delta, dp) : null;
+    // Split 1 takes the removed amount, in the same write as the removal.
+    patch(absorbed ? { ...next, ...withAmounts({ ...draft!, ...next }, absorbed) } : next);
+    setPage(Math.max(0, index - 1));
+    if (nextAmounts.length > 1 && !absorbed) askLeftover(nextAmounts, total);
+  }
+
+  function closeKeypad() {
+    const target = keypadFor;
+    setKeypadFor(null);
+    if (target === 'total') placeLeftover(amounts, total);
+    else if (typeof target === 'number') placeLeftover(amounts, total, target);
+  }
+
+  function typeDigit(key: KeypadKey) {
+    if (keypadFor === 'total') patch({ total: applyDigit(total, key, dp) });
+    else if (keypadFor === 0) patch({ amount: applyDigit(draft!.amount, key, dp) });
+    else if (typeof keypadFor === 'number') {
+      const split = extras[keypadFor - 1];
+      if (split) patch(patchExtraSplit(draft!, keypadFor - 1, { amount: applyDigit(split.amount, key, dp) }));
+    }
+  }
+
   const detailValue: DetailRowsValue = {
     type: draft.type,
     categoryName: draft.categoryName ?? null,
@@ -176,6 +264,75 @@ export default function DraftScreen() {
 
   const itemCount = row.kind === 'receipt' && draft.notes ? draft.notes.split('\n').filter(Boolean).length : 0;
 
+  const detailRows = (
+    <DetailRows
+      value={detailValue}
+      onChange={handleDetailChange}
+      onDatePress={openDatePicker}
+      readOnly={readOnly}
+      accounts={assetAccounts}
+      currencies={currencies ?? []}
+      categories={categories ?? []}
+      budgets={budgets ?? []}
+    />
+  );
+
+  function renderSplitPage(index: number) {
+    const split = index === 0 ? null : extras[index - 1];
+    const amount = split ? split.amount : draft!.amount;
+    const description = split ? split.description : draft!.description;
+    const payee = split ? split.payeeName : payeeName;
+    const isNew = split ? split.isNewPayee : draft!.isNewPayee;
+    return (
+      <>
+        <View style={{ alignItems: 'center', paddingHorizontal: t.space.xl, gap: t.space.xs }}>
+          <Pressable onPress={() => setKeypadFor(index)} disabled={readOnly} accessibilityRole="button" accessibilityLabel={tr('fields.amount')}>
+            <Money amount={amount} currency={currency} type={draft!.type} size="heading" />
+          </Pressable>
+          <Pressable onPress={() => setTextFor(index)} disabled={readOnly} accessibilityRole="button" accessibilityLabel={tr('fields.description')}>
+            <Text style={[t.type.body, { color: t.color.text, textAlign: 'center' }]} numberOfLines={2}>{description || '—'}</Text>
+          </Pressable>
+          {draft!.type !== 'transfer' && (
+            <Pressable
+              onPress={() => (index === 0 ? setPayeeSheetOpen(true) : setExtraPayeeFor(index))}
+              disabled={readOnly}
+              accessibilityRole="button"
+              accessibilityLabel={draft!.type === 'deposit' ? tr('capture.payer') : tr('capture.payee')}
+            >
+              <Text style={[t.type.label, { color: t.color.accent }]}>{payee || '—'}</Text>
+            </Pressable>
+          )}
+          {isNew && draft!.type !== 'transfer' && <Chip label={`⚑ ${tr('draft.newPayeeWillBeCreated')}`} tone="warn" />}
+        </View>
+        {split ? (
+          <DetailRows
+            value={{
+              ...detailValue,
+              categoryName: split.categoryName ?? null,
+              budgetId: split.budgetId ?? null,
+              notes: split.notes ?? null,
+              sharedWith: split.sharedWith ?? null,
+            }}
+            onChange={(change) => handleExtraDetailChange(index, change)}
+            onDatePress={openDatePicker}
+            readOnly={readOnly}
+            accounts={assetAccounts}
+            currencies={currencies ?? []}
+            categories={categories ?? []}
+            budgets={budgets ?? []}
+          />
+        ) : detailRows}
+        {index > 0 && !readOnly && (
+          <View style={{ paddingHorizontal: t.space.lg }}>
+            <Button title={tr('splits.remove')} variant="danger" onPress={() => removeSplit(index)} />
+          </View>
+        )}
+      </>
+    );
+  }
+
+  const keypadValue = keypadFor === 'total' ? total : typeof keypadFor === 'number' ? (amounts[keypadFor] ?? '0') : draft.amount;
+
   return (
     <Screen bottom>
       <View style={{ flex: 1 }}>
@@ -187,24 +344,26 @@ export default function DraftScreen() {
           )}
         />
 
-        <View style={{ alignItems: 'center', paddingVertical: t.space.lg }}>
-          <Pressable onPress={() => !readOnly && setAmountSheetOpen(true)} disabled={readOnly}>
-            <Money amount={draft.amount} currency={currency} type={draft.type} size="title" />
-          </Pressable>
-          {draft.type !== 'transfer' && (
-            <Pressable onPress={() => !readOnly && setPayeeSheetOpen(true)} disabled={readOnly}>
-              <Text style={[t.type.heading, { color: t.color.text, marginTop: t.space.xs }]}>{payeeName || '—'}</Text>
+        {!splitMode && (
+          <View style={{ alignItems: 'center', paddingVertical: t.space.lg }}>
+            <Pressable onPress={() => !readOnly && setAmountSheetOpen(true)} disabled={readOnly}>
+              <Money amount={draft.amount} currency={currency} type={draft.type} size="title" />
             </Pressable>
-          )}
-          {!!aliasCaption && (
-            <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]}>{aliasCaption}</Text>
-          )}
-          {draft.isNewPayee && draft.type !== 'transfer' && (
-            <View style={{ marginTop: t.space.sm }}>
-              <Chip label={`⚑ ${tr('draft.newPayeeWillBeCreated')}`} tone="warn" />
-            </View>
-          )}
-        </View>
+            {draft.type !== 'transfer' && (
+              <Pressable onPress={() => !readOnly && setPayeeSheetOpen(true)} disabled={readOnly}>
+                <Text style={[t.type.heading, { color: t.color.text, marginTop: t.space.xs }]}>{payeeName || '—'}</Text>
+              </Pressable>
+            )}
+            {!!aliasCaption && (
+              <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]}>{aliasCaption}</Text>
+            )}
+            {draft.isNewPayee && draft.type !== 'transfer' && (
+              <View style={{ marginTop: t.space.sm }}>
+                <Chip label={`⚑ ${tr('draft.newPayeeWillBeCreated')}`} tone="warn" />
+              </View>
+            )}
+          </View>
+        )}
 
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ gap: t.space.md, paddingBottom: t.space.lg }}>
           {!!row.errorMessage && !readOnly && (
@@ -212,16 +371,26 @@ export default function DraftScreen() {
               <Text style={[t.type.label, { color: t.color.warn }]}>{row.errorMessage}</Text>
             </View>
           )}
-          <DetailRows
-            value={detailValue}
-            onChange={handleDetailChange}
-            onDatePress={openDatePicker}
-            readOnly={readOnly}
-            accounts={assetAccounts}
-            currencies={currencies ?? []}
-            categories={categories ?? []}
-            budgets={budgets ?? []}
-          />
+          {splitMode ? (
+            <>
+              <Pressable onPress={() => setTextFor('title')} disabled={readOnly} style={{ paddingHorizontal: t.space.xl, paddingTop: t.space.md }} accessibilityRole="button" accessibilityLabel={tr('splits.title')}>
+                <Text style={[t.type.heading, { color: t.color.text, textAlign: 'center' }]} numberOfLines={2}>{draft.groupTitle || draft.description}</Text>
+              </Pressable>
+              <SplitPager
+                total={total}
+                count={amounts.length}
+                index={pageIndex}
+                onIndexChange={setPage}
+                currency={currency}
+                type={draft.type}
+                leftover={rest}
+                readOnly={readOnly}
+                onTotalPress={() => setKeypadFor('total')}
+                onReassign={() => askLeftover(amounts, total)}
+                renderPage={renderSplitPage}
+              />
+            </>
+          ) : detailRows}
 
           {row.kind !== 'receipt' && !row.receiptImagePath && row.state !== 'synced' && (
             <Card style={{ marginHorizontal: t.space.lg }}>
@@ -256,7 +425,10 @@ export default function DraftScreen() {
             {readiness.missing.length > 0 && (
               <Animated.Text style={[t.type.label, { color: t.color.warn, textAlign: 'center' }, shakeStyle]}>{missingLabel(readiness.missing)}</Animated.Text>
             )}
-            <Button title={confirming ? tr('draft.confirming') : tr('inbox.confirm')} onPress={handleConfirm} disabled={confirming || !readiness.ready} size="lg" />
+            <View style={{ flexDirection: 'row', gap: t.space.sm }}>
+              <Button title={confirming ? tr('draft.confirming') : tr('inbox.confirm')} onPress={handleConfirm} disabled={confirming || !readiness.ready} size="lg" style={{ flex: 1 }} />
+              <Button title={tr('splits.split')} variant="secondary" onPress={() => setAllocation({ kind: 'newSplit' })} disabled={confirming} size="lg" />
+            </View>
           </View>
         )}
       </View>
@@ -265,9 +437,31 @@ export default function DraftScreen() {
         <Money amount={draft.amount} currency={currency} type={draft.type} size="display" />
         <Keypad
           compact
-          onDigit={(key: KeypadKey) => patch({ amount: applyDigit(draft.amount, key, currency.decimalPlaces) })}
+          onDigit={(key: KeypadKey) => patch({ amount: applyDigit(draft.amount, key, dp) })}
           saveLabel={tr('common.done')}
           onSave={() => setAmountSheetOpen(false)}
+        />
+      </Sheet>
+
+      <Sheet visible={keypadFor !== null} onClose={closeKeypad} title={keypadFor === 'total' ? tr('splits.total') : tr('fields.amount')}>
+        <Money amount={keypadValue} currency={currency} type={draft.type} size="display" />
+        <Keypad compact onDigit={typeDigit} saveLabel={tr('common.done')} onSave={closeKeypad} />
+      </Sheet>
+
+      <Sheet
+        visible={textFor !== null}
+        onClose={() => setTextFor(null)}
+        title={textFor === 'title' ? tr('splits.title') : tr('fields.description')}
+        footer={<Button title={tr('common.done')} onPress={() => setTextFor(null)} />}
+      >
+        <TextField
+          value={textFor === 'title' ? (draft.groupTitle ?? draft.description) : textFor === 0 ? draft.description : typeof textFor === 'number' ? (extras[textFor - 1]?.description ?? '') : ''}
+          onChangeText={(value) => {
+            if (textFor === 'title') patch({ groupTitle: value });
+            else if (textFor === 0) patch({ description: value });
+            else if (typeof textFor === 'number') patch(patchExtraSplit(draft, textFor - 1, { description: value }));
+          }}
+          autoFocus
         />
       </Sheet>
 
@@ -279,6 +473,31 @@ export default function DraftScreen() {
         onSelect={(h) => { void choosePayee(draft, h.displayName, false); }}
         onCreateNew={(text) => { void choosePayee(draft, text, true); }}
       />
+
+      <PayeeSheet
+        visible={extraPayeeFor !== null}
+        onClose={() => setExtraPayeeFor(null)}
+        histories={histories}
+        payeeLabel={draft.type === 'deposit' ? 'payer' : 'payee'}
+        onSelect={(h) => { if (extraPayeeFor !== null) patch(patchExtraSplit(draft, extraPayeeFor - 1, { payeeName: h.displayName, payeeId: undefined, isNewPayee: false })); }}
+        onCreateNew={(text) => { if (extraPayeeFor !== null) patch(patchExtraSplit(draft, extraPayeeFor - 1, { payeeName: text, payeeId: undefined, isNewPayee: true })); }}
+      />
+
+      {!!allocation && (
+        <AllocationSheet
+          visible
+          mode={allocation}
+          amounts={amounts}
+          labels={amounts.map((_, i) => {
+            const category = i === 0 ? draft.categoryName : extras[i - 1]?.categoryName;
+            return tr('splits.position', { index: i + 1, count: amounts.length }) + (category ? ` · ${category}` : '');
+          })}
+          currency={currency}
+          type={draft.type}
+          onDone={onAllocated}
+          onClose={() => setAllocation(null)}
+        />
+      )}
 
       <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={tr('draft.menuTitle')}>
         {readOnly && !!row.ff3GroupId && (

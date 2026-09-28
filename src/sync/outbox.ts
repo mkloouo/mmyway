@@ -23,6 +23,7 @@ import { requestSync } from './syncTrigger';
 import { deletePersistedReceiptImage } from '../receipt/imageFiles';
 import { cachedRowFromGroup } from './referenceData';
 import { readPayload, writePayload } from './payloadJson';
+import { replayDeletePlanned, replaySavePlanned, type DeletePlannedPayload, type SavePlannedPayload } from '../planned/replay';
 
 export type OutboxKind =
   | 'create_transaction'
@@ -30,7 +31,9 @@ export type OutboxKind =
   | 'delete_transaction'
   | 'attach_receipt'
   | 'recurring_review'
-  | 'update_account';
+  | 'update_account'
+  | 'save_planned'
+  | 'delete_planned';
 
 /** The kinds that change an account balance in FF3 once they land; receipts and account edits don't. */
 export const LEDGER_KINDS = ['create_transaction', 'update_transaction', 'delete_transaction', 'recurring_review'] as const satisfies readonly OutboxKind[];
@@ -38,6 +41,7 @@ export const LEDGER_KINDS = ['create_transaction', 'update_transaction', 'delete
 export interface CreateTransactionPayload {
   clientId: string; // becomes the duplicate-hash guard
   splits: TransactionSplit[];
+  groupTitle?: string; // FF3 requires one when there is more than one split
 }
 
 export interface UpdateTransactionPayload {
@@ -45,6 +49,15 @@ export interface UpdateTransactionPayload {
   transactionJournalId: string;
   expectedUpdatedAt: string; // conflict check
   changes: Partial<TransactionSplit>;
+  /**
+   * A split transaction's edit: every split, in order, as it should be afterwards. FF3 updates the
+   * splits that carry a transaction_journal_id and creates the ones without. `changes` then only
+   * summarises it (total, title) for Activity and the conflict screen.
+   */
+  splits?: (Partial<TransactionSplit> & { transaction_journal_id?: string })[];
+  groupTitle?: string;
+  /** Splits the user removed: deleted one by one after the update (a PUT doesn't remove them). */
+  removedJournalIds?: string[];
 }
 
 export interface DeleteTransactionPayload {
@@ -73,7 +86,7 @@ export interface NewOutboxOperation {
   id: string;
   inboxItemId?: string;
   kind: OutboxKind;
-  payload: CreateTransactionPayload | UpdateTransactionPayload | DeleteTransactionPayload | AttachReceiptPayload | UpdateAccountPayload | Record<string, unknown>;
+  payload: CreateTransactionPayload | UpdateTransactionPayload | DeleteTransactionPayload | AttachReceiptPayload | UpdateAccountPayload | SavePlannedPayload | DeletePlannedPayload | Record<string, unknown>;
 }
 
 export interface ReplayResult {
@@ -307,6 +320,7 @@ async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: 
           method: 'POST',
           body: JSON.stringify({
             error_if_duplicate_hash: true,
+            ...(p.groupTitle ? { group_title: p.groupTitle } : {}),
             transactions: p.splits.map((split) => ({ ...split, internal_reference: (split as { internal_reference?: string }).internal_reference ?? reference })),
           }),
         });
@@ -423,12 +437,30 @@ async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: 
         await db.delete(cachedTransactions).where(eq(cachedTransactions.groupId, p.groupId));
       } else {
         const u = p as UpdateTransactionPayload;
+        const body = u.splits
+          ? { ...(u.groupTitle !== undefined ? { group_title: u.groupTitle } : {}), transactions: u.splits }
+          : { transactions: [{ transaction_journal_id: u.transactionJournalId, ...u.changes }] };
         const updated = await client.request<{ data?: TransactionRead }>(`/v1/transactions/${u.groupId}`, {
           method: 'PUT',
-          body: JSON.stringify({ transactions: [{ transaction_journal_id: u.transactionJournalId, ...u.changes }] }),
+          body: JSON.stringify(body),
         });
-        const next = (updated?.data?.attributes as { updated_at?: string } | undefined)?.updated_at ?? null;
+        for (const journalId of u.removedJournalIds ?? []) {
+          try {
+            await client.request(`/v1/transaction-journals/${journalId}`, { method: 'DELETE' });
+          } catch (err) {
+            // Already gone (an earlier attempt, or FF3's web UI): that's the goal.
+            if (!(err instanceof FF3RequestError && err.status === 404)) throw err;
+          }
+        }
+        const final = u.removedJournalIds?.length
+          ? await client.request<{ data?: TransactionRead }>(`/v1/transactions/${u.groupId}`)
+          : updated;
+        const next = (final?.data?.attributes as { updated_at?: string } | undefined)?.updated_at ?? null;
         if (u.expectedUpdatedAt) await rebaseLaterEdits(db, u.groupId, u.expectedUpdatedAt, next);
+        // A split edit adds, removes and re-numbers splits: the cached row takes FF3's answer at
+        // once, so the detail screen doesn't show the old splits until the next pull.
+        const fresh = u.splits && final?.data ? cachedRowFromGroup(final.data, new Date().toISOString()) : null;
+        if (fresh) await db.insert(cachedTransactions).values(fresh).onConflictDoUpdate({ target: cachedTransactions.groupId, set: fresh });
       }
       await db.delete(outboxOperations).where(eq(outboxOperations.id, row.id));
       return 'done';
@@ -449,6 +481,18 @@ async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: 
       if (p.active !== undefined) body.active = p.active;
       if (p.order !== undefined) body.order = p.order;
       await client.request(`/v1/accounts/${p.accountId}`, { method: 'PUT', body: JSON.stringify(body) });
+      await db.delete(outboxOperations).where(eq(outboxOperations.id, row.id));
+      return 'done';
+    }
+
+    if (row.kind === 'save_planned') {
+      await replaySavePlanned(db, client, row.id, payload as SavePlannedPayload);
+      await db.delete(outboxOperations).where(eq(outboxOperations.id, row.id));
+      return 'done';
+    }
+
+    if (row.kind === 'delete_planned') {
+      await replayDeletePlanned(db, client, payload as DeletePlannedPayload);
       await db.delete(outboxOperations).where(eq(outboxOperations.id, row.id));
       return 'done';
     }

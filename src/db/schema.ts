@@ -62,6 +62,9 @@ export const cachedTransactions = sqliteTable('cached_transactions', {
   destinationId: text('destination_id'),
   budgetId: text('budget_id'),
   splitCount: integer('split_count').notNull().default(1), // amount is the splits' total when > 1
+  // Every split of the group (src/transactions/splitsJson.ts). Null on rows cached before it existed:
+  // the detail screen re-reads such a split group from FF3 before editing it.
+  splitsJson: text('splits_json'),
   searchKey: text('search_key'), // normkey'd description|source|destination, for case/diacritic-blind search
   tagsJson: text('tags_json').notNull().default('[]'),
   notes: text('notes'),
@@ -86,7 +89,7 @@ export const inboxItems = sqliteTable('inbox_items', {
 export const outboxOperations = sqliteTable('outbox_operations', {
   id: text('id').primaryKey(), // client-generated uuid, doubles as idempotency key
   inboxItemId: text('inbox_item_id'),
-  kind: text('kind', { enum: ['create_transaction', 'update_transaction', 'delete_transaction', 'attach_receipt', 'recurring_review', 'update_account'] }).notNull(),
+  kind: text('kind', { enum: ['create_transaction', 'update_transaction', 'delete_transaction', 'attach_receipt', 'recurring_review', 'update_account', 'save_planned', 'delete_planned'] }).notNull(),
   payloadJson: text('payload_json').notNull(),
   status: text('status', { enum: ['pending', 'in_flight', 'failed', 'done'] }).notNull(),
   attempts: integer('attempts').notNull().default(0),
@@ -94,6 +97,17 @@ export const outboxOperations = sqliteTable('outbox_operations', {
   createdAt: text('created_at').notNull(),
   sequence: integer('sequence').notNull(), // strictly increasing, defines replay order
   nextAttemptAt: text('next_attempt_at'), // a failed op waits until then before the next automatic retry
+});
+
+// FF3's subscriptions (bills), rules and recurring transactions, for the Planned tab. Stored as
+// FF3 returned them (read through src/planned/objects.ts); the whole table is replaced on each pull.
+export const plannedObjects = sqliteTable('planned_objects', {
+  key: text('key').primaryKey(), // `${kind}:${ff3Id}`
+  kind: text('kind', { enum: ['bill', 'rule', 'recurrence'] }).notNull(),
+  ff3Id: text('ff3_id').notNull(),
+  name: text('name').notNull(),
+  attributesJson: text('attributes_json').notNull(),
+  syncedAt: text('synced_at').notNull(),
 });
 
 export const appSettings = sqliteTable('app_settings', {

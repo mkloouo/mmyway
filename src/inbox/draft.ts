@@ -28,6 +28,26 @@ export interface Draft {
   // §6.3): the draft screen marks these rows amber with "check this" instead of trusting them
   // silently. Never set outside src/receipt/toDraft.ts.
   lowConfidenceFields?: string[];
+  // A split entry (the Split button, a duplicated split transaction). Split 1 is the draft's own
+  // fields above; these are splits 2..N, sharing its type, date, currency and own account.
+  // `total` is the total the user tracks (the splits must add up to it before Confirm) and
+  // `groupTitle` FF3's title for the whole group. All three are absent on a plain entry.
+  extraSplits?: DraftSplit[];
+  total?: string;
+  groupTitle?: string;
+}
+
+export interface DraftSplit {
+  amount: string;
+  description: string;
+  payeeName?: string; // the destination of a withdrawal, the source of a deposit; unused for a transfer
+  payeeId?: string;
+  isNewPayee: boolean;
+  categoryName?: string;
+  budgetId?: string;
+  notes?: string;
+  sharedWith?: string;
+  extraTags?: string[];
 }
 
 // Which end of the split is the free-text payee differs by type (defect (1)): a withdrawal's
@@ -57,11 +77,39 @@ function payeeGatedEnd(draft: Draft): { source: { id?: string; name?: string }; 
 }
 
 export function draftToTransactionPayload(clientId: string, draft: Draft): CreateTransactionPayload {
+  const extras = draft.extraSplits ?? [];
+  if (extras.length === 0) return { clientId, splits: [draftSplitPayload(draft)] };
+  return {
+    clientId,
+    groupTitle: draft.groupTitle || draft.description,
+    splits: [draftSplitPayload(draft), ...extras.map((s) => draftSplitPayload(extraSplitAsDraft(draft, s)))],
+  };
+}
+
+/** Split 2..N as a whole draft: the group's shared fields from split 1, the rest its own. */
+export function extraSplitAsDraft(draft: Draft, split: DraftSplit): Draft {
+  const payee = draft.type === 'withdrawal'
+    ? { destinationName: split.payeeName, destinationId: split.payeeId }
+    : draft.type === 'deposit'
+      ? { sourceName: split.payeeName, sourceId: split.payeeId }
+      : {};
+  return {
+    type: draft.type, date: draft.date, currencyCode: draft.currencyCode,
+    sourceId: draft.sourceId, sourceName: draft.sourceName,
+    destinationId: draft.destinationId, destinationName: draft.destinationName,
+    ...payee,
+    amount: split.amount, description: split.description, isNewPayee: split.isNewPayee,
+    categoryName: split.categoryName, budgetId: split.budgetId, notes: split.notes,
+    sharedWith: split.sharedWith, extraTags: split.extraTags,
+  };
+}
+
+function draftSplitPayload(draft: Draft): TransactionSplit {
   const tags: string[] = [...(draft.extraTags ?? [])];
   if (draft.sharedWith) tags.push(`mmyway-shared-${draft.sharedWith}`);
   const { source, destination } = payeeGatedEnd(draft);
 
-  const split: TransactionSplit = {
+  return {
     type: draft.type,
     date: draft.date,
     amount: draft.amount,
@@ -78,8 +126,6 @@ export function draftToTransactionPayload(clientId: string, draft: Draft): Creat
     tags: tags.length ? tags : undefined,
     notes: draft.notes,
   };
-
-  return { clientId, splits: [split] };
 }
 
 export async function findDuplicateReceiptItem(db: OutboxDb, contentHash: string): Promise<{ id: string } | null> {

@@ -29,6 +29,20 @@ const DraftSchema = z.looseObject({
   sharedWith: optionalText,
   extraTags: z.array(z.string()).optional(),
   lowConfidenceFields: z.array(z.string()).optional(),
+  extraSplits: z.array(z.looseObject({
+    amount: z.string(),
+    description: z.string(),
+    payeeName: optionalText,
+    payeeId: optionalText,
+    isNewPayee: z.boolean(),
+    categoryName: optionalText,
+    budgetId: optionalText,
+    notes: optionalText,
+    sharedWith: optionalText,
+    extraTags: z.array(z.string()).optional(),
+  })).optional(),
+  total: optionalText,
+  groupTitle: optionalText,
 });
 
 /** A recurring review stores FF3's own journal; only the fields the app relies on are checked. */

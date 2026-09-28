@@ -1,6 +1,7 @@
 // Transaction detail (design §6.5) — the same editing vocabulary as the draft screen: hero
-// amount + DetailRows, one picker implementation for both.
-import { useState } from 'react';
+// amount + DetailRows, one picker implementation for both. A split transaction shows its tracked
+// total and one page per split, swiped through; Split adds one (src/splits/).
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { appLocale } from '../../src/i18n';
 import { Alert, Image, Modal, Pressable, ScrollView, Text, View, type ImageSourcePropType } from 'react-native';
@@ -13,6 +14,10 @@ import { useTheme } from '../../src/ui/theme';
 import { Screen, AppBar, BarIconButton, Card, Button, Money, Row, Sheet } from '../../src/ui/components';
 import { DetailRows, type DetailRowsValue } from '../../src/ui/DetailRows';
 import { Keypad } from '../../src/ui/Keypad';
+import { TextField } from '../../src/ui/TextField';
+import { PayeeSheet } from '../../src/ui/PayeeSheet';
+import { SplitPager } from '../../src/ui/SplitPager';
+import { AllocationSheet, type AllocationMode, type AllocationResult } from '../../src/ui/AllocationSheet';
 import { currencyOf, formatMoney } from '../../src/ui/money';
 import { conflictFields } from '../../src/transactions/conflictDiff';
 import { relativeTime } from '../../src/ui/relativeTime';
@@ -30,19 +35,37 @@ import { pendingEdits } from '../../src/transactions/pendingEdits';
 import { readPayload } from '../../src/sync/payloadJson';
 import { useAction } from '../../src/ui/useAction';
 import { keepMineOverServer, dropQueuedChange } from '../../src/sync/outbox';
+import { readSplits } from '../../src/transactions/splitsJson';
+import { refreshCachedGroup } from '../../src/transactions/refreshGroup';
+import { queueSplitEdit } from '../../src/transactions/queueSplitEdit';
+import { duplicateTransaction } from '../../src/transactions/duplicate';
+import { fromCached, fromQueued, newSplit, patchSplit, toPayloadSplits, type EditableSplit } from '../../src/splits/editSplits';
+import { absorb, leftover } from '../../src/splits/allocate';
+import { buildMerchantLookup, type MerchantHistory } from '../../src/lookup/merchantLookup';
 
 const SHARED_TAG_PREFIX = 'mmyway-shared-';
 // The words the rest of the app uses (capture's type chips), not FF3's "Withdrawal"/"Deposit".
 const TYPE_LABEL_KEYS: Record<string, string> = { withdrawal: 'capture.typeExpense', deposit: 'capture.typeIncome', transfer: 'capture.typeTransfer' };
 
-function sharedWithFromTags(tagsJson: string): string | null {
+type TxType = 'withdrawal' | 'deposit' | 'transfer';
+
+function parseTags(tagsJson: string): string[] {
   try {
-    const tags: string[] = JSON.parse(tagsJson);
-    const match = tags.find((tag) => tag.startsWith(SHARED_TAG_PREFIX));
-    return match ? match.slice(SHARED_TAG_PREFIX.length) : null;
+    const tags: unknown = JSON.parse(tagsJson);
+    return Array.isArray(tags) ? tags.filter((t): t is string => typeof t === 'string') : [];
   } catch {
-    return null;
+    return [];
   }
+}
+
+function sharedWithOf(tags: string[]): string | null {
+  const match = tags.find((tag) => tag.startsWith(SHARED_TAG_PREFIX));
+  return match ? match.slice(SHARED_TAG_PREFIX.length) : null;
+}
+
+function withSharedWith(tags: string[], sharedWith: string | null): string[] {
+  const withoutShared = tags.filter((tag) => !tag.startsWith(SHARED_TAG_PREFIX));
+  return sharedWith ? [...withoutShared, `${SHARED_TAG_PREFIX}${sharedWith}`] : withoutShared;
 }
 
 export default function TransactionDetailScreen() {
@@ -81,14 +104,44 @@ export default function TransactionDetailScreen() {
     retry: false,
   });
 
+  // A split transaction cached before every split was kept: read it again from FF3.
+  const cachedSplits = row ? readSplits(row.splitsJson) : null;
+  const splitsRefresh = useQuery({
+    queryKey: ['refresh-group', groupId],
+    enabled: !!row && row.splitCount > 1 && !cachedSplits,
+    queryFn: async () => {
+      const client = await getClient(db);
+      return client ? refreshCachedGroup(db, client, groupId) : false;
+    },
+    retry: false,
+  });
+
+  const [histories, setHistories] = useState<MerchantHistory[]>([]);
+  const lookupType = row?.type === 'withdrawal' || row?.type === 'deposit' ? row.type : undefined;
+  useEffect(() => {
+    if (!lookupType) return;
+    buildMerchantLookup(db, { type: lookupType }).then((map) => setHistories([...map.values()]));
+  }, [db, lookupType]);
+
   const [changes, setChanges] = useState<Partial<TransactionSplit>>({});
   const [amountSheetOpen, setAmountSheetOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [photo, setPhoto] = useState<ImageSourcePropType | null>(null);
+  // Split editing: null means "as cached / as queued".
+  const [edited, setEdited] = useState<EditableSplit[] | null>(null);
+  const [totalEdit, setTotalEdit] = useState<string | null>(null);
+  const [titleEdit, setTitleEdit] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const [allocation, setAllocation] = useState<{ mode: AllocationMode; base: EditableSplit[] } | null>(null);
+  const [keypadFor, setKeypadFor] = useState<number | 'total' | null>(null);
+  const [textFor, setTextFor] = useState<number | 'title' | null>(null);
+  const [payeeFor, setPayeeFor] = useState<number | null>(null);
+  const [removed, setRemoved] = useState<string[]>([]);
 
   if (!row) return <Screen bottom><AppBar title={tr('transaction.title')} /></Screen>;
 
+  const type = row.type as TxType;
   const conflictOp = (outbox ?? []).find((op) => {
     if (op.status !== 'failed' || op.lastError !== 'conflict') return false;
     // recurring_review is an update too (the reviewed tag, plus any corrections) and conflicts the same way.
@@ -97,6 +150,7 @@ export default function TransactionDetailScreen() {
   });
 
   const currency = currencyOf(currencies ?? [], row.currencyCode);
+  const dp = currency.decimalPlaces;
   // An edit saved earlier but not yet in FF3: shown as the current values (under this screen's
   // own unsaved `changes`), so reopening a just-saved transaction doesn't show the old ones.
   // Save still sends only this screen's `changes`; the queued edit replays first.
@@ -121,9 +175,34 @@ export default function TransactionDetailScreen() {
   const effectiveCategoryName = shown.category_name ?? row.categoryName ?? null;
   const effectiveDate = shown.date ? new Date(shown.date) : new Date(row.date);
   const effectiveNotes = shown.notes ?? row.notes ?? null;
-  const effectiveSharedWith = shown.tags
-    ? shown.tags.find((tag) => tag.startsWith(SHARED_TAG_PREFIX))?.slice(SHARED_TAG_PREFIX.length) ?? null
-    : sharedWithFromTags(row.tagsJson);
+  const effectiveTags = shown.tags ?? parseTags(row.tagsJson);
+  const effectiveSharedWith = sharedWithOf(effectiveTags);
+  const dateLabel = effectiveDate.toLocaleString(appLocale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+
+  // The splits as they stand: this screen's edit, else a queued split edit, else the cache.
+  const baseSplits: EditableSplit[] = pendingEdit?.splits
+    ? pendingEdit.splits.map(fromQueued)
+    : cachedSplits && cachedSplits.length > 1 ? cachedSplits.map(fromCached) : [];
+  const splits = edited ?? baseSplits;
+  const splitMode = splits.length > 1 || edited !== null;
+  const splitsLoading = row.splitCount > 1 && !cachedSplits && !pendingEdit?.splits;
+  const total = totalEdit ?? (pendingEdit?.splits ? pendingEdit.changes.amount : undefined) ?? row.amount;
+  const groupTitle = titleEdit ?? pendingEdit?.groupTitle ?? row.description;
+  const rest = splitMode ? leftover(total, splits.map((s) => s.amount), dp) : 0n;
+  const pageIndex = Math.min(page, Math.max(0, splits.length - 1));
+
+  /** The transaction as one split, with this screen's unsaved changes: where Split starts from. */
+  function singleAsSplit(): EditableSplit {
+    const destinationId = shown.destination_id ?? row!.destinationId ?? null;
+    return {
+      journalId: row!.journalId,
+      amount: effectiveAmount,
+      description: shown.description ?? row!.description,
+      sourceId: effectiveSourceId, sourceName: row!.sourceName,
+      destinationId: type === 'withdrawal' ? destinationId : effectiveDestinationId, destinationName: row!.destinationName,
+      categoryName: effectiveCategoryName, budgetId: effectiveBudgetId, notes: effectiveNotes, tags: effectiveTags,
+    };
+  }
 
   function handleDetailChange(change: Partial<DetailRowsValue>) {
     setChanges((prev) => {
@@ -133,20 +212,85 @@ export default function TransactionDetailScreen() {
       if ('destinationAccountId' in change) next.destination_id = change.destinationAccountId ?? undefined;
       if ('budgetId' in change) next.budget_id = change.budgetId ?? undefined;
       if ('notes' in change) next.notes = change.notes ?? undefined;
-      if ('sharedWith' in change) {
-        let existingTags: string[] = pendingEdit?.changes.tags ?? [];
-        if (!pendingEdit?.changes.tags) {
-          try { existingTags = JSON.parse(row!.tagsJson); } catch { existingTags = []; }
-        }
-        const withoutShared = existingTags.filter((tag) => !tag.startsWith(SHARED_TAG_PREFIX));
-        next.tags = change.sharedWith ? [...withoutShared, `${SHARED_TAG_PREFIX}${change.sharedWith}`] : withoutShared;
-      }
+      if ('sharedWith' in change) next.tags = withSharedWith(effectiveTags, change.sharedWith ?? null);
       return next;
     });
   }
 
+  function editSplit(index: number, patch: Partial<EditableSplit>) {
+    setEdited(patchSplit(splits, index, patch, type));
+  }
+
+  function handleSplitDetailChange(index: number, change: Partial<DetailRowsValue>) {
+    if ('date' in change) return;
+    const split = splits[index]!;
+    const patch: Partial<EditableSplit> = {};
+    if ('categoryName' in change) patch.categoryName = change.categoryName ?? null;
+    if ('sourceAccountId' in change) { patch.sourceId = change.sourceAccountId ?? null; patch.sourceName = null; }
+    if ('destinationAccountId' in change) { patch.destinationId = change.destinationAccountId ?? null; patch.destinationName = null; }
+    if ('budgetId' in change) patch.budgetId = change.budgetId ?? null;
+    if ('notes' in change) patch.notes = change.notes ?? null;
+    if ('sharedWith' in change) patch.tags = withSharedWith(split.tags, change.sharedWith ?? null);
+    editSplit(index, patch);
+  }
+
   function openDatePicker() {
     pickDate(effectiveDate, (picked) => setChanges((prev) => ({ ...prev, date: buildEntryDate(picked, effectiveDate).toISOString() })));
+  }
+
+  function startSplit() {
+    setAllocation({ mode: { kind: 'newSplit' }, base: splitMode ? splits : [singleAsSplit()] });
+  }
+
+  /**
+   * When `next` doesn't add up to `nextTotal`, split 1 takes the difference (split 2, if split 1
+   * was just typed); only when it can't are the sliders asked.
+   */
+  function placeLeftover(next: EditableSplit[], nextTotal: string, exclude?: number) {
+    const delta = leftover(nextTotal, next.map((s) => s.amount), dp);
+    if (delta === 0n || next.length < 2) return;
+    const absorbed = absorb(next.map((s) => s.amount), delta, dp, exclude);
+    if (absorbed) setEdited(next.map((s, i) => ({ ...s, amount: absorbed[i]! })));
+    else setAllocation({ mode: { kind: 'leftover', delta, exclude }, base: next });
+  }
+
+  /** The Reassign button: the sliders, whatever split 1 could take. */
+  function askLeftover(next: EditableSplit[], nextTotal: string) {
+    const delta = leftover(nextTotal, next.map((s) => s.amount), dp);
+    if (delta !== 0n && next.length > 1) setAllocation({ mode: { kind: 'leftover', delta }, base: next });
+  }
+
+  function onAllocated(result: AllocationResult) {
+    if (!allocation) return;
+    const next = allocation.base.map((s, i) => ({ ...s, amount: result.amounts[i] ?? s.amount }));
+    if (allocation.mode.kind === 'newSplit' && result.newAmount) {
+      if (!splitMode) setTotalEdit(effectiveAmount);
+      next.push(newSplit(next[0]!, result.newAmount, groupTitle));
+      setPage(next.length - 1);
+    }
+    setEdited(next);
+    setAllocation(null);
+  }
+
+  function removeSplit(index: number) {
+    const gone = splits[index]?.journalId;
+    if (gone) setRemoved((r) => [...r, gone]);
+    const next = splits.filter((_, i) => i !== index);
+    // One split left holds the whole total; with more, split 1 takes the removed amount.
+    if (next.length === 1) next[0] = { ...next[0]!, amount: total };
+    setEdited(next);
+    setPage(Math.max(0, index - 1));
+    placeLeftover(next, total);
+  }
+
+  function closeKeypad() {
+    const target = keypadFor;
+    setKeypadFor(null);
+    if (target === 'total') placeLeftover(splits, total);
+    else if (typeof target === 'number') {
+      if (splits.length === 1) setTotalEdit(splits[0]!.amount);
+      else placeLeftover(splits, total, target);
+    }
   }
 
   const keepMine = act(tr('conflict.keepMine'), async () => {
@@ -159,6 +303,26 @@ export default function TransactionDetailScreen() {
   });
 
   const onSave = act(tr('common.save'), async () => {
+    if (splitMode) {
+      const dirty = edited !== null || totalEdit !== null || titleEdit !== null || !!changes.date;
+      if (!dirty) { router.back(); return; }
+      if (rest !== 0n) return;
+      setSaving(true);
+      try {
+        const date = effectiveDate.toISOString();
+        await queueSplitEdit(db, {
+          groupId: row!.groupId, transactionJournalId: row!.journalId, expectedUpdatedAt: row!.updatedAt,
+          changes: { amount: total, description: groupTitle, ...(changes.date ? { date: changes.date } : {}) },
+          splits: toPayloadSplits(splits, { type, date, currencyCode: row!.currencyCode }),
+          groupTitle,
+          ...(removed.length ? { removedJournalIds: removed } : {}),
+        });
+        router.back();
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
     if (Object.keys(changes).length === 0) {
       router.back();
       return;
@@ -174,6 +338,12 @@ export default function TransactionDetailScreen() {
     } finally {
       setSaving(false);
     }
+  });
+
+  const onDuplicate = act(tr('transaction.duplicate'), async () => {
+    setMenuOpen(false);
+    const id = await duplicateTransaction(db, row!);
+    router.push(`/draft/${id}`);
   });
 
   function onDelete() {
@@ -236,15 +406,68 @@ export default function TransactionDetailScreen() {
   }
 
   const detailValue: DetailRowsValue = {
-    type: row.type as 'withdrawal' | 'deposit' | 'transfer',
+    type,
     categoryName: effectiveCategoryName,
     sourceAccountId: effectiveSourceId,
     destinationAccountId: effectiveDestinationId,
     budgetId: effectiveBudgetId,
-    dateLabel: effectiveDate.toLocaleString(appLocale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
+    dateLabel,
     notes: effectiveNotes,
     sharedWith: effectiveSharedWith,
   };
+
+  function splitDetailValue(split: EditableSplit): DetailRowsValue {
+    return {
+      type,
+      categoryName: split.categoryName,
+      sourceAccountId: split.sourceId ?? allAssetAccounts.find((a) => a.name === split.sourceName)?.id ?? null,
+      destinationAccountId: split.destinationId ?? allAssetAccounts.find((a) => a.name === split.destinationName)?.id ?? null,
+      budgetId: split.budgetId,
+      dateLabel,
+      notes: split.notes,
+      sharedWith: sharedWithOf(split.tags),
+    };
+  }
+
+  const payeeOf = (split: EditableSplit) => (type === 'deposit' ? split.sourceName : split.destinationName);
+
+  function renderSplitPage(index: number) {
+    const split = splits[index]!;
+    return (
+      <>
+        <View style={{ alignItems: 'center', paddingHorizontal: t.space.xl, gap: t.space.xs }}>
+          <Pressable onPress={() => setKeypadFor(index)} accessibilityRole="button" accessibilityLabel={tr('fields.amount')}>
+            <Money amount={split.amount} currency={currency} type={type} size="heading" />
+          </Pressable>
+          <Pressable onPress={() => setTextFor(index)} accessibilityRole="button" accessibilityLabel={tr('fields.description')}>
+            <Text style={[t.type.body, { color: t.color.text, textAlign: 'center' }]} numberOfLines={2}>{split.description || '—'}</Text>
+          </Pressable>
+          {type !== 'transfer' && (
+            <Pressable onPress={() => setPayeeFor(index)} accessibilityRole="button" accessibilityLabel={type === 'deposit' ? tr('capture.payer') : tr('capture.payee')}>
+              <Text style={[t.type.label, { color: t.color.accent }]}>{payeeOf(split) || '—'}</Text>
+            </Pressable>
+          )}
+        </View>
+        <DetailRows
+          value={splitDetailValue(split)}
+          onChange={(change) => handleSplitDetailChange(index, change)}
+          onDatePress={openDatePicker}
+          accounts={allAssetAccounts}
+          pickableAccounts={activeAssetAccounts}
+          currencies={currencies ?? []}
+          categories={categories ?? []}
+          budgets={budgets ?? []}
+        />
+        {splits.length > 1 && (
+          <View style={{ paddingHorizontal: t.space.lg }}>
+            <Button title={tr('splits.remove')} variant="danger" onPress={() => removeSplit(index)} />
+          </View>
+        )}
+      </>
+    );
+  }
+
+  const keypadValue = keypadFor === 'total' ? total : typeof keypadFor === 'number' ? (splits[keypadFor]?.amount ?? '0') : effectiveAmount;
 
   return (
     <Screen bottom>
@@ -254,35 +477,59 @@ export default function TransactionDetailScreen() {
           subtitle={pendingEdit ? (pendingEdit.status === 'queued' ? tr('transaction.changesQueued') : tr('transaction.changesNotSent')) : tr('transaction.syncedAgo', { time: relativeTime(row.syncedAt) })}
           left={<CloseButton />}
           right={(
-            <BarIconButton icon="ellipsis-horizontal" label={tr('capture.more')} onPress={() => setMenuOpen(true)} />
+            <>
+              <BarIconButton icon="copy-outline" label={tr('transaction.duplicate')} onPress={onDuplicate} />
+              <BarIconButton icon="ellipsis-horizontal" label={tr('capture.more')} onPress={() => setMenuOpen(true)} />
+            </>
           )}
         />
 
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ gap: t.space.md, paddingBottom: t.space.lg }}>
-        {/* The description can be a long legal name ("TOP-PHARMA spółka z o.o. sp.k. …"): padded,
-            centred and capped at two lines instead of running into both screen edges. */}
-        <View style={{ alignItems: 'center', paddingVertical: t.space.lg, paddingHorizontal: t.space.xl }}>
-          {/* A split group shows its total; edits reach only the first split, so its amount isn't editable here. */}
-          <Pressable onPress={() => setAmountSheetOpen(true)} disabled={row.splitCount > 1}>
-            <Money amount={effectiveAmount} currency={currency} type={row.type as 'withdrawal' | 'deposit' | 'transfer'} size="title" />
-          </Pressable>
-          {row.splitCount > 1 && (
-            <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('transaction.splits', { count: row.splitCount })}</Text>
-          )}
-          <Text style={[t.type.heading, { color: t.color.text, marginTop: t.space.xs, textAlign: 'center' }]} numberOfLines={2}>{row.description}</Text>
-        </View>
-
-        <View style={{ gap: t.space.md }}>
-          <DetailRows
-            value={detailValue}
-            onChange={handleDetailChange}
-            onDatePress={openDatePicker}
-            accounts={allAssetAccounts}
-            pickableAccounts={activeAssetAccounts}
-            currencies={currencies ?? []}
-            categories={categories ?? []}
-            budgets={budgets ?? []}
-          />
+        {splitMode ? (
+          <>
+            <Pressable onPress={() => setTextFor('title')} style={{ paddingHorizontal: t.space.xl, paddingTop: t.space.md }} accessibilityRole="button" accessibilityLabel={tr('splits.title')}>
+              <Text style={[t.type.heading, { color: t.color.text, textAlign: 'center' }]} numberOfLines={2}>{groupTitle}</Text>
+            </Pressable>
+            <SplitPager
+              total={total}
+              count={splits.length}
+              index={pageIndex}
+              onIndexChange={setPage}
+              currency={currency}
+              type={type}
+              leftover={rest}
+              onTotalPress={() => setKeypadFor('total')}
+              onReassign={() => askLeftover(splits, total)}
+              renderPage={renderSplitPage}
+            />
+          </>
+        ) : (
+          <>
+            {/* The description can be a long legal name ("TOP-PHARMA spółka z o.o. sp.k. …"): padded,
+                centred and capped at two lines instead of running into both screen edges. */}
+            <View style={{ alignItems: 'center', paddingVertical: t.space.lg, paddingHorizontal: t.space.xl }}>
+              <Pressable onPress={() => setAmountSheetOpen(true)} disabled={splitsLoading}>
+                <Money amount={effectiveAmount} currency={currency} type={type} size="title" />
+              </Pressable>
+              {splitsLoading && (
+                <Text style={[t.type.label, { color: t.color.textMuted }]}>
+                  {splitsRefresh.isError || splitsRefresh.data === false ? tr('splits.loadFailed') : tr('splits.loading')}
+                </Text>
+              )}
+              <Text style={[t.type.heading, { color: t.color.text, marginTop: t.space.xs, textAlign: 'center' }]} numberOfLines={2}>{row.description}</Text>
+            </View>
+            <DetailRows
+              value={detailValue}
+              onChange={handleDetailChange}
+              onDatePress={openDatePicker}
+              accounts={allAssetAccounts}
+              pickableAccounts={activeAssetAccounts}
+              currencies={currencies ?? []}
+              categories={categories ?? []}
+              budgets={budgets ?? []}
+            />
+          </>
+        )}
           <Card style={{ marginHorizontal: t.space.lg, gap: t.space.sm }}>
             {receiptPreviews.map((p) => (
               <Pressable key={p.key} onPress={() => setPhoto(p.source)} accessibilityRole="imagebutton" accessibilityLabel={tr('draft.showPhoto')}>
@@ -311,26 +558,90 @@ export default function TransactionDetailScreen() {
               />
             </View>
           </Card>
-        </View>
         </ScrollView>
 
-        <View style={{ padding: t.space.lg }}>
-          <Button title={saving ? tr('common.saving') : tr('common.save')} onPress={onSave} disabled={saving} size="lg" />
+        <View style={{ padding: t.space.lg, flexDirection: 'row', gap: t.space.sm }}>
+          <Button
+            title={saving ? tr('common.saving') : tr('common.save')}
+            onPress={onSave}
+            disabled={saving || rest !== 0n}
+            size="lg"
+            style={{ flex: 1 }}
+          />
+          <Button title={tr('splits.split')} variant="secondary" onPress={startSplit} disabled={saving || splitsLoading} size="lg" />
         </View>
       </View>
 
       <Sheet visible={amountSheetOpen} onClose={() => setAmountSheetOpen(false)} title={tr('fields.amount')}>
-        <Money amount={effectiveAmount} currency={currency} type={row.type as 'withdrawal' | 'deposit' | 'transfer'} size="display" />
+        <Money amount={effectiveAmount} currency={currency} type={type} size="display" />
         <Keypad
           compact
-          onDigit={(key: KeypadKey) => setChanges((prev) => ({ ...prev, amount: applyDigit(prev.amount ?? pendingEdit?.changes.amount ?? row.amount, key, currency.decimalPlaces) }))}
+          onDigit={(key: KeypadKey) => setChanges((prev) => ({ ...prev, amount: applyDigit(prev.amount ?? pendingEdit?.changes.amount ?? row.amount, key, dp) }))}
           saveLabel={tr('common.done')}
           onSave={() => setAmountSheetOpen(false)}
         />
       </Sheet>
 
+      <Sheet visible={keypadFor !== null} onClose={closeKeypad} title={keypadFor === 'total' ? tr('splits.total') : tr('fields.amount')}>
+        <Money amount={keypadValue} currency={currency} type={type} size="display" />
+        <Keypad
+          compact
+          onDigit={(key: KeypadKey) => {
+            if (keypadFor === 'total') setTotalEdit(applyDigit(total, key, dp));
+            else if (typeof keypadFor === 'number') editSplit(keypadFor, { amount: applyDigit(splits[keypadFor]!.amount, key, dp) });
+          }}
+          saveLabel={tr('common.done')}
+          onSave={closeKeypad}
+        />
+      </Sheet>
+
+      <Sheet
+        visible={textFor !== null}
+        onClose={() => setTextFor(null)}
+        title={textFor === 'title' ? tr('splits.title') : tr('fields.description')}
+        footer={<Button title={tr('common.done')} onPress={() => setTextFor(null)} />}
+      >
+        <TextField
+          value={textFor === 'title' ? groupTitle : typeof textFor === 'number' ? (splits[textFor]?.description ?? '') : ''}
+          onChangeText={(value) => {
+            if (textFor === 'title') setTitleEdit(value);
+            else if (typeof textFor === 'number') editSplit(textFor, { description: value });
+          }}
+          autoFocus
+        />
+      </Sheet>
+
+      <PayeeSheet
+        visible={payeeFor !== null}
+        onClose={() => setPayeeFor(null)}
+        histories={histories}
+        payeeLabel={type === 'deposit' ? 'payer' : 'payee'}
+        onSelect={(h) => {
+          if (payeeFor === null) return;
+          editSplit(payeeFor, type === 'deposit' ? { sourceName: h.displayName, sourceId: null } : { destinationName: h.displayName, destinationId: null });
+        }}
+        onCreateNew={(text) => {
+          if (payeeFor === null) return;
+          editSplit(payeeFor, type === 'deposit' ? { sourceName: text, sourceId: null } : { destinationName: text, destinationId: null });
+        }}
+      />
+
+      {!!allocation && (
+        <AllocationSheet
+          visible
+          mode={allocation.mode}
+          amounts={allocation.base.map((s) => s.amount)}
+          labels={allocation.base.map((s, i) => tr('splits.position', { index: i + 1, count: allocation.base.length }) + (s.categoryName ? ` · ${s.categoryName}` : ''))}
+          currency={currency}
+          type={type}
+          onDone={onAllocated}
+          onClose={() => setAllocation(null)}
+        />
+      )}
+
       <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={tr('transaction.title')}>
-        <Row first label={tr('common.delete')} tone="danger" onPress={onDelete} />
+        <Row first label={tr('transaction.duplicate')} chevron onPress={onDuplicate} />
+        <Row label={tr('common.delete')} tone="danger" onPress={onDelete} />
       </Sheet>
       {/* Same full-screen view as the draft screen's receipt photo. */}
       <Modal visible={!!photo} transparent animationType="fade" onRequestClose={() => setPhoto(null)}>

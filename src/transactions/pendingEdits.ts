@@ -10,7 +10,12 @@ export interface PendingEdit {
   status: PendingEditStatus;
   /** Every queued change to the transaction, merged in replay order. */
   changes: Partial<TransactionSplit>;
+  /** The latest queued split edit's splits (every split, as they'll be), if one is queued. */
+  splits?: QueuedSplit[];
+  groupTitle?: string;
 }
+
+export type QueuedSplit = Partial<TransactionSplit> & { transaction_journal_id?: string };
 
 interface OutboxRow {
   kind: string;
@@ -44,7 +49,7 @@ export function pendingEdits(outbox: readonly OutboxRow[]): PendingEdits {
   for (const op of ops) {
     const isUpdate = op.kind === 'update_transaction' || op.kind === 'recurring_review';
     if (!isUpdate && op.kind !== 'attach_receipt') continue;
-    let payload: { groupId?: string; transactionJournalId?: string; changes?: Partial<TransactionSplit> };
+    let payload: { groupId?: string; transactionJournalId?: string; changes?: Partial<TransactionSplit>; splits?: QueuedSplit[]; groupTitle?: string };
     try {
       payload = JSON.parse(op.payloadJson);
     } catch {
@@ -56,6 +61,8 @@ export function pendingEdits(outbox: readonly OutboxRow[]): PendingEdits {
       byGroup.set(payload.groupId, {
         status: current ? worse(current.status, status) : status,
         changes: { ...current?.changes, ...payload.changes },
+        splits: payload.splits ?? current?.splits,
+        groupTitle: payload.splits ? payload.groupTitle : current?.groupTitle,
       });
     } else if (op.kind === 'attach_receipt' && payload.transactionJournalId != null) {
       const key = String(payload.transactionJournalId);
