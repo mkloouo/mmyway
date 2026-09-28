@@ -28,7 +28,7 @@ import { confirmDestructive } from '../../src/ui/confirm';
 import { cacheRemoteResult, searchTransactions } from '../../src/transactions/remoteSearch';
 import { addDecimal } from '../../src/api/ff3/decimal';
 import { deleteCachedTransactions } from '../../src/sync/outbox';
-import { and, desc, eq, isNotNull, ne } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, max, ne } from 'drizzle-orm';
 import { haptics } from '../../src/ui/haptics';
 import { pendingEdits, applyPendingEdit, type PendingEditStatus } from '../../src/transactions/pendingEdits';
 import { payloadGroupId, readPayload } from '../../src/sync/payloadJson';
@@ -39,6 +39,7 @@ import { RollingMoney } from '../../src/ui/RollingMoney';
 import { readSplits } from '../../src/transactions/splitsJson';
 import { readDraft } from '../../src/inbox/draftJson';
 import { draftTotal } from '../../src/inbox/draftSplits';
+import { landingItems, matchesActivityFilter } from '../../src/transactions/pinnedRows';
 
 const FILTERS: { labelKey: string; type: ActivityTypeFilter }[] = [
   { labelKey: 'activity.filterAll', type: 'all' },
@@ -69,6 +70,9 @@ interface QueuedRow {
   amount: string;
   currencyCode: string;
   type: 'withdrawal' | 'deposit' | 'transfer';
+  /** FF3 account ids, for the account filter (a payee typed as new has none yet). */
+  sourceId: string | null;
+  destinationId: string | null;
   sourceName: string | null;
   destinationName: string | null;
   categoryName: string | null;
@@ -147,6 +151,7 @@ function landingRow(inboxItemId: string, draftJson: string): QueuedRow | null {
       queued: true, landing: true, groupId: `landing:${inboxItemId}`, inboxItemId,
       description: extras.length ? (d.groupTitle || d.description) : d.description,
       amount: draftTotal(d), currencyCode: d.currencyCode, type: d.type,
+      sourceId: d.sourceId ?? null, destinationId: d.destinationId ?? null,
       sourceName: d.sourceName ?? null, destinationName: d.destinationName ?? null,
       categoryName: extras.length ? null : d.categoryName ?? null,
       splits: extras.length ? [
@@ -280,6 +285,8 @@ export default function ActivityScreen() {
           description: many ? (payload.groupTitle ?? split.description) : split.description,
           amount: many ? sumAmounts(payload.splits) : split.amount,
           currencyCode: split.currency_code ?? '', type: split.type,
+          sourceId: split.source_id != null ? String(split.source_id) : null,
+          destinationId: split.destination_id != null ? String(split.destination_id) : null,
           sourceName: split.source_name ?? null, destinationName: split.destination_name ?? null,
           categoryName: many ? null : split.category_name ?? null,
           splits: many ? payload.splits.map((s) => ({ label: s.category_name || s.description, amount: s.amount, categoryName: s.category_name ?? null })) : [],
@@ -302,6 +309,18 @@ export default function ActivityScreen() {
     id: inboxItems.id, kind: inboxItems.kind, draftJson: inboxItems.draftJson, ff3GroupId: inboxItems.ff3GroupId, updatedAt: inboxItems.updatedAt,
   }).from(inboxItems).where(and(eq(inboxItems.state, 'synced'), isNotNull(inboxItems.ff3GroupId))).orderBy(desc(inboxItems.updatedAt)).limit(30));
   const inboxByGroup = useMemo(() => new Map((sentItems ?? []).map((i) => [i.ff3GroupId!, i.id])), [sentItems]);
+  // Whether a sent entry has reached the cache is asked of the whole cache, never of the filtered
+  // list (src/transactions/pinnedRows.ts has the bug this caused).
+  const sentGroupIds = (sentItems ?? []).map((i) => i.ff3GroupId!);
+  const { data: sentCached } = useLiveQuery(
+    db.select({ id: cachedTransactions.groupId }).from(cachedTransactions).where(inArray(cachedTransactions.groupId, sentGroupIds)),
+    [sentGroupIds.join(',')],
+  );
+  const { data: caughtUpRows } = useLiveQuery(db.select({ at: max(cachedTransactions.syncedAt) }).from(cachedTransactions));
+  const cacheFacts = useMemo(
+    () => (sentCached && caughtUpRows ? { groupIds: new Set(sentCached.map((r) => r.id)), caughtUpAt: caughtUpRows[0]?.at ?? null } : null),
+    [sentCached, caughtUpRows],
+  );
   const rowKey = useCallback((row: ActivityItem) => {
     if ('queued' in row) return row.inboxItemId ? `inbox:${row.inboxItemId}` : row.groupId;
     const inboxId = inboxByGroup.get(row.groupId);
@@ -311,15 +330,13 @@ export default function ActivityScreen() {
   const remoteRows = remoteSearch.status === 'done' ? remoteSearch.rows : null;
   const displaySections = useMemo(() => {
     const todayKey = localDayKey(new Date());
-    const cachedIds = new Set(sections.flatMap((s) => s.data.map((r) => r.groupId)));
-    // Anything synced before the cache last caught up is either listed already or gone from FF3.
-    const caughtUpAt = sections.flatMap((s) => s.data.map((r) => r.syncedAt)).reduce((a, b) => (b > a ? b : a), '');
     const queuedInbox = new Set(queuedRows.map((r) => r.inboxItemId));
-    const landingRows: QueuedRow[] = (sentItems ?? [])
-      .filter((i) => i.kind !== 'recurring_review' && !cachedIds.has(i.ff3GroupId!) && !queuedInbox.has(i.id) && i.updatedAt > caughtUpAt)
+    const landingRows: QueuedRow[] = landingItems(sentItems ?? [], cacheFacts, queuedInbox)
       .map((i) => landingRow(i.id, i.draftJson))
       .filter((r): r is QueuedRow => !!r);
-    const pinned = [...queuedRows, ...landingRows];
+    // Pinned rows follow the same filters as the cached ones: they used to show under every account.
+    const filter = { type, accountId: accountFilter, search };
+    const pinned = [...queuedRows, ...landingRows].filter((row) => matchesActivityFilter(row, filter));
     const result: DisplaySection[] = sections
       .map((s): DisplaySection => ({
         key: s.key,
@@ -342,7 +359,7 @@ export default function ActivityScreen() {
       result.push({ key: REMOTE_SECTION_KEY, totals: [], data: remoteRows });
     }
     return result;
-  }, [sections, pendingDeletes, edits, queuedRows, remoteRows, sentItems]);
+  }, [sections, pendingDeletes, edits, queuedRows, remoteRows, sentItems, cacheFacts, type, accountFilter, search]);
 
   // Rows get callbacks that only change when selection mode starts or ends (when every row
   // re-renders anyway), so a memoized row re-renders only when its own selected state changes —

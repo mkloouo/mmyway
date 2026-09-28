@@ -62,6 +62,8 @@
   now asks for the time next.
 - A queued entry no longer disappears from Activity for a moment when it reaches Firefly III: it
   stays in place and turns into the synced transaction.
+- In Activity, an entry still waiting to be sent shows only under its own account, type and
+  search, not under every one.
 - The Inbox's **Undo** snackbar now goes away after 5 seconds as it should. It used to stay up
   while the Inbox refreshed, so a late Undo on a delete did nothing and one on a confirm said
   "Already sent".
