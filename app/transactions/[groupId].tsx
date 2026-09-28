@@ -29,7 +29,7 @@ import { queueTransactionDelete, queueTransactionEdit } from '../../src/transact
 import { confirmDestructive } from '../../src/ui/confirm';
 import { useQuery } from '@tanstack/react-query';
 import { getClient } from '../../src/api/ff3/session';
-import { fetchJournalAttachments, queuedAttachments } from '../../src/receipt/journalAttachments';
+import { fetchJournalAttachments, queuedAttachments, receiptPreviews } from '../../src/receipt/journalAttachments';
 import type { TransactionSplit } from '../../src/api/ff3/types';
 import { pendingEdits } from '../../src/transactions/pendingEdits';
 import { payloadGroupId, readPayload } from '../../src/sync/payloadJson';
@@ -87,7 +87,7 @@ export default function TransactionDetailScreen() {
   const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
   const row = rows?.[0];
   // The photo this transaction was captured from, if the phone still has it (kept a while after
-  // upload, see pruneUploadedReceiptImages) — shown without a round trip to FF3.
+  // upload, see pruneUploadedReceiptImages): the preview while FF3's own list is unavailable.
   const { data: sourceItems } = useLiveQuery(db.select({ path: inboxItems.receiptImagePath }).from(inboxItems).where(eq(inboxItems.ff3GroupId, groupId)));
   const localReceiptPath = sourceItems?.find((i) => !!i.path)?.path ?? null;
 
@@ -153,17 +153,13 @@ export default function TransactionDetailScreen() {
   const pendingEdit = pendingEdits(outbox ?? []).byGroup.get(row.groupId);
   const shown: Partial<TransactionSplit> = { ...pendingEdit?.changes, ...changes };
 
-  // Receipt thumbnails: photos on the phone first (still waiting to upload, or the one this was
-  // captured from), then what FF3 holds, fetched with the API token like any request. Once the
-  // captured photo has uploaded it is FF3's first image too, so that download is skipped.
-  const queuedPaths = queued.map((q) => q.receiptImagePath).filter((p): p is string => !!p);
-  const localPaths = [...new Set([...queuedPaths, ...(localReceiptPath ? [localReceiptPath] : [])])];
-  const capturedUploaded = !!localReceiptPath && !queuedPaths.includes(localReceiptPath);
-  const remoteImages = (attachments.data ?? []).filter((a) => !!a.imageSource).slice(capturedUploaded ? 1 : 0);
-  const receiptPreviews: { key: string; source: ImageSourcePropType }[] = [
-    ...localPaths.map((uri) => ({ key: uri, source: { uri } })),
-    ...remoteImages.map((a) => ({ key: a.id, source: a.imageSource! })),
-  ];
+  // Receipt thumbnails: uploads still queued, from the phone, then what FF3 holds, fetched with the
+  // API token like any request (src/receipt/journalAttachments.ts).
+  const previews = receiptPreviews({
+    queuedPaths: queued.map((q) => q.receiptImagePath).filter((p): p is string => !!p),
+    capturedPath: localReceiptPath,
+    remote: attachments.data,
+  });
   const effectiveAmount = shown.amount ?? row.amount;
   const effectiveSourceId = shown.source_id ?? row.sourceId ?? allAssetAccounts.find((a) => a.name === row.sourceName)?.id ?? null;
   const effectiveDestinationId = shown.destination_id ?? row.destinationId ?? allAssetAccounts.find((a) => a.name === row.destinationName)?.id ?? null;
@@ -520,7 +516,7 @@ export default function TransactionDetailScreen() {
           </>
         )}
           <Card style={{ marginHorizontal: t.space.lg, gap: t.space.sm }}>
-            {receiptPreviews.map((p) => (
+            {previews.map((p) => (
               <Pressable key={p.key} onPress={() => setPhoto(p.source)} accessibilityRole="imagebutton" accessibilityLabel={tr('draft.showPhoto')}>
                 <Image source={p.source} resizeMode="cover" style={{ width: '100%', height: 140, borderRadius: t.radius.sm, backgroundColor: t.color.surfaceAlt }} />
               </Pressable>
