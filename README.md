@@ -1,4 +1,4 @@
-# mmyway
+# Money done My Way - mmyway for short :)
 
 **Log spending in seconds, straight into your own Firefly III.**
 
