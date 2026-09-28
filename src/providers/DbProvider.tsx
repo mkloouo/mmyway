@@ -1,9 +1,11 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, InteractionManager, View } from 'react-native';
+import { ActivityIndicator, InteractionManager, ScrollView, Share, Text, View } from 'react-native';
 import { warmMerchantLookup } from '../lookup/merchantLookup';
 import { getDb, getMigrationDone, schema } from '../db/client';
 import { useTheme } from '../ui/theme';
+import { Button } from '../ui/components';
+import { shareableLog } from '../utils/log';
 import type { ExpoSQLiteDatabase } from 'drizzle-orm/expo-sqlite';
 
 type Db = ExpoSQLiteDatabase<typeof schema>;
@@ -14,12 +16,15 @@ export function DbProvider({ children }: { children: ReactNode }) {
   // useState initializer runs it exactly once, on mount, not on every render.
   const [db] = useState<Db>(() => getDb());
   const [migrated, setMigrated] = useState(false);
+  const [migrationError, setMigrationError] = useState<Error | null>(null);
   const t = useTheme();
   const { t: tr } = useTranslation();
 
   useEffect(() => {
-    getMigrationDone().finally(() => {
+    getMigrationDone().then((error) => {
+      setMigrationError(error);
       setMigrated(true);
+      if (error) return;
       // Preload capture's payee/account history once the first screen has drawn, so the first
       // +Add of the session opens as fast as later ones instead of scanning the cache on open.
       InteractionManager.runAfterInteractions(() => {
@@ -36,6 +41,19 @@ export function DbProvider({ children }: { children: ReactNode }) {
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: t.color.bg }}>
         <ActivityIndicator color={t.color.accent} accessibilityLabel={tr('common.loading')} />
       </View>
+    );
+  }
+
+  // A failed migration leaves a schema every query trips over in ways that look unrelated, so the
+  // app stops here and offers the Diagnostics log instead of running on it.
+  if (migrationError) {
+    return (
+      <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', gap: t.space.lg, padding: t.space.xxl }} style={{ backgroundColor: t.color.bg }}>
+        <Text style={[t.type.heading, { color: t.color.text }]}>{tr('migrationFailed.title')}</Text>
+        <Text style={[t.type.body, { color: t.color.textMuted }]}>{tr('migrationFailed.body')}</Text>
+        <Text style={[t.type.label, { color: t.color.danger }]} selectable>{migrationError.message}</Text>
+        <Button title={tr('migrationFailed.share')} onPress={() => { void Share.share({ message: shareableLog() }); }} />
+      </ScrollView>
     );
   }
 

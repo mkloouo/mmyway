@@ -6,7 +6,7 @@ import { FlatList, Share, Text, View } from 'react-native';
 import { useTheme } from '../../src/ui/theme';
 import { Screen, AppBar, Button, EmptyState } from '../../src/ui/components';
 import { confirmDestructive } from '../../src/ui/confirm';
-import { readLog, clearLog } from '../../src/utils/log';
+import { readLog, clearLog, shareableLog } from '../../src/utils/log';
 
 export default function LogsScreen() {
   const t = useTheme();
@@ -15,7 +15,7 @@ export default function LogsScreen() {
 
   async function shareLog() {
     if (lines.length === 0) return;
-    await Share.share({ message: [...lines].reverse().join('\n') });
+    await Share.share({ message: shareableLog([...lines].reverse()) });
   }
 
   async function onClear() {

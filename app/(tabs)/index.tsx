@@ -394,7 +394,7 @@ export default function InboxScreen() {
     await deleteRecurringReview(db, id);
   }
   async function retryOpNow(opId: string) {
-    await db.update(outboxOperations).set({ status: 'pending', lastError: null }).where(eq(outboxOperations.id, opId));
+    await db.update(outboxOperations).set({ status: 'pending', lastError: null, nextAttemptAt: null }).where(eq(outboxOperations.id, opId));
     syncNow();
   }
   async function discardOp(opId: string) {

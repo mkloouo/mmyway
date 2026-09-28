@@ -301,6 +301,11 @@
     "subtitle_other": "",
     "title": ""
   },
+  "migrationFailed": {
+    "body": "",
+    "share": "",
+    "title": ""
+  },
   "payeeSheet": {
     "payee": {
       "choose": "",

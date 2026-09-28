@@ -84,6 +84,7 @@ export const outboxOperations = sqliteTable('outbox_operations', {
   lastError: text('last_error'),
   createdAt: text('created_at').notNull(),
   sequence: integer('sequence').notNull(), // strictly increasing, defines replay order
+  nextAttemptAt: text('next_attempt_at'), // a failed op waits until then before the next automatic retry
 });
 
 export const appSettings = sqliteTable('app_settings', {

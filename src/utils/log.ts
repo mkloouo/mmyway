@@ -50,6 +50,19 @@ export function logLine(level: 'info' | 'warn' | 'error', message: string): void
   persist();
 }
 
+const REDACTED_KEYS = ['description', 'notes', 'name', 'source_name', 'destination_name', 'category_name', 'budget_name', 'tags', 'group_title', 'rawInput', 'targetName'];
+
+/**
+ * The log as it may leave the phone (Share): amounts and the text fields that name payees,
+ * accounts and notes are masked, so a bug report doesn't carry someone's finances with it.
+ */
+export function shareableLog(source: string[] = readLog()): string {
+  const keys = REDACTED_KEYS.join('|');
+  return source.join('\n')
+    .replace(new RegExp(`("(?:${keys})"\\s*:\\s*)("(?:[^"\\\\]|\\\\.)*"|\\[[^\\]]*\\])`, 'g'), '$1"‹redacted›"')
+    .replace(/-?\d[\d\s]*[.,]\d{1,2}(?!\d)/g, '‹amount›');
+}
+
 export function clearLog(): void {
   loaded = true;
   lines = [];

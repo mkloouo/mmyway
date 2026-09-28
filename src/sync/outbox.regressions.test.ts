@@ -62,6 +62,7 @@ describe('create idempotency', () => {
     };
 
     await replayOutbox(db as any, client as any);
+    await db.update(outboxOperations).set({ nextAttemptAt: null }); // the backoff has passed
     const second = await replayOutbox(db as any, client as any);
 
     expect(second.failedAt).toBeNull();
@@ -207,6 +208,7 @@ describe('receipt upload', () => {
       }),
     };
     await replay(db, client);
+    await db.update(outboxOperations).set({ nextAttemptAt: null }); // the backoff has passed
     await replay(db, client);
 
     const creates = client.request.mock.calls.filter(([p]: [string]) => p === '/v1/attachments');

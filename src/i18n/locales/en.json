@@ -453,5 +453,10 @@
     "openingBalanceDate": "Opening balance date",
     "virtualBalance": "Virtual balance",
     "virtualBalanceHint": "Added to the real balance in Firefly III — e.g. a credit limit, or money you set aside."
+  },
+  "migrationFailed": {
+    "title": "mmyway couldn’t update its database",
+    "body": "The app stopped here so it doesn’t work on a broken database. Share the diagnostics log so the problem can be fixed; reinstalling the app starts over from Firefly III (drafts and aliases on this phone are lost).",
+    "share": "Share diagnostics"
   }
 }

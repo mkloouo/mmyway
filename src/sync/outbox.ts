@@ -7,6 +7,8 @@
 //   sending; a mismatch is a conflict, not an overwrite (Review Focus: conflicting edits).
 // - Each op is claimed (-> in_flight) just before it is sent; a finished op is deleted.
 // - A failure stops replay at that operation — later operations must not run out of order.
+// - A failed op backs off (retryDelayMs): until its next_attempt_at, a sync stops in front of it
+//   without sending. "Retry now" in the Inbox sets it back to `pending`, which skips the wait.
 import { and, asc, eq, inArray, isNotNull, lt, sql } from 'drizzle-orm';
 import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 import type { FF3Client } from '../api/ff3/client';
@@ -77,6 +79,14 @@ export interface ReplayResult {
   succeeded: string[];
   conflicted: string[];
   failedAt: string | null; // operation id where replay stopped, if any
+}
+
+const RETRY_BASE_MS = 30_000;
+const RETRY_MAX_MS = 60 * 60 * 1000;
+
+/** How long a failed op waits before its next automatic retry: 30 s, doubling, at most an hour. */
+export function retryDelayMs(attempts: number): number {
+  return Math.min(RETRY_BASE_MS * 2 ** Math.max(0, attempts - 1), RETRY_MAX_MS);
 }
 
 export type ConflictHandler = (op: { id: string; payload: UpdateTransactionPayload | DeleteTransactionPayload }, serverUpdatedAt: string) => void;
@@ -217,6 +227,10 @@ export async function replayOutbox(db: OutboxDb, client: FF3Client, opts: { onCo
 
     for (const candidate of pending) {
       attempted.add(candidate.id);
+      if (candidate.status === 'failed' && candidate.nextAttemptAt && candidate.nextAttemptAt > new Date().toISOString()) {
+        result.failedAt = candidate.id; // still backing off; nothing after it may go first
+        return result;
+      }
       const [row] = await db.update(outboxOperations)
         .set({ status: 'in_flight' })
         .where(and(eq(outboxOperations.id, candidate.id), inArray(outboxOperations.status, ['pending', 'failed'])))
@@ -441,7 +455,10 @@ async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: 
   } catch (err) {
     const message = err instanceof FF3RequestError ? describeFF3Error(err) : err instanceof Error ? err.message : String(err);
     await db.update(outboxOperations)
-      .set({ status: 'failed', attempts: row.attempts + 1, lastError: message })
+      .set({
+        status: 'failed', attempts: row.attempts + 1, lastError: message,
+        nextAttemptAt: new Date(Date.now() + retryDelayMs(row.attempts + 1)).toISOString(),
+      })
       .where(eq(outboxOperations.id, row.id));
     return 'failed';
   }
