@@ -394,7 +394,10 @@
     "active": "Active",
     "activeHint": "Shown across the app and offered as a picker choice",
     "cashEnvelope": "Cash envelope",
-    "cashEnvelopeHint": "Counted in the cash sweep"
+    "cashEnvelopeHint": "Counted in the cash sweep",
+    "hideInactive": "Hide inactive accounts",
+    "showInactive": "Show inactive accounts",
+    "allInactiveHidden": "Every account is inactive — tap the eye to show them"
   },
   "aliases": {
     "removeTitle": "Remove \"{{raw}}\"?",

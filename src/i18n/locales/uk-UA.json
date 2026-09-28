@@ -29,16 +29,19 @@
   "accounts": {
     "active": "",
     "activeHint": "",
+    "allInactiveHidden": "",
     "cashEnvelope": "",
     "cashEnvelopeHint": "",
     "empty": "",
     "envelope": "",
+    "hideInactive": "",
     "inactive": "",
     "moveDown": "",
     "moveUp": "",
     "name": "",
     "reorder": "",
     "reorderHint": "",
+    "showInactive": "",
     "title": ""
   },
   "activity": {

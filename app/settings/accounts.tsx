@@ -12,6 +12,7 @@ import { hasEnvelopeMarker } from '../../src/accounts/envelopeMarker';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { reorderAccounts } from '../../src/accounts/accountActions';
 import { filterAccounts } from '../../src/accounts/filterAccounts';
+import { moveAmongVisible } from '../../src/accounts/moveAccount';
 import { navigateOnce } from '../../src/ui/navigateOnce';
 import { useAction } from '../../src/ui/useAction';
 import { PendingDot } from '../../src/ui/PendingDot';
@@ -27,14 +28,16 @@ export default function AccountsScreen() {
   const allAccounts = useAssetAccounts({ includeInactive: true }) ?? [];
   const [search, setSearch] = useState('');
   const [reordering, setReordering] = useState(false);
-  const visible = reordering ? allAccounts : filterAccounts(allAccounts, search);
+  // Hiding inactive accounts makes Reorder quicker on a long list; they keep their places.
+  const [showInactive, setShowInactive] = useState(true);
+  const shown = showInactive ? allAccounts : allAccounts.filter((a) => a.active);
+  const visible = reordering ? shown : filterAccounts(shown, search);
 
-  const move = act(tr('accounts.reorder'), async (index: number, delta: -1 | 1) => {
-    const target = index + delta;
-    if (target < 0 || target >= allAccounts.length) return;
-    const ids = allAccounts.map((a) => a.id);
-    [ids[index], ids[target]] = [ids[target]!, ids[index]!];
-    await reorderAccounts(db, ids);
+  // By id among the accounts on screen, not by list index: with inactive ones hidden, an index
+  // swap would jump over (or swap with) an account the user can't see.
+  const move = act(tr('accounts.reorder'), async (id: string, delta: -1 | 1) => {
+    const next = moveAmongVisible(allAccounts.map((a) => a.id), visible.map((a) => a.id), id, delta);
+    if (next) await reorderAccounts(db, next);
   });
 
   return (
@@ -42,11 +45,18 @@ export default function AccountsScreen() {
       <AppBar
         title={tr('accounts.title')}
         right={(
-          reordering ? (
-            <Button title={tr('common.done')} variant="ghost" size="bar" onPress={() => setReordering(false)} />
-          ) : (
-            <BarIconButton icon="swap-vertical" label={tr('accounts.reorder')} onPress={() => { setReordering(true); setSearch(''); }} />
-          )
+          <>
+            <BarIconButton
+              icon={showInactive ? 'eye-outline' : 'eye-off-outline'}
+              label={showInactive ? tr('accounts.hideInactive') : tr('accounts.showInactive')}
+              onPress={() => setShowInactive((v) => !v)}
+            />
+            {reordering ? (
+              <Button title={tr('common.done')} variant="ghost" size="bar" onPress={() => setReordering(false)} />
+            ) : (
+              <BarIconButton icon="swap-vertical" label={tr('accounts.reorder')} onPress={() => { setReordering(true); setSearch(''); }} />
+            )}
+          </>
         )}
       />
       {reordering ? (
@@ -76,10 +86,10 @@ export default function AccountsScreen() {
               {hasEnvelopeMarker(item.notes) && <Chip label={tr('accounts.envelope')} />}
               {reordering ? (
                 <View style={{ flexDirection: 'row', gap: t.space.xs }}>
-                  <Pressable onPress={() => move(index, -1)} disabled={index === 0} accessibilityRole="button" accessibilityLabel={tr('accounts.moveUp', { name: item.name })} hitSlop={8}>
+                  <Pressable onPress={() => move(item.id, -1)} disabled={index === 0} accessibilityRole="button" accessibilityLabel={tr('accounts.moveUp', { name: item.name })} hitSlop={8}>
                     <Ionicons name="chevron-up" size={22} color={index === 0 ? t.color.textFaint : t.color.accent} />
                   </Pressable>
-                  <Pressable onPress={() => move(index, 1)} disabled={index === visible.length - 1} accessibilityRole="button" accessibilityLabel={tr('accounts.moveDown', { name: item.name })} hitSlop={8}>
+                  <Pressable onPress={() => move(item.id, 1)} disabled={index === visible.length - 1} accessibilityRole="button" accessibilityLabel={tr('accounts.moveDown', { name: item.name })} hitSlop={8}>
                     <Ionicons name="chevron-down" size={22} color={index === visible.length - 1 ? t.color.textFaint : t.color.accent} />
                   </Pressable>
                 </View>
@@ -89,7 +99,7 @@ export default function AccountsScreen() {
             </View>
           </Card>
         )}
-        ListEmptyComponent={<Text style={[t.type.body, { color: t.color.textFaint, textAlign: 'center', paddingTop: t.space.xl }]}>{tr('accounts.empty')}</Text>}
+        ListEmptyComponent={<Text style={[t.type.body, { color: t.color.textFaint, textAlign: 'center', paddingTop: t.space.xl }]}>{allAccounts.length > 0 && !showInactive ? tr('accounts.allInactiveHidden') : tr('accounts.empty')}</Text>}
       />
 
     </Screen>

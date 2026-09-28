@@ -10,6 +10,8 @@
   **Save**, and sent to Firefly III like any other change, offline too.
 - An account with changes still waiting to reach Firefly III shows a yellow dot on its card: on
   Activity, in Settings → Accounts, on Count cash and on its own page.
+- Settings → Accounts has an eye button that hides or shows inactive accounts. With them hidden,
+  Reorder moves an account past the one you see next to it, and hidden accounts keep their places.
 - Holding an account card draws a border that grows until its page opens, so a long press is
   visible on phones that don't vibrate.
 
