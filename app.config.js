@@ -2,7 +2,7 @@ const IS_DEV = process.env.APP_VARIANT === 'development' || process.env.APP_VARI
 // Set by eas.json's production-apk profile: per-ABI APKs + a universal one.
 const ABI_SPLITS = process.env.ANDROID_ABI_SPLITS === '1';
 const BASE_BUNDLE_ID = 'com.mkloouo.mmyway';
-const BASE_NAME = 'Money done My Way';
+const BASE_NAME = 'Money My Way';
 
 module.exports = {
   expo: {

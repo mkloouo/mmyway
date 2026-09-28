@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- The app is now called **Money My Way**.
+
 ### Splits
 - **Split** next to Save (and next to Confirm on a draft) adds a split: type its amount and it
   comes out of split 1. **Choose which splits give it** shows sliders instead, one per split,
