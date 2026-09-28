@@ -91,7 +91,7 @@ The biggest gap is that nothing checks a push: there is no CI, and nothing tests
 - [ ] **README.** There isn't one; AGENTS.md covers agents, not people.
 - [ ] **Decide: Android backup.** `allowBackup` defaults to true, so the SQLite database with every cached transaction goes into Google Drive backups. Useful for a new phone; decide on purpose and set it in `app.config.js`.
 - [ ] **Release APK build.** `npm run android:build:pro` fails in the agent container: Gradle can't resolve the foojay-resolver plugin through the proxy. Build locally or on EAS for now; testing so far used the dev-client APK with Metro.
-- [ ] **Check: plain HTTP in release builds.** Nothing sets `usesCleartextTraffic`. If LM Studio is on `http://`, confirm a release APK can reach it, or serve it over HTTPS (for example `tailscale serve`).
+- [x] **Plain HTTP in release builds.** Allowed on purpose: `app.config.js` sets `usesCleartextTraffic: true` through `expo-build-properties`, because FF3 and LM Studio are reached over `http://`. Confirm on the first release APK (below).
 
 ## Letting other people in
 
@@ -123,4 +123,7 @@ The tests run on a desktop SQLite driver with no real FF3, so these claims need 
 - [x] **Gemini.** Receipts parse with the Gemini key sent in a header (confirmed in the second testing pass).
 - [ ] **Attach to a synced transaction.** Attach a photo from a transaction's detail screen, then confirm "Uploading…" turns into the file name and the file opens in FF3's web UI.
 - [ ] **Background receipts.** Capture two receipts back to back and confirm both cards appear in the Inbox and fill in.
+- [ ] **Cash count waits for the queue.** Spend cash offline, open Count cash: the banner says a change hasn't reached Firefly III and nothing can be booked. Go online, tap Sync now: the banner goes and the expected balance includes the spending.
+- [ ] **Sign-out with a queue.** With something queued (airplane mode), Sign out is refused with the count of queued changes. With an empty queue it signs out, and Activity and the account pickers are empty until the next sign-in syncs.
+- [ ] **Release APK over http://.** The release build syncs with FF3 and reads a receipt through LM Studio at their `http://` addresses.
 - [ ] **First +Add speed and keypad haptics.** After a cold start, the first capture should open as fast as later ones; digit keys should buzz on press.

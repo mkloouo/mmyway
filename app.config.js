@@ -32,6 +32,9 @@ module.exports = {
             enableMinifyInReleaseBuilds: true,
             enableShrinkResourcesInReleaseBuilds: true,
             useLegacyPackaging: true,
+            // FF3 and the local receipt model are often reached over plain http:// (a LAN IP, a
+            // tailnet name). Release builds block cleartext by default; only debug builds allowed it.
+            usesCleartextTraffic: true,
           },
         },
       ],
