@@ -15,6 +15,7 @@ import { enqueueOperation, type OutboxDb } from '../sync/outbox';
 import { generateId } from '../utils/id';
 import { parseReceiptItem, type ParseOutcome } from './toDraft';
 import { persistReceiptImage } from './imageFiles';
+import { downscaleReceipt } from './downscale';
 
 export { persistReceiptImage, deletePersistedReceiptImage } from './imageFiles';
 
@@ -27,7 +28,9 @@ export type CaptureResult =
  * parse. `parse` is returned rather than awaited (the receipt screen doesn't wait for it at
  * all — the Inbox card carries on); it never rejects.
  */
-export async function captureReceipt(db: OutboxDb, input: { uri: string; base64: string; hint?: string }): Promise<CaptureResult> {
+export async function captureReceipt(db: OutboxDb, original: { uri: string; base64: string; hint?: string }): Promise<CaptureResult> {
+  const smaller = await downscaleReceipt(original.uri);
+  const input = smaller ? { ...original, ...smaller } : original;
   const hash = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, input.base64);
   const duplicate = await findDuplicateReceiptItem(db, hash);
   if (duplicate) return { kind: 'duplicate', itemId: duplicate.id };

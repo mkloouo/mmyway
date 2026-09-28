@@ -26,7 +26,7 @@ import { confirmDestructive } from '../../src/ui/confirm';
 import { cachedRowFromGroup } from '../../src/sync/referenceData';
 import { enqueueOperation } from '../../src/sync/outbox';
 import { generateId } from '../../src/utils/id';
-import { inArray } from 'drizzle-orm';
+import { inArray, ne } from 'drizzle-orm';
 import { haptics } from '../../src/ui/haptics';
 import { pendingEdits, applyPendingEdit, type PendingEditStatus } from '../../src/transactions/pendingEdits';
 
@@ -127,7 +127,7 @@ export default function ActivityScreen() {
 
   const assetAccounts = useAssetAccounts() ?? [];
   const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
-  const { data: outbox } = useLiveQuery(db.select().from(outboxOperations));
+  const { data: outbox } = useLiveQuery(db.select().from(outboxOperations).where(ne(outboxOperations.kind, 'update_account')));
   // Just "has anything ever synced" — .limit(1) instead of loading the whole cached table.
   const { data: cachedTxProbe } = useLiveQuery(db.select({ id: cachedTransactions.groupId }).from(cachedTransactions).limit(1));
 

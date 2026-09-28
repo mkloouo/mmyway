@@ -7,7 +7,7 @@ let lines: string[] = [];
 let loaded = false;
 let installed = false;
 
-function logFile(): { text(): string; write(value: string): void } | null {
+function logFile(): { exists: boolean; textSync(): string; write(value: string): void } | null {
   try {
     // Lazy require, not a module-scope import: this module is imported by app code that Jest
     // also loads, and expo-file-system has no Node implementation.
@@ -35,7 +35,9 @@ export function readLog(): string[] {
     loaded = true;
     const file = logFile();
     try {
-      const existing = file?.text();
+      // textSync, not text(): text() returns a promise, so the previous run's lines were never
+      // read back (and a missing file became an unhandled rejection).
+      const existing = file?.exists ? file.textSync() : null;
       if (existing) lines = existing.split('\n').slice(-MAX_LINES);
     } catch {
       // No log file yet.

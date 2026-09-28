@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { appLocale } from '../../src/i18n';
 import { Alert, Image, Modal, Pressable, ScrollView, Text, View, type ImageSourcePropType } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { eq } from 'drizzle-orm';
+import { eq, ne } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useDb } from '../../src/providers/DbProvider';
@@ -49,7 +49,8 @@ export default function TransactionDetailScreen() {
   const { t: tr } = useTranslation();
 
   const { data: rows } = useLiveQuery(db.select().from(cachedTransactions).where(eq(cachedTransactions.groupId, groupId)));
-  const { data: outbox } = useLiveQuery(db.select().from(outboxOperations));
+  // The kinds that can touch one transaction; account edits never do.
+  const { data: outbox } = useLiveQuery(db.select().from(outboxOperations).where(ne(outboxOperations.kind, 'update_account')));
   // An old transaction can point at an account since made inactive — look its name up across
   // every account for display, but only offer active ones when picking a new one.
   const allAssetAccounts = useAssetAccounts({ includeInactive: true }) ?? [];

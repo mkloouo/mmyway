@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, SectionList, Text, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useDb } from '../../src/providers/DbProvider';
@@ -241,7 +241,8 @@ export default function InboxScreen() {
   const t = useTheme();
   const { t: tr } = useTranslation();
   const { needsAttention, toConfirm, toReview } = useInboxSections();
-  const { data: outbox } = useLiveQuery(db.select().from(outboxOperations));
+  // Only what the pill counts — not every payload in the queue.
+  const { data: outbox } = useLiveQuery(db.select({ id: outboxOperations.id }).from(outboxOperations).where(inArray(outboxOperations.status, ['pending', 'failed'])));
   const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
   // Just "has anything ever synced" — .limit(1) instead of loading the whole cached table.
   const { data: cachedTxProbe } = useLiveQuery(db.select({ id: cachedTransactions.groupId }).from(cachedTransactions).limit(1));
@@ -249,7 +250,7 @@ export default function InboxScreen() {
   const pull = usePullToRefresh();
 
   const assetAccounts = useAssetAccounts() ?? [];
-  const pendingOutboxCount = (outbox ?? []).filter((op) => op.status === 'pending' || op.status === 'failed').length;
+  const pendingOutboxCount = (outbox ?? []).length;
 
   // A sync that clears the queue gets a success haptic (design §3.4) — adjusted during render
   // (React's pattern for reacting to a derived value changing), not in an effect.

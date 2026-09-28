@@ -43,6 +43,19 @@ function calendarDay(value: string | null | undefined): string | null {
   return value ? value.slice(0, 10) : null;
 }
 
+/** Whether a stored row already holds every field of `next` (syncedAt aside). */
+function sameFields<T extends Record<string, unknown>>(old: Record<string, unknown> | undefined, next: T): boolean {
+  if (!old) return false;
+  return Object.entries(next).every(([key, value]) => key === 'syncedAt' || old[key] === value);
+}
+
+/** Keeps each IN (...) list well under SQLite's bound-parameter limit. */
+function chunks<T>(items: T[], size = 500): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size));
+  return out;
+}
+
 export async function pullReferenceData(db: OutboxDb, client: FF3Client): Promise<void> {
   const now = new Date().toISOString();
 
@@ -52,6 +65,20 @@ export async function pullReferenceData(db: OutboxDb, client: FF3Client): Promis
     fetchAll<BudgetRead>(client, '/v1/budgets'),
     fetchAll<CurrencyRead>(client, '/v1/currencies'),
   ]);
+
+  // Only new or changed rows are written: rewriting every account, category and budget on every
+  // sync fired the change listener once per row for nothing. The rows FF3 returned unchanged get
+  // their syncedAt moved in one statement each, so pruneReferenceData still sees them as present.
+  const [oldAccounts, oldCategories, oldBudgets, oldCurrencies] = await Promise.all([
+    db.select().from(referenceAccounts), db.select().from(referenceCategories),
+    db.select().from(referenceBudgets), db.select().from(referenceCurrencies),
+  ]);
+  const byKey = <T,>(rows: T[], key: (r: T) => string) => new Map(rows.map((r) => [key(r), r]));
+  const accountsById = byKey(oldAccounts, (r) => r.id);
+  const categoriesById = byKey(oldCategories, (r) => r.id);
+  const budgetsById = byKey(oldBudgets, (r) => r.id);
+  const currenciesByCode = byKey(oldCurrencies, (r) => r.code);
+  const unchanged = { accounts: [] as string[], categories: [] as string[], budgets: [] as string[], currencies: [] as string[] };
 
   // One transaction for the whole pull: expo-sqlite runs every write synchronously on the JS
   // thread, and hundreds of separately committed upserts froze the UI on every app open.
@@ -72,23 +99,30 @@ export async function pullReferenceData(db: OutboxDb, client: FF3Client): Promis
         monthlyPaymentDate: calendarDay(extra.monthly_payment_date),
         syncedAt: now,
       };
+      if (sameFields(accountsById.get(row.id), row)) { unchanged.accounts.push(row.id); continue; }
       tx.insert(referenceAccounts).values(row).onConflictDoUpdate({ target: referenceAccounts.id, set: row }).run();
     }
     for (const category of categories) {
-      tx.insert(referenceCategories)
-        .values({ id: category.id, name: category.attributes.name, syncedAt: now })
-        .onConflictDoUpdate({ target: referenceCategories.id, set: { name: category.attributes.name, syncedAt: now } }).run();
+      const row = { id: category.id, name: category.attributes.name, syncedAt: now };
+      if (sameFields(categoriesById.get(row.id), row)) { unchanged.categories.push(row.id); continue; }
+      tx.insert(referenceCategories).values(row).onConflictDoUpdate({ target: referenceCategories.id, set: row }).run();
     }
     for (const budget of budgets) {
-      tx.insert(referenceBudgets)
-        .values({ id: budget.id, name: budget.attributes.name, active: budget.attributes.active, syncedAt: now })
-        .onConflictDoUpdate({ target: referenceBudgets.id, set: { name: budget.attributes.name, active: budget.attributes.active, syncedAt: now } }).run();
+      const row = { id: budget.id, name: budget.attributes.name, active: budget.attributes.active, syncedAt: now };
+      if (sameFields(budgetsById.get(row.id), row)) { unchanged.budgets.push(row.id); continue; }
+      tx.insert(referenceBudgets).values(row).onConflictDoUpdate({ target: referenceBudgets.id, set: row }).run();
     }
     for (const currency of currencies) {
-      tx.insert(referenceCurrencies)
-        .values({ code: currency.attributes.code, symbol: currency.attributes.symbol, decimalPlaces: currency.attributes.decimal_places, syncedAt: now })
-        .onConflictDoUpdate({ target: referenceCurrencies.code, set: { symbol: currency.attributes.symbol, decimalPlaces: currency.attributes.decimal_places, syncedAt: now } }).run();
+      const row = { code: currency.attributes.code, symbol: currency.attributes.symbol, decimalPlaces: currency.attributes.decimal_places, syncedAt: now };
+      const old = currenciesByCode.get(row.code);
+      if (old && old.symbol === row.symbol && old.decimalPlaces === row.decimalPlaces) { unchanged.currencies.push(row.code); continue; }
+      tx.insert(referenceCurrencies).values(row)
+        .onConflictDoUpdate({ target: referenceCurrencies.code, set: { symbol: row.symbol, decimalPlaces: row.decimalPlaces, syncedAt: now } }).run();
     }
+    for (const ids of chunks(unchanged.accounts)) tx.update(referenceAccounts).set({ syncedAt: now }).where(inArray(referenceAccounts.id, ids)).run();
+    for (const ids of chunks(unchanged.categories)) tx.update(referenceCategories).set({ syncedAt: now }).where(inArray(referenceCategories.id, ids)).run();
+    for (const ids of chunks(unchanged.budgets)) tx.update(referenceBudgets).set({ syncedAt: now }).where(inArray(referenceBudgets.id, ids)).run();
+    for (const codes of chunks(unchanged.currencies)) tx.update(referenceCurrencies).set({ syncedAt: now }).where(inArray(referenceCurrencies.code, codes)).run();
   });
 
   const order: Record<string, number> = {};
