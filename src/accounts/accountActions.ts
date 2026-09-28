@@ -6,6 +6,7 @@ import { enqueueOperation, type OutboxDb } from '../sync/outbox';
 import { generateId } from '../utils/id';
 import { hasEnvelopeMarker, setEnvelopeMarker } from './envelopeMarker';
 import { getAccountOrder, setAccountOrder } from '../settings/appSettings';
+import type { AccountEdit } from './accountEdit';
 
 export async function setAccountActive(db: OutboxDb, accountId: string, active: boolean): Promise<void> {
   await db.update(referenceAccounts).set({ active }).where(eq(referenceAccounts.id, accountId));
@@ -18,6 +19,13 @@ export async function setAccountEnvelope(db: OutboxDb, accountId: string, on: bo
   if (hasEnvelopeMarker(account.notes) === on) return;
   await db.update(referenceAccounts).set({ notes: setEnvelopeMarker(account.notes, on) }).where(eq(referenceAccounts.id, accountId));
   await enqueueOperation(db, { id: generateId(), kind: 'update_account', payload: { accountId, setEnvelopeMarker: on } });
+}
+
+/** The account page's Save: patches the local row and queues one FF3 update with the changes. */
+export async function updateAccount(db: OutboxDb, accountId: string, edit: AccountEdit): Promise<void> {
+  if (Object.keys(edit).length === 0) return;
+  await db.update(referenceAccounts).set(edit).where(eq(referenceAccounts.id, accountId));
+  await enqueueOperation(db, { id: generateId(), kind: 'update_account', payload: { accountId, edit } });
 }
 
 /**

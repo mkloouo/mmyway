@@ -67,3 +67,12 @@ export function parseDecimalInput(raw: string, decimalPlaces?: number): DecimalI
   if (decimalPlaces !== undefined && fraction.length > decimalPlaces) return { ok: false, reason: 'too_many_decimals' };
   return { ok: true, value: fraction ? `${whole}.${fraction}` : whole };
 }
+
+/** parseDecimalInput for an amount that may be negative (an overdrawn opening balance). */
+export function parseSignedDecimalInput(raw: string, decimalPlaces?: number): DecimalInputResult {
+  const trimmed = raw.trim();
+  const negative = /^[-−]/.test(trimmed);
+  const result = parseDecimalInput(negative ? trimmed.slice(1) : trimmed, decimalPlaces);
+  if (!result.ok || !negative || /^0*\.?0*$/.test(result.value)) return result;
+  return { ok: true, value: `-${result.value}` };
+}

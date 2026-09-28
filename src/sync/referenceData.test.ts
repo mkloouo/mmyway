@@ -195,7 +195,7 @@ describe('pullReferenceData', () => {
     const calls: string[] = [];
     return {
       calls,
-      request: jest.fn(async (path: string) => {
+      request: jest.fn(async (path: string): Promise<{ data: unknown[] }> => {
         calls.push(path);
         if (path.startsWith('/v1/accounts')) {
           return {
@@ -204,6 +204,8 @@ describe('pullReferenceData', () => {
               attributes: {
                 name: 'Cash', type: 'asset', currency_code: 'PLN', active: true,
                 current_balance: '340.00', current_balance_date: '2026-09-27',
+                account_role: 'cashWalletAsset', include_net_worth: false, opening_balance: '100.00',
+                opening_balance_date: '2026-01-01T00:00:00+01:00', virtual_balance: '0.00',
               },
             }],
           };
@@ -222,6 +224,16 @@ describe('pullReferenceData', () => {
 
     const [account] = await db.select().from(referenceAccounts);
     expect(account).toMatchObject({ id: 'acc-1', currentBalance: '340.00', currentBalanceDate: '2026-09-27' });
+  });
+
+  it('keeps the settings the account page edits, dates as calendar days', async () => {
+    const db = createTestDb();
+    await pullReferenceData(db as any, fakeReferenceClient() as any);
+
+    const [account] = await db.select().from(referenceAccounts);
+    expect(account).toMatchObject({
+      accountRole: 'cashWalletAsset', includeNetWorth: false, openingBalance: '100.00', openingBalanceDate: '2026-01-01', virtualBalance: '0.00',
+    });
   });
 
   it('the balance survives an update on a second pull', async () => {

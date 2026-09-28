@@ -9,6 +9,14 @@ export const referenceAccounts = sqliteTable('reference_accounts', {
   currentBalance: text('current_balance'), // decimal string, as of the last pull
   currentBalanceDate: text('current_balance_date'),
   notes: text('notes'), // carries the `mmyway-envelope` marker line among the user's own text
+  // Asset-account settings edited on the account page (app/accounts/[id].tsx), as FF3 has them.
+  accountRole: text('account_role'), // defaultAsset | sharedAsset | savingAsset | ccAsset | cashWalletAsset
+  includeNetWorth: integer('include_net_worth', { mode: 'boolean' }).notNull().default(true),
+  openingBalance: text('opening_balance'), // decimal string
+  openingBalanceDate: text('opening_balance_date'), // YYYY-MM-DD
+  virtualBalance: text('virtual_balance'), // decimal string
+  creditCardType: text('credit_card_type'), // monthlyFull, only for ccAsset
+  monthlyPaymentDate: text('monthly_payment_date'), // YYYY-MM-DD, only for ccAsset
   syncedAt: text('synced_at').notNull(),
 });
 

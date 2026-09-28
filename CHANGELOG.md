@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Accounts
+- Each account now has its own page: tap or long-press it in Settings → Accounts, or long-press
+  its balance card on Activity. Change its name, currency, role (default, shared, savings, credit
+  card with its monthly payment date, or cash wallet), whether it's active, a cash envelope or in
+  your net worth, its opening balance and date, and its virtual balance. Saved together with
+  **Save**, and sent to Firefly III like any other change, offline too.
+
+### Fixed
+- Reordering accounts now reaches Firefly III; the new order used to stay on the phone.
+
 ### Settings
 - **Language**: mmyway now follows your phone's language, or you can pick one in Settings →
   Language (System, English or Українська). Dates and times follow the language you pick.

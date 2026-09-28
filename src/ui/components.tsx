@@ -108,7 +108,7 @@ export function Card({
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
   onPress?: () => void;
-  /** Starts multi-select on the lists that support it (Inbox, Activity). */
+  /** Starts multi-select (Inbox, Activity) or opens a detail page (Settings → Accounts). */
   onLongPress?: () => void;
   selected?: boolean;
 }) {

@@ -16,6 +16,7 @@ import * as schema from '../db/schema';
 import type { TransactionSplit, TransactionRead, AccountRead } from '../api/ff3/types';
 import { generateId } from '../utils/id';
 import { setEnvelopeMarker } from '../accounts/envelopeMarker';
+import { ff3AccountBody, type AccountEdit } from '../accounts/accountEdit';
 import { requestSync } from './syncTrigger';
 import { deletePersistedReceiptImage } from '../receipt/imageFiles';
 import { cachedRowFromGroup } from './referenceData';
@@ -58,6 +59,7 @@ export interface UpdateAccountPayload {
   setEnvelopeMarker?: boolean; // the desired on/off state; the notes text itself is read fresh at replay
   active?: boolean; // FF3's account `active` flag
   order?: number; // FF3's account `order` (position among the user's asset accounts)
+  edit?: AccountEdit; // the account page's changed fields (src/accounts/accountEdit.ts)
 }
 
 // Both the expo-sqlite and better-sqlite3 Drizzle instances (src/db/client.ts, src/db/testDb.ts)
@@ -422,13 +424,14 @@ async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: 
       // account's notes may have been edited in FF3's web UI meanwhile, and this must not clobber
       // it — only the mmyway-envelope line changes (design §6.6).
       const p = payload as UpdateAccountPayload;
-      const body: { notes?: string; active?: boolean } = {};
+      const body: Record<string, unknown> = p.edit ? ff3AccountBody(p.edit) : {};
       if (p.setEnvelopeMarker !== undefined) {
         const current = await client.request<{ data: AccountRead }>(`/v1/accounts/${p.accountId}`);
         const currentNotes = (current.data.attributes as { notes?: string | null }).notes ?? null;
         body.notes = setEnvelopeMarker(currentNotes, p.setEnvelopeMarker);
       }
       if (p.active !== undefined) body.active = p.active;
+      if (p.order !== undefined) body.order = p.order;
       await client.request(`/v1/accounts/${p.accountId}`, { method: 'PUT', body: JSON.stringify(body) });
       await db.delete(outboxOperations).where(eq(outboxOperations.id, row.id));
       return 'done';

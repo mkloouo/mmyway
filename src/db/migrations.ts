@@ -9,8 +9,9 @@ import m0001 from './migrations/0001_mysterious_christian_walker.sql';
 import m0002 from './migrations/0002_cool_major_mapleleaf.sql';
 import m0003 from './migrations/0003_freezing_ares.sql';
 import m0004 from './migrations/0004_needy_jazinda.sql';
+import m0005 from './migrations/0005_needy_ink.sql';
 
 export default {
   journal,
-  migrations: { m0000, m0001, m0002, m0003, m0004 },
+  migrations: { m0000, m0001, m0002, m0003, m0004, m0005 },
 };
