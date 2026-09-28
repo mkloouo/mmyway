@@ -466,7 +466,9 @@ async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: 
           const groupType = await cachedTypeOf(db, u.groupId);
           const transactions = [];
           for (const split of u.splits ?? [{ transaction_journal_id: u.transactionJournalId, ...u.changes }]) {
-            transactions.push(await withAccountIds(resolve, split, groupType));
+            // FF3 rejects a note of length 0; edits queued before that was known still carry ''.
+            const cleaned = split.notes === '' ? { ...split, notes: null } : split;
+            transactions.push(await withAccountIds(resolve, cleaned, groupType));
           }
           const body = u.splits
             ? { ...(u.groupTitle !== undefined ? { group_title: u.groupTitle } : {}), transactions }

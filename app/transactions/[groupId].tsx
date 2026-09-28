@@ -38,6 +38,7 @@ import { keepMineOverServer, dropQueuedChange } from '../../src/sync/outbox';
 import { readSplits } from '../../src/transactions/splitsJson';
 import { refreshCachedGroup } from '../../src/transactions/refreshGroup';
 import { queueSplitEdit } from '../../src/transactions/queueSplitEdit';
+import { changedFields, sameAmount, sameSplits } from '../../src/transactions/editDiff';
 import { duplicateTransaction } from '../../src/transactions/duplicate';
 import { fromCached, fromQueued, newSplit, patchSplit, toPayloadSplits, type EditableSplit } from '../../src/splits/editSplits';
 import { absorb, leftover } from '../../src/splits/allocate';
@@ -300,18 +301,34 @@ export default function TransactionDetailScreen() {
     await dropQueuedChange(db, conflictOp.id);
   });
 
+  // What the screen showed before this visit's edits: the cache, under any queued edit. Save
+  // compares against it by value, so touching a field without changing it queues nothing.
+  const baseline: Partial<TransactionSplit> = {
+    amount: row.amount, date: row.date, description: row.description,
+    category_name: row.categoryName ?? undefined, notes: row.notes ?? undefined, tags: parseTags(row.tagsJson),
+    source_id: row.sourceId ?? allAssetAccounts.find((a) => a.name === row.sourceName)?.id,
+    destination_id: row.destinationId ?? allAssetAccounts.find((a) => a.name === row.destinationName)?.id,
+    budget_id: row.budgetId ?? (budgets ?? []).find((b) => b.name === row.budgetName)?.id,
+    ...pendingEdit?.changes,
+  };
+
   const onSave = act(tr('common.save'), async () => {
     if (splitMode) {
-      const dirty = edited !== null || totalEdit !== null || titleEdit !== null || !!changes.date;
+      const date = effectiveDate.toISOString();
+      const payloadSplits = toPayloadSplits(splits, { type, date, currencyCode: row!.currencyCode });
+      const baseTotal = (pendingEdit?.splits ? pendingEdit.changes.amount : undefined) ?? row!.amount;
+      const baseTitle = pendingEdit?.groupTitle ?? row!.description;
+      const dirty = removed.length > 0 || !sameAmount(total, baseTotal) || groupTitle !== baseTitle
+        || Object.keys(changedFields({ date: changes.date }, { date: baseline.date })).length > 0
+        || !sameSplits(payloadSplits, toPayloadSplits(baseSplits, { type, date, currencyCode: row!.currencyCode }));
       if (!dirty) { router.back(); return; }
       if (rest !== 0n) return;
       setSaving(true);
       try {
-        const date = effectiveDate.toISOString();
         await queueSplitEdit(db, {
           groupId: row!.groupId, transactionJournalId: row!.journalId, expectedUpdatedAt: row!.updatedAt,
           changes: { amount: total, description: groupTitle, ...(changes.date ? { date: changes.date } : {}) },
-          splits: toPayloadSplits(splits, { type, date, currencyCode: row!.currencyCode }),
+          splits: payloadSplits,
           groupTitle,
           ...(removed.length ? { removedJournalIds: removed } : {}),
         });
@@ -321,13 +338,14 @@ export default function TransactionDetailScreen() {
       }
       return;
     }
-    if (Object.keys(changes).length === 0) {
+    const toSend = changedFields(changes, baseline);
+    if (Object.keys(toSend).length === 0) {
       router.back();
       return;
     }
     setSaving(true);
     try {
-      await queueTransactionEdit(db, row!, changes);
+      await queueTransactionEdit(db, row!, toSend);
       router.back();
     } finally {
       setSaving(false);

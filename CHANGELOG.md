@@ -74,6 +74,10 @@
 - The payee list on a draft, a transaction or a planned transaction no longer shows another
   type's payees after switching the type quickly.
 - Capture no longer asks to discard an entry whose amount is only "0,".
+- **Save** on a transaction you didn't change just closes, instead of sending an edit that
+  changes nothing (picking the same category again, or closing the keypad, counted as a change).
+- An edit that leaves a note empty no longer fails in Firefly III ("at least 1 character"). One
+  that already failed this way goes through with **Retry now** in the Inbox.
 - The keyboard no longer covers the lower text fields on an account's page.
 - A transaction's receipt photos show what Firefly III holds now. After the photo a transaction
   was captured from was deleted in Firefly III, the next photo attached to it didn't show and the
