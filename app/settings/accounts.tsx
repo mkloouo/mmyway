@@ -67,6 +67,7 @@ export default function AccountsScreen() {
           <Card
             onPress={reordering ? undefined : () => navigateOnce(`/accounts/${item.id}`)}
             onLongPress={() => navigateOnce(`/accounts/${item.id}`)}
+            longPressRing
             style={item.active ? undefined : { opacity: 0.5 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
               <PendingDot visible={pendingAccounts.has(item.id)} />

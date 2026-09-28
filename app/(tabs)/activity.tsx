@@ -358,23 +358,22 @@ export default function ActivityScreen() {
               const stale = a.currentBalanceDate ? new Date().getTime() - new Date(a.currentBalanceDate).getTime() > STALE_MS : true;
               const selected = accountFilter === a.id;
               return (
-                <Pressable
+                <Card
                   key={a.id}
                   onPress={() => setAccountFilter((cur) => (cur === a.id ? null : a.id))}
                   onLongPress={() => navigateOnce(`/accounts/${a.id}`)}
                   delayLongPress={300}
+                  longPressRing
                   accessibilityHint={tr('account.openHint')}
-                  style={({ pressed }) => ({ opacity: pressed ? 0.6 : stale ? 0.5 : 1 })}
+                  style={{ borderColor: selected ? t.color.accent : t.color.border, minWidth: 120, opacity: stale ? 0.5 : 1 }}
                 >
-                  <Card style={{ borderColor: selected ? t.color.accent : t.color.border, minWidth: 120 }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.xs }}>
-                      <Text style={[t.type.label, { color: t.color.textMuted, flexShrink: 1 }]} numberOfLines={1}>{a.name}</Text>
-                      <PendingDot visible={pendingAccounts.has(a.id)} />
-                    </View>
-                    <Money amount={a.currentBalance ?? '0'} currency={currencyOf(currencies ?? [], a.currencyCode)} size="heading" />
-                    <Text style={[t.type.label, { color: t.color.textFaint }]}>{tr('count.asOf', { time: relativeTime(a.currentBalanceDate) })}</Text>
-                  </Card>
-                </Pressable>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.xs }}>
+                    <Text style={[t.type.label, { color: t.color.textMuted, flexShrink: 1 }]} numberOfLines={1}>{a.name}</Text>
+                    <PendingDot visible={pendingAccounts.has(a.id)} />
+                  </View>
+                  <Money amount={a.currentBalance ?? '0'} currency={currencyOf(currencies ?? [], a.currencyCode)} size="heading" />
+                  <Text style={[t.type.label, { color: t.color.textFaint }]}>{tr('count.asOf', { time: relativeTime(a.currentBalanceDate) })}</Text>
+                </Card>
               );
             })}
           </ScrollView>

@@ -102,17 +102,41 @@ export function SectionHeader({ title, action }: { title: string; action?: React
   );
 }
 
+const DEFAULT_LONG_PRESS_MS = 500; // React Native's own default
+
 export function Card({
-  children, style, onPress, onLongPress, selected,
+  children, style, onPress, onLongPress, delayLongPress = DEFAULT_LONG_PRESS_MS, longPressRing, selected, accessibilityHint,
 }: {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
   onPress?: () => void;
   /** Starts multi-select (Inbox, Activity) or opens a detail page (Settings → Accounts). */
   onLongPress?: () => void;
+  delayLongPress?: number;
+  /**
+   * Draws an accent border that grows while the card is held and is full the moment the long
+   * press fires — feedback on phones without a vibration motor, where the haptic tick is silent.
+   */
+  longPressRing?: boolean;
   selected?: boolean;
+  accessibilityHint?: string;
 }) {
   const t = useTheme();
+  const [progress] = useState(() => new Animated.Value(0));
+  const ring = !!longPressRing && !!onLongPress;
+
+  function startRing() {
+    if (!ring) return;
+    progress.setValue(0);
+    // Border width can't run on the native driver.
+    Animated.timing(progress, { toValue: 1, duration: delayLongPress, useNativeDriver: false }).start();
+  }
+  function stopRing() {
+    if (!ring) return;
+    progress.stopAnimation();
+    Animated.timing(progress, { toValue: 0, duration: 150, useNativeDriver: false }).start();
+  }
+
   const body = (
     <View
       style={[
@@ -122,6 +146,17 @@ export function Card({
       ]}
     >
       {children}
+      {ring && (
+        <Animated.View
+          pointerEvents="none"
+          style={[StyleSheet.absoluteFill, {
+            borderRadius: t.radius.md,
+            borderColor: t.color.accent,
+            borderWidth: progress.interpolate({ inputRange: [0, 1], outputRange: [0, 4] }),
+            opacity: progress.interpolate({ inputRange: [0, 0.1, 1], outputRange: [0, 0.6, 1] }),
+          }]}
+        />
+      )}
     </View>
   );
   return onPress || onLongPress
@@ -129,8 +164,13 @@ export function Card({
       <Pressable
         onPress={onPress}
         onLongPress={onLongPress}
+        delayLongPress={delayLongPress}
+        onPressIn={startRing}
+        onPressOut={stopRing}
         accessibilityState={selected !== undefined ? { selected } : undefined}
-        style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+        accessibilityHint={accessibilityHint}
+        // A ringed card doesn't also dim: the growing border is the feedback.
+        style={({ pressed }) => ({ opacity: pressed && !ring ? 0.6 : 1 })}
       >
         {body}
       </Pressable>
