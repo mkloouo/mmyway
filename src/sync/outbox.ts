@@ -487,6 +487,41 @@ function receiptFilename(path: string): string {
   return `receipt.${ext === 'jpeg' ? 'jpg' : ext ?? 'jpg'}`;
 }
 
+/** "Retry now" on a failed operation: pending again, skipping its backoff. */
+export async function retryOperationNow(db: OutboxDb, opId: string): Promise<void> {
+  await db.update(outboxOperations).set({ status: 'pending', lastError: null, nextAttemptAt: null }).where(eq(outboxOperations.id, opId));
+}
+
+/**
+ * The conflict screen's "Keep mine": the queued edit or delete is re-checked against the server
+ * copy the user just looked at, and goes out again over it.
+ */
+export async function keepMineOverServer(db: OutboxDb, opId: string, serverUpdatedAt: string): Promise<void> {
+  const [op] = await db.select().from(outboxOperations).where(eq(outboxOperations.id, opId));
+  if (!op) return;
+  const payload = readPayload<UpdateTransactionPayload | DeleteTransactionPayload>(op.kind, op.payloadJson);
+  payload.expectedUpdatedAt = serverUpdatedAt;
+  await db.update(outboxOperations)
+    .set({ status: 'pending', payloadJson: writePayload(payload), lastError: null, nextAttemptAt: null })
+    .where(eq(outboxOperations.id, opId));
+}
+
+/** The conflict screen's "Use the server's": the queued change is dropped. */
+export async function dropQueuedChange(db: OutboxDb, opId: string): Promise<void> {
+  await db.delete(outboxOperations).where(eq(outboxOperations.id, opId));
+}
+
+/**
+ * Queues a conflict-checked delete for each cached transaction (Activity's multi-select delete).
+ */
+export async function deleteCachedTransactions(db: OutboxDb, groupIds: string[]): Promise<void> {
+  const rows = await db.select({ groupId: cachedTransactions.groupId, updatedAt: cachedTransactions.updatedAt })
+    .from(cachedTransactions).where(inArray(cachedTransactions.groupId, groupIds));
+  for (const row of rows) {
+    await enqueueOperation(db, { id: generateId(), kind: 'delete_transaction', payload: { groupId: row.groupId, expectedUpdatedAt: row.updatedAt } });
+  }
+}
+
 /**
  * The user's way out of an operation that can never succeed (a 422, an account deleted in FF3, a
  * receipt file that is gone): replay stops at the first failure, so without this one bad

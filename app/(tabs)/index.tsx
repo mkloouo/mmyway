@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, SectionList, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { eq, inArray } from 'drizzle-orm';
+import { inArray } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useDb } from '../../src/providers/DbProvider';
@@ -20,16 +20,15 @@ import { categoryColor } from '../../src/ui/categoryColor';
 import { useInboxSections, type AttentionItem, type InboxItemRow } from '../../src/inbox/useInboxSections';
 import { draftReadiness } from '../../src/inbox/readiness';
 import { confirmInboxItem, undoConfirm, type ConfirmResult } from '../../src/inbox/createManualEntry';
-import { deleteInboxItem } from '../../src/inbox/updateDraft';
+import { deleteInboxItem, retryErroredItem } from '../../src/inbox/updateDraft';
 import { confirmDestructive } from '../../src/ui/confirm';
-import { transition } from '../../src/inbox/state';
 import { approveRecurringReview, editRecurringReview, deleteRecurringReview } from '../../src/sync/recurringReview';
-import { discardOperation } from '../../src/sync/outbox';
+import { discardOperation, retryOperationNow } from '../../src/sync/outbox';
 import { requestSync } from '../../src/sync/syncTrigger';
 import { parseDecimalInput } from '../../src/api/ff3/decimal';
 import { reportErrors } from '../../src/ui/reportError';
 import { useSync, useSignedIn, usePullToRefresh } from '../../src/sync/useSync';
-import { inboxItems, outboxOperations, referenceCurrencies, cachedTransactions } from '../../src/db/schema';
+import { outboxOperations, referenceCurrencies, cachedTransactions } from '../../src/db/schema';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { generateId } from '../../src/utils/id';
 import type { Draft } from '../../src/inbox/draft';
@@ -369,9 +368,7 @@ export default function InboxScreen() {
   }
 
   const retryError = act(tr('inbox.retry'), async (id: string) => {
-    await db.update(inboxItems)
-      .set({ state: transition('error', 'retry'), errorMessage: null, updatedAt: new Date().toISOString() })
-      .where(eq(inboxItems.id, id));
+    await retryErroredItem(db, id);
     // A retried receipt is re-read by the sync; don't make it wait for the next app resume.
     requestSync();
   });
@@ -399,7 +396,7 @@ export default function InboxScreen() {
     await deleteRecurringReview(db, id);
   });
   const retryOpNow = act(tr('inbox.retryNow'), async (opId: string) => {
-    await db.update(outboxOperations).set({ status: 'pending', lastError: null, nextAttemptAt: null }).where(eq(outboxOperations.id, opId));
+    await retryOperationNow(db, opId);
     syncNow();
   });
   const discardOp = act(tr('inbox.discard'), async (opId: string) => {

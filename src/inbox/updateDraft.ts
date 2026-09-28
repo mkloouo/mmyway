@@ -2,10 +2,25 @@ import { eq } from 'drizzle-orm';
 import { inboxItems, outboxOperations } from '../db/schema';
 import type { Draft } from './draft';
 import type { OutboxDb } from '../sync/outbox';
-import { deletePersistedReceiptImage } from '../receipt/imageFiles';
+import { deletePersistedReceiptImage, persistReceiptImage } from '../receipt/imageFiles';
 import { readDraft, writeDraft } from './draftJson';
+import { transition } from './state';
 
 const NOT_EDITABLE = new Set(['confirmed', 'synced']);
+
+/** Retry on an errored item: back to its retry state; a receipt is re-read by the next sync. */
+export async function retryErroredItem(db: OutboxDb, inboxItemId: string): Promise<void> {
+  await db.update(inboxItems)
+    .set({ state: transition('error', 'retry'), errorMessage: null, updatedAt: new Date().toISOString() })
+    .where(eq(inboxItems.id, inboxItemId));
+}
+
+/** Gives an entry a receipt photo (copied out of the cache); it is uploaded once the transaction exists. */
+export async function attachReceiptImage(db: OutboxDb, inboxItemId: string, uri: string): Promise<void> {
+  await db.update(inboxItems)
+    .set({ receiptImagePath: persistReceiptImage(uri), updatedAt: new Date().toISOString() })
+    .where(eq(inboxItems.id, inboxItemId));
+}
 
 export async function updateDraft(db: OutboxDb, inboxItemId: string, patch: Partial<Draft>): Promise<void> {
   const rows = await db.select().from(inboxItems).where(eq(inboxItems.id, inboxItemId));

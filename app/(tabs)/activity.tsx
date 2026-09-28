@@ -24,9 +24,8 @@ import type { TransactionRead } from '../../src/api/ff3/types';
 import { navigateOnce } from '../../src/ui/navigateOnce';
 import { confirmDestructive } from '../../src/ui/confirm';
 import { cachedRowFromGroup } from '../../src/sync/referenceData';
-import { enqueueOperation } from '../../src/sync/outbox';
-import { generateId } from '../../src/utils/id';
-import { inArray, ne } from 'drizzle-orm';
+import { deleteCachedTransactions } from '../../src/sync/outbox';
+import { ne } from 'drizzle-orm';
 import { haptics } from '../../src/ui/haptics';
 import { pendingEdits, applyPendingEdit, type PendingEditStatus } from '../../src/transactions/pendingEdits';
 import { readPayload } from '../../src/sync/payloadJson';
@@ -160,11 +159,7 @@ export default function ActivityScreen() {
   const deleteSelected = act(tr('common.delete'), async () => {
     const ids = [...selectedIds];
     if (!await confirmDestructive(tr('activity.deleteTitle', { count: ids.length }), tr('common.delete'), tr('activity.deleteBody'))) return;
-    const rows = await db.select({ groupId: cachedTransactions.groupId, updatedAt: cachedTransactions.updatedAt })
-      .from(cachedTransactions).where(inArray(cachedTransactions.groupId, ids));
-    for (const row of rows) {
-      await enqueueOperation(db, { id: generateId(), kind: 'delete_transaction', payload: { groupId: row.groupId, expectedUpdatedAt: row.updatedAt } });
-    }
+    await deleteCachedTransactions(db, ids);
     setSelectedIds(new Set());
   });
 

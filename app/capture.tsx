@@ -15,15 +15,15 @@ import { AccountPickerSheet, type AccountPickerAccount } from '../src/ui/Account
 import { currencyOf, formatAmountInput } from '../src/ui/money';
 import { categoryColor } from '../src/ui/categoryColor';
 import { haptics } from '../src/ui/haptics';
-import { eq } from 'drizzle-orm';
-import { inboxItems, referenceCategories, referenceBudgets, referenceCurrencies } from '../src/db/schema';
+import { referenceCategories, referenceBudgets, referenceCurrencies } from '../src/db/schema';
 import { askPhotoSource, pickPhoto } from '../src/receipt/pickPhoto';
-import { persistReceiptImage } from '../src/receipt/imageFiles';
 import { useAssetAccounts } from '../src/accounts/useAssetAccounts';
 import { applyDigit, type KeypadKey } from '../src/capture/amountInput';
 import { buildEntryDate, yesterday } from '../src/capture/entryDate';
 import { buildManualEntryInput, type CaptureFormState } from '../src/capture/buildManualEntryInput';
 import { useCaptureDefaults } from '../src/capture/useCaptureDefaults';
+import { useCaptureForm } from '../src/capture/useCaptureForm';
+import { attachReceiptImage } from '../src/inbox/updateDraft';
 import { createManualEntry, confirmInboxItem, undoConfirm } from '../src/inbox/createManualEntry';
 import { draftReadiness } from '../src/inbox/readiness';
 import { accountLastUsed, buildMerchantLookup, peekAccountLastUsed, peekMerchantLookup, type MerchantHistory } from '../src/lookup/merchantLookup';
@@ -82,23 +82,13 @@ export default function CaptureScreen() {
   const { data: budgets } = useLiveQuery(db.select().from(referenceBudgets));
   const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
 
-  const [type, setType] = useState<Draft['type']>('withdrawal');
-  const [amount, setAmount] = useState('0');
-  const [currencyCode, setCurrencyCode] = useState<string | null>(null);
-  const [date, setDate] = useState(() => new Date());
-  const [dateMode, setDateMode] = useState<'today' | 'yesterday' | 'custom'>('today');
-  const [merchantRawInput, setMerchantRawInput] = useState('');
-  const [forceNewPayee, setForceNewPayee] = useState(false);
-  const [sourceId, setSourceId] = useState<string | null>(null);
-  const [destinationId, setDestinationId] = useState<string | null>(null);
-  const [categoryName, setCategoryName] = useState<string | null>(null);
-  const [budgetId, setBudgetId] = useState<string | null>(null);
-  const [description, setDescription] = useState('');
-  const [notes, setNotes] = useState('');
-  const [sharedWith, setSharedWith] = useState('');
-  const [foreignAmount, setForeignAmount] = useState('');
-  // A receipt photo for a typed entry: uploaded to FF3 once the transaction exists.
-  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const {
+    type, setType, amount, setAmount, currencyCode, setCurrencyCode, date, setDate, dateMode, setDateMode,
+    merchantRawInput, setMerchantRawInput, forceNewPayee, setForceNewPayee, sourceId, setSourceId,
+    destinationId, setDestinationId, categoryName, setCategoryName, budgetId, setBudgetId,
+    description, setDescription, notes, setNotes, sharedWith, setSharedWith, foreignAmount, setForeignAmount,
+    photoUri, setPhotoUri, markSaved,
+  } = useCaptureForm();
   const attachPhoto = act(tr('capture.receiptPhoto'), async () => {
     const source = await askPhotoSource();
     if (!source) return;
@@ -278,10 +268,7 @@ export default function CaptureScreen() {
       await reportErrors(tr('common.save'), async () => {
         const input = buildManualEntryInput(formState, assetAccounts);
         const { inboxItemId } = await createManualEntry(db, input);
-        if (photoUri) {
-          await db.update(inboxItems).set({ receiptImagePath: persistReceiptImage(photoUri) }).where(eq(inboxItems.id, inboxItemId));
-          setPhotoUri(null);
-        }
+        if (photoUri) await attachReceiptImage(db, inboxItemId, photoUri);
         const label = merchantRawInput || description || tr(labelKeyForType(type));
         haptics.tick();
         if (andConfirm) {
@@ -299,8 +286,7 @@ export default function CaptureScreen() {
         } else {
           setToast(tr('capture.savedLabel', { label }));
         }
-        setAmount('0');
-        setForeignAmount('');
+        markSaved();
       }, setToast);
     } finally {
       setSaving(false);

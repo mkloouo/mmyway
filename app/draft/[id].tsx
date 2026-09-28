@@ -18,8 +18,7 @@ import { inboxItems, outboxOperations, referenceCategories, referenceBudgets, re
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { confirmInboxItem, undoConfirm } from '../../src/inbox/createManualEntry';
 import { askPhotoSource, pickPhoto } from '../../src/receipt/pickPhoto';
-import { persistReceiptImage } from '../../src/receipt/imageFiles';
-import { updateDraft, deleteInboxItem } from '../../src/inbox/updateDraft';
+import { updateDraft, deleteInboxItem, attachReceiptImage } from '../../src/inbox/updateDraft';
 import { draftReadiness } from '../../src/inbox/readiness';
 import { applyDigit, type KeypadKey } from '../../src/capture/amountInput';
 import { buildEntryDate } from '../../src/capture/entryDate';
@@ -59,7 +58,7 @@ export default function DraftScreen() {
     if (!source) return;
     const photo = await pickPhoto(source);
     if (!photo) return;
-    await db.update(inboxItems).set({ receiptImagePath: persistReceiptImage(photo.uri), updatedAt: new Date().toISOString() }).where(eq(inboxItems.id, id));
+    await attachReceiptImage(db, id, photo.uri);
   });
   const cancelSending = act(tr('draft.cancelSending'), async () => {
     if (!pendingCreate) return;

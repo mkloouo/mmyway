@@ -20,15 +20,16 @@ import { applyDigit, type KeypadKey } from '../../src/capture/amountInput';
 import { buildEntryDate } from '../../src/capture/entryDate';
 import { cachedTransactions, inboxItems, outboxOperations, referenceCategories, referenceBudgets, referenceCurrencies } from '../../src/db/schema';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
-import { enqueueOperation, type UpdateTransactionPayload, type DeleteTransactionPayload } from '../../src/sync/outbox';
+import { enqueueOperation, type UpdateTransactionPayload } from '../../src/sync/outbox';
 import { generateId } from '../../src/utils/id';
 import { useQuery } from '@tanstack/react-query';
 import { getClient } from '../../src/api/ff3/session';
 import { fetchJournalAttachments, queuedAttachments } from '../../src/receipt/journalAttachments';
 import type { TransactionSplit } from '../../src/api/ff3/types';
 import { pendingEdits } from '../../src/transactions/pendingEdits';
-import { readPayload, writePayload } from '../../src/sync/payloadJson';
+import { readPayload } from '../../src/sync/payloadJson';
 import { useAction } from '../../src/ui/useAction';
+import { keepMineOverServer, dropQueuedChange } from '../../src/sync/outbox';
 
 const SHARED_TAG_PREFIX = 'mmyway-shared-';
 // The words the rest of the app uses (capture's type chips), not FF3's "Withdrawal"/"Deposit".
@@ -158,13 +159,11 @@ export default function TransactionDetailScreen() {
 
   const keepMine = act(tr('conflict.keepMine'), async () => {
     if (!conflictOp) return;
-    const payload = readPayload<UpdateTransactionPayload | DeleteTransactionPayload>(conflictOp.kind, conflictOp.payloadJson);
-    payload.expectedUpdatedAt = row!.updatedAt;
-    await db.update(outboxOperations).set({ status: 'pending', payloadJson: writePayload(payload), lastError: null }).where(eq(outboxOperations.id, conflictOp.id));
+    await keepMineOverServer(db, conflictOp.id, row!.updatedAt);
   });
   const discardMine = act(tr('conflict.useServer'), async () => {
     if (!conflictOp) return;
-    await db.delete(outboxOperations).where(eq(outboxOperations.id, conflictOp.id));
+    await dropQueuedChange(db, conflictOp.id);
   });
 
   const onSave = act(tr('common.save'), async () => {

@@ -13,13 +13,12 @@ import { currencyOf } from '../src/ui/money';
 import { parseDecimalInput } from '../src/api/ff3/decimal';
 import { relativeTime } from '../src/ui/relativeTime';
 import { haptics } from '../src/ui/haptics';
-import { referenceAccounts, referenceCategories, referenceCurrencies, inboxItems, outboxOperations, appSettings } from '../src/db/schema';
+import { referenceAccounts, referenceCategories, referenceCurrencies, outboxOperations, appSettings } from '../src/db/schema';
 import { hasEnvelopeMarker } from '../src/accounts/envelopeMarker';
 import { useAssetAccounts } from '../src/accounts/useAssetAccounts';
-import { computeSweep, driftByCurrency, type SweepRow, type SweepAdjustment } from '../src/reconcile/sweep';
+import { computeSweep, driftByCurrency, type SweepRow } from '../src/reconcile/sweep';
 import { denominationsFor, totalDenominations } from '../src/reconcile/denominations';
 import { countBlocker, describeCountBlocker, readCountBlocker } from '../src/reconcile/countReadiness';
-import { confirmInboxItem } from '../src/inbox/createManualEntry';
 import {
   getReconcileShortfallAccountId, setReconcileShortfallAccountId,
   getReconcileSurplusAccountId, setReconcileSurplusAccountId,
@@ -27,41 +26,13 @@ import {
   BALANCES_STALE_KEY,
 } from '../src/settings/appSettings';
 import { useSync } from '../src/sync/useSync';
-import { generateId } from '../src/utils/id';
-import type { Draft } from '../src/inbox/draft';
-import { LEDGER_KINDS, type OutboxDb } from '../src/sync/outbox';
-import { writeDraft } from '../src/inbox/draftJson';
+import { LEDGER_KINDS } from '../src/sync/outbox';
 import { TextField } from '../src/ui/TextField';
 import { useAction } from '../src/ui/useAction';
+import { createAndConfirmAdjustment } from '../src/reconcile/adjustment';
 
 const STALE_MS = 24 * 60 * 60 * 1000;
 
-async function createAndConfirmAdjustment(
-  db: OutboxDb,
-  adjustment: SweepAdjustment,
-  settings: { shortfallAccountId: string | null; surplusAccountId: string | null; categoryName: string | null },
-): Promise<void> {
-  const isWithdrawal = adjustment.type === 'withdrawal';
-  const payeeAccountId = isWithdrawal ? settings.shortfallAccountId : settings.surplusAccountId;
-  if (!payeeAccountId) throw new Error('reconcile payee account is not configured');
-
-  const now = new Date().toISOString();
-  const draft: Draft = {
-    type: adjustment.type,
-    amount: adjustment.amount,
-    currencyCode: adjustment.currencyCode,
-    date: now,
-    description: 'Cash count',
-    isNewPayee: false,
-    sourceId: isWithdrawal ? adjustment.accountId : payeeAccountId,
-    destinationId: isWithdrawal ? payeeAccountId : adjustment.accountId,
-    categoryName: settings.categoryName || undefined,
-    extraTags: ['mmyway-reconcile'],
-  };
-  const id = generateId();
-  await db.insert(inboxItems).values({ id, kind: 'manual_entry', state: 'captured', draftJson: writeDraft(draft), createdAt: now, updatedAt: now });
-  await confirmInboxItem(db, id);
-}
 
 export default function CountScreen() {
   const db = useDb();
