@@ -1,0 +1,28 @@
+# Typecheck, lint and test on every push and pull request (review: "nothing checks a push").
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # expo-router writes its route types (.expo/types, expo-env.d.ts) when the dev server
+      # starts; there is no standalone command, so start it briefly. Without them typed routes
+      # silently fall back to plain strings.
+      - name: Generate typed routes
+        run: CI=1 timeout 90 npx expo start --offline || true
+      - run: test -f .expo/types/router.d.ts
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test -- --ci
