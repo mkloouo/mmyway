@@ -26,6 +26,16 @@ module.exports = {
       ],
       '@react-native-community/datetimepicker',
       [
+        // Assets and colours: scripts/generate-icons.py. Backgrounds are src/ui/theme.ts's bg.
+        'expo-splash-screen',
+        {
+          image: './assets/splash/splash-light.png',
+          imageWidth: 180,
+          backgroundColor: '#F5F5F3',
+          dark: { image: './assets/splash/splash-dark.png', backgroundColor: '#0F1013' },
+        },
+      ],
+      [
         'expo-build-properties',
         {
           android: {
@@ -40,7 +50,20 @@ module.exports = {
       ],
       ...(ABI_SPLITS ? ['./plugins/withAbiSplits'] : []),
     ],
+    ios: {
+      bundleIdentifier: IS_DEV ? `${BASE_BUNDLE_ID}.dev` : BASE_BUNDLE_ID,
+      icon: {
+        light: './assets/icon.png',
+        dark: './assets/ios/icon-dark.png',
+        tinted: './assets/ios/icon-tinted.png',
+      },
+    },
     android: {
+      adaptiveIcon: {
+        foregroundImage: './assets/android/adaptive-foreground.png',
+        monochromeImage: './assets/android/adaptive-foreground.png',
+        backgroundColor: '#3746BB',
+      },
       package: IS_DEV ? `${BASE_BUNDLE_ID}.dev` : BASE_BUNDLE_ID,
       permissions: ['android.permission.CAMERA'],
     },
