@@ -644,6 +644,7 @@
     "title": "Транзакція",
     "uploadFailed": "Не вдалося завантажити",
     "uploadFailedWith": "Не вдалося завантажити: {{error}}",
+    "photoLoadFailed": "",
     "uploading": "Завантаження…"
   }
 }
