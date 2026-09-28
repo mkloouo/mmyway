@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Release script: preflight → checks → release commit → local Android build →
 // checksum → annotated tag → (optional) push + GitHub release.
-// Android only, single APK, personal sideload — adapted from what-did-i-eat's
-// scripts/release.mjs, with iOS and ABI splits dropped. `npm run release -- --help` for usage.
+// Android only (per-ABI split APKs + a universal one) — adapted from what-did-i-eat's
+// scripts/release.mjs, with iOS dropped. `npm run release -- --help` for usage.
 
 import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -85,26 +85,27 @@ Modes:
                 3. "release vX.Y.Z" commit: CHANGELOG.md's [Unreleased] section moves
                    under "## [X.Y.Z] - <today>"; version bumped in package.json and
                    app.config.js
-                4. local Android build (eas production profile, single APK)
+                4. local Android build (eas production profile): one APK per ABI plus
+                   a universal APK, checked and renamed
                 5. SHA256SUMS
                 6. an annotated git tag
                 7. publish (see --publish) if this repo has a GitHub remote and an
-                   authenticated \`gh\` — otherwise stops here, APK built and tagged
+                   authenticated \`gh\` — otherwise stops here, APKs built and tagged
                    locally in releases/vX.Y.Z/
               Nothing is pushed until the build has succeeded.
-  --publish   Publish an already-built, --pause'd release: verify the APK against
+  --publish   Publish an already-built, --pause'd release: verify the APKs against
               SHA256SUMS, tag if not already tagged, git push --atomic origin main
-              vX.Y.Z, draft GitHub release with the APK and SHA256SUMS, then mark it
+              vX.Y.Z, draft GitHub release with the APKs and SHA256SUMS, then mark it
               published and latest. Safe to re-run if it failed partway. Requires a
               GitHub remote and an authenticated \`gh\`.
   --abort     Drop the unpushed "release vX.Y.Z" commit (and local tag, if any) so the
               release can be redone after a fix. Refuses once it's on origin.
 
 Options:
-  --pause     Stop after the build, before tagging/pushing, so the APK in
+  --pause     Stop after the build, before tagging/pushing, so the APKs in
               releases/vX.Y.Z/ can be smoke-tested on a device first; then run
               --publish (or, with no GitHub remote, there's nothing further to run —
-              the APK is already there to install).
+              the APKs are already there to install).
   -h, --help  Show this help.
 
 Release notes:
@@ -112,7 +113,8 @@ Release notes:
   verbatim. Write [Unreleased] for the person installing this, since it becomes that.
 
 Output:
-  releases/vX.Y.Z/ (gitignored): ${APP}-vX.Y.Z.apk; SHA256SUMS; release-notes.md.
+  releases/vX.Y.Z/ (gitignored): ${APP}-vX.Y.Z-<abi>.apk for arm64-v8a, armeabi-v7a,
+  x86, x86_64 and universal; SHA256SUMS; release-notes.md.
 `;
 
 const argv = process.argv.slice(2);
@@ -136,7 +138,6 @@ if (!version) fail('usage: npm run release -- X.Y.Z [options] — see `npm run r
 const tag = `v${version}`;
 const outDir = path.join('releases', tag);
 const releaseSubject = `release ${tag}`;
-const apkPath = path.join(outDir, `${APP}-${tag}.apk`);
 
 const headSubject = () => out('git', ['log', '-1', '--format=%s']);
 const readPkgVersion = () => JSON.parse(fs.readFileSync('package.json', 'utf8')).version;
@@ -207,17 +208,50 @@ function releaseCommit() {
 
 // ---------- phase 4: build ----------
 
+// With ABI splits on (eas.json's production profile), a local build writes a .tar.gz of
+// every APK rather than one .apk.
 function buildAndroid() {
-  step('Android build (production, local, single APK)');
-  run('npx', ['eas-cli', 'build', '--platform', 'android', '--profile', 'production', '--local', '--non-interactive', '--output', apkPath]);
-  console.log(`  ${apkPath}`);
+  step('Android build (production, local)');
+  const archive = path.join(outDir, 'android-build.tar.gz');
+  run('npx', ['eas-cli', 'build', '--platform', 'android', '--profile', 'production', '--local', '--non-interactive', '--output', archive]);
+
+  const raw = path.join(outDir, 'android-raw');
+  fs.mkdirSync(raw, { recursive: true });
+  run('tar', ['-xzf', archive, '-C', raw]);
+
+  const apks = new Map();
+  for (const file of fs.readdirSync(raw, { recursive: true })) {
+    const abi = /(?:^|\/)app-(.+)-release\.apk$/.exec(file)?.[1];
+    if (abi) apks.set(abi, path.join(raw, file));
+  }
+
+  // The universal APK carries every ABI the build targets; there must be
+  // exactly one split APK per ABI, each holding only its own native libs.
+  const libAbis = (apk) => new Set(out('unzip', ['-Z1', apk]).split('\n').map((e) => /^lib\/([^/]+)\//.exec(e)?.[1]).filter(Boolean));
+  if (!apks.has('universal')) fail(`no universal APK in the build output (found: ${[...apks.keys()].join(', ') || 'nothing'})`);
+  const abis = [...libAbis(apks.get('universal'))].sort();
+  const splits = [...apks.keys()].filter((k) => k !== 'universal').sort();
+  if (abis.length === 0 || abis.join() !== splits.join()) {
+    fail(`split APKs [${splits}] don't match the universal APK's ABIs [${abis}]`);
+  }
+  for (const abi of splits) {
+    const inside = [...libAbis(apks.get(abi))].sort();
+    if (inside.length !== 1 || inside[0] !== abi) fail(`app-${abi}-release.apk contains native libs for [${inside}]`);
+  }
+
+  for (const [abi, file] of apks) fs.renameSync(file, path.join(outDir, `${APP}-${tag}-${abi}.apk`));
+  fs.rmSync(raw, { recursive: true });
+  fs.rmSync(archive);
+  console.log(`  ${apks.size} APKs: ${splits.join(', ')} + universal`);
 }
+
+const assetFiles = () => fs.readdirSync(outDir).filter((f) => f.endsWith('.apk')).sort();
 
 function writeChecksums() {
   step('SHA256SUMS');
-  const line = `${sha256(apkPath)}  ${path.basename(apkPath)}`;
-  fs.writeFileSync(path.join(outDir, 'SHA256SUMS'), line + '\n');
-  console.log(`  ${line}`);
+  const lines = assetFiles().map((f) => `${sha256(path.join(outDir, f))}  ${f}`);
+  fs.writeFileSync(path.join(outDir, 'SHA256SUMS'), lines.join('\n') + '\n');
+  console.log(lines.map((l) => `  ${l}`).join('\n'));
 }
 
 // ---------- phase 5: publish ----------
@@ -226,15 +260,22 @@ function verifyArtifacts() {
   step('Verify artifacts');
   const sums = path.join(outDir, 'SHA256SUMS');
   if (!fs.existsSync(sums)) fail(`${sums} missing — run the build phase first`);
-  if (!fs.existsSync(apkPath)) fail(`${apkPath} missing`);
-  const [hash] = fs.readFileSync(sums, 'utf8').trim().split(/\s+/);
-  if (sha256(apkPath) !== hash) fail(`checksum mismatch for ${path.basename(apkPath)}`);
+  const listed = fs.readFileSync(sums, 'utf8').trim().split('\n').map((l) => l.split(/\s+/));
+  const files = assetFiles();
+  if (listed.map(([, f]) => f).sort().join() !== files.join()) fail('SHA256SUMS does not match the files in ' + outDir);
+  for (const [hash, f] of listed) if (sha256(path.join(outDir, f)) !== hash) fail(`checksum mismatch for ${f}`);
+  if (!files.some((f) => f.endsWith('-universal.apk'))) fail('universal APK missing');
 }
 
 function releaseNotes() {
   const body = changelogSection(fs.readFileSync('CHANGELOG.md', 'utf8'), version)?.[1].trim();
   if (!body) fail(`CHANGELOG.md has no [${version}] section to use as release notes`);
-  const footer = ['', '---', `**Android:** \`${path.basename(apkPath)}\` · \`SHA256SUMS\` to verify the download.`].join('\n');
+  const apk = (abi) => `\`${APP}-${tag}-${abi}.apk\``;
+  const footer = [
+    '',
+    '---',
+    `**Android:** most phones → ${apk('arm64-v8a')} · older 32-bit phones → ${apk('armeabi-v7a')} · not sure → ${apk('universal')} (x86/x86_64 are for emulators). \`SHA256SUMS\` to verify downloads.`,
+  ].join('\n');
   const file = path.join(outDir, 'release-notes.md');
   fs.writeFileSync(file, body + '\n' + footer + '\n');
   return file;
@@ -258,7 +299,7 @@ function publish() {
   ensureTag();
 
   if (!canPublishToGitHub()) {
-    console.log(`\n✔ Tagged ${tag}. No GitHub remote/auth found — APK stays local at ${outDir}/.`);
+    console.log(`\n✔ Tagged ${tag}. No GitHub remote/auth found — APKs stay local at ${outDir}/.`);
     return;
   }
 
@@ -268,7 +309,7 @@ function publish() {
   run('git', ['push', '--atomic', 'origin', 'main', `refs/tags/${tag}`]);
 
   step('GitHub release (draft → published)');
-  const assets = [apkPath, path.join(outDir, 'SHA256SUMS')];
+  const assets = [...assetFiles(), 'SHA256SUMS'].map((f) => path.join(outDir, f));
   const notes = releaseNotes();
   if (succeeds('gh', ['release', 'view', tag])) {
     // Re-run after a failed upload: refresh the draft's assets and notes.
