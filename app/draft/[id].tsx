@@ -32,12 +32,14 @@ import { navigateOnce } from '../../src/ui/navigateOnce';
 import { missingLabel } from '../../src/ui/readinessLabel';
 import { appLocale } from '../../src/i18n';
 import { readDraft } from '../../src/inbox/draftJson';
+import { useAction } from '../../src/ui/useAction';
 
 export default function DraftScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const db = useDb();
   const t = useTheme();
   const { t: tr } = useTranslation();
+  const act = useAction();
 
   const { data: rows } = useLiveQuery(db.select().from(inboxItems).where(eq(inboxItems.id, id)));
   const assetAccounts = useAssetAccounts() ?? [];
@@ -52,20 +54,20 @@ export default function DraftScreen() {
   const pendingCreate = (ops ?? []).find((op) => op.kind === 'create_transaction' && op.status === 'pending') ?? null;
   // Any entry can carry a photo: it is uploaded to FF3 right after the transaction is created
   // (src/sync/outbox.ts queues the upload when the create lands).
-  async function attachPhoto() {
+  const attachPhoto = act(tr('capture.receiptPhoto'), async () => {
     const source = await askPhotoSource();
     if (!source) return;
     const photo = await pickPhoto(source);
     if (!photo) return;
     await db.update(inboxItems).set({ receiptImagePath: persistReceiptImage(photo.uri), updatedAt: new Date().toISOString() }).where(eq(inboxItems.id, id));
-  }
-  async function cancelSending() {
+  });
+  const cancelSending = act(tr('draft.cancelSending'), async () => {
     if (!pendingCreate) return;
     // A receipt goes back to `parsed`: as `captured` the next sync would re-read the photo
     // and overwrite the reviewed draft.
     const outcome = await undoConfirm(db, id, { outboxOperationId: pendingCreate.id, previousState: row?.kind === 'receipt' ? 'parsed' : 'captured' });
     if (outcome === 'already_sent') Alert.alert(tr('inbox.alreadySent'), tr('draft.alreadySentBody'));
-  }
+  });
   const draft: Draft | null = row ? readDraft(row.draftJson) : null;
 
   const [histories, setHistories] = useState<MerchantHistory[]>([]);
@@ -103,7 +105,7 @@ export default function DraftScreen() {
 
   // Replacing a payee name that didn't come from FF3 (what a receipt read, a name typed as new,
   // or an alias's earlier guess) teaches an alias, so that text books to this payee next time.
-  async function choosePayee(d: Draft, name: string, isNew: boolean) {
+  const choosePayee = act(tr('capture.payee'), async (d: Draft, name: string, isNew: boolean) => {
     const raw = d.payeeReadAs ?? (d.isNewPayee ? payeeName : undefined);
     const previous = raw ? await matchAlias(db, PAYEE, raw) : null;
     const learned = raw ? await rememberPayeeAlias(db, raw, name) : false;
@@ -120,7 +122,7 @@ export default function DraftScreen() {
         else void removeAlias(db, PAYEE, raw);
       },
     });
-  }
+  });
 
   function handleDetailChange(change: Partial<DetailRowsValue>) {
     const draftPatch: Partial<Draft> = {};
@@ -143,7 +145,7 @@ export default function DraftScreen() {
     });
   }
 
-  async function handleConfirm() {
+  const handleConfirm = act(tr('inbox.confirm'), async () => {
     if (confirming || !readiness.ready) {
       if (!readiness.ready) haptics.warn();
       return;
@@ -156,7 +158,7 @@ export default function DraftScreen() {
     } finally {
       setConfirming(false);
     }
-  }
+  });
 
   function handleDeleteDraft() {
     setMenuOpen(false);

@@ -15,11 +15,13 @@ import { aliases } from '../../src/db/schema';
 import { upsertAlias, removeAlias, PAYEE } from '../../src/lookup/aliases';
 import { exportAliasesJson, importAliasesJson } from '../../src/lookup/aliasTransfer';
 import { TextField } from '../../src/ui/TextField';
+import { useAction } from '../../src/ui/useAction';
 
 export default function AliasesScreen() {
   const db = useDb();
   const t = useTheme();
   const { t: tr } = useTranslation();
+  const act = useAction();
   const { data } = useLiveQuery(db.select().from(aliases).where(eq(aliases.kind, PAYEE)));
 
   const [search, setSearch] = useState('');
@@ -40,11 +42,11 @@ export default function AliasesScreen() {
     setAddSheetOpen(true);
   }
 
-  async function saveAlias() {
+  const saveAlias = act(tr('common.save'), async () => {
     if (!rawInput.trim() || !pickedTarget) return;
     await upsertAlias(db, { kind: PAYEE, rawInput: rawInput.trim(), targetId: pickedTarget.targetId, targetName: pickedTarget.targetName });
     setAddSheetOpen(false);
-  }
+  });
 
   function confirmRemove(row: { kind: string; rawInput: string; targetName: string }) {
     Alert.alert(tr('aliases.removeTitle', { raw: row.rawInput }), tr('aliases.removeBody', { target: row.targetName }), [
@@ -53,12 +55,12 @@ export default function AliasesScreen() {
     ]);
   }
 
-  async function onExport() {
+  const onExport = act(tr('aliases.exportOrImport'), async () => {
     setTransferJson(await exportAliasesJson(db));
     setTransferSheetOpen(true);
-  }
+  });
 
-  async function onImport() {
+  const onImport = act(tr('aliases.importButton'), async () => {
     if (!transferJson) return;
     const result = await importAliasesJson(db, transferJson);
     Alert.alert(
@@ -67,7 +69,7 @@ export default function AliasesScreen() {
         + (result.skipped > 0 ? ` ${tr('aliases.importSkipped', { count: result.skipped })}` : ''),
     );
     setTransferSheetOpen(false);
-  }
+  });
 
   return (
     <Screen bottom>

@@ -28,6 +28,7 @@ import { fetchJournalAttachments, queuedAttachments } from '../../src/receipt/jo
 import type { TransactionSplit } from '../../src/api/ff3/types';
 import { pendingEdits } from '../../src/transactions/pendingEdits';
 import { readPayload, writePayload } from '../../src/sync/payloadJson';
+import { useAction } from '../../src/ui/useAction';
 
 const SHARED_TAG_PREFIX = 'mmyway-shared-';
 // The words the rest of the app uses (capture's type chips), not FF3's "Withdrawal"/"Deposit".
@@ -48,6 +49,7 @@ export default function TransactionDetailScreen() {
   const db = useDb();
   const t = useTheme();
   const { t: tr } = useTranslation();
+  const act = useAction();
 
   const { data: rows } = useLiveQuery(db.select().from(cachedTransactions).where(eq(cachedTransactions.groupId, groupId)));
   // The kinds that can touch one transaction; account edits never do.
@@ -154,18 +156,18 @@ export default function TransactionDetailScreen() {
     });
   }
 
-  async function keepMine() {
+  const keepMine = act(tr('conflict.keepMine'), async () => {
     if (!conflictOp) return;
     const payload = readPayload<UpdateTransactionPayload | DeleteTransactionPayload>(conflictOp.kind, conflictOp.payloadJson);
     payload.expectedUpdatedAt = row!.updatedAt;
     await db.update(outboxOperations).set({ status: 'pending', payloadJson: writePayload(payload), lastError: null }).where(eq(outboxOperations.id, conflictOp.id));
-  }
-  async function discardMine() {
+  });
+  const discardMine = act(tr('conflict.useServer'), async () => {
     if (!conflictOp) return;
     await db.delete(outboxOperations).where(eq(outboxOperations.id, conflictOp.id));
-  }
+  });
 
-  async function onSave() {
+  const onSave = act(tr('common.save'), async () => {
     if (Object.keys(changes).length === 0) {
       router.back();
       return;
@@ -181,7 +183,7 @@ export default function TransactionDetailScreen() {
     } finally {
       setSaving(false);
     }
-  }
+  });
 
   function onDelete() {
     setMenuOpen(false);

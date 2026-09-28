@@ -32,6 +32,7 @@ import type { Draft } from '../src/inbox/draft';
 import { LEDGER_KINDS, type OutboxDb } from '../src/sync/outbox';
 import { writeDraft } from '../src/inbox/draftJson';
 import { TextField } from '../src/ui/TextField';
+import { useAction } from '../src/ui/useAction';
 
 const STALE_MS = 24 * 60 * 60 * 1000;
 
@@ -66,6 +67,7 @@ export default function CountScreen() {
   const db = useDb();
   const t = useTheme();
   const { t: tr } = useTranslation();
+  const act = useAction();
   // Edge to edge, the window isn't resized for the keyboard; the lower envelopes need the room.
   const keyboardHeight = useKeyboardHeight();
 
@@ -134,7 +136,7 @@ export default function CountScreen() {
     .sort()[0] ?? null;
   const stale = oldestBalanceDate ? new Date().getTime() - new Date(oldestBalanceDate).getTime() > STALE_MS : true;
 
-  async function confirmReview() {
+  const confirmReview = act(tr('inbox.confirm'), async () => {
     if (confirming) return;
     setConfirming(true);
     try {
@@ -157,7 +159,7 @@ export default function CountScreen() {
     } finally {
       setConfirming(false);
     }
-  }
+  });
 
   function openDenomPad(accountId: string) {
     setDenomAccountId(accountId);

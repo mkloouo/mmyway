@@ -37,6 +37,7 @@ import type { Draft } from '../src/inbox/draft';
 import { needsLabel } from '../src/ui/readinessLabel';
 import { TextField } from '../src/ui/TextField';
 import { PickerSheet } from '../src/ui/PickerSheet';
+import { useAction } from '../src/ui/useAction';
 
 // A ScrollView defaults to flexGrow/flexShrink 1, so a row of chips would otherwise stretch or
 // be clipped as it competes with the keypad below it for height.
@@ -72,6 +73,7 @@ export default function CaptureScreen() {
   const db = useDb();
   const t = useTheme();
   const { t: tr } = useTranslation();
+  const act = useAction();
   const { defaultAccountId, defaultCurrencyCode } = useCaptureDefaults();
 
   const assetAccountRows = useAssetAccounts();
@@ -97,12 +99,12 @@ export default function CaptureScreen() {
   const [foreignAmount, setForeignAmount] = useState('');
   // A receipt photo for a typed entry: uploaded to FF3 once the transaction exists.
   const [photoUri, setPhotoUri] = useState<string | null>(null);
-  async function attachPhoto() {
+  const attachPhoto = act(tr('capture.receiptPhoto'), async () => {
     const source = await askPhotoSource();
     if (!source) return;
     const photo = await pickPhoto(source);
     if (photo) setPhotoUri(photo.uri);
-  }
+  });
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useToast();
   const [snackbar, setSnackbar] = useState<SnackbarEntry | null>(null);

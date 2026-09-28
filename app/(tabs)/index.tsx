@@ -38,6 +38,7 @@ import { needsLabel } from '../../src/ui/readinessLabel';
 import { appLocale } from '../../src/i18n';
 import { readDraft, readReviewJournal } from '../../src/inbox/draftJson';
 import { TextField } from '../../src/ui/TextField';
+import { useAction } from '../../src/ui/useAction';
 
 type SectionKey = 'attention' | 'confirm' | 'review';
 type SectionRow = AttentionItem | InboxItemRow;
@@ -242,6 +243,7 @@ export default function InboxScreen() {
   const db = useDb();
   const t = useTheme();
   const { t: tr } = useTranslation();
+  const act = useAction();
   const { needsAttention, toConfirm, toReview } = useInboxSections();
   // Only what the pill counts — not every payload in the queue.
   const { data: outbox } = useLiveQuery(db.select({ id: outboxOperations.id }).from(outboxOperations).where(inArray(outboxOperations.status, ['pending', 'failed'])));
@@ -366,18 +368,18 @@ export default function InboxScreen() {
     showConfirmedSnackbar(batch);
   }
 
-  async function retryError(id: string) {
+  const retryError = act(tr('inbox.retry'), async (id: string) => {
     await db.update(inboxItems)
       .set({ state: transition('error', 'retry'), errorMessage: null, updatedAt: new Date().toISOString() })
       .where(eq(inboxItems.id, id));
     // A retried receipt is re-read by the sync; don't make it wait for the next app resume.
     requestSync();
-  }
-  async function discardError(id: string) {
+  });
+  const discardError = act(tr('inbox.discard'), async (id: string) => {
     if (!await confirmDestructive(tr('inbox.discardItemTitle'), tr('inbox.discard'), tr('inbox.discardItemBody'))) return;
     await deleteInboxItem(db, id);
-  }
-  async function deleteSelected() {
+  });
+  function deleteSelected() {
     const ids = [...selectedIds];
     setSelectedIds(new Set());
     deleteWithUndo(ids);
@@ -392,18 +394,18 @@ export default function InboxScreen() {
     }, (message) => setSnackbar({ id: generateId(), message }));
     if (batch.length > 0) { haptics.tick(); showConfirmedSnackbar(batch); }
   }
-  async function discardReview(id: string) {
+  const discardReview = act(tr('common.delete'), async (id: string) => {
     if (!await confirmDestructive(tr('inbox.deleteReviewTitle'), tr('common.delete'), tr('inbox.deleteReviewBody'))) return;
     await deleteRecurringReview(db, id);
-  }
-  async function retryOpNow(opId: string) {
+  });
+  const retryOpNow = act(tr('inbox.retryNow'), async (opId: string) => {
     await db.update(outboxOperations).set({ status: 'pending', lastError: null, nextAttemptAt: null }).where(eq(outboxOperations.id, opId));
     syncNow();
-  }
-  async function discardOp(opId: string) {
+  });
+  const discardOp = act(tr('inbox.discard'), async (opId: string) => {
     if (!await confirmDestructive(tr('inbox.discardChangeTitle'), tr('inbox.discard'), tr('inbox.discardChangeBody'))) return;
     await discardOperation(db, opId);
-  }
+  });
   function resolveConflict(groupId: string) {
     navigateOnce(`/transactions/${groupId}`);
   }

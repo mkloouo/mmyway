@@ -33,6 +33,7 @@ import {
 import type { AppLocale } from '../../src/i18n';
 import { TextField } from '../../src/ui/TextField';
 import { PickerSheet } from '../../src/ui/PickerSheet';
+import { useAction } from '../../src/ui/useAction';
 
 const SIGN_IN_ERROR_KEYS: Record<AuthErrorReason, string> = {
   invalid_host: 'settings.signInErrors.invalidHost',
@@ -61,6 +62,7 @@ export default function SettingsScreen() {
   const { credentialsChanged } = useSync();
   const t = useTheme();
   const { t: tr } = useTranslation();
+  const act = useAction();
 
   const allAssetAccounts = useAssetAccounts({ includeInactive: true }) ?? [];
   const assetAccounts = useAssetAccounts() ?? [];
@@ -135,7 +137,7 @@ export default function SettingsScreen() {
     }
   }
 
-  async function onSignIn() {
+  const onSignIn = act(tr('settings.signIn'), async () => {
     if (signingIn) return;
     setSigningIn(true);
     try {
@@ -163,9 +165,9 @@ export default function SettingsScreen() {
     } finally {
       setSigningIn(false);
     }
-  }
+  });
 
-  async function onSignOut() {
+  const onSignOut = act(tr('settings.signOut'), async () => {
     const queued = await queuedOperationCount(db);
     if (queued > 0) {
       Alert.alert(tr('settings.cantSignOutYet'), describeQueuedOperations(queued));
@@ -188,7 +190,7 @@ export default function SettingsScreen() {
         },
       },
     ]);
-  }
+  });
 
   function accountLabel(id: string | null): string {
     if (!id) return tr('settings.none');

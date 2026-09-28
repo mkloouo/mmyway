@@ -30,6 +30,7 @@ import { inArray, ne } from 'drizzle-orm';
 import { haptics } from '../../src/ui/haptics';
 import { pendingEdits, applyPendingEdit, type PendingEditStatus } from '../../src/transactions/pendingEdits';
 import { readPayload } from '../../src/sync/payloadJson';
+import { useAction } from '../../src/ui/useAction';
 
 const FILTERS: { labelKey: string; type: ActivityTypeFilter }[] = [
   { labelKey: 'activity.filterAll', type: 'all' },
@@ -117,6 +118,7 @@ export default function ActivityScreen() {
   const db = useDb();
   const t = useTheme();
   const { t: tr } = useTranslation();
+  const act = useAction();
   const navigation = useNavigation();
   const listRef = useRef<SectionList<ActivityItem, DisplaySection>>(null);
 
@@ -155,7 +157,7 @@ export default function ActivityScreen() {
       return next;
     });
   }, []);
-  async function deleteSelected() {
+  const deleteSelected = act(tr('common.delete'), async () => {
     const ids = [...selectedIds];
     if (!await confirmDestructive(tr('activity.deleteTitle', { count: ids.length }), tr('common.delete'), tr('activity.deleteBody'))) return;
     const rows = await db.select({ groupId: cachedTransactions.groupId, updatedAt: cachedTransactions.updatedAt })
@@ -164,7 +166,7 @@ export default function ActivityScreen() {
       await enqueueOperation(db, { id: generateId(), kind: 'delete_transaction', payload: { groupId: row.groupId, expectedUpdatedAt: row.updatedAt } });
     }
     setSelectedIds(new Set());
-  }
+  });
 
   // A FF3 search result isn't in the local cache; store the copy we already have, then open it.
   const openRemote = useCallback(async (item: RemoteResultRow) => {

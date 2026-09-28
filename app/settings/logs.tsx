@@ -7,22 +7,24 @@ import { useTheme } from '../../src/ui/theme';
 import { Screen, AppBar, Button, EmptyState } from '../../src/ui/components';
 import { confirmDestructive } from '../../src/ui/confirm';
 import { readLog, clearLog, shareableLog } from '../../src/utils/log';
+import { useAction } from '../../src/ui/useAction';
 
 export default function LogsScreen() {
   const t = useTheme();
   const { t: tr } = useTranslation();
+  const act = useAction();
   const [lines, setLines] = useState<string[]>(() => [...readLog()].reverse());
 
-  async function shareLog() {
+  const shareLog = act(tr('logs.share'), async () => {
     if (lines.length === 0) return;
     await Share.share({ message: shareableLog([...lines].reverse()) });
-  }
+  });
 
-  async function onClear() {
+  const onClear = act(tr('logs.clear'), async () => {
     if (!await confirmDestructive(tr('logs.clearTitle'), tr('logs.clear'))) return;
     clearLog();
     setLines([]);
-  }
+  });
 
   return (
     <Screen bottom>
