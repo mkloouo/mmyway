@@ -1,5 +1,6 @@
 // A split transaction as the detail screen edits it: every split, plus the fields every split of a
 // group must share (FF3 rejects a withdrawal whose splits leave from different accounts). Pure.
+import { sendableNotes } from '../transactions/editDiff';
 import type { TransactionSplit } from '../api/ff3/types';
 import type { CachedSplit } from '../transactions/splitsJson';
 import type { QueuedSplit } from '../transactions/pendingEdits';
@@ -108,7 +109,8 @@ export function toPayloadSplits(
       // Empty clears it in FF3; left out would keep what the split had.
       category_name: s.categoryName ?? '',
       budget_id: s.budgetId ?? undefined,
-      notes: s.notes ?? '',
+      // Null, never '': FF3 rejects a note of length 0, and null clears one.
+      notes: sendableNotes(s.notes),
       tags: s.tags,
     } as TransactionSplit & { transaction_journal_id?: string };
     if (s.journalId) out.transaction_journal_id = s.journalId;
