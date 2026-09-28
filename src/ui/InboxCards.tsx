@@ -1,10 +1,12 @@
-// The Inbox's three card kinds (design §6.1): a draft to confirm, a recurring transaction to
-// review, and something that needs attention (an errored item or a failed queued change).
+// The Inbox's card kinds (design §6.1): a draft to confirm, a recurring transaction to review,
+// something that needs attention (an errored item or a failed queued change), and a change still
+// waiting in the queue.
 import { useState } from 'react';
 import { Animated, Pressable, Text, View } from 'react-native';
 import { usePopOnChange } from './feedback';
 import { useTranslation } from 'react-i18next';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import type { Href } from 'expo-router';
 import { useTheme } from './theme';
 import { Card, Chip, Button, Money, Pulse } from './components';
 import { SwipeableCard } from './SwipeableCard';
@@ -12,7 +14,7 @@ import { haptics } from './haptics';
 import { currencyOf } from './money';
 import { categoryColor } from './categoryColor';
 import { needsLabel } from './readinessLabel';
-import type { AttentionItem, InboxItemRow } from '../inbox/useInboxSections';
+import type { AttentionItem, InboxItemRow, QueuedChange } from '../inbox/useInboxSections';
 import { draftReadiness } from '../inbox/readiness';
 import type { Draft } from '../inbox/draft';
 import { readDraft, readReviewJournal } from '../inbox/draftJson';
@@ -190,8 +192,29 @@ export function ReviewCard({
   );
 }
 
+/** A change waiting in the queue: what it is, what it changes, and a tap to open that. */
+export function QueuedCard({ change, onOpen }: { change: QueuedChange; onOpen: (route: Href) => void }) {
+  const t = useTheme();
+  const { t: tr } = useTranslation();
+  const { op, info } = change;
+  const sending = op.status === 'in_flight';
+  return (
+    <Card style={{ marginHorizontal: t.space.lg, marginBottom: t.space.sm }} onPress={info.route ? () => onOpen(info.route!) : undefined}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
+        <Ionicons name={sending ? 'cloud-upload-outline' : 'time-outline'} size={16} color={t.color.textMuted} />
+        <Text style={[t.type.label, { color: t.color.textMuted, flex: 1 }]} numberOfLines={1}>
+          {tr(OP_KIND_KEYS[op.kind] ?? 'inbox.opKind.other')}
+        </Text>
+        <Chip label={sending ? tr('inbox.queueSending') : tr('inbox.queueWaiting')} tone={sending ? undefined : 'warn'} />
+        {!!info.route && <Ionicons name="chevron-forward" size={18} color={t.color.textFaint} />}
+      </View>
+      {!!info.subject && <Text style={[t.type.body, { color: t.color.text, marginTop: t.space.xs }]} numberOfLines={1}>{info.subject}</Text>}
+    </Card>
+  );
+}
+
 export function AttentionCard({
-  entry, onRetryError, onDiscardError, onRetryOp, onDiscardOp, onResolveConflict,
+  entry, onRetryError, onDiscardError, onRetryOp, onDiscardOp, onResolveConflict, onOpen,
 }: {
   entry: AttentionItem;
   onRetryError: (id: string) => void;
@@ -199,6 +222,8 @@ export function AttentionCard({
   onRetryOp: (id: string) => void;
   onDiscardOp: (id: string) => void;
   onResolveConflict: (groupId: string) => void;
+  /** Opens what a failed queued change was changing (its draft, transaction, account, …). */
+  onOpen: (route: Href) => void;
 }) {
   const t = useTheme();
   const { t: tr } = useTranslation();
@@ -219,16 +244,20 @@ export function AttentionCard({
     );
   }
 
-  const op = entry.op;
+  const { op, info } = entry;
   const isConflict = op.lastError === 'conflict';
   let groupId: string | undefined;
   try { groupId = JSON.parse(op.payloadJson).groupId; } catch { groupId = undefined; }
 
   return (
-    <Card style={cardStyle}>
-      <Text style={[t.type.heading, { color: t.color.danger }]}>
-        ✕ {isConflict ? tr('inbox.conflict') : tr('inbox.operationFailed', { kind: tr(OP_KIND_KEYS[op.kind] ?? 'inbox.opKind.other') })}
-      </Text>
+    <Card style={cardStyle} onPress={info.route ? () => onOpen(info.route!) : undefined}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
+        <Text style={[t.type.heading, { color: t.color.danger, flex: 1 }]}>
+          ✕ {isConflict ? tr('inbox.conflict') : tr('inbox.operationFailed', { kind: tr(OP_KIND_KEYS[op.kind] ?? 'inbox.opKind.other') })}
+        </Text>
+        {!!info.route && <Ionicons name="chevron-forward" size={18} color={t.color.textFaint} />}
+      </View>
+      {!!info.subject && <Text style={[t.type.body, { color: t.color.text, marginTop: t.space.xs }]} numberOfLines={1}>{info.subject}</Text>}
       <ErrorText message={op.lastError ?? tr('inbox.unknownError')} />
       <View style={{ flexDirection: 'row', gap: t.space.sm, marginTop: t.space.sm }}>
         {isConflict && groupId ? (

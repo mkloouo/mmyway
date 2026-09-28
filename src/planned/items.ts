@@ -42,5 +42,11 @@ export function plannedItems(objects: readonly PlannedObject[], outbox: readonly
     if (index >= 0) list = list.map((item, i) => (i === index ? { ...item, fields: save.fields, queued: true } : item));
     else list = [...list, { key: save.key, fields: save.fields, group: null, queued: true }];
   }
-  return list.sort(byDate);
+  // A planned transaction is the whole trio. A subscription, rule or recurring transaction on its
+  // own (or a pair) is only in the detailed view — unless a save here is on its way to complete it.
+  return list.filter((item) => item.queued || !item.group || isComplete(item.group)).sort(byDate);
+}
+
+function isComplete(group: PlannedGroup): boolean {
+  return !!group.bill && !!group.rule && !!group.recurrence;
 }

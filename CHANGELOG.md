@@ -22,6 +22,9 @@
 - A split transaction lists its splits under its row: category (or description) and amount for
   the first three, and how many more there are.
 - Account balances roll to their new value after a sync instead of jumping.
+- Switching between accounts shows their transactions faster.
+- Holding an account card no longer thickens its border; the card still pops and the phone ticks
+  when its page opens.
 - Menu actions (Duplicate, Delete, Count cash, Sign out, Diagnostics, Open in Activity) show an
   icon for what they do instead of a dash.
 - **Duplicate** on a transaction makes an Inbox draft with exactly the same data — date, splits,
@@ -29,11 +32,16 @@
 
 ### Inbox
 - A change that failed to reach Firefly III says what it was ("Saving a planned transaction
-  failed") and its error can be tapped open to read in full.
+  failed") and what it was for (the transaction, account or planned transaction, by name), and
+  its error can be tapped open to read in full. Tap the card to open what it was changing.
+- A new **Queued** section lists every change still waiting to reach Firefly III — new
+  transactions, edits, deletes, receipt uploads, recurring approvals, account changes and planned
+  transactions — so the count on the sync pill matches what you see. Tap one to open it.
 
 ### Planned
-- A new **Planned** tab. The simple view lists each planned payment once, with its subscription,
-  rule and recurring transaction edited together: name, from and to, exact amount and currency
+- A new **Planned** tab. The simple view lists each planned payment — a subscription, rule and
+  recurring transaction sharing one name — once, with its category, and edits the three together:
+  name, from and to, exact amount and currency
   (Spotify's 7.99 USD from a PLN account), note, whether and how often it repeats, the date it's
   planned on, category and tags. Add one with **+**; delete it from its page. Picking a payee
   fills in its usual category and paying account, unless you've already chosen them.

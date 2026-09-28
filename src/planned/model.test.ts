@@ -88,4 +88,15 @@ describe('planned model', () => {
     ], '2026-09-28');
     expect(deleted).toHaveLength(0);
   });
+
+  it('lists only complete trios, unless a queued save is completing one', () => {
+    expect(plannedItems([bill, rule, recurrence], [], '2026-09-28')).toHaveLength(1);
+    expect(plannedItems([bill, rule], [], '2026-09-28')).toHaveLength(0);
+    expect(plannedItems([recurrence], [], '2026-09-28')).toHaveLength(0);
+    const fields = fieldsOf(groupPlanned([bill])[0]!, '2026-09-28');
+    const saving = plannedItems([bill], [
+      { kind: 'save_planned', sequence: 1, payloadJson: JSON.stringify({ key: 'spotify', billId: '1', fields }) },
+    ], '2026-09-28');
+    expect(saving).toHaveLength(1);
+  });
 });

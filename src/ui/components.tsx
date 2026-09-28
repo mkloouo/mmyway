@@ -10,7 +10,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTheme, hitSize, type Theme } from './theme';
 import { formatMoney, signFor, type DisplayCurrency } from './money';
-import { useHoldRing } from './feedback';
+import { usePop } from './feedback';
+import { haptics } from './haptics';
 
 /**
  * A tab screen leaves the bottom edge to the tab bar. A modal screen (capture, count, a draft)
@@ -106,7 +107,7 @@ export function SectionHeader({ title, action }: { title: string; action?: React
 const DEFAULT_LONG_PRESS_MS = 500; // React Native's own default
 
 export function Card({
-  children, style, onPress, onLongPress, delayLongPress = DEFAULT_LONG_PRESS_MS, longPressRing, selected, accessibilityHint,
+  children, style, onPress, onLongPress, delayLongPress = DEFAULT_LONG_PRESS_MS, longPressPop, selected, accessibilityHint,
 }: {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
@@ -115,16 +116,16 @@ export function Card({
   onLongPress?: () => void;
   delayLongPress?: number;
   /**
-   * The hold feedback from src/ui/feedback.ts (useHoldRing): an accent border grows while the
-   * card is held; when the long press fires it's full, with the tick haptic and a pop.
+   * When the long press fires, the tick haptic and a pop (src/ui/feedback.ts). There used to be
+   * an accent border growing while the card was held; it read as the card turning bold.
    */
-  longPressRing?: boolean;
+  longPressPop?: boolean;
   selected?: boolean;
   accessibilityHint?: string;
 }) {
   const t = useTheme();
-  const ring = !!longPressRing && !!onLongPress;
-  const hold = useHoldRing(delayLongPress);
+  const popOnHold = !!longPressPop && !!onLongPress;
+  const { pop, popStyle } = usePop(1.04);
 
   const body = (
     <View
@@ -135,33 +136,19 @@ export function Card({
       ]}
     >
       {children}
-      {ring && (
-        <Animated.View
-          pointerEvents="none"
-          style={[StyleSheet.absoluteFill, {
-            borderRadius: t.radius.md,
-            borderColor: t.color.accent,
-            borderWidth: hold.progress.interpolate({ inputRange: [0, 1], outputRange: [0, 4] }),
-            opacity: hold.progress.interpolate({ inputRange: [0, 0.1, 1], outputRange: [0, 0.6, 1] }),
-          }]}
-        />
-      )}
     </View>
   );
   return onPress || onLongPress
     ? (
       <Pressable
         onPress={onPress}
-        onLongPress={onLongPress && (ring ? () => { hold.fire(); onLongPress(); } : onLongPress)}
+        onLongPress={onLongPress && (popOnHold ? () => { void haptics.tick(); pop(); onLongPress(); } : onLongPress)}
         delayLongPress={delayLongPress}
-        onPressIn={ring ? hold.start : undefined}
-        onPressOut={ring ? hold.stop : undefined}
         accessibilityState={selected !== undefined ? { selected } : undefined}
         accessibilityHint={accessibilityHint}
-        // A ringed card doesn't also dim: the growing border is the feedback.
-        style={({ pressed }) => ({ opacity: pressed && !ring ? 0.6 : 1 })}
+        style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
       >
-        {ring ? <Animated.View style={hold.popStyle}>{body}</Animated.View> : body}
+        {popOnHold ? <Animated.View style={popStyle}>{body}</Animated.View> : body}
       </Pressable>
     )
     : body;

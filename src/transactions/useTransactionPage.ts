@@ -18,6 +18,8 @@ export type CachedTransactionRow = Omit<typeof cachedTransactions.$inferSelect, 
 
 export interface UseTransactionPageResult {
   sections: DaySection<CachedTransactionRow>[];
+  /** The filter `sections` were read for; lags the requested one until its read lands. */
+  dataKey: string;
   loadMore: () => void;
   loadingMore: boolean;
   atEnd: boolean;
@@ -73,9 +75,13 @@ export function useTransactionPage(
 
   // Same render-time-adjustment pattern: new data means the page load this component is waiting
   // on has landed (a local SQLite read, effectively instant), so the spinner clears immediately.
+  // It's also the moment the rows start belonging to the current filter (useLiveQuery drops the
+  // results of a query it has moved past): until then `sections` still holds the previous filter's.
   const [prevData, setPrevData] = useState(data);
+  const [dataKey, setDataKey] = useState(filterKey);
   if (data !== prevData) {
     setPrevData(data);
+    setDataKey(filterKey);
     if (loadingMore) setLoadingMore(false);
   }
 
@@ -87,5 +93,5 @@ export function useTransactionPage(
     setLimit((l) => l + PAGE_SIZE);
   }
 
-  return { sections, loadMore, loadingMore, atEnd };
+  return { sections, dataKey, loadMore, loadingMore, atEnd };
 }
