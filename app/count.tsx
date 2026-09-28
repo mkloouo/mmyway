@@ -1,30 +1,34 @@
 // The cash count — the envelope sweep (design §6.9, decision C of §11). Counts every marked
 // cash envelope in one pass; one confirm creates one adjustment per envelope that differs.
 import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
+import { eq, inArray } from 'drizzle-orm';
 import { useLiveQuery } from '../src/db/useLiveQuery';
 import { useDb } from '../src/providers/DbProvider';
 import { useTheme } from '../src/ui/theme';
-import { Screen, AppBar, Card, Row, Chip, Button, Sheet, Money, EmptyState, useKeyboardHeight } from '../src/ui/components';
+import { Screen, AppBar, BarIconButton, Card, Row, Chip, Button, Sheet, Money, EmptyState, useKeyboardHeight } from '../src/ui/components';
 import { currencyOf } from '../src/ui/money';
 import { parseDecimalInput } from '../src/api/ff3/decimal';
 import { relativeTime } from '../src/ui/relativeTime';
 import { haptics } from '../src/ui/haptics';
-import { referenceAccounts, referenceCategories, referenceCurrencies, inboxItems } from '../src/db/schema';
+import { referenceAccounts, referenceCategories, referenceCurrencies, inboxItems, outboxOperations, appSettings } from '../src/db/schema';
 import { hasEnvelopeMarker } from '../src/accounts/envelopeMarker';
 import { useAssetAccounts } from '../src/accounts/useAssetAccounts';
 import { computeSweep, driftByCurrency, type SweepRow, type SweepAdjustment } from '../src/reconcile/sweep';
 import { denominationsFor, totalDenominations } from '../src/reconcile/denominations';
+import { countBlocker, describeCountBlocker, readCountBlocker } from '../src/reconcile/countReadiness';
 import { confirmInboxItem } from '../src/inbox/createManualEntry';
 import {
   getReconcileShortfallAccountId, setReconcileShortfallAccountId,
   getReconcileSurplusAccountId, setReconcileSurplusAccountId,
   getReconcileCategoryName, setReconcileCategoryName,
+  BALANCES_STALE_KEY,
 } from '../src/settings/appSettings';
+import { useSync } from '../src/sync/useSync';
 import { generateId } from '../src/utils/id';
 import type { Draft } from '../src/inbox/draft';
-import type { OutboxDb } from '../src/sync/outbox';
+import { LEDGER_KINDS, type OutboxDb } from '../src/sync/outbox';
 
 const STALE_MS = 24 * 60 * 60 * 1000;
 
@@ -68,6 +72,17 @@ export default function CountScreen() {
   const envelopeAccounts = (useAssetAccounts() ?? []).filter((a) => hasEnvelopeMarker(a.notes));
   const expenseAccounts = allAccounts.filter((a) => a.type === 'expense');
   const revenueAccounts = allAccounts.filter((a) => a.type === 'revenue');
+
+  // The expected balances are only right once every queued write has reached FF3 and the
+  // balances were read after that (src/reconcile/countReadiness.ts). Unknown until both load.
+  const { status: syncStatus, syncNow } = useSync();
+  const { data: queuedLedgerOps } = useLiveQuery(
+    db.select({ id: outboxOperations.id }).from(outboxOperations).where(inArray(outboxOperations.kind, [...LEDGER_KINDS])),
+  );
+  const { data: staleRows } = useLiveQuery(db.select().from(appSettings).where(eq(appSettings.key, BALANCES_STALE_KEY)));
+  const readinessLoaded = queuedLedgerOps !== undefined && staleRows !== undefined;
+  const blocker = readinessLoaded ? countBlocker(queuedLedgerOps.length, staleRows[0]?.value === '1') : null;
+  const canCount = readinessLoaded && !blocker;
 
   const [counts, setCounts] = useState<Record<string, string>>({});
   const [denomAccountId, setDenomAccountId] = useState<string | null>(null);
@@ -119,6 +134,14 @@ export default function CountScreen() {
     if (confirming) return;
     setConfirming(true);
     try {
+      // Re-read at the moment of booking: a write can be queued, or a sync land, while the
+      // review sheet is open.
+      const current = await readCountBlocker(db);
+      if (current) {
+        setReviewOpen(false);
+        Alert.alert('Balances are out of date', describeCountBlocker(current));
+        return;
+      }
       for (const adjustment of adjustments) {
         await createAndConfirmAdjustment(db, adjustment, {
           shortfallAccountId, surplusAccountId, categoryName: reconcileCategory,
@@ -157,20 +180,23 @@ export default function CountScreen() {
         <AppBar
           title="Count cash"
           subtitle={oldestBalanceDate ? `as of ${relativeTime(oldestBalanceDate)}` : undefined}
-          left={(
-            <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Close">
-              <Text style={[t.type.heading, { color: t.color.text }]}>✕</Text>
-            </Pressable>
-          )}
-          right={(
-            <Pressable onPress={() => setSettingsOpen(true)} accessibilityRole="button" accessibilityLabel="Reconcile settings">
-              <Text style={[t.type.heading, { color: t.color.text }]}>⚙</Text>
-            </Pressable>
-          )}
+          left={<BarIconButton icon="close" label="Close" onPress={() => router.back()} />}
+          right={<BarIconButton icon="settings-outline" label="Reconcile settings" onPress={() => setSettingsOpen(true)} />}
         />
         {stale && envelopeAccounts.length > 0 && (
           <View style={{ backgroundColor: t.color.warnSoft, paddingHorizontal: t.space.lg, paddingVertical: t.space.sm }}>
             <Text style={[t.type.label, { color: t.color.warn }]}>Balances are more than a day old — counting against a stale expectation may be wrong.</Text>
+          </View>
+        )}
+        {!!blocker && envelopeAccounts.length > 0 && (
+          <View style={{ backgroundColor: t.color.warnSoft, paddingHorizontal: t.space.lg, paddingVertical: t.space.sm, gap: t.space.sm }}>
+            <Text style={[t.type.label, { color: t.color.warn }]}>{describeCountBlocker(blocker)}</Text>
+            <Button
+              title={syncStatus === 'syncing' ? 'Syncing…' : 'Sync now'}
+              variant="secondary"
+              onPress={() => syncNow()}
+              disabled={syncStatus === 'syncing'}
+            />
           </View>
         )}
 
@@ -241,6 +267,8 @@ export default function CountScreen() {
             )}
             {invalidCounts.size > 0 ? (
               <Button title="Fix the invalid amount above" variant="secondary" disabled />
+            ) : !canCount && countedRows.length > 0 ? (
+              <Button title="Sync before counting" variant="secondary" disabled />
             ) : countedRows.length > 0 && adjustments.length === 0 ? (
               <Button title="Everything matches ✓" variant="secondary" disabled />
             ) : (
@@ -280,7 +308,7 @@ export default function CountScreen() {
           <Button
             title={confirming ? 'Confirming…' : missingSettings ? 'Configure payees first (⚙)' : `Confirm ${adjustments.length}`}
             onPress={confirmReview}
-            disabled={confirming || missingSettings}
+            disabled={confirming || missingSettings || !canCount}
           />
         )}
       >

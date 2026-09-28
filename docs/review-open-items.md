@@ -8,6 +8,8 @@ This file is the source of truth: tick items off here.
 
 Both branches are merged and `main` is at `0359c66`. The offline outbox bugs that could lose, duplicate or stall writes are fixed; this list is what still stands from the 2026-09-27 review, re-checked against the code at `0359c66`. Items marked **(UI)** sit in `app/` or `src/ui/` and belong to the screen work; the rest are data-layer items.
 
+**Critical for 1.0.0** marks an item that can book wrong data into FF3. Both such items are fixed; nothing else on this list writes wrong data, so the rest can ship after 1.0.0.
+
 Already fixed, so not repeated below:
 
 | Area | Fixed in |
@@ -44,8 +46,8 @@ Three gaps remain, all needing new dependencies or a migration.
 
 The most costly remaining bug is the cash count booking wrong adjustments after offline spending.
 
-- [ ] **Cash count ignores queued operations.** `app/count.tsx` compares against the last-synced FF3 balance, so counting after offline cash spending shows false drift and books a wrong adjustment. Subtract pending outbox creates for that account from the expected balance, or block the count until the queue is empty.
-- [ ] **Sign-out keeps the old database and queue.** Signing in to another FF3 instance replays queued operations carrying the first instance's account IDs. Clear the local tables (or refuse sign-out while ops are queued) in `signOut`.
+- [x] **Critical for 1.0.0: Cash count ignores queued operations.** `app/count.tsx` compares against the last-synced FF3 balance, so counting after offline cash spending shows false drift and books a wrong adjustment. The balances were also stale with an empty queue: the full pull runs before the replay and a push sync has none, so spending that had just reached FF3 was still missing from them. Fixed: runSync re-reads asset balances after a replay that lands something and keeps a `balances_stale` flag until it does (`pullAccountBalances`). The count shows a banner with Sync now and refuses to book while transaction writes are queued or the flag is set, and checks both again at Confirm (`src/reconcile/countReadiness.ts`).
+- [x] **Critical for 1.0.0: Sign-out keeps the old database and queue.** Signing in to another FF3 instance replays queued operations carrying the first instance's account IDs. Fixed in Settings, for both sign-out and a sign-in at an address not already stored: refused while any operation is queued, and when allowed, clears reference data, cached transactions, recurring reviews and the instance's sync settings. Drafts, aliases and preferences stay (`src/sync/instanceData.ts`). A new token at a stored address keeps everything.
 - [ ] **Search is case-sensitive for Polish and Cyrillic.** Still open. SQLite `LIKE` folds case for ASCII only, so "żabka" won't find "Żabka". Store a `normkey`'d search column on `cached_transactions` and match against it (`src/transactions/useTransactionPage.ts`).
 - [ ] **Accounts resolved by name, not ID.** Activity's account filter and the transaction detail screen match `sourceName`/`destinationName` to account names; a rename or two accounts sharing a name breaks them. Cache `source_id`/`destination_id` from FF3.
 - [ ] **Only the first split is cached.** Split transactions show the first split's amount in Activity and totals.

@@ -6,7 +6,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useDb } from '../src/providers/DbProvider';
 import { useTheme } from '../src/ui/theme';
-import { Screen, AppBar, Button, Card, Row, Sheet } from '../src/ui/components';
+import { Screen, AppBar, BarIconButton, Button, Card, Row, Sheet } from '../src/ui/components';
 import { captureReceipt, attachReceiptToJournal } from '../src/receipt/ingest';
 import { pickPhoto, type PhotoSource } from '../src/receipt/pickPhoto';
 import { requestSync, SYNC_DELAY } from '../src/sync/syncTrigger';
@@ -90,11 +90,7 @@ export default function ReceiptScreen() {
     <Screen bottom>
       <AppBar
         title={attachToJournalId ? 'Attach receipt' : 'Receipt'}
-        left={(
-          <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Close">
-            <Ionicons name="close" size={24} color={t.color.text} />
-          </Pressable>
-        )}
+        left={<BarIconButton icon="close" label="Close" onPress={() => router.back()} />}
       />
       {/* Only while the camera/gallery is opening — the screen closes the moment a photo comes back. */}
       {busy && !showChooser && (

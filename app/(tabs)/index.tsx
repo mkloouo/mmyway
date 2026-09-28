@@ -7,7 +7,7 @@ import { useLiveQuery } from '../../src/db/useLiveQuery';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, AppBar, SectionHeader, Card, Chip, Button, Money, StatusPill, EmptyState, Sheet, Pulse } from '../../src/ui/components';
+import { Screen, AppBar, BarIconButton, SectionHeader, Card, Chip, Button, Money, StatusPill, EmptyState, Sheet, Pulse } from '../../src/ui/components';
 import { CaptureDock } from '../../src/ui/CaptureDock';
 import { SyncSheet } from '../../src/ui/SyncSheet';
 import { SwipeableCard } from '../../src/ui/SwipeableCard';
@@ -456,14 +456,16 @@ export default function InboxScreen() {
     <Screen>
       <View style={{ flex: 1 }}>
         {selecting ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm, paddingHorizontal: t.space.lg, paddingVertical: t.space.md }}>
-            <Pressable onPress={() => setSelectedIds(new Set())} accessibilityRole="button" accessibilityLabel="Cancel selection">
-              <Ionicons name="close" size={24} color={t.color.text} />
-            </Pressable>
-            <Text style={[t.type.title, { color: t.color.text, flex: 1 }]}>{selectedIds.size} selected</Text>
-            <Button title="Confirm" variant="secondary" onPress={confirmSelected} />
-            <Button title="Delete" variant="danger" onPress={deleteSelected} />
-          </View>
+          <AppBar
+            title={`${selectedIds.size} selected`}
+            left={<BarIconButton icon="close" label="Cancel selection" onPress={() => setSelectedIds(new Set())} />}
+            right={(
+              <>
+                <Button title="Confirm" variant="secondary" size="bar" onPress={confirmSelected} />
+                <Button title="Delete" variant="danger" size="bar" onPress={deleteSelected} />
+              </>
+            )}
+          />
         ) : (
         <AppBar
           title={dateTitle}

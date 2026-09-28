@@ -1,7 +1,7 @@
 // Single entry point every caller uses (app-open, AppState resume, manual "Sync now").
 // Fixed order per brief §5.4/§5.5: pull reference data first (fresh cached_transactions.updated_at
-// for the replay conflict check) -> replay the outbox -> pull recurring -> re-pull recent
-// transactions only if the replay actually created something server-side worth re-pulling.
+// for the replay conflict check) -> replay the outbox -> pull recurring -> re-read account balances
+// and re-pull recent transactions only if the replay actually landed something server-side.
 // Never throws: a sync failure is a status the caller displays, not a crash.
 import { readStoredCredentials } from '../api/ff3/auth';
 import { clientFor } from '../api/ff3/session';
@@ -9,12 +9,13 @@ import { readHosts } from '../api/ff3/hosts';
 import {
   getLocalModelBaseUrls, getLocalModelActiveUrl, setLocalModelActiveUrl,
   getFf3ActiveHost, setFf3ActiveHost, getLastSyncedAt, setLastSyncedAt, getLocalModelName,
+  getBalancesStale, setBalancesStale,
 } from '../settings/appSettings';
 import { readGeminiKey } from '../settings/secrets';
 import { probeReachability, type ServerReachability } from './reachability';
-import { pullReferenceData, pullRecentTransactions } from './referenceData';
+import { pullReferenceData, pullRecentTransactions, pullAccountBalances } from './referenceData';
 import { warmMerchantLookup } from '../lookup/merchantLookup';
-import { replayOutbox, recoverInFlight, pruneUploadedReceiptImages, type OutboxDb } from './outbox';
+import { replayOutbox, recoverInFlight, pruneUploadedReceiptImages, queuedLedgerOpCount, type OutboxDb } from './outbox';
 import { pruneReferenceData, reapplyQueuedAccountEdits } from './referenceHygiene';
 import { pullUnreviewedRecurring } from './recurringReview';
 import { retryPendingReceipts } from '../receipt/toDraft';
@@ -126,14 +127,29 @@ async function doSync(db: OutboxDb, mode: SyncMode): Promise<SyncSummary> {
         await pullReferenceData(db, client);
         await pruneReferenceData(db, pullStartedAt);
         await reapplyQueuedAccountEdits(db);
+        await setBalancesStale(db, false);
       }
 
+      // Marked before sending, not after: a process killed between a write landing and the
+      // balance re-read below must still leave the balances marked stale.
+      if (await queuedLedgerOpCount(db) > 0) await setBalancesStale(db, true);
       const replay = await replayOutbox(db, client);
       summary.replaySucceeded = replay.succeeded.length;
       summary.replayConflicted = replay.conflicted.length;
       summary.failedAt = replay.failedAt;
 
       if (full) summary.recurringCreated = await pullUnreviewedRecurring(db, client, { since: lastSyncedAt });
+
+      if (replay.succeeded.length > 0 && await getBalancesStale(db)) {
+        // A failure here must not turn a replay that landed into a failed sync; the flag stays
+        // set, so the cash count waits for the next sync that manages the re-read.
+        try {
+          await pullAccountBalances(db, client);
+          await setBalancesStale(db, false);
+        } catch (err) {
+          logLine('warn', `balance re-read after replay failed: ${err instanceof Error ? err.message : String(err)}`);
+        }
+      }
 
       if (replay.succeeded.length > 0) {
         await pullRecentTransactions(db, client, new Date().toISOString());

@@ -6,7 +6,7 @@ import { useLiveQuery } from '../../src/db/useLiveQuery';
 import { useDb } from '../../src/providers/DbProvider';
 import { SearchField } from '../../src/ui/SearchField';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, AppBar, Chip, Button, Sheet, Row } from '../../src/ui/components';
+import { Screen, AppBar, BarIconButton, Chip, Button, Sheet, Row } from '../../src/ui/components';
 import { TargetPickerSheet, type AliasKind, type AliasTarget } from '../../src/ui/TargetPickerSheet';
 import { aliases } from '../../src/db/schema';
 import { upsertAlias, removeAlias } from '../../src/lookup/aliases';
@@ -73,9 +73,7 @@ export default function AliasesScreen() {
       <AppBar
         title="Aliases"
         right={(
-          <Pressable onPress={onExport} accessibilityRole="button" accessibilityLabel="Export or import">
-            <Text style={[t.type.heading, { color: t.color.text }]}>⋯</Text>
-          </Pressable>
+          <BarIconButton icon="ellipsis-horizontal" label="Export or import" onPress={onExport} />
         )}
       />
       <View style={{ paddingHorizontal: t.space.lg, gap: t.space.sm }}>

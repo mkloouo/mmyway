@@ -1,0 +1,70 @@
+import { createTestDb } from '../db/testDb';
+import { clearInstanceData, isSameInstance, queuedOperationCount } from './instanceData';
+import { enqueueOperation } from './outbox';
+import {
+  aliases, cachedTransactions, inboxItems, referenceAccounts, referenceBudgets, referenceCategories, referenceCurrencies,
+} from '../db/schema';
+import {
+  getDefaultSourceAccountId, setDefaultSourceAccountId, getLastSyncedAt, setLastSyncedAt,
+  getFf3ActiveHost, setFf3ActiveHost, getBalancesStale, setBalancesStale, getLocalModelName, setLocalModelName,
+} from '../settings/appSettings';
+
+const T = '2026-01-01T00:00:00Z';
+
+describe('isSameInstance', () => {
+  it('matches a stored address regardless of trailing slash or case', () => {
+    expect(isSameInstance(['https://ff3.example.com', 'http://100.64.0.1'], 'HTTPS://ff3.example.com/ ')).toBe(true);
+  });
+
+  it('treats any other address as another instance', () => {
+    expect(isSameInstance(['https://ff3.example.com'], 'https://other.example.com')).toBe(false);
+    expect(isSameInstance([], 'https://ff3.example.com')).toBe(false);
+  });
+});
+
+describe('queuedOperationCount', () => {
+  it('counts every queued operation, whatever its kind', async () => {
+    const db = createTestDb() as any;
+    expect(await queuedOperationCount(db)).toBe(0);
+    await enqueueOperation(db, { id: 'c', kind: 'create_transaction', payload: { clientId: 'c', splits: [] } });
+    await enqueueOperation(db, { id: 'a', kind: 'update_account', payload: { accountId: 'a1', active: false } });
+    expect(await queuedOperationCount(db)).toBe(2);
+  });
+});
+
+describe('clearInstanceData', () => {
+  it('removes what was synced from the instance and keeps the user\'s drafts, aliases and preferences', async () => {
+    const db = createTestDb() as any;
+    await db.insert(referenceAccounts).values({ id: 'a1', name: 'Wallet', type: 'asset', currencyCode: 'PLN', syncedAt: T });
+    await db.insert(referenceCategories).values({ id: 'c1', name: 'Food', syncedAt: T });
+    await db.insert(referenceBudgets).values({ id: 'b1', name: 'Groceries', syncedAt: T });
+    await db.insert(referenceCurrencies).values({ code: 'PLN', symbol: 'zł', decimalPlaces: 2, syncedAt: T });
+    await db.insert(cachedTransactions).values({
+      groupId: 'g1', journalId: 'j1', type: 'withdrawal', date: T, amount: '1.00', currencyCode: 'PLN',
+      description: 'x', updatedAt: T, syncedAt: T,
+    });
+    await db.insert(inboxItems).values([
+      { id: 'draft', kind: 'manual_entry', state: 'captured', draftJson: '{}', createdAt: T, updatedAt: T },
+      { id: 'review', kind: 'recurring_review', state: 'confirmed', draftJson: '{}', createdAt: T, updatedAt: T },
+    ]);
+    await db.insert(aliases).values({ id: 'al', kind: 'payee', normalizedKey: 'k', rawInput: 'k', targetName: 'K', createdAt: T });
+    await setLastSyncedAt(db, T);
+    await setFf3ActiveHost(db, 'https://ff3.example.com');
+    await setBalancesStale(db, true);
+    await setDefaultSourceAccountId(db, 'a1');
+    await setLocalModelName(db, 'qwen');
+
+    await clearInstanceData(db);
+
+    for (const table of [referenceAccounts, referenceCategories, referenceBudgets, referenceCurrencies, cachedTransactions]) {
+      expect(await db.select().from(table)).toEqual([]);
+    }
+    expect((await db.select().from(inboxItems)).map((i: { id: string }) => i.id)).toEqual(['draft']);
+    expect(await db.select().from(aliases)).toHaveLength(1);
+    expect(await getLastSyncedAt(db)).toBeNull();
+    expect(await getFf3ActiveHost(db)).toBeNull();
+    expect(await getBalancesStale(db)).toBe(false);
+    expect(await getDefaultSourceAccountId(db)).toBe('a1');
+    expect(await getLocalModelName(db)).toBe('qwen');
+  });
+});

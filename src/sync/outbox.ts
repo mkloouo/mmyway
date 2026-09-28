@@ -28,6 +28,9 @@ export type OutboxKind =
   | 'recurring_review'
   | 'update_account';
 
+/** The kinds that change an account balance in FF3 once they land; receipts and account edits don't. */
+export const LEDGER_KINDS = ['create_transaction', 'update_transaction', 'delete_transaction', 'recurring_review'] as const satisfies readonly OutboxKind[];
+
 export interface CreateTransactionPayload {
   clientId: string; // becomes the duplicate-hash guard
   splits: TransactionSplit[];
@@ -155,6 +158,13 @@ export function enqueueOperationSync(tx: OutboxDb, op: NewOutboxOperation): void
 export async function enqueueOperation(db: OutboxDb, op: NewOutboxOperation): Promise<void> {
   insertOperation(db, op);
   requestSync();
+}
+
+/** Queued operations (in any status) that will change a balance in FF3 when they land. */
+export async function queuedLedgerOpCount(db: OutboxDb): Promise<number> {
+  const [row] = await db.select({ n: sql<number>`count(*)` }).from(outboxOperations)
+    .where(inArray(outboxOperations.kind, [...LEDGER_KINDS]));
+  return Number(row?.n ?? 0);
 }
 
 /**

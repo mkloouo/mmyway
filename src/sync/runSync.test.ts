@@ -5,11 +5,16 @@ import { clientFor } from '../api/ff3/session';
 import { readStoredCredentials, probeAbout } from '../api/ff3/auth';
 import { readHosts } from '../api/ff3/hosts';
 import { readGeminiKey } from '../settings/secrets';
+import { getBalancesStale, setBalancesStale } from '../settings/appSettings';
+import { referenceAccounts } from '../db/schema';
+import { logLine } from '../utils/log';
 
 jest.mock('../api/ff3/session', () => ({ clientFor: jest.fn() }));
 jest.mock('../api/ff3/auth', () => ({ readStoredCredentials: jest.fn(), probeAbout: jest.fn() }));
 jest.mock('../api/ff3/hosts', () => ({ ...jest.requireActual('../api/ff3/hosts'), readHosts: jest.fn() }));
 jest.mock('../settings/secrets', () => ({ readGeminiKey: jest.fn(async () => null) }));
+// The real log writes through expo-file-system, whose Jest mock rejects asynchronously.
+jest.mock('../utils/log', () => ({ logLine: jest.fn() }));
 
 function buildClient(opts: { failCreate?: boolean; slow?: boolean } = {}) {
   const request = jest.fn(async (path: string, init?: RequestInit) => {
@@ -128,5 +133,85 @@ describe('runSync', () => {
     expect(a).toBe(b);
     const posts = client.request.mock.calls.filter(([, init]) => init?.method === 'POST');
     expect(posts).toHaveLength(1);
+  });
+
+  describe('account balances after a replay (cash count)', () => {
+    async function dbWithAccount() {
+      const db = createTestDb();
+      await db.insert(referenceAccounts).values({
+        id: 'a1', name: 'Wallet', type: 'asset', currencyCode: 'PLN', currentBalance: '100.00', syncedAt: '2026-01-01T00:00:00Z',
+      });
+      return db;
+    }
+
+    function clientWithBalance(balance: string | Error) {
+      return {
+        request: jest.fn(async (path: string, init?: RequestInit) => {
+          if (path.startsWith('/v1/transactions') && init?.method === 'POST') {
+            return { data: { id: 'g1', attributes: { transactions: [{ transaction_journal_id: 'j1' }] } } };
+          }
+          if (path.startsWith('/v1/accounts?type=asset')) {
+            if (balance instanceof Error) throw balance;
+            return { data: [{ id: 'a1', attributes: { name: 'Wallet', type: 'asset', currency_code: 'PLN', active: true, current_balance: balance, current_balance_date: '2026-01-02T00:00:00Z' } }] };
+          }
+          return { data: [] };
+        }),
+      };
+    }
+
+    async function balanceOf(db: ReturnType<typeof createTestDb>) {
+      return (await db.select().from(referenceAccounts))[0]?.currentBalance;
+    }
+
+    it('re-reads balances once a queued write lands, even on a push sync', async () => {
+      signedInWith(['https://ff3.example.com']);
+      (clientFor as jest.Mock).mockReturnValue(clientWithBalance('90.00'));
+      const db = await dbWithAccount();
+      await enqueueOperation(db, { id: 'op-1', kind: 'create_transaction', payload: { clientId: 'c1', splits: [] } });
+
+      const summary = await runSync(db as any, 'push');
+
+      expect(summary.replaySucceeded).toBe(1);
+      expect(await balanceOf(db)).toBe('90.00');
+      expect(await getBalancesStale(db as any)).toBe(false);
+    });
+
+    it('leaves balances marked stale when the re-read fails, without failing the sync', async () => {
+      signedInWith(['https://ff3.example.com']);
+      (clientFor as jest.Mock).mockReturnValue(clientWithBalance(new Error('network down')));
+      const db = await dbWithAccount();
+      await enqueueOperation(db, { id: 'op-1', kind: 'create_transaction', payload: { clientId: 'c1', splits: [] } });
+
+      const summary = await runSync(db as any, 'push');
+
+      expect(summary.replaySucceeded).toBe(1);
+      expect(summary.error).toBeNull();
+      expect(await balanceOf(db)).toBe('100.00');
+      expect(await getBalancesStale(db as any)).toBe(true);
+      expect(logLine).toHaveBeenCalledWith('warn', expect.stringContaining('network down'));
+    });
+
+    it('marks balances stale while a write is queued but has not landed', async () => {
+      signedInWith(['https://ff3.example.com']);
+      (clientFor as jest.Mock).mockReturnValue(buildClient({ failCreate: true }));
+      const db = await dbWithAccount();
+      await enqueueOperation(db, { id: 'op-1', kind: 'create_transaction', payload: { clientId: 'c1', splits: [] } });
+
+      await runSync(db as any, 'push');
+
+      expect(await getBalancesStale(db as any)).toBe(true);
+    });
+
+    it('a full sync with nothing queued clears the mark', async () => {
+      signedInWith(['https://ff3.example.com']);
+      (clientFor as jest.Mock).mockReturnValue(clientWithBalance('90.00'));
+      const db = await dbWithAccount();
+      await setBalancesStale(db as any, true);
+
+      const summary = await runSync(db as any);
+
+      expect(summary.error).toBeNull();
+      expect(await getBalancesStale(db as any)).toBe(false);
+    });
   });
 });

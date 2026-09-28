@@ -17,6 +17,7 @@ import { referenceCurrencies, aliases as aliasesTable } from '../../src/db/schem
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { hasEnvelopeMarker } from '../../src/accounts/envelopeMarker';
 import { useSync } from '../../src/sync/useSync';
+import { clearInstanceData, describeQueuedOperations, isSameInstance, queuedOperationCount } from '../../src/sync/instanceData';
 import {
   getLocalModelBaseUrls, setLocalModelBaseUrls, getLocalModelActiveUrl,
   getLocalModelName, setLocalModelName,
@@ -121,8 +122,18 @@ export default function SettingsScreen() {
     if (signingIn) return;
     setSigningIn(true);
     try {
+      // Signing in somewhere new while signed in is a switch of instance, same as signing out.
+      const switching = signedIn && !isSameInstance(await readHosts(), host);
+      if (switching) {
+        const queued = await queuedOperationCount(db);
+        if (queued > 0) {
+          Alert.alert('Can\'t switch Firefly III yet', describeQueuedOperations(queued));
+          return;
+        }
+      }
       const result = await signIn(host, token);
       if (result.ok) {
+        if (switching) await clearInstanceData(db);
         setSignInSheetOpen(false);
         setToast('Connected to Firefly III');
         setHost('');
@@ -137,10 +148,28 @@ export default function SettingsScreen() {
     }
   }
 
-  function onSignOut() {
-    Alert.alert('Sign out?', 'You will need to sign in again to sync.', [
+  async function onSignOut() {
+    const queued = await queuedOperationCount(db);
+    if (queued > 0) {
+      Alert.alert('Can\'t sign out yet', describeQueuedOperations(queued));
+      return;
+    }
+    Alert.alert('Sign out?', 'Accounts and transactions synced from this Firefly III are removed from the device. Your drafts stay.', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out', style: 'destructive', onPress: async () => { await signOut(); await reload(); credentialsChanged(); } },
+      {
+        text: 'Sign out', style: 'destructive', onPress: async () => {
+          // Re-checked: a write can be queued while the dialog is open.
+          const nowQueued = await queuedOperationCount(db);
+          if (nowQueued > 0) {
+            Alert.alert('Can\'t sign out yet', describeQueuedOperations(nowQueued));
+            return;
+          }
+          await signOut();
+          await clearInstanceData(db);
+          await reload();
+          credentialsChanged();
+        },
+      },
     ]);
   }
 

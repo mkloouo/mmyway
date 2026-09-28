@@ -7,7 +7,7 @@ import { useLiveQuery } from '../../src/db/useLiveQuery';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, AppBar, Card, Chip, Button, Money, StatusPill, Sheet, Row } from '../../src/ui/components';
+import { Screen, AppBar, BarIconButton, Card, Chip, Button, Money, StatusPill, Sheet, Row } from '../../src/ui/components';
 import { DetailRows, type DetailRowsValue } from '../../src/ui/DetailRows';
 import { PayeeSheet } from '../../src/ui/PayeeSheet';
 import { Keypad } from '../../src/ui/Keypad';
@@ -169,9 +169,7 @@ export default function DraftScreen() {
           title="Review"
           left={<CloseButton />}
           right={(
-            <Pressable onPress={() => setMenuOpen(true)} accessibilityRole="button" accessibilityLabel="More">
-              <Text style={[t.type.heading, { color: t.color.text }]}>⋯</Text>
-            </Pressable>
+            <BarIconButton icon="ellipsis-horizontal" label="More" onPress={() => setMenuOpen(true)} />
           )}
         />
 
@@ -293,10 +291,5 @@ export default function DraftScreen() {
 }
 
 function CloseButton() {
-  const t = useTheme();
-  return (
-    <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Close">
-      <Text style={[t.type.heading, { color: t.color.text }]}>✕</Text>
-    </Pressable>
-  );
+  return <BarIconButton icon="close" label="Close" onPress={() => router.back()} />;
 }

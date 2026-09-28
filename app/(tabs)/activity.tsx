@@ -7,7 +7,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useDb } from '../../src/providers/DbProvider';
 import { SearchField } from '../../src/ui/SearchField';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, AppBar, SectionHeader, Card, Chip, Money, EmptyState, Sheet, Row, Button } from '../../src/ui/components';
+import { Screen, AppBar, BarRow, BarIconButton, SectionHeader, Card, Chip, Money, EmptyState, Sheet, Row, Button } from '../../src/ui/components';
 import { CaptureDock } from '../../src/ui/CaptureDock';
 import { currencyOf, formatMoney } from '../../src/ui/money';
 import { categoryColor } from '../../src/ui/categoryColor';
@@ -309,15 +309,13 @@ export default function ActivityScreen() {
         {/* Search takes the app bar's place rather than adding a row below it, so opening it
             does not shove the balances and the list down the screen. */}
         {selecting ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm, paddingHorizontal: t.space.lg, paddingVertical: t.space.md }}>
-            <Pressable onPress={() => setSelectedIds(new Set())} accessibilityRole="button" accessibilityLabel="Cancel selection">
-              <Ionicons name="close" size={24} color={t.color.text} />
-            </Pressable>
-            <Text style={[t.type.title, { color: t.color.text, flex: 1 }]}>{selectedIds.size} selected</Text>
-            <Button title="Delete" variant="danger" onPress={deleteSelected} />
-          </View>
+          <AppBar
+            title={`${selectedIds.size} selected`}
+            left={<BarIconButton icon="close" label="Cancel selection" onPress={() => setSelectedIds(new Set())} />}
+            right={<Button title="Delete" variant="danger" size="bar" onPress={deleteSelected} />}
+          />
         ) : searchOpen ? (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm, paddingHorizontal: t.space.lg, paddingVertical: t.space.md }}>
+          <BarRow>
             <SearchField
               value={search}
               onChangeText={setSearch}
@@ -326,19 +324,15 @@ export default function ActivityScreen() {
               onClear={() => { setSearch(''); setAccountFilter(null); setType('all'); setSearchOpen(false); }}
               style={{ flex: 1 }}
             />
-          </View>
+          </BarRow>
         ) : (
           <AppBar
             title="Activity"
             right={(
-              <View style={{ flexDirection: 'row', gap: t.space.md }}>
-                <Pressable onPress={() => setSearchOpen(true)} accessibilityRole="button" accessibilityLabel="Search">
-                  <Ionicons name="search" size={20} color={t.color.text} />
-                </Pressable>
-                <Pressable onPress={() => setMenuOpen(true)} accessibilityRole="button" accessibilityLabel="More">
-                  <Text style={[t.type.heading, { color: t.color.text }]}>⋯</Text>
-                </Pressable>
-              </View>
+              <>
+                <BarIconButton icon="search" label="Search" onPress={() => setSearchOpen(true)} />
+                <BarIconButton icon="ellipsis-horizontal" label="More" onPress={() => setMenuOpen(true)} />
+              </>
             )}
           />
         )}

@@ -8,7 +8,7 @@ import { useLiveQuery } from '../../src/db/useLiveQuery';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, AppBar, Card, Button, Money, Row, Sheet } from '../../src/ui/components';
+import { Screen, AppBar, BarIconButton, Card, Button, Money, Row, Sheet } from '../../src/ui/components';
 import { DetailRows, type DetailRowsValue } from '../../src/ui/DetailRows';
 import { Keypad } from '../../src/ui/Keypad';
 import { currencyOf, formatMoney } from '../../src/ui/money';
@@ -255,9 +255,7 @@ export default function TransactionDetailScreen() {
           subtitle={pendingEdit ? (pendingEdit.status === 'queued' ? 'changes queued' : 'changes not sent') : `synced ${relativeTime(row.syncedAt)}`}
           left={<CloseButton />}
           right={(
-            <Pressable onPress={() => setMenuOpen(true)} accessibilityRole="button" accessibilityLabel="More">
-              <Text style={[t.type.heading, { color: t.color.text }]}>⋯</Text>
-            </Pressable>
+            <BarIconButton icon="ellipsis-horizontal" label="More" onPress={() => setMenuOpen(true)} />
           )}
         />
 
@@ -342,10 +340,5 @@ export default function TransactionDetailScreen() {
 }
 
 function CloseButton() {
-  const t = useTheme();
-  return (
-    <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Close">
-      <Text style={[t.type.heading, { color: t.color.text }]}>✕</Text>
-    </Pressable>
-  );
+  return <BarIconButton icon="close" label="Close" onPress={() => router.back()} />;
 }
