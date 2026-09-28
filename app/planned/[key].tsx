@@ -84,6 +84,12 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
   const [sheet, setSheet] = useState<'amount' | 'currency' | 'own' | 'ownTo' | 'payee' | 'category' | 'frequency' | null>(null);
   const [histories, setHistories] = useState<MerchantHistory[]>([]);
   const [saving, setSaving] = useState(false);
+  // What the user chose themselves: a payee's history never overwrites those. The default
+  // account a new one starts with isn't a choice, so history may replace it.
+  const [chosen, setChosen] = useState<{ category: boolean; account: boolean }>(() => ({
+    category: !!item?.fields.categoryName,
+    account: !!item,
+  }));
 
   // A new one starts from capture's defaults: the default account and currency.
   useEffect(() => {
@@ -109,6 +115,23 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
   // Which end is the user's own account and which the payee/payer.
   const ownFrom = fields.type !== 'deposit';
   const ownTo = fields.type !== 'withdrawal';
+
+  /**
+   * A payee picked from history also fills what's usually booked with it — its category and the
+   * account it's usually paid from — where the user hasn't chosen one.
+   */
+  function choosePayee(h: MerchantHistory) {
+    const patch: Partial<PlannedFields> = fields.type === 'deposit'
+      ? { sourceName: h.displayName, sourceId: null }
+      : { destinationName: h.displayName, destinationId: null };
+    if (!chosen.category && !fields.categoryName && h.topCategory) patch.categoryName = h.topCategory;
+    const account = !chosen.account && h.topAccountName ? assetAccounts.find((a) => a.name === h.topAccountName) : undefined;
+    if (account) {
+      if (fields.type === 'deposit') { patch.destinationId = account.id; patch.destinationName = account.name; }
+      else { patch.sourceId = account.id; patch.sourceName = account.name; }
+    }
+    set(patch);
+  }
 
   /** The own account moves to the end the new type keeps it on; the payee/payer starts empty. */
   function changeType(type: TxType) {
@@ -220,18 +243,18 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
         visible={sheet === 'own' || sheet === 'ownTo'} onClose={() => setSheet(null)}
         title={sheet === 'ownTo' ? tr('fields.to') : tr('fields.from')}
         accounts={assetAccounts} currencies={currencies ?? []}
-        onSelect={(a) => set(sheet === 'ownTo' ? { destinationId: a.id, destinationName: a.name } : { sourceId: a.id, sourceName: a.name })}
+        onSelect={(a) => { setChosen((c) => ({ ...c, account: true })); set(sheet === 'ownTo' ? { destinationId: a.id, destinationName: a.name } : { sourceId: a.id, sourceName: a.name }); }}
       />
       <PayeeSheet
         visible={sheet === 'payee'} onClose={() => setSheet(null)} histories={histories}
         payeeLabel={fields.type === 'deposit' ? 'payer' : 'payee'}
-        onSelect={(h) => set(fields.type === 'deposit' ? { sourceName: h.displayName, sourceId: null } : { destinationName: h.displayName, destinationId: null })}
+        onSelect={choosePayee}
         onCreateNew={(text) => set(fields.type === 'deposit' ? { sourceName: text, sourceId: null } : { destinationName: text, destinationId: null })}
       />
       <PickerSheet
         visible={sheet === 'category'} onClose={() => setSheet(null)} title={tr('fields.category')}
         options={(categories ?? []).map((c) => ({ key: c.name, label: c.name }))}
-        selected={fields.categoryName} onSelect={(categoryName) => set({ categoryName })} noneLabel={tr('common.none')}
+        selected={fields.categoryName} onSelect={(categoryName) => { setChosen((c) => ({ ...c, category: true })); set({ categoryName }); }} noneLabel={tr('common.none')}
       />
       <PickerSheet
         visible={sheet === 'frequency'} onClose={() => setSheet(null)} title={tr('planned.frequencyLabel')}

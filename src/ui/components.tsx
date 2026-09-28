@@ -169,10 +169,13 @@ export function Card({
 
 /** A label/value line. Rows stack inside a Card and draw their own hairline separator. */
 export function Row({
-  label, value, leading, chevron, onPress, tone, first,
+  label, value, icon, leading, chevron, onPress, tone, first,
 }: {
   label: string;
+  /** Omitted on an action row (Delete, Duplicate): it shows `icon` there instead of a value. */
   value?: string;
+  /** What the action does, where a value would be. */
+  icon?: keyof typeof Ionicons.glyphMap;
   leading?: ReactNode;
   chevron?: boolean;
   onPress?: () => void;
@@ -190,9 +193,15 @@ export function Row({
     >
       {leading}
       <Text style={[t.type.body, { color: t.color.textMuted, flexShrink: 0 }]}>{label}</Text>
-      <Text style={[t.type.body, { color: valueColor, flex: 1, textAlign: 'right' }]} numberOfLines={1}>
-        {value ?? '—'}
-      </Text>
+      {value !== undefined || !icon ? (
+        <Text style={[t.type.body, { color: valueColor, flex: 1, textAlign: 'right' }]} numberOfLines={1}>
+          {value ?? '—'}
+        </Text>
+      ) : (
+        <View style={{ flex: 1, alignItems: 'flex-end' }}>
+          <Ionicons name={icon} size={20} color={tone === 'danger' ? t.color.danger : tone === 'warn' ? t.color.warn : t.color.textMuted} />
+        </View>
+      )}
       {chevron && <Text style={[t.type.body, { color: t.color.textFaint }]}>›</Text>}
     </View>
   );

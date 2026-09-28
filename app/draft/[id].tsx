@@ -503,11 +503,11 @@ export default function DraftScreen() {
           <Row
             first
             label={tr('draft.openInActivity')}
-            chevron
+            icon="open-outline"
             onPress={() => { setMenuOpen(false); navigateOnce(`/transactions/${row.ff3GroupId}`); }}
           />
         )}
-        <Row first={!readOnly || !row.ff3GroupId} label={tr('draft.deleteDraft')} tone="danger" onPress={handleDeleteDraft} />
+        <Row first={!readOnly || !row.ff3GroupId} label={tr('draft.deleteDraft')} icon="trash-outline" tone="danger" onPress={handleDeleteDraft} />
       </Sheet>
       <Snackbar entry={snackbar} onDismiss={dismissSnackbar} />
       <Modal visible={photoOpen && !!row.receiptImagePath} transparent animationType="fade" onRequestClose={() => setPhotoOpen(false)}>

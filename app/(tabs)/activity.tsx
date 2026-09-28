@@ -534,7 +534,7 @@ export default function ActivityScreen() {
       </View>
 
       <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={tr('activity.title')}>
-        <Row first label={tr('count.title')} chevron onPress={() => { setMenuOpen(false); navigateOnce('/count'); }} />
+        <Row first label={tr('count.title')} icon="cash-outline" onPress={() => { setMenuOpen(false); navigateOnce('/count'); }} />
       </Sheet>
     </Screen>
   );

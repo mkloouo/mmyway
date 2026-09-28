@@ -226,7 +226,7 @@ export default function SettingsScreen() {
             value={ff3Hosts.length > 0 ? `${shortLabel(ff3ActiveHost ?? ff3Hosts[0]!)}${ff3Hosts.length > 1 ? ` +${ff3Hosts.length - 1}` : ''}` : tr('settings.none')}
             onPress={() => setFf3AddressesOpen(true)}
           />
-          {signedIn && <Row label={tr('settings.signOut')} tone="danger" onPress={onSignOut} />}
+          {signedIn && <Row label={tr('settings.signOut')} icon="log-out-outline" tone="danger" onPress={onSignOut} />}
         </Card>
 
         <SectionHeader title={tr('settings.sectionReceipts')} />
@@ -270,7 +270,7 @@ export default function SettingsScreen() {
         <Card style={{ marginHorizontal: t.space.lg }}>
           <Row first label={tr('settings.version')} value={version} />
           <Row label={tr('settings.lastSync')} value={relativeTime(lastSyncedAt)} />
-          <Row label={tr('logs.title')} chevron onPress={() => router.push('/settings/logs')} />
+          <Row label={tr('logs.title')} icon="document-text-outline" onPress={() => router.push('/settings/logs')} />
         </Card>
       </ScrollView>
 

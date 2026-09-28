@@ -643,8 +643,8 @@ export default function TransactionDetailScreen() {
       )}
 
       <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={tr('transaction.title')}>
-        <Row first label={tr('transaction.duplicate')} chevron onPress={onDuplicate} />
-        <Row label={tr('common.delete')} tone="danger" onPress={onDelete} />
+        <Row first label={tr('transaction.duplicate')} icon="copy-outline" onPress={onDuplicate} />
+        <Row label={tr('common.delete')} icon="trash-outline" tone="danger" onPress={onDelete} />
       </Sheet>
       {/* Same full-screen view as the draft screen's receipt photo. */}
       <Modal visible={!!photo} transparent animationType="fade" onRequestClose={() => setPhoto(null)}>
