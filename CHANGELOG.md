@@ -57,6 +57,18 @@
   now asks for the time next.
 - A queued entry no longer disappears from Activity for a moment when it reaches Firefly III: it
   stays in place and turns into the synced transaction.
+- The Inbox's **Undo** snackbar now goes away after 5 seconds as it should. It used to stay up
+  while the Inbox refreshed, so a late Undo on a delete did nothing and one on a confirm said
+  "Already sent".
+- A transaction no longer opens to the error screen when one of the changes queued for it can't
+  be read, and such a change no longer breaks the Activity list.
+- Failures that used to pass silently now show a message and go to the Diagnostics log: saving a
+  draft's fields, deleting a draft or transaction, signing out, removing an alias, and choosing
+  defaults in Settings, the cash count's settings or the Planned view.
+- Settings → Aliases search finds "Żabka" when you type "zabka", like every other search.
+- The payee list on a draft, a transaction or a planned transaction no longer shows another
+  type's payees after switching the type quickly.
+- Capture no longer asks to discard an entry whose amount is only "0,".
 
 ## [1.2.0] - 2026-09-28
 

@@ -5,7 +5,7 @@
 //   key     -> Keypad's key shrinks under the finger
 //   success -> usePop on the sync pill
 //   hold    -> usePop on the card when its long press fires (Card's longPressPop)
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Animated, Easing } from 'react-native';
 
 export function useShake() {
@@ -63,12 +63,13 @@ export function useFlyAway() {
       Animated.timing(inField, { toValue: 1, duration: 350, delay: 250, useNativeDriver: true }),
     ]).start(({ finished }) => { if (finished) setGhost(null); });
   }, [out, inField]);
-  const ghostStyle = {
+  // Built once: interpolate() makes a new animated node each call, and Capture re-renders on every key.
+  const ghostStyle = useMemo(() => ({
     opacity: out.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
     transform: [
       { translateY: out.interpolate({ inputRange: [0, 1], outputRange: [0, -48] }) },
       { scale: out.interpolate({ inputRange: [0, 1], outputRange: [1, 0.85] }) },
     ],
-  };
+  }), [out]);
   return { fly, ghost, ghostStyle, fieldStyle: { opacity: inField } };
 }

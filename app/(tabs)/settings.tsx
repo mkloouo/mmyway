@@ -35,6 +35,9 @@ import { TextField } from '../../src/ui/TextField';
 import { PickerSheet } from '../../src/ui/PickerSheet';
 import { useAction } from '../../src/ui/useAction';
 import { pickableCurrencies, primaryCurrencyCode } from '../../src/ui/currencies';
+import { confirmDestructive } from '../../src/ui/confirm';
+import { useToast } from '../../src/ui/useToast';
+import { probeLocalModel } from '../../src/receipt/providers/local';
 
 const SIGN_IN_ERROR_KEYS: Record<AuthErrorReason, string> = {
   invalid_host: 'settings.signInErrors.invalidHost',
@@ -104,12 +107,7 @@ export default function SettingsScreen() {
   }
   useEffect(() => { (async () => { await reload(); })(); }, [db]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const [toast, setToast] = useState<string | null>(null);
-  useEffect(() => {
-    if (!toast) return;
-    const timer = setTimeout(() => setToast(null), 2000);
-    return () => clearTimeout(timer);
-  }, [toast]);
+  const [toast, setToast] = useToast();
 
   const [signInSheetOpen, setSignInSheetOpen] = useState(false);
   const [ff3AddressesOpen, setFf3AddressesOpen] = useState(false);
@@ -174,23 +172,17 @@ export default function SettingsScreen() {
       Alert.alert(tr('settings.cantSignOutYet'), describeQueuedOperations(queued));
       return;
     }
-    Alert.alert(tr('settings.signOutTitle'), tr('settings.signOutBody'), [
-      { text: tr('common.cancel'), style: 'cancel' },
-      {
-        text: tr('settings.signOut'), style: 'destructive', onPress: async () => {
-          // Re-checked: a write can be queued while the dialog is open.
-          const nowQueued = await queuedOperationCount(db);
-          if (nowQueued > 0) {
-            Alert.alert(tr('settings.cantSignOutYet'), describeQueuedOperations(nowQueued));
-            return;
-          }
-          await signOut();
-          await clearInstanceData(db);
-          await reload();
-          credentialsChanged();
-        },
-      },
-    ]);
+    if (!await confirmDestructive(tr('settings.signOutTitle'), tr('settings.signOut'), tr('settings.signOutBody'))) return;
+    // Re-checked: a write can be queued while the dialog is open.
+    const nowQueued = await queuedOperationCount(db);
+    if (nowQueued > 0) {
+      Alert.alert(tr('settings.cantSignOutYet'), describeQueuedOperations(nowQueued));
+      return;
+    }
+    await signOut();
+    await clearInstanceData(db);
+    await reload();
+    credentialsChanged();
   });
 
   function accountLabel(id: string | null): string {
@@ -312,14 +304,7 @@ export default function SettingsScreen() {
         addresses={localModelUrls}
         activeAddress={localModelActiveUrl}
         onSave={async (list) => { await setLocalModelBaseUrls(db, list); setLocalModelUrls(list); }}
-        probe={async (address) => {
-          try {
-            const response = await fetch(`${address.replace(/\/+$/, '')}/v1/models`, { method: 'GET' });
-            return response.ok;
-          } catch {
-            return false;
-          }
-        }}
+        probe={probeLocalModel}
       />
 
       <Sheet
@@ -365,26 +350,26 @@ export default function SettingsScreen() {
       <PickerSheet
         visible={accountSheetOpen} onClose={() => setAccountSheetOpen(false)} title={tr('settings.defaultAccount')}
         options={assetAccounts.map((a) => ({ key: a.id, label: a.name }))} selected={defaultAccountId} empty={noAccountsHint}
-        onSelect={async (id) => { if (!id) return; await setDefaultSourceAccountId(db, id); setDefaultAccountIdState(id); }}
+        onSelect={act(tr('settings.defaultAccount'), async (id: string | null) => { if (!id) return; await setDefaultSourceAccountId(db, id); setDefaultAccountIdState(id); })}
       />
 
       <PickerSheet
         visible={currencySheetOpen} onClose={() => setCurrencySheetOpen(false)} title={tr('settings.defaultCurrency')}
         options={pickableCurrencies(currencies, defaultCurrency).map((c) => ({ key: c.code, label: c.code }))} selected={defaultCurrency ?? primaryCurrencyCode(currencies)}
-        onSelect={async (code) => { if (!code) return; await setDefaultCurrencyCode(db, code); setDefaultCurrencyState(code); }}
+        onSelect={act(tr('settings.defaultCurrency'), async (code: string | null) => { if (!code) return; await setDefaultCurrencyCode(db, code); setDefaultCurrencyState(code); })}
       />
 
       <PickerSheet
         visible={cashAccountSheetOpen} onClose={() => setCashAccountSheetOpen(false)} title={tr('settings.cashPaymentsUse')}
         options={assetAccounts.map((a) => ({ key: a.id, label: a.name }))} selected={cashAccountId} empty={noAccountsHint}
-        onSelect={async (id) => { if (!id) return; await setCashAccountId(db, id); setCashAccountIdState(id); }}
+        onSelect={act(tr('settings.cashPaymentsUse'), async (id: string | null) => { if (!id) return; await setCashAccountId(db, id); setCashAccountIdState(id); })}
       />
 
       <PickerSheet
         visible={languageSheetOpen} onClose={() => setLanguageSheetOpen(false)} title={tr('settings.language')}
         header={<Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('settings.languageHint')}</Text>}
         options={LANGUAGE_OPTIONS.map((o) => ({ key: o.value, label: tr(o.labelKey) }))} selected={locale}
-        onSelect={async (value) => { const next = (value ?? 'system') as AppLocale; await setLocale(db, next); setLocaleState(next); }}
+        onSelect={act(tr('settings.language'), async (value: string | null) => { const next = (value ?? 'system') as AppLocale; await setLocale(db, next); setLocaleState(next); })}
       />
     </Screen>
   );

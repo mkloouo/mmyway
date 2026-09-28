@@ -19,6 +19,7 @@ import { draftReadiness } from '../inbox/readiness';
 import type { Draft } from '../inbox/draft';
 import { readDraft, readReviewJournal } from '../inbox/draftJson';
 import { draftTotal, isSplitDraft } from '../inbox/draftSplits';
+import { payloadGroupId } from '../sync/payloadJson';
 import { appLocale } from '../i18n';
 
 /** What a failed queued change was, in words ("Saving a planned transaction failed"). */
@@ -46,6 +47,16 @@ function ErrorText({ message }: { message: string }) {
       <Text style={[t.type.label, { color: t.color.accent }]}>{open ? tr('inbox.showLess') : tr('inbox.showMore')}</Text>
     </Pressable>
   );
+}
+
+/** An errored item's draft may be what failed to read: its card still shows, with a generic label. */
+function readDraftOrNull(json: string | null): Draft | null {
+  if (!json) return null;
+  try {
+    return readDraft(json);
+  } catch {
+    return null;
+  }
 }
 
 function metaLine(parts: (string | null | undefined)[]): string {
@@ -230,8 +241,8 @@ export function AttentionCard({
   const cardStyle = { marginHorizontal: t.space.lg, marginBottom: t.space.sm };
 
   if (entry.kind === 'inbox_error') {
-    const draft: Partial<Draft> = JSON.parse(entry.item.draftJson || '{}');
-    const label = draft.description || draft.destinationName || draft.sourceName || tr('inbox.item');
+    const draft = readDraftOrNull(entry.item.draftJson);
+    const label = draft?.description || draft?.destinationName || draft?.sourceName || tr('inbox.item');
     return (
       <Card style={cardStyle}>
         <Text style={[t.type.heading, { color: t.color.danger }]}>✕ {label}</Text>
@@ -246,8 +257,7 @@ export function AttentionCard({
 
   const { op, info } = entry;
   const isConflict = op.lastError === 'conflict';
-  let groupId: string | undefined;
-  try { groupId = JSON.parse(op.payloadJson).groupId; } catch { groupId = undefined; }
+  const groupId = payloadGroupId(op.kind, op.payloadJson);
 
   return (
     <Card style={cardStyle} onPress={info.route ? () => onOpen(info.route!) : undefined}>
@@ -261,7 +271,7 @@ export function AttentionCard({
       <ErrorText message={op.lastError ?? tr('inbox.unknownError')} />
       <View style={{ flexDirection: 'row', gap: t.space.sm, marginTop: t.space.sm }}>
         {isConflict && groupId ? (
-          <Button title={tr('inbox.resolve')} variant="secondary" onPress={() => onResolveConflict(groupId!)} style={{ flex: 1 }} />
+          <Button title={tr('inbox.resolve')} variant="secondary" onPress={() => onResolveConflict(groupId)} style={{ flex: 1 }} />
         ) : (
           <>
             <Button title={tr('inbox.retryNow')} variant="secondary" onPress={() => onRetryOp(op.id)} style={{ flex: 1 }} />

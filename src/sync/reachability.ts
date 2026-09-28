@@ -1,5 +1,6 @@
 import { probeAbout } from '../api/ff3/auth';
 import { resolveAddress, withTimeout, type AddressProbeResult } from '../api/ff3/hosts';
+import { probeLocalModel } from '../receipt/providers/local';
 
 export interface ReachabilityConfig {
   ff3: { addresses: string[]; apiToken: string; remembered: string | null } | null;
@@ -34,7 +35,7 @@ export async function probeReachability(config: ReachabilityConfig): Promise<Rea
       providers[name] = await resolveAddress(
         addresses,
         remembered,
-        withTimeout((address) => fetch(`${address.replace(/\/+$/, '')}/v1/models`, { method: 'GET' }).then((r) => r.ok).catch(() => false)),
+        withTimeout(probeLocalModel),
       );
     }),
   );

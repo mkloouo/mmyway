@@ -1,10 +1,10 @@
 // Transaction detail (design §6.5) — the same editing vocabulary as the draft screen: hero
 // amount + DetailRows, one picker implementation for both. A split transaction shows its tracked
 // total and one page per split, swiped through; Split adds one (src/splits/).
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { appLocale } from '../../src/i18n';
-import { Alert, Image, Modal, Pressable, ScrollView, Text, View, type ImageSourcePropType } from 'react-native';
+import { Image, Modal, Pressable, ScrollView, Text, View, type ImageSourcePropType } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { eq, ne } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
@@ -24,14 +24,15 @@ import { relativeTime } from '../../src/ui/relativeTime';
 import { applyDigit, type KeypadKey } from '../../src/capture/amountInput';
 import { cachedTransactions, inboxItems, outboxOperations, referenceCategories, referenceBudgets, referenceCurrencies } from '../../src/db/schema';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
-import { enqueueOperation, type UpdateTransactionPayload } from '../../src/sync/outbox';
-import { generateId } from '../../src/utils/id';
+import type { UpdateTransactionPayload } from '../../src/sync/outbox';
+import { queueTransactionDelete, queueTransactionEdit } from '../../src/transactions/queueEdit';
+import { confirmDestructive } from '../../src/ui/confirm';
 import { useQuery } from '@tanstack/react-query';
 import { getClient } from '../../src/api/ff3/session';
 import { fetchJournalAttachments, queuedAttachments } from '../../src/receipt/journalAttachments';
 import type { TransactionSplit } from '../../src/api/ff3/types';
 import { pendingEdits } from '../../src/transactions/pendingEdits';
-import { readPayload } from '../../src/sync/payloadJson';
+import { payloadGroupId, readPayload } from '../../src/sync/payloadJson';
 import { useAction } from '../../src/ui/useAction';
 import { keepMineOverServer, dropQueuedChange } from '../../src/sync/outbox';
 import { readSplits } from '../../src/transactions/splitsJson';
@@ -40,7 +41,7 @@ import { queueSplitEdit } from '../../src/transactions/queueSplitEdit';
 import { duplicateTransaction } from '../../src/transactions/duplicate';
 import { fromCached, fromQueued, newSplit, patchSplit, toPayloadSplits, type EditableSplit } from '../../src/splits/editSplits';
 import { absorb, leftover } from '../../src/splits/allocate';
-import { buildMerchantLookup, type MerchantHistory } from '../../src/lookup/merchantLookup';
+import { useMerchantHistories } from '../../src/lookup/useMerchantHistories';
 
 const SHARED_TAG_PREFIX = 'mmyway-shared-';
 // The words the rest of the app uses (capture's type chips), not FF3's "Withdrawal"/"Deposit".
@@ -115,12 +116,8 @@ export default function TransactionDetailScreen() {
     retry: false,
   });
 
-  const [histories, setHistories] = useState<MerchantHistory[]>([]);
   const lookupType = row?.type === 'withdrawal' || row?.type === 'deposit' ? row.type : undefined;
-  useEffect(() => {
-    if (!lookupType) return;
-    buildMerchantLookup(db, { type: lookupType }).then((map) => setHistories([...map.values()]));
-  }, [db, lookupType]);
+  const histories = useMerchantHistories(lookupType, { enabled: !!lookupType });
 
   const [changes, setChanges] = useState<Partial<TransactionSplit>>({});
   const [amountSheetOpen, setAmountSheetOpen] = useState(false);
@@ -145,7 +142,7 @@ export default function TransactionDetailScreen() {
     if (op.status !== 'failed' || op.lastError !== 'conflict') return false;
     // recurring_review is an update too (the reviewed tag, plus any corrections) and conflicts the same way.
     if (op.kind !== 'update_transaction' && op.kind !== 'delete_transaction' && op.kind !== 'recurring_review') return false;
-    return JSON.parse(op.payloadJson).groupId === groupId;
+    return payloadGroupId(op.kind, op.payloadJson) === groupId;
   });
 
   const currency = currencyOf(currencies ?? [], row.currencyCode);
@@ -332,11 +329,7 @@ export default function TransactionDetailScreen() {
     }
     setSaving(true);
     try {
-      await enqueueOperation(db, {
-        id: generateId(),
-        kind: 'update_transaction',
-        payload: { groupId: row!.groupId, transactionJournalId: row!.journalId, expectedUpdatedAt: row!.updatedAt, changes },
-      });
+      await queueTransactionEdit(db, row!, changes);
       router.back();
     } finally {
       setSaving(false);
@@ -349,19 +342,12 @@ export default function TransactionDetailScreen() {
     router.push(`/draft/${id}`);
   });
 
-  function onDelete() {
+  const onDelete = act(tr('common.delete'), async () => {
     setMenuOpen(false);
-    Alert.alert(tr('transaction.deleteTitle'), undefined, [
-      { text: tr('common.cancel'), style: 'cancel' },
-      {
-        text: tr('common.delete'), style: 'destructive',
-        onPress: async () => {
-          await enqueueOperation(db, { id: generateId(), kind: 'delete_transaction', payload: { groupId: row!.groupId, expectedUpdatedAt: row!.updatedAt } });
-          router.back();
-        },
-      },
-    ]);
-  }
+    if (!await confirmDestructive(tr('transaction.deleteTitle'), tr('common.delete'))) return;
+    await queueTransactionDelete(db, row!);
+    router.back();
+  });
 
   if (conflictOp) {
     const pending = readPayload<UpdateTransactionPayload>(conflictOp.kind, conflictOp.payloadJson);

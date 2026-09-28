@@ -307,20 +307,20 @@ export default function CountScreen() {
         <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('count.shortfallPayee')}</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm, marginBottom: t.space.md }}>
           {expenseAccounts.map((a) => (
-            <Chip key={a.id} label={a.name} selected={a.id === shortfallAccountId} onPress={async () => { await setReconcileShortfallAccountId(db, a.id); setShortfallAccountIdState(a.id); }} />
+            <Chip key={a.id} label={a.name} selected={a.id === shortfallAccountId} onPress={act(tr('count.shortfallPayee'), async () => { await setReconcileShortfallAccountId(db, a.id); setShortfallAccountIdState(a.id); })} />
           ))}
         </View>
         <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('count.surplusPayee')}</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm, marginBottom: t.space.md }}>
           {revenueAccounts.map((a) => (
-            <Chip key={a.id} label={a.name} selected={a.id === surplusAccountId} onPress={async () => { await setReconcileSurplusAccountId(db, a.id); setSurplusAccountIdState(a.id); }} />
+            <Chip key={a.id} label={a.name} selected={a.id === surplusAccountId} onPress={act(tr('count.surplusPayee'), async () => { await setReconcileSurplusAccountId(db, a.id); setSurplusAccountIdState(a.id); })} />
           ))}
         </View>
         <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('count.categoryOptional')}</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
-          <Chip label={tr('common.none')} selected={!reconcileCategory} onPress={async () => { await setReconcileCategoryName(db, ''); setReconcileCategoryState(null); }} />
+          <Chip label={tr('common.none')} selected={!reconcileCategory} onPress={act(tr('count.categoryOptional'), async () => { await setReconcileCategoryName(db, ''); setReconcileCategoryState(null); })} />
           {(categories ?? []).map((c) => (
-            <Chip key={c.id} label={c.name} selected={c.name === reconcileCategory} onPress={async () => { await setReconcileCategoryName(db, c.name); setReconcileCategoryState(c.name); }} />
+            <Chip key={c.id} label={c.name} selected={c.name === reconcileCategory} onPress={act(tr('count.categoryOptional'), async () => { await setReconcileCategoryName(db, c.name); setReconcileCategoryState(c.name); })} />
           ))}
         </View>
       </Sheet>

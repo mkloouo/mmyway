@@ -25,13 +25,13 @@ import type { CreateTransactionPayload } from '../../src/sync/outbox';
 import type { TransactionRead, TransactionSplit } from '../../src/api/ff3/types';
 import { navigateOnce } from '../../src/ui/navigateOnce';
 import { confirmDestructive } from '../../src/ui/confirm';
-import { cachedRowFromGroup } from '../../src/sync/referenceData';
+import { cacheRemoteResult, searchTransactions } from '../../src/transactions/remoteSearch';
 import { addDecimal } from '../../src/api/ff3/decimal';
 import { deleteCachedTransactions } from '../../src/sync/outbox';
 import { and, desc, eq, isNotNull, ne } from 'drizzle-orm';
 import { haptics } from '../../src/ui/haptics';
 import { pendingEdits, applyPendingEdit, type PendingEditStatus } from '../../src/transactions/pendingEdits';
-import { readPayload } from '../../src/sync/payloadJson';
+import { payloadGroupId, readPayload } from '../../src/sync/payloadJson';
 import { useAction } from '../../src/ui/useAction';
 import { PendingDot } from '../../src/ui/PendingDot';
 import { usePendingAccountIds } from '../../src/accounts/usePendingAccountIds';
@@ -219,12 +219,11 @@ export default function ActivityScreen() {
   });
 
   // A FF3 search result isn't in the local cache; store the copy we already have, then open it.
-  const openRemote = useCallback(async (item: RemoteResultRow) => {
-    const row = cachedRowFromGroup(item.group, new Date().toISOString());
-    if (!row) return;
-    await db.insert(cachedTransactions).values(row).onConflictDoUpdate({ target: cachedTransactions.groupId, set: row });
+  // Memoized: onRowPress below depends on it, and the rows only stay memoized while that is stable.
+  const openRemote = useMemo(() => act(tr('activity.search'), async (item: RemoteResultRow) => {
+    if (!await cacheRemoteResult(db, item.group)) return;
     navigateOnce(`/transactions/${item.groupId}`);
-  }, [db]);
+  }), [act, db, tr]);
 
   // Once local search runs out of cached rows to page through, FF3's own search covers what
   // hasn't been pulled into cachedTransactions yet — kept as a separate section rather than
@@ -245,11 +244,9 @@ export default function ActivityScreen() {
         return;
       }
       try {
-        const response = await client.request<{ data: TransactionRead[] }>(
-          `/v1/search/transactions?query=${encodeURIComponent(remoteQuery)}&limit=50&page=1`,
-        );
+        const found = await searchTransactions(client, remoteQuery);
         if (cancelled) return;
-        const rows = response.data.map(mapRemoteResult).filter((r): r is RemoteResultRow => !!r);
+        const rows = found.map(mapRemoteResult).filter((r): r is RemoteResultRow => !!r);
         setFetchedSearch({ status: 'done', query: remoteQuery, rows });
       } catch {
         if (!cancelled) setFetchedSearch({ status: 'error', query: remoteQuery });
@@ -271,7 +268,10 @@ export default function ActivityScreen() {
     const queued: QueuedRow[] = ops
       .filter((op) => op.kind === 'create_transaction' && (op.status === 'pending' || op.status === 'in_flight'))
       .map((op): QueuedRow | null => {
-        const payload = readPayload<CreateTransactionPayload>(op.kind, op.payloadJson);
+        // An unreadable payload fails its own operation (Inbox, Needs attention); it mustn't take
+        // the whole list down with it.
+        let payload: CreateTransactionPayload;
+        try { payload = readPayload<CreateTransactionPayload>(op.kind, op.payloadJson); } catch { return null; }
         const split = payload.splits[0];
         if (!split) return null;
         const many = payload.splits.length > 1;
@@ -290,7 +290,7 @@ export default function ActivityScreen() {
     // pull-to-refresh after the delete had gone through.
     const deletes = new Set(ops
       .filter((op) => op.kind === 'delete_transaction' && op.status !== 'failed')
-      .map((op) => { try { return (JSON.parse(op.payloadJson) as { groupId?: string }).groupId; } catch { return undefined; } })
+      .map((op) => payloadGroupId(op.kind, op.payloadJson))
       .filter((id): id is string => !!id));
     return { queuedRows: queued, pendingDeletes: deletes, edits: pendingEdits(ops) };
   }, [outbox]);

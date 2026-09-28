@@ -1,5 +1,5 @@
 // `Confirmed · Undo`, 5 s (design §6.1, §11 decision 2). Floats above the capture dock.
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Animated, Pressable, Text } from 'react-native';
 import { usePopOnChange } from './feedback';
 import { useTheme } from './theme';
@@ -18,11 +18,15 @@ export function Snackbar({ entry, onDismiss, bottom = 88 }: { entry: SnackbarEnt
   // Arrives with the tick haptic that caused it (a confirm, a delete): the pop is the visual half.
   const popStyle = usePopOnChange(entry?.id);
 
+  // The timer runs per entry, not per render: with `onDismiss` as a dependency, a caller passing an
+  // inline arrow restarted it on every re-render, and the Undo outlived the window it promises.
+  const dismiss = useRef(onDismiss);
+  useEffect(() => { dismiss.current = onDismiss; });
   useEffect(() => {
     if (!entry) return;
-    const timer = setTimeout(onDismiss, VISIBLE_MS);
+    const timer = setTimeout(() => dismiss.current(), VISIBLE_MS);
     return () => clearTimeout(timer);
-  }, [entry, onDismiss]);
+  }, [entry]);
 
   if (!entry) return null;
 

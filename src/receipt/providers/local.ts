@@ -2,6 +2,16 @@ import { parseDecimalInput } from '../../api/ff3/decimal';
 import type { ReceiptExtraction, ReceiptProvider } from '../types';
 import { receiptJsonSchema, receiptPrompt } from '../prompt';
 
+/** Whether an OpenAI-compatible server answers at this address (Settings' address test, sync's probe). */
+export async function probeLocalModel(address: string): Promise<boolean> {
+  try {
+    const response = await fetch(`${address.replace(/\/+$/, '')}/v1/models`, { method: 'GET' });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
 export function createLocalProvider(config: { baseUrl: string; model: string; timeoutMs?: number }): ReceiptProvider {
   return {
     name: 'local',

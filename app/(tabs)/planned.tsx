@@ -20,6 +20,7 @@ import { dayLabel, objectSummary, scheduleLabel } from '../../src/planned/labels
 import type { PlannedKind } from '../../src/planned/objects';
 import { useSync } from '../../src/sync/useSync';
 import { navigateOnce } from '../../src/ui/navigateOnce';
+import { useAction } from '../../src/ui/useAction';
 
 const KIND_TABS: { kind: PlannedKind; labelKey: string }[] = [
   { kind: 'bill', labelKey: 'planned.subscriptions' },
@@ -31,6 +32,7 @@ export default function PlannedScreen() {
   const db = useDb();
   const t = useTheme();
   const { t: tr } = useTranslation();
+  const act = useAction();
   const { status, syncNow } = useSync();
   const { objects, items, loaded } = usePlanned();
   const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
@@ -38,7 +40,7 @@ export default function PlannedScreen() {
   const mode = parsePlannedMode(modeRows?.[0]?.value);
   const [kind, setKind] = useState<PlannedKind>('bill');
 
-  const chooseMode = (next: PlannedMode) => { void setPlannedMode(db, next); };
+  const chooseMode = act(tr('planned.title'), (next: PlannedMode) => setPlannedMode(db, next));
   const refresh = <RefreshControl refreshing={status === 'syncing'} onRefresh={() => { void syncNow(); }} />;
   const objectsOfKind = objects.filter((o) => o.kind === kind).sort((a, b) => a.name.localeCompare(b.name));
 
