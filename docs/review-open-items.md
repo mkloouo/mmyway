@@ -2,7 +2,7 @@
 
 2026-09-27 · Mykola Odnosumov
 
-This file is the source of truth: tick items off here.
+**Superseded (2026-09-28): open items are tracked in [GitHub Issues](https://github.com/mkloouo/mmyway/issues).** The remaining ones link to their issue below: the on-device checks are #39, the release APK build is #40. This file stays as the record of the 2026-09-27 review.
 
 ## Status
 
@@ -88,11 +88,11 @@ The biggest gap is that nothing checks a push: there is no CI, and nothing tests
 
 - [x] **CI.** A GitHub Actions job running `npm run typecheck`, `npm run lint` and `npm test` on every push. The timezone is now pinned in `jest.config.js`, so it passes in UTC. Done: `.github/workflows/ci.yml`.
 - [x] **Screen-level tests.** Every bug from the first device build was on a screen, which the 250 pure-function tests can't catch. Add React Native Testing Library for screens, and one Maestro flow on a device: capture → confirm → queued → synced. Done: React Native Testing Library (`src/__screens__/`). Maestro skipped by decision (2026-09-28).
-- [ ] **Crash reporting** (for example Sentry), beyond the on-device Diagnostics log. Not doing, by decision (2026-09-28): the on-device Diagnostics log stays the only record.
+- **Crash reporting** (for example Sentry), beyond the on-device Diagnostics log. Not doing, by decision (2026-09-28): the on-device Diagnostics log stays the only record.
 - [x] **Typed routes.** Turn on expo-router's `experiments.typedRoutes` so route strings like `/draft/${id}` are checked. Done.
 - [x] **README.** There isn't one; AGENTS.md covers agents, not people. Done (README.md).
 - [x] **Decide: Android backup.** `allowBackup` defaults to true, so the SQLite database with every cached transaction goes into Google Drive backups. Useful for a new phone; decide on purpose and set it in `app.config.js`. Decided (2026-09-28): off, `allowBackup: false`.
-- [ ] **Release APK build.** `npm run android:build:pro` fails in the agent container: Gradle can't resolve the foojay-resolver plugin through the proxy. Build locally or on EAS for now; testing so far used the dev-client APK with Metro. Still open: needs a build outside this container (locally or on EAS).
+- [→ #40](https://github.com/mkloouo/mmyway/issues/40) **Release APK build.** `npm run android:build:pro` fails in the agent container: Gradle can't resolve the foojay-resolver plugin through the proxy. Build locally or on EAS for now; testing so far used the dev-client APK with Metro. Still open: needs a build outside this container (locally or on EAS).
 - [x] **Plain HTTP in release builds.** Allowed on purpose: `app.config.js` sets `usesCleartextTraffic: true` through `expo-build-properties`, because FF3 and LM Studio are reached over `http://`. Confirm on the first release APK (below).
 
 ## Letting other people in
@@ -118,17 +118,17 @@ Publishing the code is about a weekend of cleanup; letting other people rely on 
 
 The tests run on a desktop SQLite driver with no real FF3, so these claims need a real phone and server.
 
-- [ ] **Offline queue.** Queue three entries in airplane mode, go online, and confirm each arrives in FF3 exactly once.
-- [ ] **Idempotency key.** Open a transaction created from the app in FF3's web UI and confirm its internal reference reads `mmyway:…`. Lost-response recovery depends on FF3 returning it and on its "Duplicate of transaction #N" message.
-- [ ] **Undo window.** Confirm an entry, tap Undo within 5 seconds, and confirm nothing reaches FF3 (the post-confirm sync waits 6 seconds).
-- [ ] **Receipt files.** Capture a receipt offline, clear the app's cache in Android settings, go online, and confirm the photo still uploads.
+- [→ #39](https://github.com/mkloouo/mmyway/issues/39) **Offline queue.** Queue three entries in airplane mode, go online, and confirm each arrives in FF3 exactly once.
+- [→ #39](https://github.com/mkloouo/mmyway/issues/39) **Idempotency key.** Open a transaction created from the app in FF3's web UI and confirm its internal reference reads `mmyway:…`. Lost-response recovery depends on FF3 returning it and on its "Duplicate of transaction #N" message.
+- [→ #39](https://github.com/mkloouo/mmyway/issues/39) **Undo window.** Confirm an entry, tap Undo within 5 seconds, and confirm nothing reaches FF3 (the post-confirm sync waits 6 seconds).
+- [→ #39](https://github.com/mkloouo/mmyway/issues/39) **Receipt files.** Capture a receipt offline, clear the app's cache in Android settings, go online, and confirm the photo still uploads.
 - [x] **Gemini.** Receipts parse with the Gemini key sent in a header (confirmed in the second testing pass).
-- [ ] **Attach to a synced transaction.** Attach a photo from a transaction's detail screen, then confirm "Uploading…" turns into the file name and the file opens in FF3's web UI.
-- [ ] **Background receipts.** Capture two receipts back to back and confirm both cards appear in the Inbox and fill in.
-- [ ] **Cash count waits for the queue.** Spend cash offline, open Count cash: the banner says a change hasn't reached Firefly III and nothing can be booked. Go online, tap Sync now: the banner goes and the expected balance includes the spending.
-- [ ] **Sign-out with a queue.** With something queued (airplane mode), Sign out is refused with the count of queued changes. With an empty queue it signs out, and Activity and the account pickers are empty until the next sign-in syncs.
-- [ ] **Release APK over http://.** The release build syncs with FF3 and reads a receipt through LM Studio at their `http://` addresses.
-- [ ] **Back online.** Queue an entry in airplane mode, turn it off, and don't touch the app: it reaches FF3 within a few seconds.
-- [ ] **Background sync.** Queue an entry, leave the app in the background for 20+ minutes online: it reaches FF3.
-- [ ] **Upgrade from 1.0.0.** Install the new build over 1.0.0 with data in it: nothing is lost, and Activity search finds "żabka" for "Żabka" after one pull-to-refresh.
-- [ ] **First +Add speed and keypad haptics.** After a cold start, the first capture should open as fast as later ones; digit keys should buzz on press.
+- [→ #39](https://github.com/mkloouo/mmyway/issues/39) **Attach to a synced transaction.** Attach a photo from a transaction's detail screen, then confirm "Uploading…" turns into the file name and the file opens in FF3's web UI.
+- [→ #39](https://github.com/mkloouo/mmyway/issues/39) **Background receipts.** Capture two receipts back to back and confirm both cards appear in the Inbox and fill in.
+- [→ #39](https://github.com/mkloouo/mmyway/issues/39) **Cash count waits for the queue.** Spend cash offline, open Count cash: the banner says a change hasn't reached Firefly III and nothing can be booked. Go online, tap Sync now: the banner goes and the expected balance includes the spending.
+- [→ #39](https://github.com/mkloouo/mmyway/issues/39) **Sign-out with a queue.** With something queued (airplane mode), Sign out is refused with the count of queued changes. With an empty queue it signs out, and Activity and the account pickers are empty until the next sign-in syncs.
+- [→ #39](https://github.com/mkloouo/mmyway/issues/39) **Release APK over http://.** The release build syncs with FF3 and reads a receipt through LM Studio at their `http://` addresses.
+- [→ #39](https://github.com/mkloouo/mmyway/issues/39) **Back online.** Queue an entry in airplane mode, turn it off, and don't touch the app: it reaches FF3 within a few seconds.
+- [→ #39](https://github.com/mkloouo/mmyway/issues/39) **Background sync.** Queue an entry, leave the app in the background for 20+ minutes online: it reaches FF3.
+- [→ #39](https://github.com/mkloouo/mmyway/issues/39) **Upgrade from 1.0.0.** Install the new build over 1.0.0 with data in it: nothing is lost, and Activity search finds "żabka" for "Żabka" after one pull-to-refresh.
+- [→ #39](https://github.com/mkloouo/mmyway/issues/39) **First +Add speed and keypad haptics.** After a cold start, the first capture should open as fast as later ones; digit keys should buzz on press.
