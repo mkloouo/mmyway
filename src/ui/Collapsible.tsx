@@ -8,7 +8,11 @@ export const COLLAPSE_MS = 260;
 
 export function Collapsible({ collapsed, children }: { collapsed: boolean; children: ReactNode }) {
   const [anim] = useState(() => new Animated.Value(1));
-  const [height, setHeight] = useState<number | null>(null);
+  // The measured height lives in an Animated.Value, not state: every row in a list measures itself
+  // on mount, and as state that was a second render of every row each time a list mounted (every
+  // Activity filter switch).
+  const [measured] = useState(() => new Animated.Value(0));
+  const [height] = useState(() => Animated.multiply(anim, measured));
 
   useEffect(() => {
     if (!collapsed) {
@@ -22,10 +26,8 @@ export function Collapsible({ collapsed, children }: { collapsed: boolean; child
 
   return (
     <Animated.View
-      onLayout={collapsed ? undefined : (e) => setHeight(e.nativeEvent.layout.height)}
-      style={collapsed && height !== null
-        ? { height: anim.interpolate({ inputRange: [0, 1], outputRange: [0, height] }), opacity: anim, overflow: 'hidden' }
-        : { opacity: anim }}
+      onLayout={collapsed ? undefined : (e) => measured.setValue(e.nativeEvent.layout.height)}
+      style={collapsed ? { height, opacity: anim, overflow: 'hidden' } : { opacity: anim }}
     >
       {children}
     </Animated.View>

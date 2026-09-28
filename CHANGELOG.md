@@ -22,7 +22,8 @@
 - A split transaction lists its splits under its row: category (or description) and amount for
   the first three, and how many more there are.
 - Account balances roll to their new value after a sync instead of jumping.
-- Switching between accounts shows their transactions faster.
+- Switching between accounts, or between All, Spending, Income and Moves, shows the new list
+  faster and without stutter.
 - Holding an account card no longer thickens its border; the card still pops and the phone ticks
   when its page opens.
 - Menu actions (Duplicate, Delete, Count cash, Sign out, Diagnostics, Open in Activity) show an
@@ -76,7 +77,8 @@
 - The keyboard no longer covers the lower text fields on an account's page.
 - A transaction's receipt photos show what Firefly III holds now. After the photo a transaction
   was captured from was deleted in Firefly III, the next photo attached to it didn't show and the
-  deleted one stayed on screen.
+  deleted one stayed on screen. Photos stored in Firefly III now load (they showed as grey boxes,
+  and black when opened); one that can't be loaded says so, and Diagnostics has the reason.
 
 ## [1.2.0] - 2026-09-28
 
