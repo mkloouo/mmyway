@@ -16,6 +16,9 @@ export interface Draft {
   destinationName?: string;
   destinationId?: string;
   isNewPayee: boolean; // surfaced explicitly, never silently created (Global Constraints)
+  // The payee text a payee alias replaced (src/lookup/aliases.ts), e.g. a receipt's printed
+  // "ZABKA POLSKA SP Z O O" now booked as "Żabka". Shown on the draft screen; never sent to FF3.
+  payeeReadAs?: string;
   categoryName?: string;
   budgetId?: string;
   notes?: string;

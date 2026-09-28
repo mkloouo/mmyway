@@ -1,25 +1,24 @@
-// Aliases (design §6.7) — payee/account/budget/currency raw text mapped to a reference-table
-// target, storing targetId so the §3.4 destination_id fix is reachable from here.
+// Payee aliases (design §6.7): payee text as it arrives — a receipt's printed merchant, a bank's
+// legal name, a shorthand — mapped to the FF3 payee it books to. Added here, or learned when a
+// draft's payee is corrected (app/draft/[id].tsx).
 import { useState } from 'react';
+import { eq } from 'drizzle-orm';
 import { Alert, FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
 import { useDb } from '../../src/providers/DbProvider';
 import { SearchField } from '../../src/ui/SearchField';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, AppBar, BarIconButton, Chip, Button, Sheet, Row } from '../../src/ui/components';
-import { TargetPickerSheet, type AliasKind, type AliasTarget } from '../../src/ui/TargetPickerSheet';
+import { Screen, AppBar, BarIconButton, Button, Sheet, Row } from '../../src/ui/components';
+import { TargetPickerSheet, type AliasTarget } from '../../src/ui/TargetPickerSheet';
 import { aliases } from '../../src/db/schema';
-import { upsertAlias, removeAlias } from '../../src/lookup/aliases';
+import { upsertAlias, removeAlias, PAYEE } from '../../src/lookup/aliases';
 import { exportAliasesJson, importAliasesJson } from '../../src/lookup/aliasTransfer';
-
-const KINDS: AliasKind[] = ['payee', 'account', 'budget', 'currency'];
 
 export default function AliasesScreen() {
   const db = useDb();
   const t = useTheme();
-  const { data } = useLiveQuery(db.select().from(aliases));
+  const { data } = useLiveQuery(db.select().from(aliases).where(eq(aliases.kind, PAYEE)));
 
-  const [kind, setKind] = useState<AliasKind>('payee');
   const [search, setSearch] = useState('');
   const [addSheetOpen, setAddSheetOpen] = useState(false);
   const [targetSheetOpen, setTargetSheetOpen] = useState(false);
@@ -29,9 +28,7 @@ export default function AliasesScreen() {
   const [transferJson, setTransferJson] = useState('');
 
   const rows = data ?? [];
-  const counts = Object.fromEntries(KINDS.map((k) => [k, rows.filter((r) => r.kind === k).length]));
   const visible = rows
-    .filter((r) => r.kind === kind)
     .filter((r) => !search.trim() || r.rawInput.toLowerCase().includes(search.trim().toLowerCase()) || r.targetName.toLowerCase().includes(search.trim().toLowerCase()));
 
   function openAddSheet() {
@@ -42,7 +39,7 @@ export default function AliasesScreen() {
 
   async function saveAlias() {
     if (!rawInput.trim() || !pickedTarget) return;
-    await upsertAlias(db, { kind, rawInput: rawInput.trim(), targetId: pickedTarget.targetId, targetName: pickedTarget.targetName });
+    await upsertAlias(db, { kind: PAYEE, rawInput: rawInput.trim(), targetId: pickedTarget.targetId, targetName: pickedTarget.targetName });
     setAddSheetOpen(false);
   }
 
@@ -63,7 +60,8 @@ export default function AliasesScreen() {
     const result = await importAliasesJson(db, transferJson);
     Alert.alert(
       'Import complete',
-      `Imported ${result.imported}. ${result.collisions.length} collision(s) kept the existing mapping.`,
+      `Imported ${result.imported}. ${result.collisions.length} collision(s) kept the existing mapping.`
+        + (result.skipped > 0 ? ` Skipped ${result.skipped} account, budget or currency alias(es) — only payee aliases are used.` : ''),
     );
     setTransferSheetOpen(false);
   }
@@ -78,11 +76,6 @@ export default function AliasesScreen() {
       />
       <View style={{ paddingHorizontal: t.space.lg, gap: t.space.sm }}>
         <SearchField value={search} onChangeText={setSearch} placeholder="Search aliases" />
-        <View style={{ flexDirection: 'row', gap: t.space.sm, flexWrap: 'wrap' }}>
-          {KINDS.map((k) => (
-            <Chip key={k} label={`${k[0]!.toUpperCase() + k.slice(1)} (${counts[k] ?? 0})`} selected={kind === k} onPress={() => setKind(k)} />
-          ))}
-        </View>
       </View>
 
       <FlatList
@@ -115,7 +108,7 @@ export default function AliasesScreen() {
       <Sheet
         visible={addSheetOpen}
         onClose={() => setAddSheetOpen(false)}
-        title={`New ${kind} alias`}
+        title="New payee alias"
         footer={<Button title="Save" onPress={saveAlias} disabled={!rawInput.trim() || !pickedTarget} />}
       >
         <TextInput
@@ -134,7 +127,7 @@ export default function AliasesScreen() {
         />
       </Sheet>
 
-      <TargetPickerSheet visible={targetSheetOpen} onClose={() => setTargetSheetOpen(false)} kind={kind} onSelect={setPickedTarget} />
+      <TargetPickerSheet visible={targetSheetOpen} onClose={() => setTargetSheetOpen(false)} onSelect={setPickedTarget} />
 
       <Sheet
         visible={transferSheetOpen}

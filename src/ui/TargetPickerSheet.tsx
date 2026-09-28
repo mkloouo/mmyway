@@ -1,62 +1,50 @@
-// Alias targets, picked from the reference tables (design §6.7) — this is what makes the §3.4
-// destination_id fix reachable from the UI: an alias now stores targetId, not just a name.
+// Payee alias targets: FF3's expense accounts, or a name FF3 will create on first use. Storing
+// the account id is what lets a matched withdrawal send destination_id (design §3.4).
 import { useMemo, useState } from 'react';
 import { FlatList, Pressable, Text } from 'react-native';
+import { eq } from 'drizzle-orm';
 import { useLiveQuery } from '../db/useLiveQuery';
 import { Sheet } from './components';
 import { SearchField } from './SearchField';
 import { useTheme } from './theme';
 import { useDb } from '../providers/DbProvider';
-import { referenceAccounts, referenceBudgets, referenceCurrencies } from '../db/schema';
-import { useAssetAccounts } from '../accounts/useAssetAccounts';
+import { referenceAccounts } from '../db/schema';
 import { normkey } from '../lookup/normkey';
 
-export type AliasKind = 'payee' | 'account' | 'budget' | 'currency';
 export interface AliasTarget {
   targetId: string | null;
   targetName: string;
 }
 
-function useCandidates(kind: AliasKind): AliasTarget[] {
+function useCandidates(): AliasTarget[] {
   const db = useDb();
-  const { data: accounts } = useLiveQuery(db.select().from(referenceAccounts));
-  const assetAccounts = useAssetAccounts();
-  const { data: budgets } = useLiveQuery(db.select().from(referenceBudgets));
-  const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
-
-  return useMemo(() => {
-    if (kind === 'payee') return (accounts ?? []).filter((a) => a.type === 'expense').map((a) => ({ targetId: a.id, targetName: a.name }));
-    if (kind === 'account') return (assetAccounts ?? []).map((a) => ({ targetId: a.id, targetName: a.name }));
-    if (kind === 'budget') return (budgets ?? []).map((b) => ({ targetId: b.id, targetName: b.name }));
-    return (currencies ?? []).map((c) => ({ targetId: c.code, targetName: c.code }));
-  }, [kind, accounts, assetAccounts, budgets, currencies]);
+  const { data: accounts } = useLiveQuery(db.select().from(referenceAccounts).where(eq(referenceAccounts.type, 'expense')));
+  return useMemo(() => (accounts ?? []).map((a) => ({ targetId: a.id, targetName: a.name })), [accounts]);
 }
 
 export function TargetPickerSheet({
-  visible, onClose, kind, onSelect,
+  visible, onClose, onSelect,
 }: {
   visible: boolean;
   onClose: () => void;
-  kind: AliasKind;
   onSelect: (target: AliasTarget) => void;
 }) {
   const t = useTheme();
   const [query, setQuery] = useState('');
-  const candidates = useCandidates(kind);
+  const candidates = useCandidates();
   const trimmed = query.trim();
   const results = trimmed
     ? candidates.filter((c) => normkey(c.targetName).includes(normkey(trimmed)))
     : candidates;
 
-  // Only a payee can reference something FF3 doesn't have yet — an expense account is created on
-  // first use. Asset accounts, budgets and currencies must already exist.
-  const allowFreeText = kind === 'payee' && !!trimmed && !results.some((c) => normkey(c.targetName) === normkey(trimmed));
+  // A payee FF3 doesn't have yet is fine: the expense account is created on first use.
+  const allowFreeText = !!trimmed && !results.some((c) => normkey(c.targetName) === normkey(trimmed));
 
   return (
     <Sheet
       visible={visible}
       onClose={() => { setQuery(''); onClose(); }}
-      title={`Choose a ${kind}`}
+      title="Choose a payee"
       scroll={false}
       footer={allowFreeText ? (
         <Pressable
@@ -68,7 +56,7 @@ export function TargetPickerSheet({
         </Pressable>
       ) : undefined}
     >
-      <SearchField value={query} onChangeText={setQuery} placeholder={`Search ${kind}s`} autoFocus style={{ marginBottom: t.space.sm }} />
+      <SearchField value={query} onChangeText={setQuery} placeholder="Search payees" autoFocus style={{ marginBottom: t.space.sm }} />
       <FlatList
         data={results}
         keyExtractor={(item) => item.targetId ?? item.targetName}

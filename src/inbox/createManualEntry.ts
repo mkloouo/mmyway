@@ -1,6 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import { inboxItems, outboxOperations } from '../db/schema';
-import { matchAlias } from '../lookup/aliases';
+import { resolvePayeeAlias } from '../lookup/aliases';
 import { transition, type InboxState } from './state';
 import { draftToTransactionPayload, type Draft } from './draft';
 import { enqueueOperationSync } from '../sync/outbox';
@@ -49,40 +49,20 @@ export async function createManualEntry(db: OutboxDb, input: ManualEntryInput): 
   let draft: Draft;
   let isNewPayee: boolean;
 
-  if (input.type === 'withdrawal') {
-    isNewPayee = input.forceNewPayee ?? true;
-    let destinationId: string | undefined;
-    let destinationName = input.merchantRawInput;
-    if (!input.forceNewPayee) {
-      const aliasMatch = await matchAlias(db, 'payee', input.merchantRawInput ?? '');
-      isNewPayee = !aliasMatch.matched;
-      if (aliasMatch.matched) {
-        destinationId = aliasMatch.alias.targetId ?? undefined;
-        destinationName = aliasMatch.alias.targetName;
+  if (input.type === 'withdrawal' || input.type === 'deposit') {
+    // The payee end starts as the typed text, marked new; a matching alias (unless the screen's
+    // "new payee" was chosen explicitly) points it at the alias target instead.
+    const typed: Draft = input.type === 'withdrawal'
+      ? {
+        ...shared, type: 'withdrawal', isNewPayee: true,
+        sourceId: input.sourceId, sourceName: input.sourceName, destinationName: input.merchantRawInput,
       }
-    }
-    draft = {
-      ...shared, type: 'withdrawal', isNewPayee,
-      sourceId: input.sourceId, sourceName: input.sourceName,
-      destinationId, destinationName,
-    };
-  } else if (input.type === 'deposit') {
-    isNewPayee = input.forceNewPayee ?? true;
-    let sourceId: string | undefined;
-    let sourceName = input.merchantRawInput;
-    if (!input.forceNewPayee) {
-      const aliasMatch = await matchAlias(db, 'payee', input.merchantRawInput ?? '');
-      isNewPayee = !aliasMatch.matched;
-      if (aliasMatch.matched) {
-        sourceId = aliasMatch.alias.targetId ?? undefined;
-        sourceName = aliasMatch.alias.targetName;
-      }
-    }
-    draft = {
-      ...shared, type: 'deposit', isNewPayee,
-      sourceId, sourceName,
-      destinationId: input.destinationId, destinationName: input.destinationName,
-    };
+      : {
+        ...shared, type: 'deposit', isNewPayee: true,
+        sourceName: input.merchantRawInput, destinationId: input.destinationId, destinationName: input.destinationName,
+      };
+    draft = input.forceNewPayee ? typed : await resolvePayeeAlias(db, typed);
+    isNewPayee = draft.isNewPayee;
   } else {
     // transfer: both ends are known asset accounts, no payee alias lookup at all (defect (1)).
     isNewPayee = false;

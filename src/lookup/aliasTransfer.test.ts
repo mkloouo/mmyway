@@ -3,22 +3,37 @@ import { upsertAlias, matchAlias } from './aliases';
 import { exportAliasesJson, importAliasesJson } from './aliasTransfer';
 
 describe('exportAliasesJson / importAliasesJson', () => {
-  it('round-trips every alias through export then import into a fresh db', async () => {
+  it('round-trips payee aliases through export then import into a fresh db', async () => {
     const source = createTestDb();
     await upsertAlias(source, { kind: 'payee', rawInput: 'Żabka', targetId: 'acc-1', targetName: 'Żabka' });
-    await upsertAlias(source, { kind: 'account', rawInput: 'checking', targetId: 'acc-2', targetName: 'Checking' });
-    await upsertAlias(source, { kind: 'budget', rawInput: 'groceries', targetId: null, targetName: 'Groceries' });
-    await upsertAlias(source, { kind: 'currency', rawInput: 'zl', targetId: null, targetName: 'PLN' });
+    await upsertAlias(source, { kind: 'payee', rawInput: 'IKEA RETAIL SP. Z O.O.', targetId: null, targetName: 'IKEA' });
 
     const json = await exportAliasesJson(source);
 
     const destination = createTestDb();
     const result = await importAliasesJson(destination, json);
 
-    expect(result.imported).toBe(4);
+    expect(result).toMatchObject({ imported: 2, skipped: 0 });
     expect(result.collisions).toHaveLength(0);
     expect(await matchAlias(destination, 'payee', 'zabka')).toMatchObject({ matched: true, alias: { targetName: 'Żabka' } });
-    expect(await matchAlias(destination, 'account', 'checking')).toMatchObject({ matched: true, alias: { targetId: 'acc-2' } });
+    expect(await matchAlias(destination, 'payee', 'ikea retail sp z o o')).toMatchObject({ matched: true, alias: { targetName: 'IKEA' } });
+  });
+
+  it('leaves account, budget and currency aliases out of the export and skips them on import', async () => {
+    const source = createTestDb();
+    await upsertAlias(source, { kind: 'payee', rawInput: 'zab', targetId: null, targetName: 'Żabka' });
+    await upsertAlias(source, { kind: 'account', rawInput: 'checking', targetId: 'acc-2', targetName: 'Checking' });
+    expect(JSON.parse(await exportAliasesJson(source))).toHaveLength(1);
+
+    const destination = createTestDb();
+    const result = await importAliasesJson(destination, JSON.stringify([
+      { kind: 'payee', rawInput: 'zab', targetId: null, targetName: 'Żabka' },
+      { kind: 'budget', rawInput: 'groceries', targetId: null, targetName: 'Groceries' },
+      { kind: 'currency', rawInput: 'zl', targetId: null, targetName: 'PLN' },
+    ]));
+
+    expect(result).toMatchObject({ imported: 1, skipped: 2 });
+    expect(await matchAlias(destination, 'budget', 'groceries')).toMatchObject({ matched: false });
   });
 
   it('reports a collision on a normalized key instead of overwriting the existing alias', async () => {

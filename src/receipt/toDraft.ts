@@ -8,6 +8,7 @@ import type { OutboxDb } from '../sync/outbox';
 import type { Draft } from '../inbox/draft';
 import type { ReceiptExtraction } from './types';
 import { logLine } from '../utils/log';
+import { resolvePayeeAlias } from '../lookup/aliases';
 
 // Below this confidence, guessing a field the model wasn't sure about does more harm than
 // leaving it blank for the user to fill in on the draft screen.
@@ -83,7 +84,7 @@ export function receiptToDraft(extraction: ReceiptExtraction, reference: Receipt
     date,
     description: extraction.merchant ?? 'Receipt',
     destinationName: extraction.merchant ?? undefined,
-    isNewPayee: true, // the draft screen's suggestion chips and alias matching correct this
+    isNewPayee: true, // a payee alias (parseReceiptItem) or the draft screen's payee picker corrects this
     categoryName: category,
     sourceId,
     notes,
@@ -132,7 +133,8 @@ export async function parseReceiptItem(db: OutboxDb, itemId: string, imageBase64
     return 'failed';
   }
 
-  const draft = receiptToDraft(result.extraction, reference);
+  // A merchant read before and corrected since books to the corrected payee (src/lookup/aliases.ts).
+  const draft = await resolvePayeeAlias(db, receiptToDraft(result.extraction, reference));
   // Only if nothing touched the item while the provider was working (a parse takes seconds; the
   // user may already have opened the card and typed an amount) — their edits win.
   const updated = await db.update(inboxItems)

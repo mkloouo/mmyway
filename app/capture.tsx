@@ -25,7 +25,7 @@ import { useCaptureDefaults } from '../src/capture/useCaptureDefaults';
 import { createManualEntry, confirmInboxItem, undoConfirm } from '../src/inbox/createManualEntry';
 import { draftReadiness } from '../src/inbox/readiness';
 import { accountLastUsed, buildMerchantLookup, peekAccountLastUsed, peekMerchantLookup, type MerchantHistory } from '../src/lookup/merchantLookup';
-import { matchAlias } from '../src/lookup/aliases';
+import { matchAlias, PAYEE } from '../src/lookup/aliases';
 import { rankCandidates } from '../src/suggest/rank';
 import { divideDecimal, isNegative, parseDecimalInput } from '../src/api/ff3/decimal';
 import { reportErrors } from '../src/ui/reportError';
@@ -142,14 +142,15 @@ export default function CaptureScreen() {
   useEffect(() => {
     if (!isPayeeType || !merchantRawInput.trim()) return;
     let cancelled = false;
-    matchAlias(db, 'payee', merchantRawInput).then((match) => {
+    matchAlias(db, PAYEE, merchantRawInput).then((match) => {
       if (cancelled) return;
-      const caption = match.matched && match.alias.targetName !== merchantRawInput ? `matched "${merchantRawInput}" → ${match.alias.targetName}` : null;
+      const caption = match.matched && match.alias.targetName !== merchantRawInput ? `books to ${match.alias.targetName} via alias` : null;
       setMatchedFor({ text: merchantRawInput, caption });
     });
     return () => { cancelled = true; };
   }, [db, isPayeeType, merchantRawInput]);
-  const aliasCaption = isPayeeType && matchedFor?.text === merchantRawInput ? matchedFor.caption : null;
+  // A payee created explicitly as new skips alias matching (createManualEntry), so no caption then.
+  const aliasCaption = isPayeeType && !forceNewPayee && matchedFor?.text === merchantRawInput ? matchedFor.caption : null;
 
   const rankedPayees = useMemo(() => rankCandidates(histories, {}).slice(0, 6)
     .map((c) => histories.find((h) => h.merchantKey === c.merchantKey))

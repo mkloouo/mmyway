@@ -1,5 +1,6 @@
 // Settings (design §6.6) — grouped Card/Row layout, every › opens a Sheet. No nested FlatLists.
 import { useEffect, useState } from 'react';
+import { eq } from 'drizzle-orm';
 import { Alert, ScrollView, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
@@ -17,6 +18,7 @@ import { referenceCurrencies, aliases as aliasesTable } from '../../src/db/schem
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { hasEnvelopeMarker } from '../../src/accounts/envelopeMarker';
 import { useSync } from '../../src/sync/useSync';
+import { PAYEE } from '../../src/lookup/aliases';
 import { clearInstanceData, describeQueuedOperations, isSameInstance, queuedOperationCount } from '../../src/sync/instanceData';
 import {
   getLocalModelBaseUrls, setLocalModelBaseUrls, getLocalModelActiveUrl,
@@ -51,7 +53,7 @@ export default function SettingsScreen() {
   const allAssetAccounts = useAssetAccounts({ includeInactive: true }) ?? [];
   const assetAccounts = useAssetAccounts() ?? [];
   const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
-  const { data: aliasRows } = useLiveQuery(db.select().from(aliasesTable));
+  const { data: aliasRows } = useLiveQuery(db.select().from(aliasesTable).where(eq(aliasesTable.kind, PAYEE)));
 
   const [signedIn, setSignedIn] = useState(false);
   const [ff3Hosts, setFf3Hosts] = useState<string[]>([]);

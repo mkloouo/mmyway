@@ -1,5 +1,5 @@
 // Draft review (design §6.3) — one legible card for both a manual draft and a receipt.
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Alert, Image, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { eq } from 'drizzle-orm';
@@ -23,7 +23,9 @@ import { draftReadiness } from '../../src/inbox/readiness';
 import { applyDigit, type KeypadKey } from '../../src/capture/amountInput';
 import { buildEntryDate } from '../../src/capture/entryDate';
 import { buildMerchantLookup, type MerchantHistory } from '../../src/lookup/merchantLookup';
-import { matchAlias } from '../../src/lookup/aliases';
+import { matchAlias, rememberPayeeAlias, removeAlias, upsertAlias, PAYEE } from '../../src/lookup/aliases';
+import { Snackbar, type SnackbarEntry } from '../../src/ui/Snackbar';
+import { generateId } from '../../src/utils/id';
 import type { Draft } from '../../src/inbox/draft';
 import { navigateOnce } from '../../src/ui/navigateOnce';
 
@@ -72,23 +74,12 @@ export default function DraftScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [photoOpen, setPhotoOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
-  const [matchedFor, setMatchedFor] = useState<{ text: string; caption: string | null } | null>(null);
+  const [snackbar, setSnackbar] = useState<SnackbarEntry | null>(null);
+  const dismissSnackbar = useCallback(() => setSnackbar(null), []);
 
   const readOnly = row ? row.state === 'confirmed' || row.state === 'synced' : false;
   const payeeName = draft ? (draft.type === 'deposit' ? draft.sourceName : draft.destinationName) : undefined;
-  const isPayeeType = !!draft && draft.type !== 'transfer';
-
-  useEffect(() => {
-    if (!isPayeeType || !payeeName?.trim()) return;
-    let cancelled = false;
-    matchAlias(db, 'payee', payeeName).then((match) => {
-      if (cancelled) return;
-      const caption = match.matched && match.alias.targetName !== payeeName ? `matched "${payeeName}" → ${match.alias.targetName}` : null;
-      setMatchedFor({ text: payeeName, caption });
-    });
-    return () => { cancelled = true; };
-  }, [db, isPayeeType, payeeName]);
-  const aliasCaption = isPayeeType && matchedFor && matchedFor.text === payeeName ? matchedFor.caption : null;
+  const aliasCaption = draft?.payeeReadAs && draft.payeeReadAs !== payeeName ? `via alias “${draft.payeeReadAs}”` : null;
 
   if (!row || !draft) {
     return (
@@ -103,6 +94,27 @@ export default function DraftScreen() {
 
   function patch(fields: Partial<Draft>) {
     updateDraft(db, id, fields);
+  }
+
+  // Replacing a payee name that didn't come from FF3 (what a receipt read, a name typed as new,
+  // or an alias's earlier guess) teaches an alias, so that text books to this payee next time.
+  async function choosePayee(d: Draft, name: string, isNew: boolean) {
+    const raw = d.payeeReadAs ?? (d.isNewPayee ? payeeName : undefined);
+    const previous = raw ? await matchAlias(db, PAYEE, raw) : null;
+    const learned = raw ? await rememberPayeeAlias(db, raw, name) : false;
+    patch(d.type === 'deposit'
+      ? { sourceName: name, sourceId: undefined, isNewPayee: isNew, payeeReadAs: learned ? raw : undefined }
+      : { destinationName: name, destinationId: undefined, isNewPayee: isNew, payeeReadAs: learned ? raw : undefined });
+    if (!learned || !raw) return;
+    setSnackbar({
+      id: generateId(),
+      message: `“${raw}” will book to ${name}`,
+      actionLabel: 'Undo',
+      onAction: () => {
+        if (previous?.matched) void upsertAlias(db, previous.alias);
+        else void removeAlias(db, PAYEE, raw);
+      },
+    });
   }
 
   function handleDetailChange(change: Partial<DetailRowsValue>) {
@@ -262,12 +274,8 @@ export default function DraftScreen() {
         onClose={() => setPayeeSheetOpen(false)}
         histories={histories}
         payeeLabel={draft.type === 'deposit' ? 'payer' : 'payee'}
-        onSelect={(h) => {
-          patch(draft.type === 'deposit' ? { sourceName: h.displayName, isNewPayee: false } : { destinationName: h.displayName, isNewPayee: false });
-        }}
-        onCreateNew={(text) => {
-          patch(draft.type === 'deposit' ? { sourceName: text, isNewPayee: true } : { destinationName: text, isNewPayee: true });
-        }}
+        onSelect={(h) => { void choosePayee(draft, h.displayName, false); }}
+        onCreateNew={(text) => { void choosePayee(draft, text, true); }}
       />
 
       <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title="Draft">
@@ -281,6 +289,7 @@ export default function DraftScreen() {
         )}
         <Row first={!readOnly || !row.ff3GroupId} label="Delete draft" tone="danger" onPress={handleDeleteDraft} />
       </Sheet>
+      <Snackbar entry={snackbar} onDismiss={dismissSnackbar} />
       <Modal visible={photoOpen && !!row.receiptImagePath} transparent animationType="fade" onRequestClose={() => setPhotoOpen(false)}>
         <Pressable style={{ flex: 1, backgroundColor: t.color.photoBackdrop, justifyContent: 'center' }} onPress={() => setPhotoOpen(false)} accessibilityLabel="Close the photo">
           {!!row.receiptImagePath && <Image source={{ uri: row.receiptImagePath }} resizeMode="contain" style={{ width: '100%', height: '100%' }} />}
