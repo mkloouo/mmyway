@@ -2,7 +2,7 @@
 // cash envelope in one pass; one confirm creates one adjustment per envelope that differs.
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { eq, inArray } from 'drizzle-orm';
 import { useLiveQuery } from '../src/db/useLiveQuery';
@@ -13,13 +13,12 @@ import { currencyOf } from '../src/ui/money';
 import { parseDecimalInput } from '../src/api/ff3/decimal';
 import { relativeTime } from '../src/ui/relativeTime';
 import { haptics } from '../src/ui/haptics';
-import { referenceAccounts, referenceCategories, referenceCurrencies, inboxItems, outboxOperations, appSettings } from '../src/db/schema';
+import { referenceAccounts, referenceCategories, referenceCurrencies, outboxOperations, appSettings } from '../src/db/schema';
 import { hasEnvelopeMarker } from '../src/accounts/envelopeMarker';
 import { useAssetAccounts } from '../src/accounts/useAssetAccounts';
-import { computeSweep, driftByCurrency, type SweepRow, type SweepAdjustment } from '../src/reconcile/sweep';
+import { computeSweep, driftByCurrency, type SweepRow } from '../src/reconcile/sweep';
 import { denominationsFor, totalDenominations } from '../src/reconcile/denominations';
 import { countBlocker, describeCountBlocker, readCountBlocker } from '../src/reconcile/countReadiness';
-import { confirmInboxItem } from '../src/inbox/createManualEntry';
 import {
   getReconcileShortfallAccountId, setReconcileShortfallAccountId,
   getReconcileSurplusAccountId, setReconcileSurplusAccountId,
@@ -27,43 +26,19 @@ import {
   BALANCES_STALE_KEY,
 } from '../src/settings/appSettings';
 import { useSync } from '../src/sync/useSync';
-import { generateId } from '../src/utils/id';
-import type { Draft } from '../src/inbox/draft';
-import { LEDGER_KINDS, type OutboxDb } from '../src/sync/outbox';
+import { LEDGER_KINDS } from '../src/sync/outbox';
+import { TextField } from '../src/ui/TextField';
+import { useAction } from '../src/ui/useAction';
+import { createAndConfirmAdjustment } from '../src/reconcile/adjustment';
 
 const STALE_MS = 24 * 60 * 60 * 1000;
 
-async function createAndConfirmAdjustment(
-  db: OutboxDb,
-  adjustment: SweepAdjustment,
-  settings: { shortfallAccountId: string | null; surplusAccountId: string | null; categoryName: string | null },
-): Promise<void> {
-  const isWithdrawal = adjustment.type === 'withdrawal';
-  const payeeAccountId = isWithdrawal ? settings.shortfallAccountId : settings.surplusAccountId;
-  if (!payeeAccountId) throw new Error('reconcile payee account is not configured');
-
-  const now = new Date().toISOString();
-  const draft: Draft = {
-    type: adjustment.type,
-    amount: adjustment.amount,
-    currencyCode: adjustment.currencyCode,
-    date: now,
-    description: 'Cash count',
-    isNewPayee: false,
-    sourceId: isWithdrawal ? adjustment.accountId : payeeAccountId,
-    destinationId: isWithdrawal ? payeeAccountId : adjustment.accountId,
-    categoryName: settings.categoryName || undefined,
-    extraTags: ['mmyway-reconcile'],
-  };
-  const id = generateId();
-  await db.insert(inboxItems).values({ id, kind: 'manual_entry', state: 'captured', draftJson: JSON.stringify(draft), createdAt: now, updatedAt: now });
-  await confirmInboxItem(db, id);
-}
 
 export default function CountScreen() {
   const db = useDb();
   const t = useTheme();
   const { t: tr } = useTranslation();
+  const act = useAction();
   // Edge to edge, the window isn't resized for the keyboard; the lower envelopes need the room.
   const keyboardHeight = useKeyboardHeight();
 
@@ -132,7 +107,7 @@ export default function CountScreen() {
     .sort()[0] ?? null;
   const stale = oldestBalanceDate ? new Date().getTime() - new Date(oldestBalanceDate).getTime() > STALE_MS : true;
 
-  async function confirmReview() {
+  const confirmReview = act(tr('inbox.confirm'), async () => {
     if (confirming) return;
     setConfirming(true);
     try {
@@ -155,7 +130,7 @@ export default function CountScreen() {
     } finally {
       setConfirming(false);
     }
-  }
+  });
 
   function openDenomPad(accountId: string) {
     setDenomAccountId(accountId);
@@ -225,16 +200,12 @@ export default function CountScreen() {
                     {tr('count.expected', { amount: a.currentBalance ? `${a.currentBalance} ${currency.symbol}` : '—' })}
                   </Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm, marginTop: t.space.sm }}>
-                    <TextInput
+                    <TextField
                       value={counted}
                       onChangeText={(v) => setCounts((c) => ({ ...c, [a.id]: v }))}
                       keyboardType="decimal-pad"
                       placeholder="—"
-                      placeholderTextColor={t.color.textFaint}
-                      style={{
-                        flex: 1, borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm,
-                        paddingHorizontal: t.space.md, paddingVertical: t.space.sm, color: t.color.text,
-                      }}
+                      style={{ flex: 1 }}
                     />
                     {!!ladder && (
                       <Pressable onPress={() => openDenomPad(a.id)} accessibilityRole="button" accessibilityLabel={tr('count.byDenomination', { name: a.name })}>
@@ -290,13 +261,12 @@ export default function CountScreen() {
           <View key={d.value} style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.md, paddingVertical: t.space.xs }}>
             <Text style={[t.type.body, { color: t.color.text, width: 60 }]}>{d.label}</Text>
             <Text style={[t.type.body, { color: t.color.textMuted }]}>×</Text>
-            <TextInput
+            <TextField
               value={denomCounts[d.value] ? String(denomCounts[d.value]) : ''}
               onChangeText={(v) => setDenomCounts((c) => ({ ...c, [d.value]: Math.max(0, parseInt(v, 10) || 0) }))}
               keyboardType="number-pad"
               placeholder="0"
-              placeholderTextColor={t.color.textFaint}
-              style={{ flex: 1, borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm, paddingHorizontal: t.space.md, paddingVertical: t.space.sm, color: t.color.text }}
+              style={{ flex: 1 }}
             />
           </View>
         ))}

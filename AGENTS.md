@@ -11,7 +11,8 @@ pipeline.
   what looks like restarting the app; this repo also uses config plugins Expo Go cannot apply.
 - `npm run typecheck` / `npm run lint` / `npm run test` / `npm run check` (all three)
 - `npm run db:generate` — regenerate Drizzle migrations after editing `src/db/schema.ts`
-- `npm run android:build:dev` / `npm run android:build:pro` — local EAS APK build
+- `npm run android:build:dev` / `npm run android:build:pro` — local EAS APK build;
+  `npm run android:build:aab` — Play Store bundle
 - `npm run release -- X.Y.Z` — see `scripts/release.mjs --help`
 - `npm run i18n:push` / `npm run i18n:pull` — sync UI strings with Tolgee (needs `.env.local`,
   see `docs/LOCALIZATION.md`)
@@ -47,7 +48,10 @@ pipeline.
   entries, receipts, and recurring-transaction reviews.
 - `app/` — expo-router screens: amount-first capture, an Inbox
   that behaves as an approval queue, and a shared `src/ui/` component kit every screen draws
-  from — no screen inlines a literal colour, styling always goes through `useTheme()`.
+  from — no screen inlines a literal colour, styling always goes through `useTheme()`. Text
+  inputs are `TextField`, single-choice sheets `PickerSheet`, async handlers go through
+  `useAction()`, and table writes live in `src/`, not in the screen. Screen tests live in
+  `src/__screens__/` (never under `app/`, which expo-router would treat as routes).
 
 ## Rules
 
@@ -71,6 +75,10 @@ pipeline.
   under the section it belongs to (Capture, Receipts, Inbox, ...) or a `### Fixed` section. A
   fix to something not yet released doesn't get its own line — correct the existing description
   instead. Internal-only changes (refactors, tests, tooling, docs) are skipped.
+- `draft_json` and `payload_json` are read and written only through `src/inbox/draftJson.ts` and
+  `src/sync/payloadJson.ts` (zod-validated, versioned) — never `JSON.parse` + cast.
+- After `npm run db:generate`, register the new file in `src/db/migrations.ts`;
+  `src/db/migrations.upgrade.test.ts` fails if you don't.
 - `src/api/ff3/types.ts` and `src/db/migrations/**/*.sql` are generated/pinned — don't hand-edit
   generated SQL migrations; edit `src/db/schema.ts` and run `npm run db:generate`.
 

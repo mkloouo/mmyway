@@ -7,14 +7,30 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "android": { "buildType": "apk" },
-      "env": { "APP_VARIANT": "development" }
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "APP_VARIANT": "development"
+      }
     },
     "production": {
       "distribution": "internal",
-      "android": { "buildType": "apk" },
-      "env": { "ANDROID_ABI_SPLITS": "1" },
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "ANDROID_ABI_SPLITS": "1"
+      },
       "autoIncrement": true
+    },
+    "production-aab": {
+      "extends": "production",
+      "distribution": "store",
+      "android": {
+        "buildType": "app-bundle"
+      },
+      "env": {}
     }
   }
 }

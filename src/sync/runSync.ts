@@ -13,7 +13,7 @@ import {
 } from '../settings/appSettings';
 import { readGeminiKey } from '../settings/secrets';
 import { probeReachability, type ServerReachability } from './reachability';
-import { pullReferenceData, pullRecentTransactions, pullAccountBalances } from './referenceData';
+import { pullReferenceData, pullRecentTransactions, pullAccountBalances, backfillCachedTransactions } from './referenceData';
 import { warmMerchantLookup } from '../lookup/merchantLookup';
 import { replayOutbox, recoverInFlight, pruneUploadedReceiptImages, queuedLedgerOpCount, type OutboxDb } from './outbox';
 import { pruneReferenceData, reapplyQueuedAccountEdits } from './referenceHygiene';
@@ -127,6 +127,7 @@ async function doSync(db: OutboxDb, mode: SyncMode): Promise<SyncSummary> {
         await pullReferenceData(db, client);
         await pruneReferenceData(db, pullStartedAt);
         await reapplyQueuedAccountEdits(db);
+        await backfillCachedTransactions(db);
         await setBalancesStale(db, false);
       }
 

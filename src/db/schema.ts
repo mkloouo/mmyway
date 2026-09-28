@@ -55,16 +55,23 @@ export const cachedTransactions = sqliteTable('cached_transactions', {
   destinationName: text('destination_name'),
   categoryName: text('category_name'),
   budgetName: text('budget_name'),
+  // FF3 ids, so a renamed account or two accounts sharing a name don't break filters and edits.
+  sourceId: text('source_id'),
+  destinationId: text('destination_id'),
+  budgetId: text('budget_id'),
+  splitCount: integer('split_count').notNull().default(1), // amount is the splits' total when > 1
+  searchKey: text('search_key'), // normkey'd description|source|destination, for case/diacritic-blind search
   tagsJson: text('tags_json').notNull().default('[]'),
   notes: text('notes'),
   updatedAt: text('updated_at').notNull(), // FF3's updated_at, for conflict checks
   syncedAt: text('synced_at').notNull(),
 });
 
+// Status columns carry `enum` for TypeScript only (Drizzle adds no CHECK constraint for text enums).
 export const inboxItems = sqliteTable('inbox_items', {
   id: text('id').primaryKey(), // client-generated uuid
-  kind: text('kind').notNull(), // manual_entry | receipt | recurring_review
-  state: text('state').notNull(), // captured | parsed | confirmed | synced | error
+  kind: text('kind', { enum: ['manual_entry', 'receipt', 'recurring_review'] }).notNull(),
+  state: text('state', { enum: ['captured', 'parsed', 'confirmed', 'synced', 'error'] }).notNull(),
   draftJson: text('draft_json').notNull(), // see src/inbox/draft.ts for the shape
   receiptImagePath: text('receipt_image_path'),
   receiptContentHash: text('receipt_content_hash'), // dedupe guard, see Review Focus
@@ -77,13 +84,14 @@ export const inboxItems = sqliteTable('inbox_items', {
 export const outboxOperations = sqliteTable('outbox_operations', {
   id: text('id').primaryKey(), // client-generated uuid, doubles as idempotency key
   inboxItemId: text('inbox_item_id'),
-  kind: text('kind').notNull(), // create_transaction | update_transaction | delete_transaction | attach_receipt | recurring_review
+  kind: text('kind', { enum: ['create_transaction', 'update_transaction', 'delete_transaction', 'attach_receipt', 'recurring_review', 'update_account'] }).notNull(),
   payloadJson: text('payload_json').notNull(),
-  status: text('status').notNull(), // pending | in_flight | failed | done
+  status: text('status', { enum: ['pending', 'in_flight', 'failed', 'done'] }).notNull(),
   attempts: integer('attempts').notNull().default(0),
   lastError: text('last_error'),
   createdAt: text('created_at').notNull(),
   sequence: integer('sequence').notNull(), // strictly increasing, defines replay order
+  nextAttemptAt: text('next_attempt_at'), // a failed op waits until then before the next automatic retry
 });
 
 export const appSettings = sqliteTable('app_settings', {

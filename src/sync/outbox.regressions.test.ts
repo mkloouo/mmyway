@@ -62,6 +62,7 @@ describe('create idempotency', () => {
     };
 
     await replayOutbox(db as any, client as any);
+    await db.update(outboxOperations).set({ nextAttemptAt: null }); // the backoff has passed
     const second = await replayOutbox(db as any, client as any);
 
     expect(second.failedAt).toBeNull();
@@ -207,6 +208,7 @@ describe('receipt upload', () => {
       }),
     };
     await replay(db, client);
+    await db.update(outboxOperations).set({ nextAttemptAt: null }); // the backoff has passed
     await replay(db, client);
 
     const creates = client.request.mock.calls.filter(([p]: [string]) => p === '/v1/attachments');
@@ -250,10 +252,10 @@ describe('receipt photo cleanup', () => {
   it('drops the device copy only for receipts synced over 30 days ago with nothing left to upload', async () => {
     const { pruneUploadedReceiptImages } = jest.requireActual('./outbox');
     const db = createTestDb();
-    const base = { kind: 'receipt', draftJson: '{}', createdAt: 'c' };
+    const base = { kind: 'receipt' as const, draftJson: '{}', createdAt: 'c' };
     await db.insert(inboxItems).values([
-      { ...base, id: 'old', state: 'synced', receiptImagePath: 'file:///x/receipts/old.jpg', updatedAt: '2026-08-01T00:00:00Z' },
-      { ...base, id: 'recent', state: 'synced', receiptImagePath: 'file:///x/receipts/recent.jpg', updatedAt: '2026-09-20T00:00:00Z' },
+      { ...base, id: 'old', state: 'synced' as const, receiptImagePath: 'file:///x/receipts/old.jpg', updatedAt: '2026-08-01T00:00:00Z' },
+      { ...base, id: 'recent', state: 'synced' as const, receiptImagePath: 'file:///x/receipts/recent.jpg', updatedAt: '2026-09-20T00:00:00Z' },
       { ...base, id: 'old-queued', state: 'synced', receiptImagePath: 'file:///x/receipts/q.jpg', updatedAt: '2026-08-01T00:00:00Z' },
     ]);
     await enqueueOperation(db, { id: 'up', inboxItemId: 'old-queued', kind: 'attach_receipt', payload: {} });

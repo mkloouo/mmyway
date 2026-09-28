@@ -24,11 +24,12 @@ import type { TransactionRead } from '../../src/api/ff3/types';
 import { navigateOnce } from '../../src/ui/navigateOnce';
 import { confirmDestructive } from '../../src/ui/confirm';
 import { cachedRowFromGroup } from '../../src/sync/referenceData';
-import { enqueueOperation } from '../../src/sync/outbox';
-import { generateId } from '../../src/utils/id';
-import { inArray } from 'drizzle-orm';
+import { deleteCachedTransactions } from '../../src/sync/outbox';
+import { ne } from 'drizzle-orm';
 import { haptics } from '../../src/ui/haptics';
 import { pendingEdits, applyPendingEdit, type PendingEditStatus } from '../../src/transactions/pendingEdits';
+import { readPayload } from '../../src/sync/payloadJson';
+import { useAction } from '../../src/ui/useAction';
 
 const FILTERS: { labelKey: string; type: ActivityTypeFilter }[] = [
   { labelKey: 'activity.filterAll', type: 'all' },
@@ -116,6 +117,7 @@ export default function ActivityScreen() {
   const db = useDb();
   const t = useTheme();
   const { t: tr } = useTranslation();
+  const act = useAction();
   const navigation = useNavigation();
   const listRef = useRef<SectionList<ActivityItem, DisplaySection>>(null);
 
@@ -127,11 +129,11 @@ export default function ActivityScreen() {
 
   const assetAccounts = useAssetAccounts() ?? [];
   const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
-  const { data: outbox } = useLiveQuery(db.select().from(outboxOperations));
+  const { data: outbox } = useLiveQuery(db.select().from(outboxOperations).where(ne(outboxOperations.kind, 'update_account')));
   // Just "has anything ever synced" — .limit(1) instead of loading the whole cached table.
   const { data: cachedTxProbe } = useLiveQuery(db.select({ id: cachedTransactions.groupId }).from(cachedTransactions).limit(1));
 
-  const { sections, loadMore, loadingMore, atEnd } = useTransactionPage({ search, type, accountName: accountFilter });
+  const { sections, loadMore, loadingMore, atEnd } = useTransactionPage({ search, type, accountId: accountFilter });
   const { loadOlder, loadingOlder, exhausted, reset: resetExhausted } = useLoadOlderHistory();
   // The local cache runs out before real history does — reaching the end of what's cached pulls
   // a further chunk from FF3 instead of just stopping (see useLoadOlderHistory).
@@ -154,16 +156,12 @@ export default function ActivityScreen() {
       return next;
     });
   }, []);
-  async function deleteSelected() {
+  const deleteSelected = act(tr('common.delete'), async () => {
     const ids = [...selectedIds];
     if (!await confirmDestructive(tr('activity.deleteTitle', { count: ids.length }), tr('common.delete'), tr('activity.deleteBody'))) return;
-    const rows = await db.select({ groupId: cachedTransactions.groupId, updatedAt: cachedTransactions.updatedAt })
-      .from(cachedTransactions).where(inArray(cachedTransactions.groupId, ids));
-    for (const row of rows) {
-      await enqueueOperation(db, { id: generateId(), kind: 'delete_transaction', payload: { groupId: row.groupId, expectedUpdatedAt: row.updatedAt } });
-    }
+    await deleteCachedTransactions(db, ids);
     setSelectedIds(new Set());
-  }
+  });
 
   // A FF3 search result isn't in the local cache; store the copy we already have, then open it.
   const openRemote = useCallback(async (item: RemoteResultRow) => {
@@ -218,7 +216,7 @@ export default function ActivityScreen() {
     const queued: QueuedRow[] = ops
       .filter((op) => op.kind === 'create_transaction' && (op.status === 'pending' || op.status === 'in_flight'))
       .map((op): QueuedRow | null => {
-        const payload = JSON.parse(op.payloadJson) as CreateTransactionPayload;
+        const payload = readPayload<CreateTransactionPayload>(op.kind, op.payloadJson);
         const split = payload.splits[0];
         if (!split) return null;
         return {
@@ -291,14 +289,18 @@ export default function ActivityScreen() {
     />
   ), [selecting, selectedIds, currencies, onRowPress, onRowLongPress]);
 
-  function scrollToTop() {
-    if (displaySections.length > 0) listRef.current?.scrollToLocation({ sectionIndex: 0, itemIndex: 0, animated: true, viewOffset: 0 });
-  }
+  // The listener is added once but reads the current sections through a ref: it used to close
+  // over the first render's (empty) list and never scroll.
+  const hasSectionsRef = useRef(false);
+  useEffect(() => { hasSectionsRef.current = displaySections.length > 0; }, [displaySections]);
   useEffect(() => {
     const unsubscribe = (navigation as unknown as { addListener: (event: string, cb: () => void) => () => void })
-      .addListener('tabPress', () => { if (navigation.isFocused()) scrollToTop(); });
+      .addListener('tabPress', () => {
+        if (navigation.isFocused() && hasSectionsRef.current) {
+          listRef.current?.scrollToLocation({ sectionIndex: 0, itemIndex: 0, animated: true, viewOffset: 0 });
+        }
+      });
     return unsubscribe;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigation]);
 
   // undefined until the first read lands, so a synced-but-empty Activity doesn't flash "Nothing
@@ -351,11 +353,11 @@ export default function ActivityScreen() {
           >
             {assetAccounts.map((a) => {
               const stale = a.currentBalanceDate ? new Date().getTime() - new Date(a.currentBalanceDate).getTime() > STALE_MS : true;
-              const selected = accountFilter === a.name;
+              const selected = accountFilter === a.id;
               return (
                 <Pressable
                   key={a.id}
-                  onPress={() => setAccountFilter((cur) => (cur === a.name ? null : a.name))}
+                  onPress={() => setAccountFilter((cur) => (cur === a.id ? null : a.id))}
                   onLongPress={() => navigateOnce(`/accounts/${a.id}`)}
                   delayLongPress={300}
                   accessibilityHint={tr('account.openHint')}

@@ -1,247 +1,52 @@
 // Inbox (design §6.1) — the approval queue. Only ever holds unfinished work; confirmed/synced
 // items leave every section (see src/inbox/useInboxSections.ts).
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, SectionList, Text, TextInput, View } from 'react-native';
+import { Pressable, SectionList, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { eq } from 'drizzle-orm';
+import { inArray } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, AppBar, BarIconButton, SectionHeader, Card, Chip, Button, Money, StatusPill, EmptyState, Sheet, Pulse } from '../../src/ui/components';
+import { Screen, AppBar, BarIconButton, SectionHeader, Chip, Button, StatusPill, EmptyState, Sheet } from '../../src/ui/components';
 import { CaptureDock } from '../../src/ui/CaptureDock';
 import { SyncSheet } from '../../src/ui/SyncSheet';
-import { SwipeableCard } from '../../src/ui/SwipeableCard';
 import { haptics } from '../../src/ui/haptics';
 import { Snackbar, type SnackbarEntry } from '../../src/ui/Snackbar';
 import { relativeTime } from '../../src/ui/relativeTime';
-import { currencyOf } from '../../src/ui/money';
-import { categoryColor } from '../../src/ui/categoryColor';
 import { useInboxSections, type AttentionItem, type InboxItemRow } from '../../src/inbox/useInboxSections';
 import { draftReadiness } from '../../src/inbox/readiness';
 import { confirmInboxItem, undoConfirm, type ConfirmResult } from '../../src/inbox/createManualEntry';
-import { deleteInboxItem } from '../../src/inbox/updateDraft';
+import { deleteInboxItem, retryErroredItem } from '../../src/inbox/updateDraft';
 import { confirmDestructive } from '../../src/ui/confirm';
-import { transition } from '../../src/inbox/state';
 import { approveRecurringReview, editRecurringReview, deleteRecurringReview } from '../../src/sync/recurringReview';
-import { discardOperation } from '../../src/sync/outbox';
+import { discardOperation, retryOperationNow } from '../../src/sync/outbox';
 import { requestSync } from '../../src/sync/syncTrigger';
 import { parseDecimalInput } from '../../src/api/ff3/decimal';
 import { reportErrors } from '../../src/ui/reportError';
 import { useSync, useSignedIn, usePullToRefresh } from '../../src/sync/useSync';
-import { inboxItems, outboxOperations, referenceCurrencies, cachedTransactions } from '../../src/db/schema';
+import { outboxOperations, referenceCurrencies, cachedTransactions } from '../../src/db/schema';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { generateId } from '../../src/utils/id';
-import type { Draft } from '../../src/inbox/draft';
 import { navigateOnce } from '../../src/ui/navigateOnce';
-import { needsLabel } from '../../src/ui/readinessLabel';
 import { appLocale } from '../../src/i18n';
+import { readDraft, readReviewJournal } from '../../src/inbox/draftJson';
+import { TextField } from '../../src/ui/TextField';
+import { useAction } from '../../src/ui/useAction';
+import { ConfirmCard, ReviewCard, AttentionCard } from '../../src/ui/InboxCards';
 
 type SectionKey = 'attention' | 'confirm' | 'review';
 type SectionRow = AttentionItem | InboxItemRow;
 
-function metaLine(parts: (string | null | undefined)[]): string {
-  return parts.filter((p): p is string => !!p).join(' · ');
-}
-
-// No swiping while selecting: a stray swipe mid-selection would confirm or delete one card.
-function MaybeSwipeable({ disabled, children, ...props }: { disabled: boolean } & Parameters<typeof SwipeableCard>[0]) {
-  return disabled ? <>{children}</> : <SwipeableCard {...props}>{children}</SwipeableCard>;
-}
-
 const UNDO_WINDOW_MS = 5000; // matches the Snackbar's visible time
-
-function ConfirmCard({
-  item, currencies, onOpen, onConfirm, onDelete, selection,
-}: {
-  item: InboxItemRow;
-  currencies: { code: string; symbol: string; decimalPlaces: number }[];
-  onOpen: () => void;
-  onConfirm: () => void;
-  onDelete: () => void;
-  /** Multi-select: `active` while any card is selected; a tap toggles instead of opening. */
-  selection: { active: boolean; selected: boolean; toggle: () => void };
-}) {
-  const t = useTheme();
-  const { t: tr } = useTranslation();
-  const cardStyle = { marginHorizontal: t.space.lg, marginBottom: t.space.sm };
-  const press = selection.active ? selection.toggle : onOpen;
-
-  if (item.kind === 'receipt' && item.state === 'captured') {
-    return (
-      <MaybeSwipeable disabled={selection.active} onDelete={onDelete}>
-        <Card onPress={press} onLongPress={selection.toggle} selected={selection.selected} style={cardStyle}>
-          <Pulse active>
-            <Text style={[t.type.body, { color: t.color.textMuted }]}>▦ {tr('inbox.readingReceipt')}</Text>
-          </Pulse>
-        </Card>
-      </MaybeSwipeable>
-    );
-  }
-
-  const draft: Draft = JSON.parse(item.draftJson);
-  const readiness = draftReadiness(draft);
-  const isTransfer = draft.type === 'transfer';
-  const payeeName = isTransfer
-    ? `${draft.sourceName ?? '?'} → ${draft.destinationName ?? '?'}`
-    : (draft.type === 'deposit' ? draft.sourceName : draft.destinationName) || draft.description;
-  const accountName = draft.type === 'deposit' ? draft.destinationName : draft.sourceName;
-  const time = new Date(draft.date).toLocaleTimeString(appLocale(), { hour: '2-digit', minute: '2-digit' });
-  const meta = isTransfer ? metaLine([time]) : metaLine([draft.categoryName, accountName, time]);
-  const dotColor = draft.categoryName ? categoryColor(draft.categoryName, t.dark) : t.color.textFaint;
-
-  const badges: { label: string; tone?: 'warn' }[] = [];
-  if (draft.isNewPayee && !isTransfer) badges.push({ label: tr('inbox.newPayee'), tone: 'warn' });
-  if (!readiness.ready) badges.push({ label: needsLabel(readiness.missing), tone: 'warn' });
-  if (draft.sharedWith) badges.push({ label: tr('inbox.sharedWith', { name: draft.sharedWith }) });
-  // Handed back by the outbox: something it points at was deleted in FF3 (src/sync/outbox.ts).
-  if (item.errorMessage) badges.push({ label: item.errorMessage, tone: 'warn' });
-
-  return (
-    <MaybeSwipeable disabled={selection.active} onConfirm={onConfirm} onDelete={onDelete} confirmEnabled={readiness.ready} onRefused={haptics.warn}>
-      <Card onPress={press} onLongPress={selection.toggle} selected={selection.selected} style={cardStyle}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
-          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor }} />
-          <Text style={[t.type.heading, { color: t.color.text, flex: 1 }]} numberOfLines={1}>{payeeName}</Text>
-          <Money amount={draft.amount || '0'} currency={currencyOf(currencies, draft.currencyCode)} type={draft.type} size="heading" />
-        </View>
-        {!!meta && <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]}>{meta}</Text>}
-        {/* Badges and the ✓ share one footer row: the button sits level with "New payee"
-            instead of on a line of its own under it. */}
-        {(badges.length > 0 || (readiness.ready && !selection.active)) && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm, marginTop: t.space.sm }}>
-            <View style={{ flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
-              {badges.map((b) => <Chip key={b.label} label={b.label} tone={b.tone} />)}
-            </View>
-            {readiness.ready && !selection.active && (
-              <Pressable
-                onPress={onConfirm}
-                accessibilityRole="button"
-                accessibilityLabel={tr('inbox.confirm')}
-                hitSlop={8}
-                style={({ pressed }) => ({
-                  width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center',
-                  backgroundColor: t.color.accentSoft, opacity: pressed ? 0.6 : 1,
-                })}
-              >
-                <Ionicons name="checkmark" size={20} color={t.color.accent} />
-              </Pressable>
-            )}
-          </View>
-        )}
-      </Card>
-    </MaybeSwipeable>
-  );
-}
-
-function ReviewCard({
-  item, currencies, onApprove, onEdit, onDelete,
-}: {
-  item: InboxItemRow;
-  currencies: { code: string; symbol: string; decimalPlaces: number }[];
-  onApprove: () => Promise<void>;
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
-  const t = useTheme();
-  const { t: tr } = useTranslation();
-  const [approving, setApproving] = useState(false);
-  const journal = JSON.parse(item.draftJson);
-  const dateLabel = journal.date ? new Date(journal.date).toLocaleDateString(appLocale(), { day: 'numeric', month: 'short' }) : undefined;
-
-  async function approve() {
-    if (approving) return;
-    setApproving(true);
-    try {
-      await onApprove();
-    } finally {
-      setApproving(false);
-    }
-  }
-
-  return (
-    <Card style={{ marginHorizontal: t.space.lg, marginBottom: t.space.sm }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
-        <Ionicons name="repeat" size={16} color={t.color.textMuted} />
-        <Text style={[t.type.heading, { color: t.color.text, flex: 1 }]} numberOfLines={1}>{journal.description}</Text>
-        <Money amount={journal.amount ?? '0'} currency={currencyOf(currencies, journal.currency_code ?? '')} type="withdrawal" size="heading" />
-      </View>
-      <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]}>
-        {metaLine([journal.source_name, dateLabel, tr('inbox.recurring')])}
-      </Text>
-      <View style={{ flexDirection: 'row', gap: t.space.sm, marginTop: t.space.sm }}>
-        <Button title={approving ? tr('inbox.approving') : tr('inbox.approve')} variant="secondary" onPress={approve} disabled={approving} style={{ flex: 1 }} />
-        <Button title={tr('common.edit')} variant="ghost" onPress={onEdit} disabled={approving} style={{ flex: 1 }} />
-        <Button title={tr('common.delete')} variant="danger" onPress={onDelete} disabled={approving} style={{ flex: 1 }} />
-      </View>
-    </Card>
-  );
-}
-
-function AttentionCard({
-  entry, onRetryError, onDiscardError, onRetryOp, onDiscardOp, onResolveConflict,
-}: {
-  entry: AttentionItem;
-  onRetryError: (id: string) => void;
-  onDiscardError: (id: string) => void;
-  onRetryOp: (id: string) => void;
-  onDiscardOp: (id: string) => void;
-  onResolveConflict: (groupId: string) => void;
-}) {
-  const t = useTheme();
-  const { t: tr } = useTranslation();
-  const cardStyle = { marginHorizontal: t.space.lg, marginBottom: t.space.sm };
-
-  if (entry.kind === 'inbox_error') {
-    const draft: Partial<Draft> = JSON.parse(entry.item.draftJson || '{}');
-    const label = draft.description || draft.destinationName || draft.sourceName || tr('inbox.item');
-    return (
-      <Card style={cardStyle}>
-        <Text style={[t.type.heading, { color: t.color.danger }]}>✕ {label}</Text>
-        <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]} numberOfLines={2}>
-          {entry.item.errorMessage ?? tr('inbox.failed')}
-        </Text>
-        <View style={{ flexDirection: 'row', gap: t.space.sm, marginTop: t.space.sm }}>
-          <Button title={tr('inbox.retry')} variant="secondary" onPress={() => onRetryError(entry.item.id)} style={{ flex: 1 }} />
-          <Button title={tr('inbox.discard')} variant="danger" onPress={() => onDiscardError(entry.item.id)} style={{ flex: 1 }} />
-        </View>
-      </Card>
-    );
-  }
-
-  const op = entry.op;
-  const isConflict = op.lastError === 'conflict';
-  let groupId: string | undefined;
-  try { groupId = JSON.parse(op.payloadJson).groupId; } catch { groupId = undefined; }
-
-  return (
-    <Card style={cardStyle}>
-      <Text style={[t.type.heading, { color: t.color.danger }]}>
-        ✕ {isConflict ? tr('inbox.conflict') : tr('inbox.operationFailed', { kind: op.kind.replace(/_/g, ' ') })}
-      </Text>
-      <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]} numberOfLines={2}>
-        {op.lastError ?? tr('inbox.unknownError')}
-      </Text>
-      <View style={{ flexDirection: 'row', gap: t.space.sm, marginTop: t.space.sm }}>
-        {isConflict && groupId ? (
-          <Button title={tr('inbox.resolve')} variant="secondary" onPress={() => onResolveConflict(groupId!)} style={{ flex: 1 }} />
-        ) : (
-          <>
-            <Button title={tr('inbox.retryNow')} variant="secondary" onPress={() => onRetryOp(op.id)} style={{ flex: 1 }} />
-            <Button title={tr('inbox.discard')} variant="danger" onPress={() => onDiscardOp(op.id)} style={{ flex: 1 }} />
-          </>
-        )}
-      </View>
-    </Card>
-  );
-}
 
 export default function InboxScreen() {
   const db = useDb();
   const t = useTheme();
   const { t: tr } = useTranslation();
+  const act = useAction();
   const { needsAttention, toConfirm, toReview } = useInboxSections();
-  const { data: outbox } = useLiveQuery(db.select().from(outboxOperations));
+  // Only what the pill counts — not every payload in the queue.
+  const { data: outbox } = useLiveQuery(db.select({ id: outboxOperations.id }).from(outboxOperations).where(inArray(outboxOperations.status, ['pending', 'failed'])));
   const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
   // Just "has anything ever synced" — .limit(1) instead of loading the whole cached table.
   const { data: cachedTxProbe } = useLiveQuery(db.select({ id: cachedTransactions.groupId }).from(cachedTransactions).limit(1));
@@ -249,7 +54,7 @@ export default function InboxScreen() {
   const pull = usePullToRefresh();
 
   const assetAccounts = useAssetAccounts() ?? [];
-  const pendingOutboxCount = (outbox ?? []).filter((op) => op.status === 'pending' || op.status === 'failed').length;
+  const pendingOutboxCount = (outbox ?? []).length;
 
   // A sync that clears the queue gets a success haptic (design §3.4) — adjusted during render
   // (React's pattern for reacting to a derived value changing), not in an effect.
@@ -335,7 +140,7 @@ export default function InboxScreen() {
   const visibleToConfirm = toConfirm.filter((item) => !hiddenIds.has(item.id));
   const readyToConfirm = visibleToConfirm.filter((item) => {
     if (item.kind === 'receipt' && item.state === 'captured') return false;
-    return draftReadiness(JSON.parse(item.draftJson)).ready;
+    return draftReadiness(readDraft(item.draftJson)).ready;
   });
 
   async function confirmAll() {
@@ -363,24 +168,22 @@ export default function InboxScreen() {
     showConfirmedSnackbar(batch);
   }
 
-  async function retryError(id: string) {
-    await db.update(inboxItems)
-      .set({ state: transition('error', 'retry'), errorMessage: null, updatedAt: new Date().toISOString() })
-      .where(eq(inboxItems.id, id));
+  const retryError = act(tr('inbox.retry'), async (id: string) => {
+    await retryErroredItem(db, id);
     // A retried receipt is re-read by the sync; don't make it wait for the next app resume.
     requestSync();
-  }
-  async function discardError(id: string) {
+  });
+  const discardError = act(tr('inbox.discard'), async (id: string) => {
     if (!await confirmDestructive(tr('inbox.discardItemTitle'), tr('inbox.discard'), tr('inbox.discardItemBody'))) return;
     await deleteInboxItem(db, id);
-  }
-  async function deleteSelected() {
+  });
+  function deleteSelected() {
     const ids = [...selectedIds];
     setSelectedIds(new Set());
     deleteWithUndo(ids);
   }
   async function confirmSelected() {
-    const ready = visibleToConfirm.filter((item) => selectedIds.has(item.id) && !(item.kind === 'receipt' && item.state === 'captured') && draftReadiness(JSON.parse(item.draftJson)).ready);
+    const ready = visibleToConfirm.filter((item) => selectedIds.has(item.id) && !(item.kind === 'receipt' && item.state === 'captured') && draftReadiness(readDraft(item.draftJson)).ready);
     setSelectedIds(new Set());
     if (ready.length === 0) { haptics.warn(); return; }
     const batch: { id: string; result: ConfirmResult }[] = [];
@@ -389,24 +192,24 @@ export default function InboxScreen() {
     }, (message) => setSnackbar({ id: generateId(), message }));
     if (batch.length > 0) { haptics.tick(); showConfirmedSnackbar(batch); }
   }
-  async function discardReview(id: string) {
+  const discardReview = act(tr('common.delete'), async (id: string) => {
     if (!await confirmDestructive(tr('inbox.deleteReviewTitle'), tr('common.delete'), tr('inbox.deleteReviewBody'))) return;
     await deleteRecurringReview(db, id);
-  }
-  async function retryOpNow(opId: string) {
-    await db.update(outboxOperations).set({ status: 'pending', lastError: null }).where(eq(outboxOperations.id, opId));
+  });
+  const retryOpNow = act(tr('inbox.retryNow'), async (opId: string) => {
+    await retryOperationNow(db, opId);
     syncNow();
-  }
-  async function discardOp(opId: string) {
+  });
+  const discardOp = act(tr('inbox.discard'), async (opId: string) => {
     if (!await confirmDestructive(tr('inbox.discardChangeTitle'), tr('inbox.discard'), tr('inbox.discardChangeBody'))) return;
     await discardOperation(db, opId);
-  }
+  });
   function resolveConflict(groupId: string) {
     navigateOnce(`/transactions/${groupId}`);
   }
 
   function startEditReview(item: InboxItemRow) {
-    const journal = JSON.parse(item.draftJson);
+    const journal = readReviewJournal(item.draftJson);
     setEditingReview({ id: item.id, amount: journal.amount ?? '', currencyCode: journal.currency_code ?? '', accountId: journal.source_id ?? null });
   }
   const editAmountResult = editingReview ? parseDecimalInput(editingReview.amount) : null;
@@ -597,20 +400,16 @@ export default function InboxScreen() {
       >
         {!!editingReview && (
           <>
-            <TextInput
+            <TextField
               placeholder={tr('fields.amount')} value={editingReview.amount} keyboardType="decimal-pad"
               onChangeText={(v) => setEditingReview((cur) => (cur ? { ...cur, amount: v } : cur))}
-              style={{ borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm, padding: t.space.md, color: t.color.text }}
-              placeholderTextColor={t.color.textFaint}
             />
             {editAmountInvalid && (
               <Text style={[t.type.label, { color: t.color.danger }]}>{tr('common.invalidAmount')}</Text>
             )}
-            <TextInput
+            <TextField
               placeholder={tr('fields.currency')} value={editingReview.currencyCode}
               onChangeText={(v) => setEditingReview((cur) => (cur ? { ...cur, currencyCode: v } : cur))}
-              style={{ borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm, padding: t.space.md, color: t.color.text }}
-              placeholderTextColor={t.color.textFaint}
             />
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
               {assetAccounts.map((a) => (

@@ -3,17 +3,14 @@
   "compilerOptions": {
     "strict": true,
     "noUncheckedIndexedAccess": true,
-    "paths": {
-      "@/*": [
-        "./src/*"
-      ]
-    },
     "types": [
       "jest"
     ]
   },
   "include": [
     "**/*.ts",
-    "**/*.tsx"
+    "**/*.tsx",
+    ".expo/types/**/*.ts",
+    "expo-env.d.ts"
   ]
 }

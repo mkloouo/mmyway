@@ -226,6 +226,17 @@ describe('pullReferenceData', () => {
     expect(account).toMatchObject({ id: 'acc-1', currentBalance: '340.00', currentBalanceDate: '2026-09-27' });
   });
 
+  it('an unchanged account keeps its row but gets a fresh syncedAt, so pruning keeps it', async () => {
+    const db = createTestDb();
+    await pullReferenceData(db as any, fakeReferenceClient() as any);
+    const [first] = await db.select().from(referenceAccounts);
+    await new Promise((r) => setTimeout(r, 5));
+    await pullReferenceData(db as any, fakeReferenceClient() as any);
+    const [second] = await db.select().from(referenceAccounts);
+    expect(second!.syncedAt > first!.syncedAt).toBe(true);
+    expect({ ...second, syncedAt: '' }).toEqual({ ...first, syncedAt: '' });
+  });
+
   it('keeps the settings the account page edits, dates as calendar days', async () => {
     const db = createTestDb();
     await pullReferenceData(db as any, fakeReferenceClient() as any);

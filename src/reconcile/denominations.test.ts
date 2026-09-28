@@ -12,7 +12,7 @@ describe('denominationsFor', () => {
   });
 
   it('returns null for an unknown currency', () => {
-    expect(denominationsFor('JPY')).toBeNull();
+    expect(denominationsFor('XYZ')).toBeNull();
   });
 });
 
@@ -32,5 +32,13 @@ describe('totalDenominations', () => {
     const ladder = denominationsFor('USD')!;
     const total = totalDenominations({ '100.00': 1, '999.00': 5 }, ladder);
     expect(total).toBe('100.00');
+  });
+});
+
+describe('more currencies', () => {
+  it('has ladders beyond PLN/EUR/USD/UAH, whole yen without a fraction', () => {
+    expect(denominationsFor('GBP')?.[0]).toEqual({ value: '50.00', label: '50' });
+    expect(denominationsFor('JPY')?.at(-1)).toEqual({ value: '1', label: '1' });
+    expect(totalDenominations({ '1000': 2, '5': 1 }, denominationsFor('JPY')!)).toBe('2005');
   });
 });

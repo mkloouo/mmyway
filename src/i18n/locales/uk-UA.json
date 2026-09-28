@@ -301,6 +301,11 @@
     "subtitle_other": "",
     "title": ""
   },
+  "migrationFailed": {
+    "body": "",
+    "share": "",
+    "title": ""
+  },
   "payeeSheet": {
     "payee": {
       "choose": "",
@@ -366,6 +371,7 @@
     "ff3Addresses": "",
     "geminiApiKey": "",
     "geminiKey": "",
+    "geminiPrivacy": "",
     "inactiveAccount": "",
     "language": "",
     "languageEnglish": "",
@@ -448,6 +454,8 @@
     "changesNotSent": "",
     "changesQueued": "",
     "deleteTitle": "",
+    "splits_one": "",
+    "splits_other": "",
     "syncedAgo": "",
     "title": "",
     "uploadFailed": "",

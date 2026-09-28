@@ -101,6 +101,7 @@ describe('replayOutbox', () => {
     const first = await replayOutbox(db as any, client as any);
     expect(first.failedAt).toBe('op-1');
 
+    await db.update(outboxOperations).set({ nextAttemptAt: null }); // the backoff has passed
     const second = await replayOutbox(db as any, client as any);
     expect(second.succeeded).toEqual(['op-1']);
 
