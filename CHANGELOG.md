@@ -32,6 +32,8 @@
   separately, exactly as they are there; tap one to see everything about it.
 
 ### Fixed
+- The time of an entry can be changed: picking a date on a transaction, a draft or in Capture
+  now asks for the time next.
 - A queued entry no longer disappears from Activity for a moment when it reaches Firefly III: it
   stays in place and turns into the synced transaction.
 

@@ -5,7 +5,7 @@ import i18n, { appLocale } from '../src/i18n';
 import { Animated, Alert, BackHandler, Pressable, ScrollView, Text, View } from 'react-native';
 import { useFlyAway, useShake } from '../src/ui/feedback';
 import { router } from 'expo-router';
-import { pickDate as openSystemDatePicker } from '../src/ui/pickDate';
+import { pickDateTime } from '../src/ui/pickDate';
 import { useLiveQuery } from '../src/db/useLiveQuery';
 import { useDb } from '../src/providers/DbProvider';
 import { useTheme } from '../src/ui/theme';
@@ -252,8 +252,10 @@ export default function CaptureScreen() {
 
   function openNativeDatePicker() {
     setDateSheetOpen(false);
-    openSystemDatePicker(date, (picked) => {
-      setDate(buildEntryDate(picked, new Date()));
+    // Starts from now's time, so a past day picked and the time dialog dismissed still keeps the
+    // clock time rather than midnight (src/capture/entryDate.ts).
+    pickDateTime(buildEntryDate(date, new Date()), (picked) => {
+      setDate(picked);
       setDateMode('custom');
     });
   }
@@ -454,7 +456,7 @@ export default function CaptureScreen() {
 
         <Keypad
           onDigit={(key: KeypadKey) => setAmount((cur) => applyDigit(cur, key, currency.decimalPlaces))}
-          dateLabel={dateMode === 'today' ? `${tr('capture.today')} ▾` : dateMode === 'yesterday' ? `${tr('capture.yesterday')} ▾` : date.toLocaleDateString(appLocale())}
+          dateLabel={dateMode === 'today' ? `${tr('capture.today')} ▾` : dateMode === 'yesterday' ? `${tr('capture.yesterday')} ▾` : date.toLocaleString(appLocale(), { day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit' })}
           onDatePress={() => setDateSheetOpen(true)}
           onNotePress={() => setMoreSheetOpen(true)}
           noteHasValue={!!notes}
