@@ -5,9 +5,9 @@ import { useTranslation } from 'react-i18next';
 import { appLocale } from '../../src/i18n';
 import { Alert, Image, Modal, Pressable, ScrollView, Text, View, type ImageSourcePropType } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { eq } from 'drizzle-orm';
+import { eq, ne } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
-import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import { pickDate } from '../../src/ui/pickDate';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
 import { Screen, AppBar, BarIconButton, Card, Button, Money, Row, Sheet } from '../../src/ui/components';
@@ -20,13 +20,16 @@ import { applyDigit, type KeypadKey } from '../../src/capture/amountInput';
 import { buildEntryDate } from '../../src/capture/entryDate';
 import { cachedTransactions, inboxItems, outboxOperations, referenceCategories, referenceBudgets, referenceCurrencies } from '../../src/db/schema';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
-import { enqueueOperation, type UpdateTransactionPayload, type DeleteTransactionPayload } from '../../src/sync/outbox';
+import { enqueueOperation, type UpdateTransactionPayload } from '../../src/sync/outbox';
 import { generateId } from '../../src/utils/id';
 import { useQuery } from '@tanstack/react-query';
 import { getClient } from '../../src/api/ff3/session';
 import { fetchJournalAttachments, queuedAttachments } from '../../src/receipt/journalAttachments';
 import type { TransactionSplit } from '../../src/api/ff3/types';
 import { pendingEdits } from '../../src/transactions/pendingEdits';
+import { readPayload } from '../../src/sync/payloadJson';
+import { useAction } from '../../src/ui/useAction';
+import { keepMineOverServer, dropQueuedChange } from '../../src/sync/outbox';
 
 const SHARED_TAG_PREFIX = 'mmyway-shared-';
 // The words the rest of the app uses (capture's type chips), not FF3's "Withdrawal"/"Deposit".
@@ -47,9 +50,11 @@ export default function TransactionDetailScreen() {
   const db = useDb();
   const t = useTheme();
   const { t: tr } = useTranslation();
+  const act = useAction();
 
   const { data: rows } = useLiveQuery(db.select().from(cachedTransactions).where(eq(cachedTransactions.groupId, groupId)));
-  const { data: outbox } = useLiveQuery(db.select().from(outboxOperations));
+  // The kinds that can touch one transaction; account edits never do.
+  const { data: outbox } = useLiveQuery(db.select().from(outboxOperations).where(ne(outboxOperations.kind, 'update_account')));
   // An old transaction can point at an account since made inactive — look its name up across
   // every account for display, but only offer active ones when picking a new one.
   const allAssetAccounts = useAssetAccounts({ includeInactive: true }) ?? [];
@@ -110,9 +115,9 @@ export default function TransactionDetailScreen() {
     ...remoteImages.map((a) => ({ key: a.id, source: a.imageSource! })),
   ];
   const effectiveAmount = shown.amount ?? row.amount;
-  const effectiveSourceId = shown.source_id ?? allAssetAccounts.find((a) => a.name === row.sourceName)?.id ?? null;
-  const effectiveDestinationId = shown.destination_id ?? allAssetAccounts.find((a) => a.name === row.destinationName)?.id ?? null;
-  const effectiveBudgetId = shown.budget_id ?? (budgets ?? []).find((b) => b.name === row.budgetName)?.id ?? null;
+  const effectiveSourceId = shown.source_id ?? row.sourceId ?? allAssetAccounts.find((a) => a.name === row.sourceName)?.id ?? null;
+  const effectiveDestinationId = shown.destination_id ?? row.destinationId ?? allAssetAccounts.find((a) => a.name === row.destinationName)?.id ?? null;
+  const effectiveBudgetId = shown.budget_id ?? row.budgetId ?? (budgets ?? []).find((b) => b.name === row.budgetName)?.id ?? null;
   const effectiveCategoryName = shown.category_name ?? row.categoryName ?? null;
   const effectiveDate = shown.date ? new Date(shown.date) : new Date(row.date);
   const effectiveNotes = shown.notes ?? row.notes ?? null;
@@ -141,29 +146,19 @@ export default function TransactionDetailScreen() {
   }
 
   function openDatePicker() {
-    DateTimePickerAndroid.open({
-      value: effectiveDate,
-      mode: 'date',
-      onChange: (event: { type: string }, picked?: Date) => {
-        if (event.type === 'set' && picked) {
-          setChanges((prev) => ({ ...prev, date: buildEntryDate(picked, effectiveDate).toISOString() }));
-        }
-      },
-    });
+    pickDate(effectiveDate, (picked) => setChanges((prev) => ({ ...prev, date: buildEntryDate(picked, effectiveDate).toISOString() })));
   }
 
-  async function keepMine() {
+  const keepMine = act(tr('conflict.keepMine'), async () => {
     if (!conflictOp) return;
-    const payload = JSON.parse(conflictOp.payloadJson) as UpdateTransactionPayload | DeleteTransactionPayload;
-    payload.expectedUpdatedAt = row!.updatedAt;
-    await db.update(outboxOperations).set({ status: 'pending', payloadJson: JSON.stringify(payload), lastError: null }).where(eq(outboxOperations.id, conflictOp.id));
-  }
-  async function discardMine() {
+    await keepMineOverServer(db, conflictOp.id, row!.updatedAt);
+  });
+  const discardMine = act(tr('conflict.useServer'), async () => {
     if (!conflictOp) return;
-    await db.delete(outboxOperations).where(eq(outboxOperations.id, conflictOp.id));
-  }
+    await dropQueuedChange(db, conflictOp.id);
+  });
 
-  async function onSave() {
+  const onSave = act(tr('common.save'), async () => {
     if (Object.keys(changes).length === 0) {
       router.back();
       return;
@@ -179,7 +174,7 @@ export default function TransactionDetailScreen() {
     } finally {
       setSaving(false);
     }
-  }
+  });
 
   function onDelete() {
     setMenuOpen(false);
@@ -196,7 +191,7 @@ export default function TransactionDetailScreen() {
   }
 
   if (conflictOp) {
-    const pending = JSON.parse(conflictOp.payloadJson) as UpdateTransactionPayload;
+    const pending = readPayload<UpdateTransactionPayload>(conflictOp.kind, conflictOp.payloadJson);
     const isDelete = conflictOp.kind === 'delete_transaction';
     const fields = isDelete ? [] : conflictFields(pending.changes ?? {}, row, {
       accountName: (accountId) => allAssetAccounts.find((a) => a.id === accountId)?.name,
@@ -267,9 +262,13 @@ export default function TransactionDetailScreen() {
         {/* The description can be a long legal name ("TOP-PHARMA spółka z o.o. sp.k. …"): padded,
             centred and capped at two lines instead of running into both screen edges. */}
         <View style={{ alignItems: 'center', paddingVertical: t.space.lg, paddingHorizontal: t.space.xl }}>
-          <Pressable onPress={() => setAmountSheetOpen(true)}>
+          {/* A split group shows its total; edits reach only the first split, so its amount isn't editable here. */}
+          <Pressable onPress={() => setAmountSheetOpen(true)} disabled={row.splitCount > 1}>
             <Money amount={effectiveAmount} currency={currency} type={row.type as 'withdrawal' | 'deposit' | 'transfer'} size="title" />
           </Pressable>
+          {row.splitCount > 1 && (
+            <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('transaction.splits', { count: row.splitCount })}</Text>
+          )}
           <Text style={[t.type.heading, { color: t.color.text, marginTop: t.space.xs, textAlign: 'center' }]} numberOfLines={2}>{row.description}</Text>
         </View>
 

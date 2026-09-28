@@ -15,6 +15,8 @@ import { useSharedImages } from '../src/receipt/useSharedImages';
 import { installLogCapture, logLine } from '../src/utils/log';
 import '../src/i18n';
 import { LocaleSync } from '../src/i18n/LocaleSync';
+import NetInfo from '@react-native-community/netinfo';
+import { registerBackgroundSync } from '../src/sync/backgroundSync';
 
 installLogCapture();
 
@@ -39,6 +41,25 @@ function SyncOnResume() {
     });
     return () => subscription.remove();
   }, [syncNow, lastSyncedAt]);
+  return null;
+}
+
+// Brief §5.4: going back online sends what was queued offline without waiting for a resume.
+function SyncOnReconnect() {
+  const { syncNow } = useSync();
+  useEffect(() => {
+    let online: boolean | null = null;
+    return NetInfo.addEventListener((state) => {
+      const next = state.isConnected === true && state.isInternetReachable !== false;
+      if (online === false && next) syncNow();
+      online = next;
+    });
+  }, [syncNow]);
+  return null;
+}
+
+function BackgroundSyncRegistration() {
+  useEffect(() => { void registerBackgroundSync(); }, []);
   return null;
 }
 
@@ -70,6 +91,8 @@ export default function RootLayout() {
           <DbProvider>
             <LocaleSync />
             <SyncOnResume />
+            <SyncOnReconnect />
+            <BackgroundSyncRegistration />
             <ShareIntentBridge />
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="(tabs)" />

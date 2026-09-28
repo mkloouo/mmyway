@@ -7,7 +7,7 @@ let lines: string[] = [];
 let loaded = false;
 let installed = false;
 
-function logFile(): { text(): string; write(value: string): void } | null {
+function logFile(): { exists: boolean; textSync(): string; write(value: string): void } | null {
   try {
     // Lazy require, not a module-scope import: this module is imported by app code that Jest
     // also loads, and expo-file-system has no Node implementation.
@@ -35,7 +35,9 @@ export function readLog(): string[] {
     loaded = true;
     const file = logFile();
     try {
-      const existing = file?.text();
+      // textSync, not text(): text() returns a promise, so the previous run's lines were never
+      // read back (and a missing file became an unhandled rejection).
+      const existing = file?.exists ? file.textSync() : null;
       if (existing) lines = existing.split('\n').slice(-MAX_LINES);
     } catch {
       // No log file yet.
@@ -48,6 +50,19 @@ export function logLine(level: 'info' | 'warn' | 'error', message: string): void
   readLog();
   lines = [...lines, `${new Date().toISOString()} ${level.toUpperCase()} ${message}`].slice(-MAX_LINES);
   persist();
+}
+
+const REDACTED_KEYS = ['description', 'notes', 'name', 'source_name', 'destination_name', 'category_name', 'budget_name', 'tags', 'group_title', 'rawInput', 'targetName'];
+
+/**
+ * The log as it may leave the phone (Share): amounts and the text fields that name payees,
+ * accounts and notes are masked, so a bug report doesn't carry someone's finances with it.
+ */
+export function shareableLog(source: string[] = readLog()): string {
+  const keys = REDACTED_KEYS.join('|');
+  return source.join('\n')
+    .replace(new RegExp(`("(?:${keys})"\\s*:\\s*)("(?:[^"\\\\]|\\\\.)*"|\\[[^\\]]*\\])`, 'g'), '$1"‹redacted›"')
+    .replace(/-?\d[\d\s]*[.,]\d{1,2}(?!\d)/g, '‹amount›');
 }
 
 export function clearLog(): void {

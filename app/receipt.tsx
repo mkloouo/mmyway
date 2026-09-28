@@ -2,7 +2,7 @@
 // gallery shortcut, the gallery) opens on arrival, not after a form.
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useDb } from '../src/providers/DbProvider';
@@ -11,6 +11,7 @@ import { Screen, AppBar, BarIconButton, Button, Card, Row, Sheet } from '../src/
 import { captureReceipt, attachReceiptToJournal } from '../src/receipt/ingest';
 import { pickPhoto, type PhotoSource } from '../src/receipt/pickPhoto';
 import { requestSync, SYNC_DELAY } from '../src/sync/syncTrigger';
+import { TextField } from '../src/ui/TextField';
 
 function SourceTile({ icon, label, onPress, disabled }: { icon: 'camera' | 'images'; label: string; onPress: () => void; disabled: boolean }) {
   const t = useTheme();
@@ -124,15 +125,11 @@ export default function ReceiptScreen() {
         footer={<Button title={tr('common.done')} onPress={() => setHintSheetOpen(false)} />}
       >
         <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('receipt.hintBody')}</Text>
-        <TextInput
+        <TextField
           value={hint}
           onChangeText={setHint}
           placeholder={tr('receipt.hintPlaceholder')}
-          placeholderTextColor={t.color.textFaint}
-          style={{
-            borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm,
-            padding: t.space.md, color: t.color.text, marginTop: t.space.sm,
-          }}
+          style={{ marginTop: t.space.sm }}
         />
       </Sheet>
     </Screen>

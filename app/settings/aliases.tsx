@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { eq } from 'drizzle-orm';
-import { Alert, FlatList, Pressable, Text, TextInput, View } from 'react-native';
+import { Alert, FlatList, Pressable, Text, View } from 'react-native';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
 import { useDb } from '../../src/providers/DbProvider';
 import { SearchField } from '../../src/ui/SearchField';
@@ -14,11 +14,14 @@ import { TargetPickerSheet, type AliasTarget } from '../../src/ui/TargetPickerSh
 import { aliases } from '../../src/db/schema';
 import { upsertAlias, removeAlias, PAYEE } from '../../src/lookup/aliases';
 import { exportAliasesJson, importAliasesJson } from '../../src/lookup/aliasTransfer';
+import { TextField } from '../../src/ui/TextField';
+import { useAction } from '../../src/ui/useAction';
 
 export default function AliasesScreen() {
   const db = useDb();
   const t = useTheme();
   const { t: tr } = useTranslation();
+  const act = useAction();
   const { data } = useLiveQuery(db.select().from(aliases).where(eq(aliases.kind, PAYEE)));
 
   const [search, setSearch] = useState('');
@@ -39,11 +42,11 @@ export default function AliasesScreen() {
     setAddSheetOpen(true);
   }
 
-  async function saveAlias() {
+  const saveAlias = act(tr('common.save'), async () => {
     if (!rawInput.trim() || !pickedTarget) return;
     await upsertAlias(db, { kind: PAYEE, rawInput: rawInput.trim(), targetId: pickedTarget.targetId, targetName: pickedTarget.targetName });
     setAddSheetOpen(false);
-  }
+  });
 
   function confirmRemove(row: { kind: string; rawInput: string; targetName: string }) {
     Alert.alert(tr('aliases.removeTitle', { raw: row.rawInput }), tr('aliases.removeBody', { target: row.targetName }), [
@@ -52,12 +55,12 @@ export default function AliasesScreen() {
     ]);
   }
 
-  async function onExport() {
+  const onExport = act(tr('aliases.exportOrImport'), async () => {
     setTransferJson(await exportAliasesJson(db));
     setTransferSheetOpen(true);
-  }
+  });
 
-  async function onImport() {
+  const onImport = act(tr('aliases.importButton'), async () => {
     if (!transferJson) return;
     const result = await importAliasesJson(db, transferJson);
     Alert.alert(
@@ -66,7 +69,7 @@ export default function AliasesScreen() {
         + (result.skipped > 0 ? ` ${tr('aliases.importSkipped', { count: result.skipped })}` : ''),
     );
     setTransferSheetOpen(false);
-  }
+  });
 
   return (
     <Screen bottom>
@@ -113,13 +116,11 @@ export default function AliasesScreen() {
         title={tr('aliases.newTitle')}
         footer={<Button title={tr('common.save')} onPress={saveAlias} disabled={!rawInput.trim() || !pickedTarget} />}
       >
-        <TextInput
+        <TextField
           value={rawInput}
           onChangeText={setRawInput}
           placeholder={tr('aliases.rawPlaceholder')}
-          placeholderTextColor={t.color.textFaint}
           autoCapitalize="none"
-          style={{ borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm, paddingHorizontal: t.space.md, paddingVertical: t.space.sm, color: t.color.text }}
         />
         <Row
           label={tr('aliases.mapsTo')}
@@ -137,13 +138,12 @@ export default function AliasesScreen() {
         title={tr('aliases.transferTitle')}
         footer={<Button title={tr('aliases.importButton')} onPress={onImport} disabled={!transferJson} />}
       >
-        <TextInput
+        <TextField
           value={transferJson}
           onChangeText={setTransferJson}
           multiline
           placeholder={tr('aliases.transferPlaceholder')}
-          placeholderTextColor={t.color.textFaint}
-          style={{ borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm, padding: t.space.md, color: t.color.text, minHeight: 160 }}
+          style={{ minHeight: 160 }}
         />
       </Sheet>
     </Screen>

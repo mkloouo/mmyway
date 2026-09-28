@@ -2,7 +2,7 @@ import type { ExpoSQLiteDatabase } from 'drizzle-orm/expo-sqlite';
 import * as schema from './schema';
 
 let cached: ExpoSQLiteDatabase<typeof schema> | null = null;
-let migrationDone: Promise<void> | null = null;
+let migrationDone: Promise<Error | null> | null = null;
 
 export function getDb(): ExpoSQLiteDatabase<typeof schema> {
   if (cached) return cached;
@@ -37,17 +37,18 @@ export function getDb(): ExpoSQLiteDatabase<typeof schema> {
     console.error('could not set WAL/busy_timeout', err);
   }
   cached = drizzleExpo(sqlite, { schema }) as ExpoSQLiteDatabase<typeof schema>;
-  migrationDone = migrateExpoSqlite(cached, migrations).catch((err: unknown) => {
-    // Swallowed on purpose — the app still runs against whatever schema exists — but a failure
-    // here leaves every later query broken in ways that look unrelated, so it must be in the log.
+  migrationDone = migrateExpoSqlite(cached, migrations).then(() => null, (err: unknown) => {
+    // Every later query would break in ways that look unrelated, so the app must not run on
+    // this schema: DbProvider shows a blocking screen with the Diagnostics log instead.
     console.error('migration failed', err);
+    return err instanceof Error ? err : new Error(String(err));
   });
   return cached;
 }
 
-// Resolves once migrations have run (or failed) against the db getDb() returns. Callers that
-// read/write before this resolves can race a not-yet-created table.
-export function getMigrationDone(): Promise<void> {
+// Resolves once migrations have run against the db getDb() returns: null, or the error they
+// failed with. Callers that read/write before this resolves can race a not-yet-created table.
+export function getMigrationDone(): Promise<Error | null> {
   getDb();
   return migrationDone!;
 }

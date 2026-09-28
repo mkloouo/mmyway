@@ -1,5 +1,6 @@
 // The Inbox's three sections (design §6.1): the list only ever holds unfinished work.
 // `confirmed`/`synced` items leave every section — they show up in Activity instead.
+import { eq } from 'drizzle-orm';
 import { useLiveQuery } from '../db/useLiveQuery';
 import { useDb } from '../providers/DbProvider';
 import { inboxItems, outboxOperations } from '../db/schema';
@@ -24,7 +25,7 @@ const TO_CONFIRM_STATES = new Set(['captured', 'parsed']);
 export function useInboxSections(): InboxSections {
   const db = useDb();
   const { data: items } = useLiveQuery(db.select().from(inboxItems));
-  const { data: outbox } = useLiveQuery(db.select().from(outboxOperations));
+  const { data: outbox } = useLiveQuery(db.select().from(outboxOperations).where(eq(outboxOperations.status, 'failed')));
 
   const rows = items ?? [];
   const opRows = outbox ?? [];
@@ -33,7 +34,7 @@ export function useInboxSections(): InboxSections {
   const toReview = rows.filter((row) => row.kind === 'recurring_review' && row.state === 'confirmed');
   const needsAttention: AttentionItem[] = [
     ...rows.filter((row) => row.state === 'error').map((item): AttentionItem => ({ kind: 'inbox_error', id: item.id, item })),
-    ...opRows.filter((op) => op.status === 'failed').map((op): AttentionItem => ({ kind: 'outbox_failed', id: op.id, op })),
+    ...opRows.map((op): AttentionItem => ({ kind: 'outbox_failed', id: op.id, op })),
   ];
 
   return {

@@ -9,8 +9,42 @@
   your net worth, its opening balance and date, and its virtual balance. Saved together with
   **Save**, and sent to Firefly III like any other change, offline too.
 
+### Activity
+- Search ignores case and accents: "żabka" finds "Żabka", in Polish and Cyrillic too.
+- Filtering by an account keeps working after the account is renamed, or when two accounts share
+  a name.
+- A split transaction shows its total under its title, instead of only its first part.
+
+### Receipts
+- Photos are scaled down to 1600 px before they're read and uploaded: faster with a local model,
+  cheaper with Gemini, and smaller attachments in Firefly III.
+- Settings → Gemini key says when receipt photos go to Google.
+
+### Sync and offline
+- Going back online sends what was queued at once, without reopening the app.
+- mmyway also syncs in the background, about every 15 minutes when Android allows it.
+- A change Firefly III keeps refusing is retried after a pause that grows to an hour, instead of
+  on every sync. **Retry now** in the Inbox still sends it at once.
+
+### Cash count
+- Denominations for GBP, CHF, CZK, HUF, SEK, NOK, DKK, RON, CAD and JPY.
+
+### Look and feel
+- Amounts follow your phone's number format (for example "1,234.50" or "1 234,50").
+- Every text field shares one look.
+
+### Privacy
+- The app's database is no longer included in Android's Google Drive backups. A new phone signs in
+  and syncs from Firefly III.
+- A shared diagnostics log hides amounts, payees, accounts and notes.
+
 ### Fixed
 - Reordering accounts now reaches Firefly III; the new order used to stay on the phone.
+- Payee suggestions now also fill in the usual budget.
+- The diagnostics log keeps the lines from before the app was last closed.
+- If the app can't update its database after an update, it now says so and offers the diagnostics
+  log, instead of opening with screens that fail in odd ways.
+- Tapping the Activity tab again scrolls back to the top.
 
 ### Settings
 - **Language**: mmyway now follows your phone's language, or you can pick one in Settings →

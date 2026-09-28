@@ -1,0 +1,1 @@
+ALTER TABLE `outbox_operations` ADD `next_attempt_at` text;

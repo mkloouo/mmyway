@@ -13,24 +13,26 @@ import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { reorderAccounts } from '../../src/accounts/accountActions';
 import { filterAccounts } from '../../src/accounts/filterAccounts';
 import { navigateOnce } from '../../src/ui/navigateOnce';
+import { useAction } from '../../src/ui/useAction';
 
 export default function AccountsScreen() {
   const db = useDb();
   const t = useTheme();
   const { t: tr } = useTranslation();
+  const act = useAction();
   // In FF3's own order — the order every account picker in the app uses, set with Reorder.
   const allAccounts = useAssetAccounts({ includeInactive: true }) ?? [];
   const [search, setSearch] = useState('');
   const [reordering, setReordering] = useState(false);
   const visible = reordering ? allAccounts : filterAccounts(allAccounts, search);
 
-  async function move(index: number, delta: -1 | 1) {
+  const move = act(tr('accounts.reorder'), async (index: number, delta: -1 | 1) => {
     const target = index + delta;
     if (target < 0 || target >= allAccounts.length) return;
     const ids = allAccounts.map((a) => a.id);
     [ids[index], ids[target]] = [ids[target]!, ids[index]!];
     await reorderAccounts(db, ids);
-  }
+  });
 
   return (
     <Screen bottom>

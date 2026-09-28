@@ -1,27 +1,50 @@
 // Display formatting for FF3 amounts. Decimal strings in, display string out — never a
-// `number`, not even for grouping (AGENTS.md: FF3 amounts are strings).
-const GROUP = ' '; // narrow no-break space
+// `number`, not even for grouping (AGENTS.md: FF3 amounts are strings). The separators are the
+// phone's own number format (Android's region settings), not a hardcoded Polish "1 234,50".
+import { getLocales } from 'expo-localization';
+
+const NARROW_NBSP = '\u202F';
 const MINUS = '−'; // typographic minus, wider than a hyphen
+
+export interface NumberSeparators {
+  group: string;
+  decimal: string;
+}
+
+let deviceSeparatorsCache: NumberSeparators | null = null;
+
+/** The phone's digit grouping and decimal separators, read once. */
+export function deviceSeparators(): NumberSeparators {
+  if (deviceSeparatorsCache) return deviceSeparatorsCache;
+  const locale = getLocales()[0];
+  const decimal = locale?.decimalSeparator || '.';
+  const rawGroup = locale?.digitGroupingSeparator ?? (decimal === ',' ? ' ' : ',');
+  // A plain or no-break space would let "1 234" wrap across lines; the narrow no-break one can't.
+  const group = /^\s$/.test(rawGroup) || rawGroup === '\u00A0' ? NARROW_NBSP : rawGroup;
+  deviceSeparatorsCache = { group, decimal };
+  return deviceSeparatorsCache;
+}
 
 export interface DisplayCurrency {
   symbol: string;
   decimalPlaces: number;
 }
 
-function group(whole: string): string {
+function group(whole: string, separator: string): string {
   let out = '';
   for (let i = whole.length; i > 0; i -= 3) {
     const start = Math.max(0, i - 3);
-    out = whole.slice(start, i) + (out ? GROUP + out : '');
+    out = whole.slice(start, i) + (out ? separator + out : '');
   }
   return out || '0';
 }
 
 /**
- * `formatMoney('1234.5', { symbol: 'zł', decimalPlaces: 2 })` -> `'1 234,50 zł'`.
+ * `formatMoney('1234.5', { symbol: 'zł', decimalPlaces: 2 })` -> `'1 234,50 zł'` on a phone set to
+ * Polish number format, `'1,234.50 zł'` on one set to English (US).
  * A fraction longer than the currency's scale is kept, never rounded away silently.
  */
-export function formatMoney(amount: string, currency: DisplayCurrency): string {
+export function formatMoney(amount: string, currency: DisplayCurrency, separators: NumberSeparators = deviceSeparators()): string {
   const trimmed = (amount ?? '').trim();
   const negative = trimmed.startsWith('-') || trimmed.startsWith(MINUS);
   const unsigned = negative ? trimmed.slice(1) : trimmed;
@@ -32,7 +55,7 @@ export function formatMoney(amount: string, currency: DisplayCurrency): string {
   const scaled = trimmedFraction.length >= currency.decimalPlaces
     ? trimmedFraction
     : trimmedFraction.padEnd(currency.decimalPlaces, '0');
-  const body = scaled ? `${group(whole)},${scaled}` : group(whole);
+  const body = scaled ? `${group(whole, separators.group)}${separators.decimal}${scaled}` : group(whole, separators.group);
 
   return `${negative ? MINUS : ''}${body}${currency.symbol ? ` ${currency.symbol}` : ''}`;
 }
@@ -42,10 +65,10 @@ export function formatMoney(amount: string, currency: DisplayCurrency): string {
  * entered, a bare trailing separator kept. `formatMoney` pads the fraction to the currency's
  * scale, which hid every keystroke behind "0,00" until the user reached that many digits.
  */
-export function formatAmountInput(amount: string, currency: DisplayCurrency): string {
+export function formatAmountInput(amount: string, currency: DisplayCurrency, separators: NumberSeparators = deviceSeparators()): string {
   const [rawWhole = '', rawFraction] = amount.split('.');
-  const whole = group(rawWhole.replace(/\D/g, ''));
-  const body = rawFraction === undefined ? whole : `${whole},${rawFraction.replace(/\D/g, '')}`;
+  const whole = group(rawWhole.replace(/\D/g, ''), separators.group);
+  const body = rawFraction === undefined ? whole : `${whole}${separators.decimal}${rawFraction.replace(/\D/g, '')}`;
   return `${body}${currency.symbol ? ` ${currency.symbol}` : ''}`;
 }
 

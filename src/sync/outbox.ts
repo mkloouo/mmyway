@@ -7,6 +7,8 @@
 //   sending; a mismatch is a conflict, not an overwrite (Review Focus: conflicting edits).
 // - Each op is claimed (-> in_flight) just before it is sent; a finished op is deleted.
 // - A failure stops replay at that operation — later operations must not run out of order.
+// - A failed op backs off (retryDelayMs): until its next_attempt_at, a sync stops in front of it
+//   without sending. "Retry now" in the Inbox sets it back to `pending`, which skips the wait.
 import { and, asc, eq, inArray, isNotNull, lt, sql } from 'drizzle-orm';
 import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 import type { FF3Client } from '../api/ff3/client';
@@ -20,6 +22,7 @@ import { ff3AccountBody, type AccountEdit } from '../accounts/accountEdit';
 import { requestSync } from './syncTrigger';
 import { deletePersistedReceiptImage } from '../receipt/imageFiles';
 import { cachedRowFromGroup } from './referenceData';
+import { readPayload, writePayload } from './payloadJson';
 
 export type OutboxKind =
   | 'create_transaction'
@@ -77,6 +80,14 @@ export interface ReplayResult {
   succeeded: string[];
   conflicted: string[];
   failedAt: string | null; // operation id where replay stopped, if any
+}
+
+const RETRY_BASE_MS = 30_000;
+const RETRY_MAX_MS = 60 * 60 * 1000;
+
+/** How long a failed op waits before its next automatic retry: 30 s, doubling, at most an hour. */
+export function retryDelayMs(attempts: number): number {
+  return Math.min(RETRY_BASE_MS * 2 ** Math.max(0, attempts - 1), RETRY_MAX_MS);
 }
 
 export type ConflictHandler = (op: { id: string; payload: UpdateTransactionPayload | DeleteTransactionPayload }, serverUpdatedAt: string) => void;
@@ -141,7 +152,7 @@ function insertOperation(db: OutboxDb, op: NewOutboxOperation): void {
     id: op.id,
     inboxItemId: op.inboxItemId ?? null,
     kind: op.kind,
-    payloadJson: JSON.stringify(op.payload),
+    payloadJson: writePayload(op.payload),
     status: 'pending',
     attempts: 0,
     createdAt: new Date().toISOString(),
@@ -192,10 +203,10 @@ async function rebaseLaterEdits(db: OutboxDb, groupId: string, previous: string,
   const later = await db.select().from(outboxOperations)
     .where(and(inArray(outboxOperations.status, ['pending', 'failed']), inArray(outboxOperations.kind, ['update_transaction', 'recurring_review', 'delete_transaction'])));
   for (const op of later) {
-    const payload = JSON.parse(op.payloadJson) as UpdateTransactionPayload | DeleteTransactionPayload;
+    const payload = readPayload<UpdateTransactionPayload | DeleteTransactionPayload>(op.kind, op.payloadJson);
     if (payload.groupId !== groupId || payload.expectedUpdatedAt !== previous) continue;
     payload.expectedUpdatedAt = next;
-    await db.update(outboxOperations).set({ payloadJson: JSON.stringify(payload) }).where(eq(outboxOperations.id, op.id));
+    await db.update(outboxOperations).set({ payloadJson: writePayload(payload) }).where(eq(outboxOperations.id, op.id));
   }
 }
 
@@ -217,6 +228,10 @@ export async function replayOutbox(db: OutboxDb, client: FF3Client, opts: { onCo
 
     for (const candidate of pending) {
       attempted.add(candidate.id);
+      if (candidate.status === 'failed' && candidate.nextAttemptAt && candidate.nextAttemptAt > new Date().toISOString()) {
+        result.failedAt = candidate.id; // still backing off; nothing after it may go first
+        return result;
+      }
       const [row] = await db.update(outboxOperations)
         .set({ status: 'in_flight' })
         .where(and(eq(outboxOperations.id, candidate.id), inArray(outboxOperations.status, ['pending', 'failed'])))
@@ -266,8 +281,9 @@ async function missingReferences(db: OutboxDb, splits: TransactionSplit[]): Prom
 }
 
 async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: { onConflict?: ConflictHandler }): Promise<'done' | 'conflict' | 'failed' | 'returned'> {
-  const payload = JSON.parse(row.payloadJson);
+  let payload: unknown;
   try {
+    payload = readPayload(row.kind, row.payloadJson);
     if (row.kind === 'create_transaction') {
       const p = payload as CreateTransactionPayload;
       const missing = await missingReferences(db, p.splits);
@@ -441,7 +457,10 @@ async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: 
   } catch (err) {
     const message = err instanceof FF3RequestError ? describeFF3Error(err) : err instanceof Error ? err.message : String(err);
     await db.update(outboxOperations)
-      .set({ status: 'failed', attempts: row.attempts + 1, lastError: message })
+      .set({
+        status: 'failed', attempts: row.attempts + 1, lastError: message,
+        nextAttemptAt: new Date(Date.now() + retryDelayMs(row.attempts + 1)).toISOString(),
+      })
       .where(eq(outboxOperations.id, row.id));
     return 'failed';
   }
@@ -466,6 +485,41 @@ export function describeFF3Error(err: FF3RequestError): string {
 function receiptFilename(path: string): string {
   const ext = /\.(jpe?g|png|webp|heic)$/i.exec(path)?.[1]?.toLowerCase();
   return `receipt.${ext === 'jpeg' ? 'jpg' : ext ?? 'jpg'}`;
+}
+
+/** "Retry now" on a failed operation: pending again, skipping its backoff. */
+export async function retryOperationNow(db: OutboxDb, opId: string): Promise<void> {
+  await db.update(outboxOperations).set({ status: 'pending', lastError: null, nextAttemptAt: null }).where(eq(outboxOperations.id, opId));
+}
+
+/**
+ * The conflict screen's "Keep mine": the queued edit or delete is re-checked against the server
+ * copy the user just looked at, and goes out again over it.
+ */
+export async function keepMineOverServer(db: OutboxDb, opId: string, serverUpdatedAt: string): Promise<void> {
+  const [op] = await db.select().from(outboxOperations).where(eq(outboxOperations.id, opId));
+  if (!op) return;
+  const payload = readPayload<UpdateTransactionPayload | DeleteTransactionPayload>(op.kind, op.payloadJson);
+  payload.expectedUpdatedAt = serverUpdatedAt;
+  await db.update(outboxOperations)
+    .set({ status: 'pending', payloadJson: writePayload(payload), lastError: null, nextAttemptAt: null })
+    .where(eq(outboxOperations.id, opId));
+}
+
+/** The conflict screen's "Use the server's": the queued change is dropped. */
+export async function dropQueuedChange(db: OutboxDb, opId: string): Promise<void> {
+  await db.delete(outboxOperations).where(eq(outboxOperations.id, opId));
+}
+
+/**
+ * Queues a conflict-checked delete for each cached transaction (Activity's multi-select delete).
+ */
+export async function deleteCachedTransactions(db: OutboxDb, groupIds: string[]): Promise<void> {
+  const rows = await db.select({ groupId: cachedTransactions.groupId, updatedAt: cachedTransactions.updatedAt })
+    .from(cachedTransactions).where(inArray(cachedTransactions.groupId, groupIds));
+  for (const row of rows) {
+    await enqueueOperation(db, { id: generateId(), kind: 'delete_transaction', payload: { groupId: row.groupId, expectedUpdatedAt: row.updatedAt } });
+  }
 }
 
 /**

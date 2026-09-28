@@ -43,6 +43,20 @@
       "when": 1790561980915,
       "tag": "0005_needy_ink",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1790562325734,
+      "tag": "0006_gray_james_howlett",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1790562502826,
+      "tag": "0007_flippant_dracula",
+      "breakpoints": true
     }
   ]
 }
