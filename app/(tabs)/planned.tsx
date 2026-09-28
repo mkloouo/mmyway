@@ -18,7 +18,7 @@ import { PLANNED_MODE_KEY, parsePlannedMode, setPlannedMode, type PlannedMode } 
 import { usePlanned } from '../../src/planned/usePlanned';
 import { dayLabel, objectSummary, scheduleLabel } from '../../src/planned/labels';
 import type { PlannedKind } from '../../src/planned/objects';
-import { useSync } from '../../src/sync/useSync';
+import { usePullToRefresh } from '../../src/sync/useSync';
 import { navigateOnce } from '../../src/ui/navigateOnce';
 import { useAction } from '../../src/ui/useAction';
 
@@ -33,7 +33,9 @@ export default function PlannedScreen() {
   const t = useTheme();
   const { t: tr } = useTranslation();
   const act = useAction();
-  const { status, syncNow } = useSync();
+  // Spins only for a pull the user made: tied to the sync status, it spun for every sync (launch,
+  // a push after a write, reconnecting) as if the list had been pulled.
+  const pull = usePullToRefresh();
   const { objects, items, loaded } = usePlanned();
   const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
   const { data: modeRows } = useLiveQuery(db.select().from(appSettings).where(eq(appSettings.key, PLANNED_MODE_KEY)));
@@ -41,7 +43,7 @@ export default function PlannedScreen() {
   const [kind, setKind] = useState<PlannedKind>('bill');
 
   const chooseMode = act(tr('planned.title'), (next: PlannedMode) => setPlannedMode(db, next));
-  const refresh = <RefreshControl refreshing={status === 'syncing'} onRefresh={() => { void syncNow(); }} />;
+  const refresh = <RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />;
   const objectsOfKind = objects.filter((o) => o.kind === kind).sort((a, b) => a.name.localeCompare(b.name));
 
   return (
