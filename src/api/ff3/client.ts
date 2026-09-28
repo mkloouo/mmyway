@@ -32,7 +32,9 @@ export function createFF3Client({ baseUrl, apiToken }: FF3ClientConfig): FF3Clie
       return (await response.json()) as T;
     },
     imageSource(path: string) {
-      return { uri: `${apiRoot}${path}`, headers: { Authorization: `Bearer ${apiToken}` } };
+      // The same Accept as request(): FF3's API refuses a request whose Accept header it doesn't
+      // list, and a download sent none.
+      return { uri: `${apiRoot}${path}`, headers: { Authorization: `Bearer ${apiToken}`, Accept: 'application/json' } };
     },
   };
 }

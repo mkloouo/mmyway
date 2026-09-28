@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { appLocale } from '../../src/i18n';
-import { Image, Modal, Pressable, ScrollView, Text, View, type ImageSourcePropType } from 'react-native';
+import { Image, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { eq, ne } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
@@ -42,6 +42,7 @@ import { duplicateTransaction } from '../../src/transactions/duplicate';
 import { fromCached, fromQueued, newSplit, patchSplit, toPayloadSplits, type EditableSplit } from '../../src/splits/editSplits';
 import { absorb, leftover } from '../../src/splits/allocate';
 import { useMerchantHistories } from '../../src/lookup/useMerchantHistories';
+import { ReceiptThumb } from '../../src/ui/ReceiptThumb';
 
 const SHARED_TAG_PREFIX = 'mmyway-shared-';
 // The words the rest of the app uses (capture's type chips), not FF3's "Withdrawal"/"Deposit".
@@ -123,7 +124,8 @@ export default function TransactionDetailScreen() {
   const [amountSheetOpen, setAmountSheetOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [photo, setPhoto] = useState<ImageSourcePropType | null>(null);
+  /** The file:// uri of the photo open full screen. */
+  const [photo, setPhoto] = useState<string | null>(null);
   // Split editing: null means "as cached / as queued".
   const [edited, setEdited] = useState<EditableSplit[] | null>(null);
   const [totalEdit, setTotalEdit] = useState<string | null>(null);
@@ -516,11 +518,7 @@ export default function TransactionDetailScreen() {
           </>
         )}
           <Card style={{ marginHorizontal: t.space.lg, gap: t.space.sm }}>
-            {previews.map((p) => (
-              <Pressable key={p.key} onPress={() => setPhoto(p.source)} accessibilityRole="imagebutton" accessibilityLabel={tr('draft.showPhoto')}>
-                <Image source={p.source} resizeMode="cover" style={{ width: '100%', height: 140, borderRadius: t.radius.sm, backgroundColor: t.color.surfaceAlt }} />
-              </Pressable>
-            ))}
+            {previews.map((p) => <ReceiptThumb key={p.key} preview={p} onOpen={setPhoto} />)}
             <View>
               {(attachments.data ?? []).map((a, i) => (
                 <Row key={a.id} first={i === 0} label={i === 0 ? tr('draft.receipt') : ''} value={`📎 ${a.filename}`} />
@@ -631,7 +629,7 @@ export default function TransactionDetailScreen() {
       {/* Same full-screen view as the draft screen's receipt photo. */}
       <Modal visible={!!photo} transparent animationType="fade" onRequestClose={() => setPhoto(null)}>
         <Pressable style={{ flex: 1, backgroundColor: t.color.photoBackdrop, justifyContent: 'center' }} onPress={() => setPhoto(null)} accessibilityLabel={tr('draft.closePhoto')}>
-          {!!photo && <Image source={photo} resizeMode="contain" style={{ width: '100%', height: '100%' }} />}
+          {!!photo && <Image source={{ uri: photo }} resizeMode="contain" style={{ width: '100%', height: '100%' }} />}
         </Pressable>
       </Modal>
     </Screen>

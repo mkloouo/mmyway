@@ -362,6 +362,7 @@
     "syncedAgo": "synced {{time}}",
     "uploadFailed": "Upload failed",
     "uploadFailedWith": "Upload failed: {{error}}",
+    "photoLoadFailed": "Couldn't load this photo. Diagnostics has the reason.",
     "uploading": "Uploading…",
     "attachAnother": "Attach another",
     "duplicate": "Duplicate"

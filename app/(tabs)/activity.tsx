@@ -20,7 +20,7 @@ import { useTransactionPage, type ActivityTypeFilter, type CachedTransactionRow 
 import { useLoadOlderHistory, usePullToRefresh } from '../../src/sync/useSync';
 import { getClient } from '../../src/api/ff3/session';
 import { referenceCurrencies, outboxOperations, cachedTransactions, inboxItems } from '../../src/db/schema';
-import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
+import { useAssetAccounts, type ReferenceAccountRow } from '../../src/accounts/useAssetAccounts';
 import type { CreateTransactionPayload } from '../../src/sync/outbox';
 import type { TransactionRead, TransactionSplit } from '../../src/api/ff3/types';
 import { navigateOnce } from '../../src/ui/navigateOnce';
@@ -371,6 +371,12 @@ export default function ActivityScreen() {
       />
     </Collapsible>
   ), [selecting, selectedIds, currencies, onRowPress, onRowLongPress, leavingIds]);
+  // Stable, and the header memoized: an inline one re-rendered every header, each formatting its
+  // date again, on every tap on the screen (a filter chip, a balance card, a selection).
+  const renderSectionHeader = useCallback(({ section }: { section: DisplaySection }) => (
+    <DayHeader sectionKey={section.key} totals={section.totals} currencies={currencies} />
+  ), [currencies]);
+  const toggleAccountFilter = useCallback((id: string) => setAccountFilter((cur) => (cur === id ? null : id)), []);
 
   // The listener is added once but reads the current sections through a ref: it used to close
   // over the first render's (empty) list and never scroll.
@@ -426,37 +432,13 @@ export default function ActivityScreen() {
         )}
 
         {assetAccounts.length > 0 && (
-          // A ScrollView defaults to flexGrow/flexShrink 1, so this row competed with the
-          // SectionList for height and had its cards clipped along the bottom edge.
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={{ flexGrow: 0, flexShrink: 0 }}
-            contentContainerStyle={{ paddingHorizontal: t.space.lg, gap: t.space.sm, paddingBottom: t.space.sm }}
-          >
-            {assetAccounts.map((a) => {
-              const stale = a.currentBalanceDate ? new Date().getTime() - new Date(a.currentBalanceDate).getTime() > STALE_MS : true;
-              const selected = accountFilter === a.id;
-              return (
-                <Card
-                  key={a.id}
-                  onPress={() => setAccountFilter((cur) => (cur === a.id ? null : a.id))}
-                  onLongPress={() => navigateOnce(`/accounts/${a.id}`)}
-                  delayLongPress={300}
-                  longPressPop
-                  accessibilityHint={tr('account.openHint')}
-                  style={{ borderColor: selected ? t.color.accent : t.color.border, minWidth: 120, opacity: stale ? 0.5 : 1 }}
-                >
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.xs }}>
-                    <Text style={[t.type.label, { color: t.color.textMuted, flexShrink: 1 }]} numberOfLines={1}>{a.name}</Text>
-                    <PendingDot visible={pendingAccounts.has(a.id)} />
-                  </View>
-                  <RollingMoney amount={a.currentBalance ?? '0'} currency={currencyOf(currencies ?? [], a.currencyCode)} size="heading" />
-                  <Text style={[t.type.label, { color: t.color.textFaint }]}>{tr('count.asOf', { time: relativeTime(a.currentBalanceDate) })}</Text>
-                </Card>
-              );
-            })}
-          </ScrollView>
+          <BalanceStrip
+            accounts={assetAccounts}
+            selectedId={accountFilter}
+            onToggle={toggleAccountFilter}
+            currencies={currencies}
+            pendingAccounts={pendingAccounts}
+          />
         )}
 
         <View style={{ flexDirection: 'row', paddingHorizontal: t.space.lg, gap: t.space.sm, paddingBottom: t.space.sm }}>
@@ -489,17 +471,15 @@ export default function ActivityScreen() {
             onEndReached={handleEndReached}
             onEndReachedThreshold={0.4}
             contentContainerStyle={{ paddingBottom: 140 }}
-            renderSectionHeader={({ section }) => (
-              <SectionHeader
-                title={section.key === REMOTE_SECTION_KEY ? tr('activity.fromFf3') : dayTitle(section.key)}
-                action={section.totals.length > 0 ? (
-                  <Text style={[t.type.label, { color: t.color.textMuted }]}>
-                    {section.totals.map((tot) => formatMoney(tot.amount, currencyOf(currencies ?? [], tot.currencyCode ?? ''))).join(' · ')}
-                  </Text>
-                ) : undefined}
-              />
-            )}
+            renderSectionHeader={renderSectionHeader}
             renderItem={renderItem}
+            // A filter change remounts the list (key above), so what it mounts is what a tap costs.
+            // React Native's default window is 21 screens: every one of the 100 rows on a page
+            // mounted, in batches, and the switch stuttered through them. A few screens are enough
+            // to scroll into; the rest mount as the list moves.
+            initialNumToRender={12}
+            maxToRenderPerBatch={8}
+            windowSize={7}
             ListFooterComponent={(
               <>
                 {!reachedRealEnd && (
@@ -604,5 +584,93 @@ const ActivityRow = memo(function ActivityRow({
       {!!pendingStatus && <Chip label={tr(PENDING_LABEL_KEYS[pendingStatus])} tone="warn" />}
       <Money amount={item.amount} currency={currency} type={item.type} />
     </Pressable>
+  );
+});
+
+/**
+ * The balance cards above the list. Memoized, as is each card: a filter tap used to redraw every
+ * card (and restart none of their rolls, but format all their dates), when only two change.
+ */
+const BalanceStrip = memo(function BalanceStrip({
+  accounts, selectedId, onToggle, currencies, pendingAccounts,
+}: {
+  accounts: ReferenceAccountRow[];
+  selectedId: string | null;
+  onToggle: (id: string) => void;
+  currencies: Currencies | undefined;
+  pendingAccounts: Set<string>;
+}) {
+  const t = useTheme();
+  return (
+    // A ScrollView defaults to flexGrow/flexShrink 1, so this row competed with the SectionList for
+    // height and had its cards clipped along the bottom edge. The top padding is the room a card's
+    // long-press pop grows into: without it the ScrollView clipped the card's top edge.
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={{ flexGrow: 0, flexShrink: 0 }}
+      contentContainerStyle={{ paddingHorizontal: t.space.lg, gap: t.space.sm, paddingTop: t.space.xs, paddingBottom: t.space.sm }}
+    >
+      {accounts.map((a) => (
+        <BalanceCard
+          key={a.id}
+          account={a}
+          selected={selectedId === a.id}
+          pending={pendingAccounts.has(a.id)}
+          currencies={currencies}
+          onToggle={onToggle}
+        />
+      ))}
+    </ScrollView>
+  );
+});
+
+const BalanceCard = memo(function BalanceCard({
+  account: a, selected, pending, currencies, onToggle,
+}: {
+  account: ReferenceAccountRow;
+  selected: boolean;
+  pending: boolean;
+  currencies: Currencies | undefined;
+  onToggle: (id: string) => void;
+}) {
+  const t = useTheme();
+  const { t: tr } = useTranslation();
+  const stale = a.currentBalanceDate ? new Date().getTime() - new Date(a.currentBalanceDate).getTime() > STALE_MS : true;
+  return (
+    <Card
+      onPress={() => onToggle(a.id)}
+      onLongPress={() => navigateOnce(`/accounts/${a.id}`)}
+      delayLongPress={300}
+      longPressPop
+      accessibilityHint={tr('account.openHint')}
+      style={{ borderColor: selected ? t.color.accent : t.color.border, minWidth: 120, opacity: stale ? 0.5 : 1 }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.xs }}>
+        <Text style={[t.type.label, { color: t.color.textMuted, flexShrink: 1 }]} numberOfLines={1}>{a.name}</Text>
+        <PendingDot visible={pending} />
+      </View>
+      <RollingMoney amount={a.currentBalance ?? '0'} currency={currencyOf(currencies ?? [], a.currencyCode)} size="heading" />
+      <Text style={[t.type.label, { color: t.color.textFaint }]}>{tr('count.asOf', { time: relativeTime(a.currentBalanceDate) })}</Text>
+    </Card>
+  );
+});
+
+const DayHeader = memo(function DayHeader({ sectionKey, totals, currencies }: {
+  sectionKey: string;
+  totals: DisplaySection['totals'];
+  currencies: Currencies | undefined;
+}) {
+  const t = useTheme();
+  const { t: tr } = useTranslation();
+  return (
+    <SectionHeader
+      title={sectionKey === REMOTE_SECTION_KEY ? tr('activity.fromFf3') : dayTitle(sectionKey)}
+      action={totals.length > 0 ? (
+        <Text style={[t.type.label, { color: t.color.textMuted }]}>
+          {totals.map((tot) => formatMoney(tot.amount, currencyOf(currencies ?? [], tot.currencyCode ?? ''))).join(' · ')}
+        </Text>
+      ) : undefined}
+    />
   );
 });
