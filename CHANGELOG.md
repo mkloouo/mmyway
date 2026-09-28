@@ -69,6 +69,12 @@
 - The payee list on a draft, a transaction or a planned transaction no longer shows another
   type's payees after switching the type quickly.
 - Capture no longer asks to discard an entry whose amount is only "0,".
+- A transaction's receipt photos show what Firefly III holds now. After the photo a transaction
+  was captured from was deleted in Firefly III, the next photo attached to it didn't show and the
+  deleted one stayed on screen.
+- Moving the date of a one-time planned transaction no longer fails with "The
+  repetitions.0.moment must be a number". A change that already failed this way goes through with
+  **Retry now** in the Inbox.
 
 ## [1.2.0] - 2026-09-28
 

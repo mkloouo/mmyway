@@ -1,4 +1,4 @@
-import { fetchJournalAttachments, queuedAttachments } from './journalAttachments';
+import { fetchJournalAttachments, queuedAttachments, receiptPreviews, type JournalAttachment } from './journalAttachments';
 
 describe('fetchJournalAttachments', () => {
   it('asks FF3 for the group and keeps only this journal', async () => {
@@ -39,5 +39,33 @@ describe('queuedAttachments', () => {
       { id: 'd', kind: 'attach_receipt', status: 'failed', payloadJson: 'nope', lastError: null },
     ];
     expect(queuedAttachments(ops, '11')).toEqual([{ opId: 'a', status: 'pending', lastError: null, receiptImagePath: 'file:///r.jpg' }]);
+  });
+});
+
+describe('receiptPreviews', () => {
+  const image = (id: string): JournalAttachment => ({ id, filename: 'receipt.jpg', imageSource: { uri: `https://ff3/att/${id}`, headers: {} } });
+  const keys = (input: Parameters<typeof receiptPreviews>[0]) => receiptPreviews(input).map((p) => p.key);
+
+  it('shows the captured photo from the phone only while FF3 has not answered', () => {
+    expect(keys({ queuedPaths: [], capturedPath: 'file:///old.jpg', remote: undefined })).toEqual(['file:///old.jpg']);
+    expect(keys({ queuedPaths: [], capturedPath: 'file:///old.jpg', remote: null })).toEqual(['file:///old.jpg']);
+  });
+
+  it('shows the new upload, not the deleted captured photo, once FF3 answers', () => {
+    // The captured photo's attachment was deleted in FF3; the only attachment left is a new upload.
+    expect(keys({ queuedPaths: [], capturedPath: 'file:///old.jpg', remote: [image('9')] })).toEqual(['9']);
+  });
+
+  it('shows nothing from the phone when FF3 has no attachments left', () => {
+    expect(keys({ queuedPaths: [], capturedPath: 'file:///old.jpg', remote: [] })).toEqual([]);
+  });
+
+  it('shows queued uploads from the phone next to what FF3 holds, each once', () => {
+    expect(keys({ queuedPaths: ['file:///new.jpg', 'file:///new.jpg'], capturedPath: 'file:///new.jpg', remote: [image('1')] }))
+      .toEqual(['file:///new.jpg', '1']);
+  });
+
+  it('leaves out attachments that are not images', () => {
+    expect(keys({ queuedPaths: [], capturedPath: null, remote: [{ id: '2', filename: 'a.pdf', imageSource: null }] })).toEqual([]);
   });
 });
