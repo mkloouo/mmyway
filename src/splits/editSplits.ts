@@ -99,7 +99,8 @@ export function toPayloadSplits(
       amount: s.amount,
       currency_code: group.currencyCode,
       description: s.description,
-      // An id when there is one; a payee picked by name (or new) goes by name.
+      // An id when there is one; a payee picked by name (or new) is queued by name and gets its
+      // id when it's sent (src/sync/accountIds.ts).
       source_id: s.sourceId ?? undefined,
       source_name: s.sourceId ? undefined : (s.sourceName ?? undefined),
       destination_id: s.destinationId ?? undefined,

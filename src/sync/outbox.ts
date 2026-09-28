@@ -23,6 +23,7 @@ import { requestSync } from './syncTrigger';
 import { deletePersistedReceiptImage } from '../receipt/imageFiles';
 import { cachedRowFromGroup } from './referenceData';
 import { readPayload, writePayload } from './payloadJson';
+import { accountResolver, withAccountIds } from './accountIds';
 import { replayDeletePlanned, replaySavePlanned, type DeletePlannedPayload, type SavePlannedPayload } from '../planned/replay';
 
 export type OutboxKind =
@@ -268,6 +269,12 @@ export async function replayOutbox(db: OutboxDb, client: FF3Client, opts: { onCo
 
 type OutboxRow = typeof outboxOperations.$inferSelect;
 
+/** An edited transaction's type, for a partial change naming an account without saying it. */
+async function cachedTypeOf(db: OutboxDb, groupId: string): Promise<'withdrawal' | 'deposit' | 'transfer' | undefined> {
+  const [row] = await db.select({ type: cachedTransactions.type }).from(cachedTransactions).where(eq(cachedTransactions.groupId, groupId));
+  return row?.type === 'withdrawal' || row?.type === 'deposit' || row?.type === 'transfer' ? row.type : undefined;
+}
+
 /**
  * What a queued create points at that FF3 no longer has, per the last reference pull: an account,
  * a category or a budget deleted there since the entry was confirmed. A reference table that is
@@ -316,6 +323,9 @@ async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: 
         return 'returned';
       }
       const reference = internalReferenceFor(p.clientId);
+      const resolve = accountResolver(client);
+      const splits: TransactionSplit[] = [];
+      for (const split of p.splits) splits.push(await withAccountIds(resolve, split));
       let created: TransactionRead;
       try {
         const response = await client.request<{ data: TransactionRead }>('/v1/transactions', {
@@ -323,7 +333,7 @@ async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: 
           body: JSON.stringify({
             error_if_duplicate_hash: true,
             ...(p.groupTitle ? { group_title: p.groupTitle } : {}),
-            transactions: p.splits.map((split) => ({ ...split, internal_reference: (split as { internal_reference?: string }).internal_reference ?? reference })),
+            transactions: splits.map((split) => ({ ...split, internal_reference: (split as { internal_reference?: string }).internal_reference ?? reference })),
           }),
         });
         created = response.data;
@@ -450,13 +460,22 @@ async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: 
         await db.delete(cachedTransactions).where(eq(cachedTransactions.groupId, p.groupId));
       } else {
         const u = p as UpdateTransactionPayload;
-        const body = u.splits
-          ? { ...(u.groupTitle !== undefined ? { group_title: u.groupTitle } : {}), transactions: u.splits }
-          : { transactions: [{ transaction_journal_id: u.transactionJournalId, ...u.changes }] };
-        const updated = u.applied ? null : await client.request<{ data?: TransactionRead }>(`/v1/transactions/${u.groupId}`, {
-          method: 'PUT',
-          body: JSON.stringify(body),
-        });
+        let updated: { data?: TransactionRead } | null = null;
+        if (!u.applied) {
+          const resolve = accountResolver(client);
+          const groupType = await cachedTypeOf(db, u.groupId);
+          const transactions = [];
+          for (const split of u.splits ?? [{ transaction_journal_id: u.transactionJournalId, ...u.changes }]) {
+            transactions.push(await withAccountIds(resolve, split, groupType));
+          }
+          const body = u.splits
+            ? { ...(u.groupTitle !== undefined ? { group_title: u.groupTitle } : {}), transactions }
+            : { transactions };
+          updated = await client.request<{ data?: TransactionRead }>(`/v1/transactions/${u.groupId}`, {
+            method: 'PUT',
+            body: JSON.stringify(body),
+          });
+        }
         if (!u.applied && u.removedJournalIds?.length) {
           // Recorded before the deletes, so a failure in them retries only them.
           const landed = (updated?.data?.attributes as { updated_at?: string } | undefined)?.updated_at;
