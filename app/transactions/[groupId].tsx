@@ -201,6 +201,7 @@ export default function TransactionDetailScreen() {
       sourceId: effectiveSourceId, sourceName: row!.sourceName,
       destinationId: type === 'withdrawal' ? destinationId : effectiveDestinationId, destinationName: row!.destinationName,
       categoryName: effectiveCategoryName, budgetId: effectiveBudgetId, notes: effectiveNotes, tags: effectiveTags,
+      internalReference: cachedSplits?.[0]?.internalReference ?? null,
     };
   }
 
@@ -273,9 +274,12 @@ export default function TransactionDetailScreen() {
   }
 
   function removeSplit(index: number) {
-    const gone = splits[index]?.journalId;
+    const goneSplit = splits[index];
+    const gone = goneSplit?.journalId;
     if (gone) setRemoved((r) => [...r, gone]);
-    const next = splits.filter((_, i) => i !== index);
+    // The removed split may be the only one carrying the internal reference: the rest take it.
+    const next = splits.filter((_, i) => i !== index)
+      .map((s) => ({ ...s, internalReference: s.internalReference ?? goneSplit?.internalReference ?? null }));
     // One split left holds the whole total; with more, split 1 takes the removed amount.
     if (next.length === 1) next[0] = { ...next[0]!, amount: total };
     setEdited(next);

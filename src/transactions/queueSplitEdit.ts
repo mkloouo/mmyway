@@ -14,7 +14,8 @@ export async function queueSplitEdit(db: OutboxDb, payload: UpdateTransactionPay
   const removed = new Set(payload.removedJournalIds ?? []);
   for (const op of queued) {
     const p = readPayload<UpdateTransactionPayload>(op.kind, op.payloadJson);
-    if (p.groupId !== payload.groupId || !p.splits) continue;
+    // One whose update already landed is left to finish its split deletes.
+    if (p.groupId !== payload.groupId || !p.splits || p.applied) continue;
     // Only while it hasn't started sending (the same claim rule as Undo).
     const gone = await db.delete(outboxOperations)
       .where(and(eq(outboxOperations.id, op.id), inArray(outboxOperations.status, ['pending', 'failed'])))

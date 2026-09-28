@@ -12,9 +12,14 @@
 - Tap the total to change it, or change one split's amount: split 1 takes up the difference
   (split 2, when you changed split 1). When it can't, sliders ask where the difference goes, and
   Save waits until it's placed.
-- A split can be removed; split 1 takes its amount.
+- A split can be removed; split 1 takes its amount. Removing the first split keeps the link to
+  the entry that created the transaction, and a removal that stops part-way finishes on the next
+  sync instead of turning into a conflict.
 
 ### Activity
+- A split transaction lists its splits under its row: category (or description) and amount for
+  the first three, and how many more there are.
+- Account balances roll to their new value after a sync instead of jumping.
 - **Duplicate** on a transaction makes an Inbox draft with exactly the same data — date, splits,
   tags and all — and opens it for review.
 
@@ -25,6 +30,10 @@
   planned on, category and tags. Add one with **+**; delete it from its page.
 - The detailed view lists Firefly III's subscriptions, rules and recurring transactions
   separately, exactly as they are there; tap one to see everything about it.
+
+### Fixed
+- A queued entry no longer disappears from Activity for a moment when it reaches Firefly III: it
+  stays in place and turns into the synced transaction.
 
 ## [1.2.0] - 2026-09-28
 

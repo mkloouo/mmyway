@@ -18,6 +18,8 @@ export interface EditableSplit {
   budgetId: string | null;
   notes: string | null;
   tags: string[];
+  /** FF3's internal_reference (the app's `mmyway:<id>`), kept across edits. */
+  internalReference?: string | null;
 }
 
 export function fromCached(split: CachedSplit): EditableSplit {
@@ -26,6 +28,7 @@ export function fromCached(split: CachedSplit): EditableSplit {
     sourceId: split.sourceId, sourceName: split.sourceName,
     destinationId: split.destinationId, destinationName: split.destinationName,
     categoryName: split.categoryName, budgetId: split.budgetId, notes: split.notes, tags: split.tags,
+    internalReference: split.internalReference ?? null,
   };
 }
 
@@ -40,6 +43,7 @@ export function fromQueued(split: QueuedSplit): EditableSplit {
     destinationId: text(split.destination_id), destinationName: text(split.destination_name),
     categoryName: text(split.category_name), budgetId: text(split.budget_id), notes: text(split.notes),
     tags: split.tags ?? [],
+    internalReference: text((split as { internal_reference?: unknown }).internal_reference),
   };
 }
 
@@ -76,6 +80,7 @@ export function newSplit(first: EditableSplit, amount: string, description: stri
     sourceId: first.sourceId, sourceName: first.sourceName,
     destinationId: first.destinationId, destinationName: first.destinationName,
     categoryName: null, budgetId: null, notes: null, tags: [],
+    internalReference: first.internalReference ?? null,
   };
 }
 
@@ -84,6 +89,9 @@ export function toPayloadSplits(
   splits: readonly EditableSplit[],
   group: { type: TxType; date: string; currencyCode: string },
 ): QueuedSplit[] {
+  // The group's reference goes on every split: removing the one split that had it must not lose
+  // the link between this transaction and the entry that created it.
+  const reference = splits.find((s) => s.internalReference)?.internalReference ?? null;
   return splits.map((s) => {
     const out: TransactionSplit & { transaction_journal_id?: string } = {
       type: group.type,
@@ -103,6 +111,8 @@ export function toPayloadSplits(
       tags: s.tags,
     } as TransactionSplit & { transaction_journal_id?: string };
     if (s.journalId) out.transaction_journal_id = s.journalId;
+    const ref = s.internalReference ?? reference;
+    if (ref) (out as { internal_reference?: string }).internal_reference = ref;
     return out;
   });
 }
