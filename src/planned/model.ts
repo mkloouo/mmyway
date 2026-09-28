@@ -87,8 +87,10 @@ export function fieldsOf(group: PlannedGroup, today: string): PlannedFields {
   const tx = rec?.transactions?.[0];
   const rep = rec?.repetitions?.[0];
   const type = rec?.type === 'deposit' || rec?.type === 'transfer' ? rec.type : 'withdrawal';
-  const schedule = bill ? frequencyFromBill(bill) : rep ? frequencyFromRepetition(rep) : { frequency: 'monthly' as const, every: 1 };
   const repeats = rec ? rec.nr_of_repetitions !== 1 : bill ? !bill.end_date : true;
+  // A one-off's bill says yearly only because FF3 bills must repeat (billBody): its repetition is
+  // the better guess at what "Repeats" should start from if it is switched on.
+  const schedule = bill && (repeats || !rep) ? frequencyFromBill(bill) : rep ? frequencyFromRepetition(rep) : { frequency: 'monthly' as const, every: 1 };
   const date = dateOnly(rep?.occurrences?.[0]) ?? dateOnly(bill?.next_expected_match) ?? dateOnly(rec?.first_date) ?? dateOnly(bill?.date) ?? today;
   const ruleTags = (rule?.actions ?? []).filter((a) => a.type === 'add_tag').map((a) => a.value).filter((v): v is string => !!v);
   return {
@@ -146,13 +148,18 @@ function isoWeekday(date: string): number {
 }
 
 export function repetitionFor(f: PlannedFields): Record<string, unknown> {
+  const dayOfMonth = String(Number(f.date.slice(8, 10)));
+  // A one-off happens once, on first_date, whatever the frequency says (a one-off's bill is yearly,
+  // so it read back as yearly). A yearly repetition's moment is a date, and FF3 refuses one on an
+  // update ("repetitions.0.moment must be a number"): moving a one-off's date always failed.
+  if (!f.repeats) return { type: 'monthly', moment: dayOfMonth, skip: 0, weekend: 1 };
   const skip = f.every - 1;
   switch (f.frequency) {
     case 'weekly': return { type: 'weekly', moment: String(isoWeekday(f.date)), skip, weekend: 1 };
-    case 'quarterly': return { type: 'monthly', moment: String(Number(f.date.slice(8, 10))), skip: 3 * f.every - 1, weekend: 1 };
-    case 'half-year': return { type: 'monthly', moment: String(Number(f.date.slice(8, 10))), skip: 6 * f.every - 1, weekend: 1 };
+    case 'quarterly': return { type: 'monthly', moment: dayOfMonth, skip: 3 * f.every - 1, weekend: 1 };
+    case 'half-year': return { type: 'monthly', moment: dayOfMonth, skip: 6 * f.every - 1, weekend: 1 };
     case 'yearly': return { type: 'yearly', moment: f.date, skip, weekend: 1 };
-    default: return { type: 'monthly', moment: String(Number(f.date.slice(8, 10))), skip, weekend: 1 };
+    default: return { type: 'monthly', moment: dayOfMonth, skip, weekend: 1 };
   }
 }
 

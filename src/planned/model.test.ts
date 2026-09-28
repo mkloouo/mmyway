@@ -81,10 +81,32 @@ describe('planned model', () => {
   });
 
   it('maps frequencies to recurrence repetitions', () => {
-    const f = { date: '2026-09-28', every: 1 } as PlannedFields;
+    const f = { date: '2026-09-28', every: 1, repeats: true } as PlannedFields;
     expect(repetitionFor({ ...f, frequency: 'weekly' })).toMatchObject({ type: 'weekly', moment: '1', skip: 0 });
     expect(repetitionFor({ ...f, frequency: 'quarterly' })).toMatchObject({ type: 'monthly', moment: '28', skip: 2 });
     expect(repetitionFor({ ...f, frequency: 'yearly', every: 2 })).toMatchObject({ type: 'yearly', moment: '2026-09-28', skip: 1 });
+  });
+
+  it('gives a one-off a monthly repetition on its day, whatever the frequency', () => {
+    // FF3 refuses a yearly moment (a date) on an update: "repetitions.0.moment must be a number".
+    const once = { date: '2026-10-05', every: 1, repeats: false } as PlannedFields;
+    for (const frequency of ['yearly', 'weekly', 'monthly'] as const) {
+      expect(repetitionFor({ ...once, frequency })).toEqual({ type: 'monthly', moment: '5', skip: 0, weekend: 1 });
+    }
+  });
+
+  it('moves a one-off read back from FF3 without a yearly repetition', () => {
+    // As the simple view saves a one-off: a yearly bill that ends the next day, one repetition.
+    const oneOffBill: PlannedObject = { ...bill, attributes: { ...bill.attributes, repeat_freq: 'yearly', end_date: '2026-10-06' } };
+    const oneOffRecurrence: PlannedObject = {
+      ...recurrence,
+      attributes: { ...recurrence.attributes, nr_of_repetitions: 1, repetitions: [{ id: '9', type: 'monthly', moment: '5', skip: 0, occurrences: ['2026-10-05T00:00:00+02:00'] }] },
+    };
+    const before = fieldsOf(groupPlanned([oneOffBill, rule, oneOffRecurrence])[0]!, '2026-09-28');
+    expect(before).toMatchObject({ repeats: false, frequency: 'monthly', date: '2026-10-05' });
+    const moved = { ...before, date: '2026-10-12' };
+    const body = recurrenceBody({ ...moved, sourceId: '1', destinationId: '4' }, before, { repetitionId: '9' });
+    expect(body).toMatchObject({ first_date: '2026-10-12', nr_of_repetitions: 1, repetitions: [{ id: '9', type: 'monthly', moment: '12' }] });
   });
 
   it('shows queued saves and hides queued deletes', () => {
