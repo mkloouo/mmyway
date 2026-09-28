@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm';
 import { useDb } from '../../src/providers/DbProvider';
 import { SearchField } from '../../src/ui/SearchField';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, AppBar, Card, Row, Sheet, Chip, Button } from '../../src/ui/components';
+import { Screen, AppBar, BarIconButton, Card, Row, Sheet, Chip, Button } from '../../src/ui/components';
 import { referenceAccounts } from '../../src/db/schema';
 import { hasEnvelopeMarker, setEnvelopeMarker } from '../../src/accounts/envelopeMarker';
 import { useAssetAccounts, type ReferenceAccountRow } from '../../src/accounts/useAssetAccounts';
@@ -55,17 +55,9 @@ export default function AccountsScreen() {
         title="Accounts"
         right={(
           reordering ? (
-            <Button title="Done" variant="ghost" onPress={() => setReordering(false)} />
+            <Button title="Done" variant="ghost" size="bar" onPress={() => setReordering(false)} />
           ) : (
-            <Pressable
-              onPress={() => { setReordering(true); setSearch(''); }}
-              accessibilityRole="button"
-              accessibilityLabel="Reorder accounts"
-              hitSlop={8}
-              style={({ pressed }) => ({ padding: t.space.xs, opacity: pressed ? 0.6 : 1 })}
-            >
-              <Ionicons name="swap-vertical" size={24} color={t.color.text} />
-            </Pressable>
+            <BarIconButton icon="swap-vertical" label="Reorder accounts" onPress={() => { setReordering(true); setSearch(''); }} />
           )
         )}
       />

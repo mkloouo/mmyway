@@ -6,6 +6,7 @@ import {
   type StyleProp, type ViewStyle,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTheme, hitSize, type Theme } from './theme';
 import { formatMoney, signFor, type DisplayCurrency } from './money';
 
@@ -33,17 +34,60 @@ export function Screen({ children, style, bottom }: { children: ReactNode; style
   );
 }
 
+/**
+ * Every top bar is this tall, whatever it holds (a title with a subtitle, a search field, a
+ * selection count and its actions), so switching between them never moves the screen below.
+ */
+const BAR_HEIGHT = 72;
+/** Icon buttons and buttons in a top bar are all this tall. */
+const BAR_CONTROL_SIZE = 40;
+
+/** The row every top bar is laid out in; AppBar uses it, and so does a bar that swaps in a search field. */
+export function BarRow({ children }: { children: ReactNode }) {
+  const t = useTheme();
+  return (
+    <View style={{ height: BAR_HEIGHT, flexDirection: 'row', alignItems: 'center', gap: t.space.md, paddingHorizontal: t.space.lg }}>
+      {children}
+    </View>
+  );
+}
+
 export function AppBar({ title, subtitle, left, right }: { title: string; subtitle?: string; left?: ReactNode; right?: ReactNode }) {
   const t = useTheme();
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.md, paddingHorizontal: t.space.lg, paddingVertical: t.space.md }}>
+    <BarRow>
       {left}
       <View style={{ flex: 1 }}>
         <Text style={[t.type.title, { color: t.color.text }]} numberOfLines={1}>{title}</Text>
-        {!!subtitle && <Text style={[t.type.label, { color: t.color.textMuted }]}>{subtitle}</Text>}
+        {!!subtitle && <Text style={[t.type.label, { color: t.color.textMuted }]} numberOfLines={1}>{subtitle}</Text>}
       </View>
-      {right}
-    </View>
+      {!!right && <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.xs }}>{right}</View>}
+    </BarRow>
+  );
+}
+
+/** The one look for an icon action in a top bar (close, search, more, settings). */
+export function BarIconButton({
+  icon, label, onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+}) {
+  const t = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      hitSlop={4}
+      style={({ pressed }) => ({
+        width: BAR_CONTROL_SIZE, height: BAR_CONTROL_SIZE, borderRadius: t.radius.pill,
+        alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.6 : 1,
+      })}
+    >
+      <Ionicons name={icon} size={24} color={t.color.text} />
+    </Pressable>
   );
 }
 
@@ -165,7 +209,8 @@ export function Button({
   title: string;
   onPress?: () => void;
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
-  size?: 'md' | 'lg';
+  /** `bar`: a text action in a top bar, the same height as a BarIconButton. */
+  size?: 'bar' | 'md' | 'lg';
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
@@ -186,8 +231,8 @@ export function Button({
       accessibilityState={{ disabled: !!disabled }}
       style={({ pressed }) => [
         {
-          minHeight: size === 'lg' ? 52 : hitSize,
-          paddingHorizontal: t.space.xl,
+          minHeight: size === 'lg' ? 52 : size === 'bar' ? BAR_CONTROL_SIZE : hitSize,
+          paddingHorizontal: size === 'bar' ? t.space.lg : t.space.xl,
           borderRadius: t.radius.md,
           alignItems: 'center', justifyContent: 'center',
           backgroundColor: fill,

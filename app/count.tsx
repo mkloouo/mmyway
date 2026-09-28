@@ -7,7 +7,7 @@ import { eq, inArray } from 'drizzle-orm';
 import { useLiveQuery } from '../src/db/useLiveQuery';
 import { useDb } from '../src/providers/DbProvider';
 import { useTheme } from '../src/ui/theme';
-import { Screen, AppBar, Card, Row, Chip, Button, Sheet, Money, EmptyState, useKeyboardHeight } from '../src/ui/components';
+import { Screen, AppBar, BarIconButton, Card, Row, Chip, Button, Sheet, Money, EmptyState, useKeyboardHeight } from '../src/ui/components';
 import { currencyOf } from '../src/ui/money';
 import { parseDecimalInput } from '../src/api/ff3/decimal';
 import { relativeTime } from '../src/ui/relativeTime';
@@ -180,16 +180,8 @@ export default function CountScreen() {
         <AppBar
           title="Count cash"
           subtitle={oldestBalanceDate ? `as of ${relativeTime(oldestBalanceDate)}` : undefined}
-          left={(
-            <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Close">
-              <Text style={[t.type.heading, { color: t.color.text }]}>✕</Text>
-            </Pressable>
-          )}
-          right={(
-            <Pressable onPress={() => setSettingsOpen(true)} accessibilityRole="button" accessibilityLabel="Reconcile settings">
-              <Text style={[t.type.heading, { color: t.color.text }]}>⚙</Text>
-            </Pressable>
-          )}
+          left={<BarIconButton icon="close" label="Close" onPress={() => router.back()} />}
+          right={<BarIconButton icon="settings-outline" label="Reconcile settings" onPress={() => setSettingsOpen(true)} />}
         />
         {stale && envelopeAccounts.length > 0 && (
           <View style={{ backgroundColor: t.color.warnSoft, paddingHorizontal: t.space.lg, paddingVertical: t.space.sm }}>
