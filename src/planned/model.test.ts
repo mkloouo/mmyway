@@ -60,6 +60,16 @@ describe('planned model', () => {
     expect((body.actions as { type: string }[]).filter((a) => a.type === 'set_category')).toHaveLength(1);
   });
 
+  it('sends either a repetition count or an end date, never both', () => {
+    const fields = fieldsOf(groupPlanned([bill, rule, recurrence])[0]!, '2026-09-28');
+    const once = recurrenceBody({ ...fields, repeats: false }, null, {});
+    expect(once).toMatchObject({ nr_of_repetitions: 1 });
+    expect(once).not.toHaveProperty('repeat_until');
+    const repeating = recurrenceBody({ ...fields, repeats: true }, null, {});
+    expect(repeating).toMatchObject({ repeat_until: '2099-12-31' });
+    expect(repeating).not.toHaveProperty('nr_of_repetitions');
+  });
+
   it('maps frequencies to recurrence repetitions', () => {
     const f = { date: '2026-09-28', every: 1 } as PlannedFields;
     expect(repetitionFor({ ...f, frequency: 'weekly' })).toMatchObject({ type: 'weekly', moment: '1', skip: 0 });

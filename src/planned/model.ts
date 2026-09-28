@@ -157,6 +157,9 @@ export function repetitionFor(f: PlannedFields): Record<string, unknown> {
  * the amount is sent in the planned currency even when the account keeps another (Spotify's
  * 7.99 USD from a PLN account) — the exact PLN amount is set when the transaction is reviewed.
  */
+/** The end date a repeating planned transaction is given: FF3's API has no "forever". */
+export const REPEAT_FOREVER_UNTIL = '2099-12-31';
+
 export function recurrenceBody(
   f: PlannedFields,
   before: PlannedFields | null,
@@ -181,8 +184,10 @@ export function recurrenceBody(
     apply_rules: true,
     ...(scheduleChanged(before, f) ? {
       first_date: f.date,
-      repeat_until: null,
-      nr_of_repetitions: f.repeats ? null : 1,
+      // FF3 wants exactly one of the two: a key sent as null still counts as sent ("Require
+      // either a number of repetitions, or an end date. Not both."). A one-off happens once; a
+      // repeating one runs until a date far enough away to mean "until changed".
+      ...(f.repeats ? { repeat_until: REPEAT_FOREVER_UNTIL } : { nr_of_repetitions: 1 }),
       repetitions: [{ ...(opts.repetitionId ? { id: opts.repetitionId } : {}), ...repetitionFor(f) }],
     } : {}),
     transactions: [transaction],

@@ -25,6 +25,10 @@
 - **Duplicate** on a transaction makes an Inbox draft with exactly the same data — date, splits,
   tags and all — and opens it for review.
 
+### Inbox
+- A change that failed to reach Firefly III says what it was ("Saving a planned transaction
+  failed") and its error can be tapped open to read in full.
+
 ### Planned
 - A new **Planned** tab. The simple view lists each planned payment once, with its subscription,
   rule and recurring transaction edited together: name, from and to, exact amount and currency
