@@ -58,6 +58,8 @@ export interface UpdateTransactionPayload {
   groupTitle?: string;
   /** Splits the user removed: deleted one by one after the update (a PUT doesn't remove them). */
   removedJournalIds?: string[];
+  /** Set once the update itself has landed, so a retry only redoes the split deletes. */
+  applied?: boolean;
 }
 
 export interface DeleteTransactionPayload {
@@ -339,7 +341,15 @@ async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: 
         ? (await db.select().from(inboxItems).where(eq(inboxItems.id, row.inboxItemId)))[0]
         : undefined;
       const journal = created?.attributes?.transactions?.[0];
+      // FF3's answer is the transaction as it now is: cached in the same write that removes the
+      // op, so Activity swaps the queued row for the synced one without it vanishing until the
+      // next pull. An answer missing a field the cache requires is left for that pull instead.
+      const synced = created ? cachedRowFromGroup(created, new Date().toISOString()) : null;
+      const cacheable = !!synced && [synced.amount, synced.currencyCode, synced.date, synced.type, synced.journalId].every((v) => typeof v === 'string' && v !== '');
       db.transaction((tx) => {
+        if (synced && cacheable) {
+          tx.insert(cachedTransactions).values(synced).onConflictDoUpdate({ target: cachedTransactions.groupId, set: synced }).run();
+        }
         if (row.inboxItemId) {
           tx.update(inboxItems)
             .set({ ff3GroupId: created?.id ?? null, state: 'synced', updatedAt: new Date().toISOString() })
@@ -396,7 +406,10 @@ async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: 
     if (row.kind === 'update_transaction' || row.kind === 'recurring_review' || row.kind === 'delete_transaction') {
       const p = payload as UpdateTransactionPayload | DeleteTransactionPayload;
       const isDelete = row.kind === 'delete_transaction';
-      if (p.expectedUpdatedAt) {
+      // A split edit whose update already landed only has its split deletes left: the server's
+      // copy has moved on by our own hand, so checking it again would call that a conflict.
+      const resumed = !isDelete && !!(p as UpdateTransactionPayload).applied;
+      if (p.expectedUpdatedAt && !resumed) {
         const cachedConflict = await conflictingUpdatedAt(db, p.groupId, p.expectedUpdatedAt);
         if (cachedConflict) {
           opts.onConflict?.({ id: row.id, payload: p }, cachedConflict);
@@ -404,7 +417,7 @@ async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: 
           return 'conflict';
         }
       }
-      const server = await serverCopy(client, p.groupId);
+      const server: ServerCopy = resumed ? { status: 'present', updatedAt: null, group: null } : await serverCopy(client, p.groupId);
       if (server.status === 'gone') {
         if (!isDelete) throw new Error('the transaction no longer exists in Firefly III');
         // Already deleted (in FF3, or by an earlier attempt of this op): the goal is reached.
@@ -440,10 +453,18 @@ async function replayOne(db: OutboxDb, client: FF3Client, row: OutboxRow, opts: 
         const body = u.splits
           ? { ...(u.groupTitle !== undefined ? { group_title: u.groupTitle } : {}), transactions: u.splits }
           : { transactions: [{ transaction_journal_id: u.transactionJournalId, ...u.changes }] };
-        const updated = await client.request<{ data?: TransactionRead }>(`/v1/transactions/${u.groupId}`, {
+        const updated = u.applied ? null : await client.request<{ data?: TransactionRead }>(`/v1/transactions/${u.groupId}`, {
           method: 'PUT',
           body: JSON.stringify(body),
         });
+        if (!u.applied && u.removedJournalIds?.length) {
+          // Recorded before the deletes, so a failure in them retries only them.
+          const landed = (updated?.data?.attributes as { updated_at?: string } | undefined)?.updated_at;
+          if (u.expectedUpdatedAt && landed) await rebaseLaterEdits(db, u.groupId, u.expectedUpdatedAt, landed);
+          const progressed: UpdateTransactionPayload = { ...u, applied: true, expectedUpdatedAt: landed ?? u.expectedUpdatedAt };
+          await db.update(outboxOperations).set({ payloadJson: writePayload(progressed) }).where(eq(outboxOperations.id, row.id));
+          Object.assign(u, progressed);
+        }
         for (const journalId of u.removedJournalIds ?? []) {
           try {
             await client.request(`/v1/transaction-journals/${journalId}`, { method: 'DELETE' });

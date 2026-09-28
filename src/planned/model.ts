@@ -2,6 +2,7 @@
 // transaction that share a name, edited together. This file turns the three FF3 objects into one
 // set of fields and back into what FF3 takes for each. Pure, no db.
 import { normkey } from '../lookup/normkey';
+import { readPlannedTime, stripPlannedTime, withPlannedTime } from './plannedTime';
 import type {
   BillAttributes, PlannedObject, RecurrenceRepetition, RuleAction, RuleAttributes, RuleTrigger,
 } from './objects';
@@ -26,6 +27,8 @@ export interface PlannedFields {
   every: number;
   /** YYYY-MM-DD: the next time it is planned. */
   date: string;
+  /** HH:MM it is planned at, or null for any time (kept in the recurrence's notes, src/planned/plannedTime.ts). */
+  time: string | null;
   categoryName: string | null;
   tags: string[];
 }
@@ -97,7 +100,8 @@ export function fieldsOf(group: PlannedGroup, today: string): PlannedFields {
     destinationName: text(tx?.destination_name) ?? (type === 'withdrawal' ? actionValue(rule, 'set_destination_account') : null),
     amount: text(tx?.amount) ?? text(bill?.amount_max) ?? '0',
     currencyCode: text(tx?.currency_code) ?? text(bill?.currency_code) ?? '',
-    notes: text(rec?.notes) ?? text(bill?.notes),
+    notes: stripPlannedTime(text(rec?.notes) ?? text(bill?.notes)),
+    time: readPlannedTime(rec?.notes),
     repeats,
     ...schedule,
     date,
@@ -157,6 +161,9 @@ export function repetitionFor(f: PlannedFields): Record<string, unknown> {
  * the amount is sent in the planned currency even when the account keeps another (Spotify's
  * 7.99 USD from a PLN account) — the exact PLN amount is set when the transaction is reviewed.
  */
+/** The end date a repeating planned transaction is given: FF3's API has no "forever". */
+export const REPEAT_FOREVER_UNTIL = '2099-12-31';
+
 export function recurrenceBody(
   f: PlannedFields,
   before: PlannedFields | null,
@@ -176,13 +183,15 @@ export function recurrenceBody(
   return {
     type: f.type,
     title: f.name,
-    notes: f.notes ?? '',
+    notes: withPlannedTime(f.notes, f.time),
     active: true,
     apply_rules: true,
     ...(scheduleChanged(before, f) ? {
       first_date: f.date,
-      repeat_until: null,
-      nr_of_repetitions: f.repeats ? null : 1,
+      // FF3 wants exactly one of the two: a key sent as null still counts as sent ("Require
+      // either a number of repetitions, or an end date. Not both."). A one-off happens once; a
+      // repeating one runs until a date far enough away to mean "until changed".
+      ...(f.repeats ? { repeat_until: REPEAT_FOREVER_UNTIL } : { nr_of_repetitions: 1 }),
       repetitions: [{ ...(opts.repetitionId ? { id: opts.repetitionId } : {}), ...repetitionFor(f) }],
     } : {}),
     transactions: [transaction],

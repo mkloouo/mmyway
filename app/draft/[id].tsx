@@ -7,7 +7,7 @@ import { useShake } from '../../src/ui/feedback';
 import { useLocalSearchParams, router } from 'expo-router';
 import { eq } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
-import { pickDate } from '../../src/ui/pickDate';
+import { pickDateTime } from '../../src/ui/pickDate';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
 import { Screen, AppBar, BarIconButton, Card, Chip, Button, Money, StatusPill, Sheet, Row } from '../../src/ui/components';
@@ -26,7 +26,6 @@ import { askPhotoSource, pickPhoto } from '../../src/receipt/pickPhoto';
 import { updateDraft, deleteInboxItem, attachReceiptImage } from '../../src/inbox/updateDraft';
 import { draftReadiness } from '../../src/inbox/readiness';
 import { applyDigit, type KeypadKey } from '../../src/capture/amountInput';
-import { buildEntryDate } from '../../src/capture/entryDate';
 import { buildMerchantLookup, type MerchantHistory } from '../../src/lookup/merchantLookup';
 import { matchAlias, rememberPayeeAlias, removeAlias, upsertAlias, PAYEE } from '../../src/lookup/aliases';
 import { Snackbar, type SnackbarEntry } from '../../src/ui/Snackbar';
@@ -169,7 +168,7 @@ export default function DraftScreen() {
   }
 
   function openDatePicker() {
-    pickDate(new Date(draft!.date), (picked) => patch({ date: buildEntryDate(picked, new Date(draft!.date)).toISOString() }));
+    pickDateTime(new Date(draft!.date), (picked) => patch({ date: picked.toISOString() }));
   }
 
   const handleConfirm = act(tr('inbox.confirm'), async () => {
@@ -504,11 +503,11 @@ export default function DraftScreen() {
           <Row
             first
             label={tr('draft.openInActivity')}
-            chevron
+            icon="open-outline"
             onPress={() => { setMenuOpen(false); navigateOnce(`/transactions/${row.ff3GroupId}`); }}
           />
         )}
-        <Row first={!readOnly || !row.ff3GroupId} label={tr('draft.deleteDraft')} tone="danger" onPress={handleDeleteDraft} />
+        <Row first={!readOnly || !row.ff3GroupId} label={tr('draft.deleteDraft')} icon="trash-outline" tone="danger" onPress={handleDeleteDraft} />
       </Sheet>
       <Snackbar entry={snackbar} onDismiss={dismissSnackbar} />
       <Modal visible={photoOpen && !!row.receiptImagePath} transparent animationType="fade" onRequestClose={() => setPhotoOpen(false)}>

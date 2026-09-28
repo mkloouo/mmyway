@@ -21,6 +21,8 @@ const CachedSplitSchema = z.object({
   tags: z.array(z.string()),
   foreignAmount: nullableText,
   foreignCurrencyCode: nullableText,
+  // `mmyway:<id>` on what the app created; absent on rows cached before it was kept.
+  internalReference: nullableText.optional(),
 });
 
 export type CachedSplit = z.infer<typeof CachedSplitSchema>;
@@ -50,6 +52,7 @@ type ReadSplit = TransactionSplit & {
   budget_id?: string | number | null;
   source_id?: string | number | null;
   destination_id?: string | number | null;
+  internal_reference?: string | null;
 };
 
 export function splitsFromGroup(group: TransactionRead): CachedSplit[] {
@@ -70,6 +73,7 @@ export function splitsFromGroup(group: TransactionRead): CachedSplit[] {
       tags: s.tags ?? [],
       foreignAmount: s.foreign_amount ?? null,
       foreignCurrencyCode: s.foreign_currency_code ?? null,
+      internalReference: s.internal_reference ?? null,
     };
   });
 }

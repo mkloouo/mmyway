@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+- The app is now called **Money My Way**.
+
 ### Splits
 - **Split** next to Save (and next to Confirm on a draft) adds a split: type its amount and it
   comes out of split 1. **Choose which splits give it** shows sliders instead, one per split,
@@ -12,19 +14,40 @@
 - Tap the total to change it, or change one split's amount: split 1 takes up the difference
   (split 2, when you changed split 1). When it can't, sliders ask where the difference goes, and
   Save waits until it's placed.
-- A split can be removed; split 1 takes its amount.
+- A split can be removed; split 1 takes its amount. Removing the first split keeps the link to
+  the entry that created the transaction, and a removal that stops part-way finishes on the next
+  sync instead of turning into a conflict.
 
 ### Activity
+- A split transaction lists its splits under its row: category (or description) and amount for
+  the first three, and how many more there are.
+- Account balances roll to their new value after a sync instead of jumping.
+- Menu actions (Duplicate, Delete, Count cash, Sign out, Diagnostics, Open in Activity) show an
+  icon for what they do instead of a dash.
 - **Duplicate** on a transaction makes an Inbox draft with exactly the same data — date, splits,
   tags and all — and opens it for review.
+
+### Inbox
+- A change that failed to reach Firefly III says what it was ("Saving a planned transaction
+  failed") and its error can be tapped open to read in full.
 
 ### Planned
 - A new **Planned** tab. The simple view lists each planned payment once, with its subscription,
   rule and recurring transaction edited together: name, from and to, exact amount and currency
   (Spotify's 7.99 USD from a PLN account), note, whether and how often it repeats, the date it's
-  planned on, category and tags. Add one with **+**; delete it from its page.
+  planned on, category and tags. Add one with **+**; delete it from its page. Picking a payee
+  fills in its usual category and paying account, unless you've already chosen them.
+- A planned transaction can have a time. Firefly III only plans days, so the time is kept in its
+  recurring transaction's notes (as an `mmyway-time` line); approving the booked transaction in
+  the Inbox moves it to that time.
 - The detailed view lists Firefly III's subscriptions, rules and recurring transactions
   separately, exactly as they are there; tap one to see everything about it.
+
+### Fixed
+- The time of an entry can be changed: picking a date on a transaction, a draft or in Capture
+  now asks for the time next.
+- A queued entry no longer disappears from Activity for a moment when it reaches Firefly III: it
+  stays in place and turns into the synced transaction.
 
 ## [1.2.0] - 2026-09-28
 

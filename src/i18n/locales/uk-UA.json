@@ -298,6 +298,19 @@
     "offlineBanner_one": "Офлайн — {{count, number}} у черзі, буде надіслано пізніше",
     "offlineBanner_other": "Офлайн — {{count, number}} у черзі, буде надіслано пізніше",
     "operationFailed": "{{kind}} не вдалося",
+    "showMore": "",
+    "showLess": "",
+    "opKind": {
+      "create_transaction": "",
+      "update_transaction": "",
+      "delete_transaction": "",
+      "attach_receipt": "",
+      "recurring_review": "",
+      "update_account": "",
+      "save_planned": "",
+      "delete_planned": "",
+      "other": ""
+    },
     "readingReceipt": "Квитанція про прочитання…",
     "recurring": "повторюваний",
     "resolve": "Вирішити ›",
@@ -536,6 +549,7 @@
     "becomes": "",
     "leftoverUnassigned": "",
     "leftoverOver": "",
+    "more_one": "",
     "reassign": ""
   },
   "planned": {
@@ -578,6 +592,10 @@
     "name": "",
     "namePlaceholder": "",
     "amountHint": "",
+    "time": "",
+    "anyTime": "",
+    "clearTime": "",
+    "timeHint": "",
     "plannedOn": "",
     "repeats": "",
     "repeatsHint": "",

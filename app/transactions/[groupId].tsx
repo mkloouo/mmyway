@@ -8,7 +8,7 @@ import { Alert, Image, Modal, Pressable, ScrollView, Text, View, type ImageSourc
 import { useLocalSearchParams, router } from 'expo-router';
 import { eq, ne } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
-import { pickDate } from '../../src/ui/pickDate';
+import { pickDateTime } from '../../src/ui/pickDate';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
 import { Screen, AppBar, BarIconButton, Card, Button, Money, Row, Sheet } from '../../src/ui/components';
@@ -22,7 +22,6 @@ import { currencyOf, formatMoney } from '../../src/ui/money';
 import { conflictFields } from '../../src/transactions/conflictDiff';
 import { relativeTime } from '../../src/ui/relativeTime';
 import { applyDigit, type KeypadKey } from '../../src/capture/amountInput';
-import { buildEntryDate } from '../../src/capture/entryDate';
 import { cachedTransactions, inboxItems, outboxOperations, referenceCategories, referenceBudgets, referenceCurrencies } from '../../src/db/schema';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { enqueueOperation, type UpdateTransactionPayload } from '../../src/sync/outbox';
@@ -201,6 +200,7 @@ export default function TransactionDetailScreen() {
       sourceId: effectiveSourceId, sourceName: row!.sourceName,
       destinationId: type === 'withdrawal' ? destinationId : effectiveDestinationId, destinationName: row!.destinationName,
       categoryName: effectiveCategoryName, budgetId: effectiveBudgetId, notes: effectiveNotes, tags: effectiveTags,
+      internalReference: cachedSplits?.[0]?.internalReference ?? null,
     };
   }
 
@@ -235,7 +235,7 @@ export default function TransactionDetailScreen() {
   }
 
   function openDatePicker() {
-    pickDate(effectiveDate, (picked) => setChanges((prev) => ({ ...prev, date: buildEntryDate(picked, effectiveDate).toISOString() })));
+    pickDateTime(effectiveDate, (picked) => setChanges((prev) => ({ ...prev, date: picked.toISOString() })));
   }
 
   function startSplit() {
@@ -273,9 +273,12 @@ export default function TransactionDetailScreen() {
   }
 
   function removeSplit(index: number) {
-    const gone = splits[index]?.journalId;
+    const goneSplit = splits[index];
+    const gone = goneSplit?.journalId;
     if (gone) setRemoved((r) => [...r, gone]);
-    const next = splits.filter((_, i) => i !== index);
+    // The removed split may be the only one carrying the internal reference: the rest take it.
+    const next = splits.filter((_, i) => i !== index)
+      .map((s) => ({ ...s, internalReference: s.internalReference ?? goneSplit?.internalReference ?? null }));
     // One split left holds the whole total; with more, split 1 takes the removed amount.
     if (next.length === 1) next[0] = { ...next[0]!, amount: total };
     setEdited(next);
@@ -640,8 +643,8 @@ export default function TransactionDetailScreen() {
       )}
 
       <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={tr('transaction.title')}>
-        <Row first label={tr('transaction.duplicate')} chevron onPress={onDuplicate} />
-        <Row label={tr('common.delete')} tone="danger" onPress={onDelete} />
+        <Row first label={tr('transaction.duplicate')} icon="copy-outline" onPress={onDuplicate} />
+        <Row label={tr('common.delete')} icon="trash-outline" tone="danger" onPress={onDelete} />
       </Sheet>
       {/* Same full-screen view as the draft screen's receipt photo. */}
       <Modal visible={!!photo} transparent animationType="fade" onRequestClose={() => setPhoto(null)}>

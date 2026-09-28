@@ -19,6 +19,33 @@ import { readDraft, readReviewJournal } from '../inbox/draftJson';
 import { draftTotal, isSplitDraft } from '../inbox/draftSplits';
 import { appLocale } from '../i18n';
 
+/** What a failed queued change was, in words ("Saving a planned transaction failed"). */
+const OP_KIND_KEYS: Record<string, string> = {
+  create_transaction: 'inbox.opKind.create_transaction',
+  update_transaction: 'inbox.opKind.update_transaction',
+  delete_transaction: 'inbox.opKind.delete_transaction',
+  attach_receipt: 'inbox.opKind.attach_receipt',
+  recurring_review: 'inbox.opKind.recurring_review',
+  update_account: 'inbox.opKind.update_account',
+  save_planned: 'inbox.opKind.save_planned',
+  delete_planned: 'inbox.opKind.delete_planned',
+};
+
+/** An error message cut to two lines; tapping it shows the whole of it, and again folds it. */
+function ErrorText({ message }: { message: string }) {
+  const t = useTheme();
+  const { t: tr } = useTranslation();
+  const [open, setOpen] = useState(false);
+  return (
+    <Pressable onPress={() => setOpen((v) => !v)} accessibilityRole="button" accessibilityHint={open ? tr('inbox.showLess') : tr('inbox.showMore')}>
+      <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]} numberOfLines={open ? undefined : 2} selectable={open}>
+        {message}
+      </Text>
+      <Text style={[t.type.label, { color: t.color.accent }]}>{open ? tr('inbox.showLess') : tr('inbox.showMore')}</Text>
+    </Pressable>
+  );
+}
+
 function metaLine(parts: (string | null | undefined)[]): string {
   return parts.filter((p): p is string => !!p).join(' · ');
 }
@@ -183,9 +210,7 @@ export function AttentionCard({
     return (
       <Card style={cardStyle}>
         <Text style={[t.type.heading, { color: t.color.danger }]}>✕ {label}</Text>
-        <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]} numberOfLines={2}>
-          {entry.item.errorMessage ?? tr('inbox.failed')}
-        </Text>
+        <ErrorText message={entry.item.errorMessage ?? tr('inbox.failed')} />
         <View style={{ flexDirection: 'row', gap: t.space.sm, marginTop: t.space.sm }}>
           <Button title={tr('inbox.retry')} variant="secondary" onPress={() => onRetryError(entry.item.id)} style={{ flex: 1 }} />
           <Button title={tr('inbox.discard')} variant="danger" onPress={() => onDiscardError(entry.item.id)} style={{ flex: 1 }} />
@@ -202,11 +227,9 @@ export function AttentionCard({
   return (
     <Card style={cardStyle}>
       <Text style={[t.type.heading, { color: t.color.danger }]}>
-        ✕ {isConflict ? tr('inbox.conflict') : tr('inbox.operationFailed', { kind: op.kind.replace(/_/g, ' ') })}
+        ✕ {isConflict ? tr('inbox.conflict') : tr('inbox.operationFailed', { kind: tr(OP_KIND_KEYS[op.kind] ?? 'inbox.opKind.other') })}
       </Text>
-      <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]} numberOfLines={2}>
-        {op.lastError ?? tr('inbox.unknownError')}
-      </Text>
+      <ErrorText message={op.lastError ?? tr('inbox.unknownError')} />
       <View style={{ flexDirection: 'row', gap: t.space.sm, marginTop: t.space.sm }}>
         {isConflict && groupId ? (
           <Button title={tr('inbox.resolve')} variant="secondary" onPress={() => onResolveConflict(groupId!)} style={{ flex: 1 }} />

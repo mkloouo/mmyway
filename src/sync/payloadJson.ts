@@ -13,7 +13,7 @@ const SCHEMAS = {
   create_transaction: z.looseObject({ v: version, clientId: z.string(), splits: z.array(z.looseObject({})) }),
   update_transaction: z.looseObject({
     v: version, groupId: z.string(), transactionJournalId: z.string(), expectedUpdatedAt: z.string(), changes,
-    splits: z.array(z.looseObject({})).optional(), groupTitle: z.string().optional(), removedJournalIds: z.array(z.string()).optional(),
+    splits: z.array(z.looseObject({})).optional(), groupTitle: z.string().optional(), removedJournalIds: z.array(z.string()).optional(), applied: z.boolean().optional(),
   }),
   recurring_review: z.looseObject({ v: version, groupId: z.string(), transactionJournalId: z.string(), expectedUpdatedAt: z.string().optional(), changes }),
   delete_transaction: z.looseObject({ v: version, groupId: z.string(), expectedUpdatedAt: z.string().optional() }),

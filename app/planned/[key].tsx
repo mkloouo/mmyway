@@ -14,7 +14,7 @@ import { AccountPickerSheet } from '../../src/ui/AccountPickerSheet';
 import { PayeeSheet } from '../../src/ui/PayeeSheet';
 import { Checkbox } from '../../src/ui/Checkbox';
 import { Keypad } from '../../src/ui/Keypad';
-import { pickDate } from '../../src/ui/pickDate';
+import { pickDate, pickTime } from '../../src/ui/pickDate';
 import { currencyOf, formatMoney } from '../../src/ui/money';
 import { pickableCurrencies, primaryCurrencyCode } from '../../src/ui/currencies';
 import { useAction } from '../../src/ui/useAction';
@@ -40,7 +40,7 @@ function blank(): PlannedFields {
   return {
     name: '', type: 'withdrawal', sourceId: null, sourceName: null, destinationId: null, destinationName: null,
     amount: '0', currencyCode: '', notes: null, repeats: true, frequency: 'monthly', every: 1,
-    date: todayIso(), categoryName: null, tags: [],
+    date: todayIso(), time: null, categoryName: null, tags: [],
   };
 }
 
@@ -84,6 +84,12 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
   const [sheet, setSheet] = useState<'amount' | 'currency' | 'own' | 'ownTo' | 'payee' | 'category' | 'frequency' | null>(null);
   const [histories, setHistories] = useState<MerchantHistory[]>([]);
   const [saving, setSaving] = useState(false);
+  // What the user chose themselves: a payee's history never overwrites those. The default
+  // account a new one starts with isn't a choice, so history may replace it.
+  const [chosen, setChosen] = useState<{ category: boolean; account: boolean }>(() => ({
+    category: !!item?.fields.categoryName,
+    account: !!item,
+  }));
 
   // A new one starts from capture's defaults: the default account and currency.
   useEffect(() => {
@@ -109,6 +115,23 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
   // Which end is the user's own account and which the payee/payer.
   const ownFrom = fields.type !== 'deposit';
   const ownTo = fields.type !== 'withdrawal';
+
+  /**
+   * A payee picked from history also fills what's usually booked with it — its category and the
+   * account it's usually paid from — where the user hasn't chosen one.
+   */
+  function choosePayee(h: MerchantHistory) {
+    const patch: Partial<PlannedFields> = fields.type === 'deposit'
+      ? { sourceName: h.displayName, sourceId: null }
+      : { destinationName: h.displayName, destinationId: null };
+    if (!chosen.category && !fields.categoryName && h.topCategory) patch.categoryName = h.topCategory;
+    const account = !chosen.account && h.topAccountName ? assetAccounts.find((a) => a.name === h.topAccountName) : undefined;
+    if (account) {
+      if (fields.type === 'deposit') { patch.destinationId = account.id; patch.destinationName = account.name; }
+      else { patch.sourceId = account.id; patch.sourceName = account.name; }
+    }
+    set(patch);
+  }
 
   /** The own account moves to the end the new type keeps it on; the payee/payer starts empty. */
   function changeType(type: TxType) {
@@ -176,6 +199,8 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
         <SectionHeader title={tr('planned.sectionWhen')} />
         <Card style={{ marginHorizontal: t.space.lg }}>
           <Row first label={tr('planned.plannedOn')} value={dayLabel(fields.date)} chevron onPress={() => pickDate(new Date(`${fields.date}T12:00:00`), (d) => set({ date: toDateOnly(d) }))} />
+          <Row label={tr('planned.time')} value={fields.time ?? tr('planned.anyTime')} chevron onPress={() => pickTime(fields.time, (time) => set({ time }))} />
+          {!!fields.time && <Row label={tr('planned.clearTime')} icon="close-circle-outline" onPress={() => set({ time: null })} />}
           <Checkbox checked={fields.repeats} onPress={() => set({ repeats: !fields.repeats })} label={tr('planned.repeats')} hint={tr('planned.repeatsHint')} />
           {fields.repeats && (
             <>
@@ -188,6 +213,9 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
             </>
           )}
         </Card>
+        {!!fields.time && (
+          <Text style={[t.type.label, { color: t.color.textMuted, paddingHorizontal: t.space.xl, paddingTop: t.space.sm }]}>{tr('planned.timeHint')}</Text>
+        )}
 
         <SectionHeader title={tr('planned.sectionMore')} />
         <Card style={{ marginHorizontal: t.space.lg, gap: t.space.sm }}>
@@ -220,18 +248,18 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
         visible={sheet === 'own' || sheet === 'ownTo'} onClose={() => setSheet(null)}
         title={sheet === 'ownTo' ? tr('fields.to') : tr('fields.from')}
         accounts={assetAccounts} currencies={currencies ?? []}
-        onSelect={(a) => set(sheet === 'ownTo' ? { destinationId: a.id, destinationName: a.name } : { sourceId: a.id, sourceName: a.name })}
+        onSelect={(a) => { setChosen((c) => ({ ...c, account: true })); set(sheet === 'ownTo' ? { destinationId: a.id, destinationName: a.name } : { sourceId: a.id, sourceName: a.name }); }}
       />
       <PayeeSheet
         visible={sheet === 'payee'} onClose={() => setSheet(null)} histories={histories}
         payeeLabel={fields.type === 'deposit' ? 'payer' : 'payee'}
-        onSelect={(h) => set(fields.type === 'deposit' ? { sourceName: h.displayName, sourceId: null } : { destinationName: h.displayName, destinationId: null })}
+        onSelect={choosePayee}
         onCreateNew={(text) => set(fields.type === 'deposit' ? { sourceName: text, sourceId: null } : { destinationName: text, destinationId: null })}
       />
       <PickerSheet
         visible={sheet === 'category'} onClose={() => setSheet(null)} title={tr('fields.category')}
         options={(categories ?? []).map((c) => ({ key: c.name, label: c.name }))}
-        selected={fields.categoryName} onSelect={(categoryName) => set({ categoryName })} noneLabel={tr('common.none')}
+        selected={fields.categoryName} onSelect={(categoryName) => { setChosen((c) => ({ ...c, category: true })); set({ categoryName }); }} noneLabel={tr('common.none')}
       />
       <PickerSheet
         visible={sheet === 'frequency'} onClose={() => setSheet(null)} title={tr('planned.frequencyLabel')}

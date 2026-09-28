@@ -19,21 +19,26 @@ import { relativeTime } from '../../src/ui/relativeTime';
 import { useTransactionPage, type ActivityTypeFilter, type CachedTransactionRow } from '../../src/transactions/useTransactionPage';
 import { useLoadOlderHistory, usePullToRefresh } from '../../src/sync/useSync';
 import { getClient } from '../../src/api/ff3/session';
-import { referenceCurrencies, outboxOperations, cachedTransactions } from '../../src/db/schema';
+import { referenceCurrencies, outboxOperations, cachedTransactions, inboxItems } from '../../src/db/schema';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import type { CreateTransactionPayload } from '../../src/sync/outbox';
-import type { TransactionRead } from '../../src/api/ff3/types';
+import type { TransactionRead, TransactionSplit } from '../../src/api/ff3/types';
 import { navigateOnce } from '../../src/ui/navigateOnce';
 import { confirmDestructive } from '../../src/ui/confirm';
 import { cachedRowFromGroup } from '../../src/sync/referenceData';
+import { addDecimal } from '../../src/api/ff3/decimal';
 import { deleteCachedTransactions } from '../../src/sync/outbox';
-import { ne } from 'drizzle-orm';
+import { and, desc, eq, isNotNull, ne } from 'drizzle-orm';
 import { haptics } from '../../src/ui/haptics';
 import { pendingEdits, applyPendingEdit, type PendingEditStatus } from '../../src/transactions/pendingEdits';
 import { readPayload } from '../../src/sync/payloadJson';
 import { useAction } from '../../src/ui/useAction';
 import { PendingDot } from '../../src/ui/PendingDot';
 import { usePendingAccountIds } from '../../src/accounts/usePendingAccountIds';
+import { RollingMoney } from '../../src/ui/RollingMoney';
+import { readSplits } from '../../src/transactions/splitsJson';
+import { readDraft } from '../../src/inbox/draftJson';
+import { draftTotal } from '../../src/inbox/draftSplits';
 
 const FILTERS: { labelKey: string; type: ActivityTypeFilter }[] = [
   { labelKey: 'activity.filterAll', type: 'all' },
@@ -43,6 +48,8 @@ const FILTERS: { labelKey: string; type: ActivityTypeFilter }[] = [
 ];
 
 const STALE_MS = 24 * 60 * 60 * 1000;
+/** Split lines shown under a split transaction's row before "+N more". */
+const MAX_SPLIT_LINES = 3;
 const REMOTE_SECTION_KEY = 'ff3-search';
 const PENDING_LABEL_KEYS: Record<PendingEditStatus, string> = { queued: 'draft.queued', failed: 'activity.notSent', conflict: 'inbox.conflict' };
 
@@ -54,6 +61,8 @@ type Currencies = (typeof referenceCurrencies.$inferSelect)[];
 
 interface QueuedRow {
   queued: true;
+  /** Sent, and waiting only for its synced copy to reach the list (no "Queued" chip). */
+  landing?: boolean;
   groupId: string;
   inboxItemId: string | null;
   description: string;
@@ -62,6 +71,14 @@ interface QueuedRow {
   type: 'withdrawal' | 'deposit' | 'transfer';
   sourceName: string | null;
   destinationName: string | null;
+  categoryName: string | null;
+  splits: SplitLine[];
+}
+
+/** One split under a split transaction's row: basic info only. */
+interface SplitLine {
+  label: string;
+  amount: string;
   categoryName: string | null;
 }
 
@@ -115,6 +132,37 @@ function dayTitle(key: string): string {
   const [y, m, d] = key.split('-').map(Number);
   // Always with the year: scrolling back past January otherwise gave two identical "14 SEP"s.
   return new Date(y!, m! - 1, d!).toLocaleDateString(appLocale(), { day: 'numeric', month: 'short', year: 'numeric' }).toUpperCase();
+}
+
+function sumAmounts(splits: TransactionSplit[]): string {
+  return splits.map((s) => s.amount).reduce((a, b) => addDecimal(a, b));
+}
+
+/** A sent entry, from its draft, while its synced copy is on its way into the list. */
+function landingRow(inboxItemId: string, draftJson: string): QueuedRow | null {
+  try {
+    const d = readDraft(draftJson);
+    const extras = d.extraSplits ?? [];
+    return {
+      queued: true, landing: true, groupId: `landing:${inboxItemId}`, inboxItemId,
+      description: extras.length ? (d.groupTitle || d.description) : d.description,
+      amount: draftTotal(d), currencyCode: d.currencyCode, type: d.type,
+      sourceName: d.sourceName ?? null, destinationName: d.destinationName ?? null,
+      categoryName: extras.length ? null : d.categoryName ?? null,
+      splits: extras.length ? [
+        { label: d.categoryName || d.description, amount: d.amount, categoryName: d.categoryName ?? null },
+        ...extras.map((s) => ({ label: s.categoryName || s.description, amount: s.amount, categoryName: s.categoryName ?? null })),
+      ] : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** A cached split transaction's splits, for the lines under its row. */
+function cachedSplitLines(row: CachedTransactionRow): SplitLine[] {
+  if (row.splitCount < 2) return [];
+  return (readSplits(row.splitsJson) ?? []).map((s) => ({ label: s.categoryName || s.description, amount: s.amount, categoryName: s.categoryName }));
 }
 
 export default function ActivityScreen() {
@@ -226,11 +274,15 @@ export default function ActivityScreen() {
         const payload = readPayload<CreateTransactionPayload>(op.kind, op.payloadJson);
         const split = payload.splits[0];
         if (!split) return null;
+        const many = payload.splits.length > 1;
         return {
-          queued: true, groupId: op.id, inboxItemId: op.inboxItemId, description: split.description, amount: split.amount,
+          queued: true, groupId: op.id, inboxItemId: op.inboxItemId,
+          description: many ? (payload.groupTitle ?? split.description) : split.description,
+          amount: many ? sumAmounts(payload.splits) : split.amount,
           currencyCode: split.currency_code ?? '', type: split.type,
           sourceName: split.source_name ?? null, destinationName: split.destination_name ?? null,
-          categoryName: split.category_name ?? null,
+          categoryName: many ? null : split.category_name ?? null,
+          splits: many ? payload.splits.map((s) => ({ label: s.category_name || s.description, amount: s.amount, categoryName: s.category_name ?? null })) : [],
         };
       })
       .filter((r): r is QueuedRow => !!r);
@@ -243,9 +295,31 @@ export default function ActivityScreen() {
     return { queuedRows: queued, pendingDeletes: deletes, edits: pendingEdits(ops) };
   }, [outbox]);
 
+  // Entries the Inbox sent to FF3 lately. A queued row and the synced row that replaces it are
+  // listed under one key (the inbox item's), and until the synced copy is in the list the sent
+  // entry stays on screen from its draft — it used to vanish between the two.
+  const { data: sentItems } = useLiveQuery(db.select({
+    id: inboxItems.id, kind: inboxItems.kind, draftJson: inboxItems.draftJson, ff3GroupId: inboxItems.ff3GroupId, updatedAt: inboxItems.updatedAt,
+  }).from(inboxItems).where(and(eq(inboxItems.state, 'synced'), isNotNull(inboxItems.ff3GroupId))).orderBy(desc(inboxItems.updatedAt)).limit(30));
+  const inboxByGroup = useMemo(() => new Map((sentItems ?? []).map((i) => [i.ff3GroupId!, i.id])), [sentItems]);
+  const rowKey = useCallback((row: ActivityItem) => {
+    if ('queued' in row) return row.inboxItemId ? `inbox:${row.inboxItemId}` : row.groupId;
+    const inboxId = inboxByGroup.get(row.groupId);
+    return inboxId ? `inbox:${inboxId}` : row.groupId;
+  }, [inboxByGroup]);
+
   const remoteRows = remoteSearch.status === 'done' ? remoteSearch.rows : null;
   const displaySections = useMemo(() => {
     const todayKey = localDayKey(new Date());
+    const cachedIds = new Set(sections.flatMap((s) => s.data.map((r) => r.groupId)));
+    // Anything synced before the cache last caught up is either listed already or gone from FF3.
+    const caughtUpAt = sections.flatMap((s) => s.data.map((r) => r.syncedAt)).reduce((a, b) => (b > a ? b : a), '');
+    const queuedInbox = new Set(queuedRows.map((r) => r.inboxItemId));
+    const landingRows: QueuedRow[] = (sentItems ?? [])
+      .filter((i) => i.kind !== 'recurring_review' && !cachedIds.has(i.ff3GroupId!) && !queuedInbox.has(i.id) && i.updatedAt > caughtUpAt)
+      .map((i) => landingRow(i.id, i.draftJson))
+      .filter((r): r is QueuedRow => !!r);
+    const pinned = [...queuedRows, ...landingRows];
     const result: DisplaySection[] = sections
       .map((s): DisplaySection => ({
         key: s.key,
@@ -259,16 +333,16 @@ export default function ActivityScreen() {
           }),
       }))
       .filter((s) => s.data.length > 0);
-    if (queuedRows.length > 0) {
+    if (pinned.length > 0) {
       const idx = result.findIndex((s) => s.key === todayKey);
-      if (idx >= 0) result[idx] = { ...result[idx]!, data: [...queuedRows, ...result[idx]!.data] };
-      else result.unshift({ key: todayKey, totals: [], data: queuedRows });
+      if (idx >= 0) result[idx] = { ...result[idx]!, data: [...pinned, ...result[idx]!.data] };
+      else result.unshift({ key: todayKey, totals: [], data: pinned });
     }
     if (remoteRows && remoteRows.length > 0) {
       result.push({ key: REMOTE_SECTION_KEY, totals: [], data: remoteRows });
     }
     return result;
-  }, [sections, pendingDeletes, edits, queuedRows, remoteRows]);
+  }, [sections, pendingDeletes, edits, queuedRows, remoteRows, sentItems]);
 
   // Rows get callbacks that only change when selection mode starts or ends (when every row
   // re-renders anyway), so a memoized row re-renders only when its own selected state changes —
@@ -377,7 +451,7 @@ export default function ActivityScreen() {
                     <Text style={[t.type.label, { color: t.color.textMuted, flexShrink: 1 }]} numberOfLines={1}>{a.name}</Text>
                     <PendingDot visible={pendingAccounts.has(a.id)} />
                   </View>
-                  <Money amount={a.currentBalance ?? '0'} currency={currencyOf(currencies ?? [], a.currencyCode)} size="heading" />
+                  <RollingMoney amount={a.currentBalance ?? '0'} currency={currencyOf(currencies ?? [], a.currencyCode)} size="heading" />
                   <Text style={[t.type.label, { color: t.color.textFaint }]}>{tr('count.asOf', { time: relativeTime(a.currentBalanceDate) })}</Text>
                 </Card>
               );
@@ -407,7 +481,7 @@ export default function ActivityScreen() {
             ref={listRef}
             style={{ flex: 1 }}
             sections={displaySections}
-            keyExtractor={(row) => row.groupId}
+            keyExtractor={rowKey}
             refreshing={pull.refreshing}
             onRefresh={pull.onRefresh}
             onEndReached={handleEndReached}
@@ -460,7 +534,7 @@ export default function ActivityScreen() {
       </View>
 
       <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={tr('activity.title')}>
-        <Row first label={tr('count.title')} chevron onPress={() => { setMenuOpen(false); navigateOnce('/count'); }} />
+        <Row first label={tr('count.title')} icon="cash-outline" onPress={() => { setMenuOpen(false); navigateOnce('/count'); }} />
       </Sheet>
     </Screen>
   );
@@ -489,6 +563,8 @@ const ActivityRow = memo(function ActivityRow({
   const selectable = !queued && !remote;
   // The mark pops as it toggles, alongside the tick haptic (src/ui/feedback.ts).
   const markPop = usePopOnChange(selected, 1.4);
+  const splitLines = queued ? item.splits : remote ? [] : cachedSplitLines(item);
+  const currency = currencyOf(currencies ?? [], item.currencyCode);
   return (
     <Pressable
       onPress={() => onPress(item)}
@@ -509,12 +585,22 @@ const ActivityRow = memo(function ActivityRow({
       <View style={{ flex: 1 }}>
         <Text style={[t.type.body, { color: t.color.text }]} numberOfLines={1}>{description}</Text>
         <Text style={[t.type.label, { color: t.color.textMuted }]} numberOfLines={1}>
-          {[item.categoryName, accountLeg].filter(Boolean).join(' · ') || (queued ? tr('draft.queued') : '—')}
+          {[splitLines.length ? tr('splits.count', { count: splitLines.length }) : item.categoryName, accountLeg].filter(Boolean).join(' · ') || (queued ? tr('draft.queued') : '—')}
         </Text>
+        {splitLines.slice(0, MAX_SPLIT_LINES).map((s, i) => (
+          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.xs }}>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: s.categoryName ? categoryColor(s.categoryName, t.dark) : t.color.textFaint }} />
+            <Text style={[t.type.label, { color: t.color.textMuted, flex: 1 }]} numberOfLines={1}>{s.label || '—'}</Text>
+            <Text style={[t.type.label, t.type.money, { color: t.color.textMuted }]}>{formatMoney(s.amount, currency)}</Text>
+          </View>
+        ))}
+        {splitLines.length > MAX_SPLIT_LINES && (
+          <Text style={[t.type.label, { color: t.color.textFaint }]}>{tr('splits.more', { count: splitLines.length - MAX_SPLIT_LINES })}</Text>
+        )}
       </View>
-      {queued && <Chip label={tr('draft.queued')} tone="warn" />}
+      {queued && !item.landing && <Chip label={tr('draft.queued')} tone="warn" />}
       {!!pendingStatus && <Chip label={tr(PENDING_LABEL_KEYS[pendingStatus])} tone="warn" />}
-      <Money amount={item.amount} currency={currencyOf(currencies ?? [], item.currencyCode)} type={item.type} />
+      <Money amount={item.amount} currency={currency} type={item.type} />
     </Pressable>
   );
 });
