@@ -30,6 +30,7 @@ const SCHEMAS = {
     }),
     before: z.looseObject({}).nullable(),
     billId: z.string().nullish(), ruleId: z.string().nullish(), recurrenceId: z.string().nullish(),
+    recurrenceReplaced: z.boolean().optional(), replacedRecurrenceIds: z.array(z.string()).optional(),
   }),
   delete_planned: z.looseObject({
     v: version, key: z.string(), name: z.string(),

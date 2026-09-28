@@ -17,17 +17,25 @@ import { haptics } from './haptics';
  * A tab screen leaves the bottom edge to the tab bar. A modal screen (capture, count, a draft)
  * has nothing under it but Android's own gesture/nav bar, so it passes `bottom` — without it the
  * last control sits directly on top of the system controls.
+ *
+ * `avoidKeyboard`: for a screen with text fields of its own (not in a Sheet, which handles this
+ * itself). Android draws the app edge to edge, so the window isn't resized for the keyboard and a
+ * lower field sat under it. The screen shrinks by the keyboard's height instead; its ScrollView,
+ * made shorter, scrolls the focused field back into view.
  */
-export function Screen({ children, style, bottom }: { children: ReactNode; style?: StyleProp<ViewStyle>; bottom?: boolean }) {
+export function Screen({ children, style, bottom, avoidKeyboard }: { children: ReactNode; style?: StyleProp<ViewStyle>; bottom?: boolean; avoidKeyboard?: boolean }) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
+  // Only screens that ask listen: every tab stays mounted, and each would re-render on every keyboard.
+  const keyboardHeight = useKeyboardHeight(!!avoidKeyboard);
+  const lifted = keyboardHeight > 0;
   return (
     <View
       style={[
         {
           flex: 1, backgroundColor: t.color.bg,
           paddingTop: insets.top, paddingLeft: insets.left, paddingRight: insets.right,
-          paddingBottom: bottom ? insets.bottom : 0,
+          paddingBottom: lifted ? keyboardHeight : bottom ? insets.bottom : 0,
         },
         style,
       ]}
@@ -400,15 +408,16 @@ export function Sheet({
   );
 }
 
-/** The on-screen keyboard's height while it is shown, 0 otherwise. */
-export function useKeyboardHeight(): number {
+/** The on-screen keyboard's height while it is shown, 0 otherwise (always 0 when not `enabled`). */
+export function useKeyboardHeight(enabled = true): number {
   const [height, setHeight] = useState(0);
   useEffect(() => {
+    if (!enabled) return;
     const show = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', (e) => setHeight(e.endCoordinates.height));
     const hide = Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', () => setHeight(0));
     return () => { show.remove(); hide.remove(); };
-  }, []);
-  return height;
+  }, [enabled]);
+  return enabled ? height : 0;
 }
 
 /**

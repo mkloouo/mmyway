@@ -114,6 +114,13 @@ No React Compiler, so memo is manual. The rule this codebase should follow: memo
 - [ ] **Accessibility gaps.** `Button` has no `accessibilityLabel` prop, so the "📷" button on the empty Inbox (`app/(tabs)/index.tsx:351`) reads as an emoji; Capture's currency toggle (`app/capture.tsx:318`) and ✕ (`:310`, a `Text` glyph instead of `BarIconButton`) have no or thin labels; aliases' remove button borrows the `addresses.removeAddress` key (`app/settings/aliases.tsx:340`). Add the prop and proper keys.
 - [ ] **`ErrorBoundary` logs during render.** `app/_layout.tsx:177` calls `logLine` in the render body, so every re-render of the error screen logs again. Move it into an effect.
 
+## From device testing (2026-09-28)
+
+Deferred on purpose; to be handled by hand.
+
+- [ ] **Ukrainian strings.** Some machine translations read wrong, for example the planned editor's Repeats hint ("Знижка за одноразовий платіж") and "Кожен період" without its count. Fix in Tolgee, then `npm run i18n:pull`.
+- [ ] **Planned list cards.** The simple view's cards spend their width badly: the schedule line truncates the payee ("Zina Mishchen…", "BOGART Wiol…"), and what matters (amount, next date, payee) competes with what doesn't. Rework the card layout in `app/(tabs)/planned.tsx`.
+
 ## Memo guidance for new code
 
 - Use `memo` on a component only when it renders in a list (or is otherwise expensive) **and** its parent can give it stable props: ids and primitives, callbacks from `useCallback`, values from `useMemo` or the state setter itself. `ActivityRow` is the reference.

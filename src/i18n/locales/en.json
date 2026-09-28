@@ -155,6 +155,8 @@
     "operationFailed": "{{kind}} failed",
     "showMore": "Show all",
     "showLess": "Show less",
+    "changes": "Changes: {{fields}}",
+    "changedOrder": "Order",
     "opKind": {
       "create_transaction": "Sending a new transaction",
       "update_transaction": "Saving a transaction edit",

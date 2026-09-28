@@ -203,6 +203,18 @@ export function ReviewCard({
   );
 }
 
+/** "Changes: Planned on · Amount": what a queued edit touches, so two edits of one thing read apart. */
+function ChangedLine({ changed }: { changed: string[] }) {
+  const t = useTheme();
+  const { t: tr } = useTranslation();
+  if (changed.length === 0) return null;
+  return (
+    <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]}>
+      {tr('inbox.changes', { fields: changed.map((key) => tr(key)).join(' · ') })}
+    </Text>
+  );
+}
+
 /** A change waiting in the queue: what it is, what it changes, and a tap to open that. */
 export function QueuedCard({ change, onOpen }: { change: QueuedChange; onOpen: (route: Href) => void }) {
   const t = useTheme();
@@ -211,15 +223,20 @@ export function QueuedCard({ change, onOpen }: { change: QueuedChange; onOpen: (
   const sending = op.status === 'in_flight';
   return (
     <Card style={{ marginHorizontal: t.space.lg, marginBottom: t.space.sm }} onPress={info.route ? () => onOpen(info.route!) : undefined}>
+      {/* The status sits under the subject, not beside the kind: next to a long pill ("Очікування на
+          відправку") the kind was cut to its first word. */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
         <Ionicons name={sending ? 'cloud-upload-outline' : 'time-outline'} size={16} color={t.color.textMuted} />
-        <Text style={[t.type.label, { color: t.color.textMuted, flex: 1 }]} numberOfLines={1}>
+        <Text style={[t.type.label, { color: t.color.textMuted, flex: 1 }]} numberOfLines={2}>
           {tr(OP_KIND_KEYS[op.kind] ?? 'inbox.opKind.other')}
         </Text>
-        <Chip label={sending ? tr('inbox.queueSending') : tr('inbox.queueWaiting')} tone={sending ? undefined : 'warn'} />
         {!!info.route && <Ionicons name="chevron-forward" size={18} color={t.color.textFaint} />}
       </View>
       {!!info.subject && <Text style={[t.type.body, { color: t.color.text, marginTop: t.space.xs }]} numberOfLines={1}>{info.subject}</Text>}
+      <ChangedLine changed={info.changed} />
+      <View style={{ flexDirection: 'row', marginTop: t.space.sm }}>
+        <Chip label={sending ? tr('inbox.queueSending') : tr('inbox.queueWaiting')} tone={sending ? undefined : 'warn'} />
+      </View>
     </Card>
   );
 }
@@ -268,6 +285,7 @@ export function AttentionCard({
         {!!info.route && <Ionicons name="chevron-forward" size={18} color={t.color.textFaint} />}
       </View>
       {!!info.subject && <Text style={[t.type.body, { color: t.color.text, marginTop: t.space.xs }]} numberOfLines={1}>{info.subject}</Text>}
+      <ChangedLine changed={info.changed} />
       <ErrorText message={op.lastError ?? tr('inbox.unknownError')} />
       <View style={{ flexDirection: 'row', gap: t.space.sm, marginTop: t.space.sm }}>
         {isConflict && groupId ? (
