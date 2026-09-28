@@ -1,6 +1,6 @@
 // Draft review (design §6.3) — one legible card for both a manual draft and a receipt. A split
 // entry (Split, or a duplicated split transaction) shows its tracked total and one page per split.
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Animated, Alert, Image, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useShake } from '../../src/ui/feedback';
@@ -26,7 +26,9 @@ import { askPhotoSource, pickPhoto } from '../../src/receipt/pickPhoto';
 import { updateDraft, deleteInboxItem, attachReceiptImage } from '../../src/inbox/updateDraft';
 import { draftReadiness } from '../../src/inbox/readiness';
 import { applyDigit, type KeypadKey } from '../../src/capture/amountInput';
-import { buildMerchantLookup, type MerchantHistory } from '../../src/lookup/merchantLookup';
+import { useMerchantHistories } from '../../src/lookup/useMerchantHistories';
+import { confirmDestructive } from '../../src/ui/confirm';
+import { reportErrors } from '../../src/ui/reportError';
 import { matchAlias, rememberPayeeAlias, removeAlias, upsertAlias, PAYEE } from '../../src/lookup/aliases';
 import { Snackbar, type SnackbarEntry } from '../../src/ui/Snackbar';
 import { generateId } from '../../src/utils/id';
@@ -76,11 +78,7 @@ export default function DraftScreen() {
   });
   const draft: Draft | null = row ? readDraft(row.draftJson) : null;
 
-  const [histories, setHistories] = useState<MerchantHistory[]>([]);
-  useEffect(() => {
-    const lookupType = draft?.type === 'transfer' ? undefined : draft?.type;
-    buildMerchantLookup(db, { type: lookupType }).then((map) => setHistories([...map.values()]));
-  }, [db, draft?.type]);
+  const histories = useMerchantHistories(draft?.type === 'transfer' ? undefined : draft?.type);
 
   const [amountSheetOpen, setAmountSheetOpen] = useState(false);
   const [payeeSheetOpen, setPayeeSheetOpen] = useState(false);
@@ -118,8 +116,10 @@ export default function DraftScreen() {
   const rest = splitMode ? leftover(total, amounts, dp) : 0n;
   const pageIndex = Math.min(page, extras.length);
 
+  // Not awaited (a digit shouldn't wait for the last one's write), but never silent: a failed
+  // write is logged and shown instead of becoming an unhandled rejection.
   function patch(fields: Partial<Draft>) {
-    updateDraft(db, id, fields);
+    void reportErrors(tr('common.save'), () => updateDraft(db, id, fields), (message) => setSnackbar({ id: generateId(), message }));
   }
 
   // Replacing a payee name that didn't come from FF3 (what a receipt read, a name typed as new,
@@ -186,13 +186,12 @@ export default function DraftScreen() {
     }
   });
 
-  function handleDeleteDraft() {
+  const handleDeleteDraft = act(tr('common.delete'), async () => {
     setMenuOpen(false);
-    Alert.alert(tr('draft.deleteTitle'), tr('draft.deleteBody'), [
-      { text: tr('common.cancel'), style: 'cancel' },
-      { text: tr('common.delete'), style: 'destructive', onPress: async () => { await deleteInboxItem(db, id); router.back(); } },
-    ]);
-  }
+    if (!await confirmDestructive(tr('draft.deleteTitle'), tr('common.delete'), tr('draft.deleteBody'))) return;
+    await deleteInboxItem(db, id);
+    router.back();
+  });
 
   /**
    * When the splits don't add up to the total, split 1 takes the difference (split 2, if split 1

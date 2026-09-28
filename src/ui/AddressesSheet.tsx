@@ -8,6 +8,7 @@ import { Sheet, Button } from './components';
 import { confirmDestructive } from './confirm';
 import { useTheme } from './theme';
 import { TextField } from './TextField';
+import { useAction } from './useAction';
 
 type Status = 'idle' | 'probing' | 'ok' | 'down' | 'never_reached';
 
@@ -24,6 +25,7 @@ export function AddressesSheet({
 }) {
   const t = useTheme();
   const { t: tr } = useTranslation();
+  const act = useAction();
   const [list, setList] = useState(addresses);
   const [status, setStatus] = useState<Record<string, Status>>({});
   const [newAddress, setNewAddress] = useState('');
@@ -112,10 +114,10 @@ export function AddressesSheet({
             <Text style={[t.type.body, { color: t.color.text, flex: 1 }]} numberOfLines={1}>{address}</Text>
             {address === activeAddress && <Text style={[t.type.label, { color: t.color.accent }]}>{tr('addresses.inUse')}</Text>}
             {status[address] === 'never_reached' && <Text style={[t.type.label, { color: t.color.warn }]}>{tr('addresses.neverReached')}</Text>}
-            <Pressable onPress={() => makePrimary(address)} disabled={busy} accessibilityRole="button" accessibilityLabel={tr('addresses.makePrimary', { address })}>
+            <Pressable onPress={() => act(tr('addresses.makePrimary', { address }), makePrimary)(address)} disabled={busy} accessibilityRole="button" accessibilityLabel={tr('addresses.makePrimary', { address })}>
               <Text style={[t.type.body, { color: t.color.textMuted, opacity: busy ? 0.4 : 1 }]}>▲</Text>
             </Pressable>
-            <Pressable onPress={() => removeAddress(address)} disabled={busy} accessibilityRole="button" accessibilityLabel={tr('addresses.removeAddress', { address })}>
+            <Pressable onPress={() => act(tr('addresses.remove'), removeAddress)(address)} disabled={busy} accessibilityRole="button" accessibilityLabel={tr('addresses.removeAddress', { address })}>
               <Text style={[t.type.body, { color: t.color.danger, opacity: busy ? 0.4 : 1 }]}>✕</Text>
             </Pressable>
           </View>
@@ -131,8 +133,8 @@ export function AddressesSheet({
             style={{ flex: 1 }}
           />
         </View>
-        <Button title={adding ? tr('addresses.adding') : tr('addresses.add')} variant="secondary" onPress={addAddress} disabled={adding || !newAddress.trim()} />
-        <Button title={testingAll ? tr('addresses.testing') : tr('addresses.testAll')} variant="ghost" onPress={testAll} disabled={testingAll || list.length === 0} />
+        <Button title={adding ? tr('addresses.adding') : tr('addresses.add')} variant="secondary" onPress={act(tr('addresses.add'), addAddress)} disabled={adding || !newAddress.trim()} />
+        <Button title={testingAll ? tr('addresses.testing') : tr('addresses.testAll')} variant="ghost" onPress={act(tr('addresses.testAll'), testAll)} disabled={testingAll || list.length === 0} />
       </View>
     </Sheet>
   );

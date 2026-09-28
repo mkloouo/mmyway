@@ -1,6 +1,6 @@
 // Inbox (design §6.1) — the approval queue. Only ever holds unfinished work; confirmed/synced
 // items leave every section (see src/inbox/useInboxSections.ts).
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated, Pressable, SectionList, Text, View } from 'react-native';
 import { usePopOnChange } from '../../src/ui/feedback';
 import { Collapsible, leaveThen } from '../../src/ui/Collapsible';
@@ -76,6 +76,7 @@ export default function InboxScreen() {
 
   const [syncSheetOpen, setSyncSheetOpen] = useState(false);
   const [snackbar, setSnackbar] = useState<SnackbarEntry | null>(null);
+  const dismissSnackbar = useCallback(() => setSnackbar(null), []);
   const [confirmingAll, setConfirmingAll] = useState(false);
   const [confirmProgress, setConfirmProgress] = useState({ done: 0, total: 0 });
   const [editingReview, setEditingReview] = useState<{ id: string; amount: string; currencyCode: string; accountId: string | null } | null>(null);
@@ -410,7 +411,7 @@ export default function InboxScreen() {
         />
 
         <CaptureDock />
-        <Snackbar entry={snackbar} onDismiss={() => setSnackbar(null)} />
+        <Snackbar entry={snackbar} onDismiss={dismissSnackbar} />
       </View>
 
       <SyncSheet

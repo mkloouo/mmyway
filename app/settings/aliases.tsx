@@ -16,6 +16,8 @@ import { upsertAlias, removeAlias, PAYEE } from '../../src/lookup/aliases';
 import { exportAliasesJson, importAliasesJson } from '../../src/lookup/aliasTransfer';
 import { TextField } from '../../src/ui/TextField';
 import { useAction } from '../../src/ui/useAction';
+import { confirmDestructive } from '../../src/ui/confirm';
+import { normkey } from '../../src/lookup/normkey';
 
 export default function AliasesScreen() {
   const db = useDb();
@@ -33,8 +35,11 @@ export default function AliasesScreen() {
   const [transferJson, setTransferJson] = useState('');
 
   const rows = data ?? [];
-  const visible = rows
-    .filter((r) => !search.trim() || r.rawInput.toLowerCase().includes(search.trim().toLowerCase()) || r.targetName.toLowerCase().includes(search.trim().toLowerCase()));
+  // normkey, like every other search: toLowerCase alone missed "Żabka" for "żabka".
+  const needle = normkey(search);
+  const visible = needle
+    ? rows.filter((r) => normkey(r.rawInput).includes(needle) || normkey(r.targetName).includes(needle))
+    : rows;
 
   function openAddSheet() {
     setRawInput('');
@@ -48,12 +53,10 @@ export default function AliasesScreen() {
     setAddSheetOpen(false);
   });
 
-  function confirmRemove(row: { kind: string; rawInput: string; targetName: string }) {
-    Alert.alert(tr('aliases.removeTitle', { raw: row.rawInput }), tr('aliases.removeBody', { target: row.targetName }), [
-      { text: tr('common.cancel'), style: 'cancel' },
-      { text: tr('addresses.remove'), style: 'destructive', onPress: () => removeAlias(db, row.kind, row.rawInput) },
-    ]);
-  }
+  const confirmRemove = act(tr('addresses.remove'), async (row: { kind: string; rawInput: string; targetName: string }) => {
+    if (!await confirmDestructive(tr('aliases.removeTitle', { raw: row.rawInput }), tr('addresses.remove'), tr('aliases.removeBody', { target: row.targetName }))) return;
+    await removeAlias(db, row.kind, row.rawInput);
+  });
 
   const onExport = act(tr('aliases.exportOrImport'), async () => {
     setTransferJson(await exportAliasesJson(db));

@@ -21,7 +21,8 @@ import { useAction } from '../../src/ui/useAction';
 import { referenceCategories, referenceCurrencies } from '../../src/db/schema';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { applyDigit, type KeypadKey } from '../../src/capture/amountInput';
-import { buildMerchantLookup, type MerchantHistory } from '../../src/lookup/merchantLookup';
+import type { MerchantHistory } from '../../src/lookup/merchantLookup';
+import { useMerchantHistories } from '../../src/lookup/useMerchantHistories';
 import { getDefaultCurrencyCode, getDefaultSourceAccountId } from '../../src/settings/appSettings';
 import { usePlanned, todayIso } from '../../src/planned/usePlanned';
 import { FREQUENCIES, plannedProblems, type PlannedFields } from '../../src/planned/model';
@@ -82,7 +83,6 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
   const [fields, setFields] = useState<PlannedFields>(() => item?.fields ?? blank());
   const [tagsText, setTagsText] = useState(() => item?.fields.tags.join(', ') ?? '');
   const [sheet, setSheet] = useState<'amount' | 'currency' | 'own' | 'ownTo' | 'payee' | 'category' | 'frequency' | null>(null);
-  const [histories, setHistories] = useState<MerchantHistory[]>([]);
   const [saving, setSaving] = useState(false);
   // What the user chose themselves: a payee's history never overwrites those. The default
   // account a new one starts with isn't a choice, so history may replace it.
@@ -103,9 +103,7 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
   }, [isNew, db]);
 
   const payeeType = fields.type === 'deposit' ? 'deposit' : 'withdrawal';
-  useEffect(() => {
-    buildMerchantLookup(db, { type: payeeType }).then((map) => setHistories([...map.values()]));
-  }, [db, payeeType]);
+  const histories = useMerchantHistories(payeeType);
 
   const set = (patch: Partial<PlannedFields>) => setFields((f) => ({ ...f, ...patch }));
   const currency = currencyOf(currencies ?? [], fields.currencyCode);

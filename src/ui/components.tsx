@@ -1,6 +1,6 @@
 // The whole component kit (design §4). Ten primitives, no styling outside this file:
 // a screen that needs a new look adds a variant here rather than inlining styles.
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Animated, Keyboard, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View,
@@ -323,7 +323,7 @@ export function StatusPill({ state, label }: { state: 'ok' | 'syncing' | 'queued
 
 /** Opacity loop for "this is working, not stuck": the sync dot and the parsing receipt card. */
 export function Pulse({ active, children }: { active: boolean; children: ReactNode }) {
-  const value = useMemo(() => new Animated.Value(1), []);
+  const [value] = useState(() => new Animated.Value(1));
   useEffect(() => {
     if (!active) {
       value.setValue(1);

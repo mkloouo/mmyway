@@ -102,6 +102,10 @@ export function themeFor(scheme: string | null | undefined): Theme {
   return { dark: isDark, color: isDark ? dark : light, space, radius, type };
 }
 
+const LIGHT = themeFor('light');
+const DARK = themeFor('dark');
+
+/** One object per scheme, so a theme passed down or used as a dependency keeps its identity. */
 export function useTheme(): Theme {
-  return themeFor(useColorScheme());
+  return useColorScheme() === 'dark' ? DARK : LIGHT;
 }

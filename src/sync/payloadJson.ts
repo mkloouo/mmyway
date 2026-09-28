@@ -47,6 +47,21 @@ export function readPayload<T = Record<string, unknown>>(kind: OutboxKind, json:
   return payload as T;
 }
 
+const GROUP_KINDS: readonly OutboxKind[] = ['update_transaction', 'recurring_review', 'delete_transaction'];
+
+/**
+ * The transaction group a queued edit, review or delete points at; null for any other kind and for
+ * an unreadable payload. For lists and screens that must never throw while rendering.
+ */
+export function payloadGroupId(kind: OutboxKind, json: string): string | null {
+  if (!GROUP_KINDS.includes(kind)) return null;
+  try {
+    return readPayload<{ groupId: string }>(kind, json).groupId;
+  } catch {
+    return null;
+  }
+}
+
 export function writePayload(payload: object): string {
   return JSON.stringify({ ...payload, v: PAYLOAD_VERSION });
 }

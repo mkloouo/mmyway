@@ -139,6 +139,8 @@ export default function CaptureScreen() {
   // Defaults arrive asynchronously (SecureStore/app_settings) after first render — derived here
   // rather than mirrored into state via an effect, so there is nothing to keep in sync.
   const isPayeeType = type === 'withdrawal' || type === 'deposit';
+  // One test for "something typed": "0," is still nothing, for the FX guard and the discard prompt alike.
+  const isDirty = isDirtyAmount(amount);
   // Settings → Default currency, else FF3's primary currency — never nothing at all.
   const effectiveCurrencyCode = currencyCode ?? defaultCurrencyCode ?? primaryCurrencyCode(currencies);
   const effectiveSourceId = sourceId ?? (type === 'withdrawal' || type === 'transfer' ? defaultAccountId : null);
@@ -176,7 +178,7 @@ export default function CaptureScreen() {
   // The account's currency differs from the entry's: FF3 needs the account-currency figure (it
   // becomes the transaction amount), so an empty conversion field can't be saved — it would book
   // the typed number in the account's currency.
-  const fxMissing = showFx && isDirtyAmount(amount) && !parsedForeignAmount;
+  const fxMissing = showFx && isDirty && !parsedForeignAmount;
   const impliedRate = showFx && parsedForeignAmount && amount !== '0'
     ? divideDecimal(parsedForeignAmount, amount, 2)
     : null;
@@ -202,8 +204,6 @@ export default function CaptureScreen() {
     budgetId: budgetId ?? undefined,
   };
   const readiness = draftReadiness(previewDraft);
-
-  const isDirty = amount !== '0';
 
   const confirmClose = useCallback(() => {
     if (!isDirty) {
