@@ -193,7 +193,8 @@
     "confirmAllCount_one": "Confirm all ({{count}})",
     "confirmAllCount_other": "Confirm all ({{count}})",
     "editReviewTitle": "Edit recurring transaction",
-    "saveAndApprove": "Save & approve"
+    "saveAndApprove": "Save & approve",
+    "noneReady": "None of the selected entries is ready to confirm"
   },
   "pickers": {
     "searchAccounts": "Search accounts",

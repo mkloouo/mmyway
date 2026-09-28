@@ -1,7 +1,8 @@
 // Inbox (design §6.1) — the approval queue. Only ever holds unfinished work; confirmed/synced
 // items leave every section (see src/inbox/useInboxSections.ts).
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, SectionList, Text, View } from 'react-native';
+import { Animated, Pressable, SectionList, Text, View } from 'react-native';
+import { usePopOnChange } from '../../src/ui/feedback';
 import { useTranslation } from 'react-i18next';
 import { inArray } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
@@ -59,10 +60,16 @@ export default function InboxScreen() {
   // A sync that clears the queue gets a success haptic (design §3.4) — adjusted during render
   // (React's pattern for reacting to a derived value changing), not in an effect.
   const [prevPendingOutboxCount, setPrevPendingOutboxCount] = useState(pendingOutboxCount);
+  // Bumped with the success haptic; the sync pill pops on it (src/ui/feedback.ts).
+  const [queueClears, setQueueClears] = useState(0);
   if (pendingOutboxCount !== prevPendingOutboxCount) {
-    if (prevPendingOutboxCount > 0 && pendingOutboxCount === 0) haptics.success();
+    if (prevPendingOutboxCount > 0 && pendingOutboxCount === 0) {
+      haptics.success();
+      setQueueClears((n) => n + 1);
+    }
     setPrevPendingOutboxCount(pendingOutboxCount);
   }
+  const pillPop = usePopOnChange(queueClears, 1.15);
 
   const hasCredentials = useSignedIn();
 
@@ -185,7 +192,11 @@ export default function InboxScreen() {
   async function confirmSelected() {
     const ready = visibleToConfirm.filter((item) => selectedIds.has(item.id) && !(item.kind === 'receipt' && item.state === 'captured') && draftReadiness(readDraft(item.draftJson)).ready);
     setSelectedIds(new Set());
-    if (ready.length === 0) { haptics.warn(); return; }
+    if (ready.length === 0) {
+      haptics.warn();
+      setSnackbar({ id: generateId(), message: tr('inbox.noneReady') });
+      return;
+    }
     const batch: { id: string; result: ConfirmResult }[] = [];
     await reportErrors(tr('inbox.confirm'), async () => {
       for (const item of ready) batch.push({ id: item.id, result: await confirmInboxItem(db, item.id) });
@@ -282,7 +293,9 @@ export default function InboxScreen() {
           subtitle={subtitleParts.length > 0 ? subtitleParts.join(' · ') : undefined}
           right={(
             <Pressable onPress={() => setSyncSheetOpen(true)} accessibilityRole="button" accessibilityLabel={tr('sync.statusLabel')}>
-              <StatusPill state={pillState} label={pillLabel} />
+              <Animated.View style={pillPop}>
+                <StatusPill state={pillState} label={pillLabel} />
+              </Animated.View>
             </Pressable>
           )}
         />

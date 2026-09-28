@@ -36,6 +36,9 @@
 - Denominations for GBP, CHF, CZK, HUF, SEK, NOK, DKK, RON, CAD and JPY.
 
 ### Look and feel
+- Everything that vibrates also moves, for phones without vibration: keypad keys shrink under
+  your finger, a card or row you select pops, a confirm or delete pops its Undo bar in, the sync
+  pill pops when the queue empties, and whatever blocks a Save & ✓, a confirm or a swipe shakes.
 - Amounts follow your phone's number format (for example "1,234.50" or "1 234,50").
 - Every text field shares one look.
 

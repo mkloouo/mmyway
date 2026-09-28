@@ -2,7 +2,8 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n, { appLocale } from '../../src/i18n';
-import { Pressable, ScrollView, SectionList, Text, View } from 'react-native';
+import { Animated, Pressable, ScrollView, SectionList, Text, View } from 'react-native';
+import { usePopOnChange } from '../../src/ui/feedback';
 import { useNavigation } from 'expo-router';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -481,6 +482,8 @@ const ActivityRow = memo(function ActivityRow({
   const accountLeg = item.type === 'deposit' ? item.sourceName : item.destinationName;
   const dotColor = item.categoryName ? categoryColor(item.categoryName, t.dark) : (item.type === 'transfer' ? t.color.transfer : t.color.textFaint);
   const selectable = !queued && !remote;
+  // The mark pops as it toggles, alongside the tick haptic (src/ui/feedback.ts).
+  const markPop = usePopOnChange(selected, 1.4);
   return (
     <Pressable
       onPress={() => onPress(item)}
@@ -493,9 +496,11 @@ const ActivityRow = memo(function ActivityRow({
         backgroundColor: selected ? t.color.accentSoft : undefined,
       })}
     >
-      {selecting && selectable
-        ? <Ionicons name={selected ? 'checkmark-circle' : 'ellipse-outline'} size={20} color={selected ? t.color.accent : t.color.textFaint} />
-        : <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor }} />}
+      <Animated.View style={markPop}>
+        {selecting && selectable
+          ? <Ionicons name={selected ? 'checkmark-circle' : 'ellipse-outline'} size={20} color={selected ? t.color.accent : t.color.textFaint} />
+          : <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor }} />}
+      </Animated.View>
       <View style={{ flex: 1 }}>
         <Text style={[t.type.body, { color: t.color.text }]} numberOfLines={1}>{description}</Text>
         <Text style={[t.type.label, { color: t.color.textMuted }]} numberOfLines={1}>

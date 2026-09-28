@@ -1,7 +1,8 @@
 // Draft review (design §6.3) — one legible card for both a manual draft and a receipt.
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Image, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Animated, Alert, Image, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { useShake } from '../../src/ui/feedback';
 import { useLocalSearchParams, router } from 'expo-router';
 import { eq } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
@@ -39,6 +40,7 @@ export default function DraftScreen() {
   const t = useTheme();
   const { t: tr } = useTranslation();
   const act = useAction();
+  const { shake, shakeStyle } = useShake(); // the visual twin of the warn haptic
 
   const { data: rows } = useLiveQuery(db.select().from(inboxItems).where(eq(inboxItems.id, id)));
   const assetAccounts = useAssetAccounts() ?? [];
@@ -140,7 +142,7 @@ export default function DraftScreen() {
 
   const handleConfirm = act(tr('inbox.confirm'), async () => {
     if (confirming || !readiness.ready) {
-      if (!readiness.ready) haptics.warn();
+      if (!readiness.ready) { haptics.warn(); shake(); }
       return;
     }
     setConfirming(true);
@@ -252,7 +254,7 @@ export default function DraftScreen() {
         ) : (
           <View style={{ padding: t.space.lg, gap: t.space.sm }}>
             {readiness.missing.length > 0 && (
-              <Text style={[t.type.label, { color: t.color.warn, textAlign: 'center' }]}>{missingLabel(readiness.missing)}</Text>
+              <Animated.Text style={[t.type.label, { color: t.color.warn, textAlign: 'center' }, shakeStyle]}>{missingLabel(readiness.missing)}</Animated.Text>
             )}
             <Button title={confirming ? tr('draft.confirming') : tr('inbox.confirm')} onPress={handleConfirm} disabled={confirming || !readiness.ready} size="lg" />
           </View>

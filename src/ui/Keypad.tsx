@@ -1,6 +1,7 @@
 // The 4x4 grid of design §6.2: digits plus the date, note and save cells share its layout so
 // the whole bottom cluster reads as one control.
-import { Pressable, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Animated, Pressable, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from './theme';
 import { haptics } from './haptics';
@@ -11,16 +12,22 @@ const DIGIT_ROWS: KeypadKey[][] = [['1', '2', '3'], ['4', '5', '6'], ['7', '8', 
 function Key({ label, onPress, tone, disabled }: { label: string; onPress: () => void; tone?: 'default' | 'accent'; disabled?: boolean }) {
   const t = useTheme();
   const isAccent = tone === 'accent';
+  // The key shrinks under the finger with the buzz: the same moment felt and seen, so a phone
+  // without a vibration motor still shows that the press landed.
+  const [scale] = useState(() => new Animated.Value(1));
+  const press = (to: number) => Animated.spring(scale, { toValue: to, speed: 40, bounciness: 6, useNativeDriver: true }).start();
   return (
+    <Animated.View style={{ flex: 1, marginHorizontal: 4, marginVertical: 4, transform: [{ scale }] }}>
     <Pressable
       // On press-in, not release: the buzz lands with the finger, the way a keyboard's does.
-      onPressIn={() => { void haptics.key(); }}
+      onPressIn={() => { void haptics.key(); press(0.9); }}
+      onPressOut={() => press(1)}
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={label}
       style={({ pressed }) => ({
-        flex: 1, aspectRatio: 1.4, marginHorizontal: 4, marginVertical: 4,
+        aspectRatio: 1.4,
         borderRadius: t.radius.sm, alignItems: 'center', justifyContent: 'center',
         backgroundColor: isAccent ? t.color.accent : t.color.surfaceAlt,
         opacity: disabled ? 0.4 : pressed ? 0.6 : 1,
@@ -33,6 +40,7 @@ function Key({ label, onPress, tone, disabled }: { label: string; onPress: () =>
         {label}
       </Text>
     </Pressable>
+    </Animated.View>
   );
 }
 

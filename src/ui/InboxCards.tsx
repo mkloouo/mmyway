@@ -1,7 +1,8 @@
 // The Inbox's three card kinds (design §6.1): a draft to confirm, a recurring transaction to
 // review, and something that needs attention (an errored item or a failed queued change).
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Animated, Pressable, Text, View } from 'react-native';
+import { usePopOnChange } from './feedback';
 import { useTranslation } from 'react-i18next';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTheme } from './theme';
@@ -38,6 +39,8 @@ export function ConfirmCard({
   selection: { active: boolean; selected: boolean; toggle: () => void };
 }) {
   const t = useTheme();
+  // Selecting or unselecting pops the card with the tick haptic (src/ui/feedback.ts).
+  const selectPop = usePopOnChange(selection.selected, 1.03);
   const { t: tr } = useTranslation();
   const cardStyle = { marginHorizontal: t.space.lg, marginBottom: t.space.sm };
   const press = selection.active ? selection.toggle : onOpen;
@@ -45,11 +48,13 @@ export function ConfirmCard({
   if (item.kind === 'receipt' && item.state === 'captured') {
     return (
       <MaybeSwipeable disabled={selection.active} onDelete={onDelete}>
+        <Animated.View style={selectPop}>
         <Card onPress={press} onLongPress={selection.toggle} selected={selection.selected} style={cardStyle}>
           <Pulse active>
             <Text style={[t.type.body, { color: t.color.textMuted }]}>▦ {tr('inbox.readingReceipt')}</Text>
           </Pulse>
         </Card>
+        </Animated.View>
       </MaybeSwipeable>
     );
   }
@@ -74,6 +79,7 @@ export function ConfirmCard({
 
   return (
     <MaybeSwipeable disabled={selection.active} onConfirm={onConfirm} onDelete={onDelete} confirmEnabled={readiness.ready} onRefused={haptics.warn}>
+      <Animated.View style={selectPop}>
       <Card onPress={press} onLongPress={selection.toggle} selected={selection.selected} style={cardStyle}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
           <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor }} />
@@ -105,6 +111,7 @@ export function ConfirmCard({
           </View>
         )}
       </Card>
+      </Animated.View>
     </MaybeSwipeable>
   );
 }

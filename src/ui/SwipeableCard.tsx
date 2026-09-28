@@ -3,7 +3,8 @@
 // springs back instead of confirming.
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Text, View } from 'react-native';
+import { Animated, Text, View } from 'react-native';
+import { useShake } from './feedback';
 import Swipeable, { SwipeDirection, type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { useTheme } from './theme';
 
@@ -20,6 +21,7 @@ export function SwipeableCard({
   const t = useTheme();
   const { t: tr } = useTranslation();
   const ref = useRef<SwipeableMethods>(null);
+  const { shake, shakeStyle } = useShake();
 
   return (
     <Swipeable
@@ -45,6 +47,7 @@ export function SwipeableCard({
       onSwipeableWillOpen={(direction) => {
         if (direction === SwipeDirection.RIGHT) {
           if (!confirmEnabled) {
+            shake();
             onRefused?.();
           } else {
             onConfirm?.();
@@ -56,7 +59,7 @@ export function SwipeableCard({
         }
       }}
     >
-      {children}
+      <Animated.View style={shakeStyle}>{children}</Animated.View>
     </Swipeable>
   );
 }

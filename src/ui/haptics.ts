@@ -1,5 +1,7 @@
 // One thin wrapper over expo-haptics (design §3.4): screens never import the library directly,
 // and a call here is a no-op — never a crash — on hardware or a test runner that can't feel it.
+// Every call site pairs it with a visual cue from src/ui/feedback.ts, so a phone without a
+// vibration motor still sees the feedback — keep that pairing when adding a new haptic.
 import { Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
 

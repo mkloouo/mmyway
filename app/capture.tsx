@@ -2,7 +2,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n, { appLocale } from '../src/i18n';
-import { Alert, BackHandler, Pressable, ScrollView, Text, View } from 'react-native';
+import { Animated, Alert, BackHandler, Pressable, ScrollView, Text, View } from 'react-native';
+import { usePop, useShake } from '../src/ui/feedback';
 import { router } from 'expo-router';
 import { pickDate as openSystemDatePicker } from '../src/ui/pickDate';
 import { useLiveQuery } from '../src/db/useLiveQuery';
@@ -75,6 +76,10 @@ export default function CaptureScreen() {
   const t = useTheme();
   const { t: tr } = useTranslation();
   const act = useAction();
+  // Visual twins of the haptics below (src/ui/feedback.ts): a refused Save & ✓ shakes what's
+  // missing, a save pops the amount as it clears.
+  const { shake, shakeStyle } = useShake();
+  const { pop, popStyle } = usePop();
   const { defaultAccountId, defaultCurrencyCode } = useCaptureDefaults();
 
   const assetAccountRows = useAssetAccounts();
@@ -257,6 +262,7 @@ export default function CaptureScreen() {
     if (saving || foreignAmountInvalid || fxMissing) return;
     if (andConfirm && !readiness.ready) {
       haptics.warn();
+      shake();
       return;
     }
     setSaving(true);
@@ -267,6 +273,7 @@ export default function CaptureScreen() {
         if (photoUri) await attachReceiptImage(db, inboxItemId, photoUri);
         const label = merchantRawInput || description || tr(labelKeyForType(type));
         haptics.tick();
+        pop();
         if (andConfirm) {
           const confirmed = await confirmInboxItem(db, inboxItemId);
           // Same Undo the Inbox gives a confirm: the entry stays unsent while this is on screen.
@@ -312,13 +319,13 @@ export default function CaptureScreen() {
         </View>
 
         <View style={{ alignItems: 'center', paddingVertical: t.space.xl }}>
-          <Text style={[t.type.display, t.type.money, { color: t.color.text }]} numberOfLines={1}>
+          <Animated.Text style={[t.type.display, t.type.money, { color: t.color.text }, popStyle]} numberOfLines={1}>
             {formatAmountInput(amount, currency)}
-          </Text>
+          </Animated.Text>
           {isDirty && !readiness.ready && (
-            <Text style={[t.type.label, { color: t.color.warn, marginTop: t.space.xs }]}>
+            <Animated.Text style={[t.type.label, { color: t.color.warn, marginTop: t.space.xs }, shakeStyle]}>
               {needsLabel(readiness.missing)}
-            </Text>
+            </Animated.Text>
           )}
           {summaryParts.length > 0 && (
             <Text style={[t.type.body, { color: t.color.textMuted, marginTop: t.space.xs }]}>{summaryParts.join(' · ')}</Text>
