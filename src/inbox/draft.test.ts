@@ -88,3 +88,13 @@ describe('findDuplicateReceiptItem', () => {
     expect(await findDuplicateReceiptItem(db as any, 'hash-abc')).toBeNull();
   });
 });
+
+describe('a known payee without an id', () => {
+  it('is sent by name — a payee picked from history carries no FF3 id', () => {
+    const payload = draftToTransactionPayload('client-1', {
+      type: 'withdrawal', amount: '5.00', currencyCode: 'PLN', date: '2026-09-27T10:00:00Z',
+      description: 'Żabka', destinationName: 'Żabka', isNewPayee: false, sourceId: 'acc-1',
+    });
+    expect(payload.splits[0]).toMatchObject({ destination_name: 'Żabka', destination_id: undefined });
+  });
+});
