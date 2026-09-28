@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTheme, hitSize, type Theme } from './theme';
 import { formatMoney, signFor, type DisplayCurrency } from './money';
+import { useHoldRing } from './feedback';
 
 /**
  * A tab screen leaves the bottom edge to the tab bar. A modal screen (capture, count, a draft)
@@ -114,28 +115,16 @@ export function Card({
   onLongPress?: () => void;
   delayLongPress?: number;
   /**
-   * Draws an accent border that grows while the card is held and is full the moment the long
-   * press fires — feedback on phones without a vibration motor, where the haptic tick is silent.
+   * The hold feedback from src/ui/feedback.ts (useHoldRing): an accent border grows while the
+   * card is held; when the long press fires it's full, with the tick haptic and a pop.
    */
   longPressRing?: boolean;
   selected?: boolean;
   accessibilityHint?: string;
 }) {
   const t = useTheme();
-  const [progress] = useState(() => new Animated.Value(0));
   const ring = !!longPressRing && !!onLongPress;
-
-  function startRing() {
-    if (!ring) return;
-    progress.setValue(0);
-    // Border width can't run on the native driver.
-    Animated.timing(progress, { toValue: 1, duration: delayLongPress, useNativeDriver: false }).start();
-  }
-  function stopRing() {
-    if (!ring) return;
-    progress.stopAnimation();
-    Animated.timing(progress, { toValue: 0, duration: 150, useNativeDriver: false }).start();
-  }
+  const hold = useHoldRing(delayLongPress);
 
   const body = (
     <View
@@ -152,8 +141,8 @@ export function Card({
           style={[StyleSheet.absoluteFill, {
             borderRadius: t.radius.md,
             borderColor: t.color.accent,
-            borderWidth: progress.interpolate({ inputRange: [0, 1], outputRange: [0, 4] }),
-            opacity: progress.interpolate({ inputRange: [0, 0.1, 1], outputRange: [0, 0.6, 1] }),
+            borderWidth: hold.progress.interpolate({ inputRange: [0, 1], outputRange: [0, 4] }),
+            opacity: hold.progress.interpolate({ inputRange: [0, 0.1, 1], outputRange: [0, 0.6, 1] }),
           }]}
         />
       )}
@@ -163,16 +152,16 @@ export function Card({
     ? (
       <Pressable
         onPress={onPress}
-        onLongPress={onLongPress}
+        onLongPress={onLongPress && (ring ? () => { hold.fire(); onLongPress(); } : onLongPress)}
         delayLongPress={delayLongPress}
-        onPressIn={startRing}
-        onPressOut={stopRing}
+        onPressIn={ring ? hold.start : undefined}
+        onPressOut={ring ? hold.stop : undefined}
         accessibilityState={selected !== undefined ? { selected } : undefined}
         accessibilityHint={accessibilityHint}
         // A ringed card doesn't also dim: the growing border is the feedback.
         style={({ pressed }) => ({ opacity: pressed && !ring ? 0.6 : 1 })}
       >
-        {body}
+        {ring ? <Animated.View style={hold.popStyle}>{body}</Animated.View> : body}
       </Pressable>
     )
     : body;

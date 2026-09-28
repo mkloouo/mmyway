@@ -4,8 +4,11 @@
 //   tick    -> usePop:   a quick grow-and-settle of what changed
 //   key     -> Keypad's key shrinks under the finger
 //   success -> usePop on the sync pill
+//   hold    -> useHoldRing: a border that grows while a long press charges, then the tick + pop
+//              when it fires (Card's longPressRing)
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Animated } from 'react-native';
+import { haptics } from './haptics';
 
 export function useShake() {
   const [x] = useState(() => new Animated.Value(0));
@@ -39,4 +42,32 @@ export function usePopOnChange(value: unknown, scaleTo?: number) {
     pop();
   }, [value, pop]);
   return popStyle;
+}
+
+/**
+ * A long press made visible: `progress` runs 0 → 1 over `durationMs` while the finger is down
+ * (Card draws it as a growing accent border) and falls back when it lifts early. When the long
+ * press fires, `fire()` snaps it full and gives the same tick haptic + pop every other
+ * confirmation gets, so a phone without vibration sees the moment it registered.
+ */
+export function useHoldRing(durationMs: number) {
+  const [progress] = useState(() => new Animated.Value(0));
+  const { pop, popStyle } = usePop(1.04);
+  const start = useCallback(() => {
+    progress.stopAnimation();
+    progress.setValue(0);
+    // Border width can't run on the native driver.
+    Animated.timing(progress, { toValue: 1, duration: durationMs, useNativeDriver: false }).start();
+  }, [progress, durationMs]);
+  const stop = useCallback(() => {
+    progress.stopAnimation();
+    Animated.timing(progress, { toValue: 0, duration: 150, useNativeDriver: false }).start();
+  }, [progress]);
+  const fire = useCallback(() => {
+    progress.stopAnimation();
+    progress.setValue(1);
+    void haptics.tick();
+    pop();
+  }, [progress, pop]);
+  return { progress, start, stop, fire, popStyle };
 }
