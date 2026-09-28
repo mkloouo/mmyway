@@ -140,8 +140,6 @@ async function doSync(db: OutboxDb, mode: SyncMode): Promise<SyncSummary> {
       summary.replayConflicted = replay.conflicted.length;
       summary.failedAt = replay.failedAt;
 
-      if (full) summary.recurringCreated = await pullUnreviewedRecurring(db, client, { since: lastSyncedAt });
-
       // The Planned tab's subscriptions, rules and recurring transactions — after the replay, so
       // a planned edit that just landed isn't overwritten by the copy from before it. A failure
       // here leaves the tab showing the last pull; it doesn't fail the sync.
@@ -151,6 +149,8 @@ async function doSync(db: OutboxDb, mode: SyncMode): Promise<SyncSummary> {
         } catch (err) {
           logLine('warn', `planned pull failed: ${err instanceof Error ? err.message : String(err)}`);
         }
+        // After the planned pull: a review reads its recurrence's planned currency from that cache.
+        summary.recurringCreated = await pullUnreviewedRecurring(db, client, { since: lastSyncedAt });
       }
 
       if (replay.succeeded.length > 0 && await getBalancesStale(db)) {

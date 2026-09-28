@@ -9,7 +9,8 @@ import { inArray } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, AppBar, BarIconButton, SectionHeader, Chip, Button, StatusPill, EmptyState, Sheet } from '../../src/ui/components';
+import { Screen, AppBar, BarIconButton, SectionHeader, Button, StatusPill, EmptyState, Sheet } from '../../src/ui/components';
+import { currencyOf, formatMoney } from '../../src/ui/money';
 import { CaptureDock } from '../../src/ui/CaptureDock';
 import { SyncSheet } from '../../src/ui/SyncSheet';
 import { haptics } from '../../src/ui/haptics';
@@ -23,7 +24,7 @@ import { confirmDestructive } from '../../src/ui/confirm';
 import { approveRecurringReview, editRecurringReview, deleteRecurringReview } from '../../src/sync/recurringReview';
 import { discardOperation, retryOperationNow } from '../../src/sync/outbox';
 import { requestSync } from '../../src/sync/syncTrigger';
-import { parseDecimalInput } from '../../src/api/ff3/decimal';
+import { parseDecimalInput, trimDecimal } from '../../src/api/ff3/decimal';
 import { reportErrors } from '../../src/ui/reportError';
 import { useSync, useSignedIn, usePullToRefresh } from '../../src/sync/useSync';
 import { outboxOperations, referenceCurrencies, cachedTransactions } from '../../src/db/schema';
@@ -31,7 +32,7 @@ import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { generateId } from '../../src/utils/id';
 import { navigateOnce } from '../../src/ui/navigateOnce';
 import { appLocale } from '../../src/i18n';
-import { readDraft, readReviewJournal } from '../../src/inbox/draftJson';
+import { readDraft, readReviewJournal, reviewForeign } from '../../src/inbox/draftJson'; import { AccountPickerSheet } from '../../src/ui/AccountPickerSheet';
 import { TextField } from '../../src/ui/TextField';
 import { useAction } from '../../src/ui/useAction';
 import { ConfirmCard, ReviewCard, AttentionCard, QueuedCard } from '../../src/ui/InboxCards';
@@ -79,7 +80,10 @@ export default function InboxScreen() {
   const dismissSnackbar = useCallback(() => setSnackbar(null), []);
   const [confirmingAll, setConfirmingAll] = useState(false);
   const [confirmProgress, setConfirmProgress] = useState({ done: 0, total: 0 });
-  const [editingReview, setEditingReview] = useState<{ id: string; amount: string; currencyCode: string; accountId: string | null } | null>(null);
+  const [editingReview, setEditingReview] = useState<{
+    id: string; amount: string; currencyCode: string; accountId: string | null; foreign: { amount: string; currencyCode: string } | null;
+  } | null>(null);
+  const [pickingReviewAccount, setPickingReviewAccount] = useState(false);
   const [savingReview, setSavingReview] = useState(false);
 
   // Multi-select (long-press a card): bulk confirm or delete.
@@ -234,10 +238,17 @@ export default function InboxScreen() {
 
   function startEditReview(item: InboxItemRow) {
     const journal = readReviewJournal(item.draftJson);
-    setEditingReview({ id: item.id, amount: journal.amount ?? '', currencyCode: journal.currency_code ?? '', accountId: journal.source_id ?? null });
+    const foreign = reviewForeign(journal);
+    // FF3 booked the planned 7.99 USD as 7.99 PLN — that number isn't the charge, so start empty.
+    const amount = foreign && journal.amount && trimDecimal(journal.amount) === trimDecimal(foreign.amount) ? '' : trimDecimal(journal.amount ?? '');
+    setEditingReview({ id: item.id, amount, currencyCode: journal.currency_code ?? '', accountId: journal.source_id ?? null, foreign });
   }
+  const editAccount = editingReview ? assetAccounts.find((a) => a.id === editingReview.accountId) : undefined;
+  // The currency is the account's: picking another account changes it.
+  const editCurrencyCode = editAccount?.currencyCode ?? editingReview?.currencyCode ?? '';
+  const editForeign = editingReview?.foreign && editingReview.foreign.currencyCode !== editCurrencyCode ? editingReview.foreign : null;
   const editAmountResult = editingReview ? parseDecimalInput(editingReview.amount) : null;
-  const editAmountInvalid = !!editAmountResult && !editAmountResult.ok;
+  const editAmountInvalid = !!editingReview?.amount && !!editAmountResult && !editAmountResult.ok;
   // A double-tap here used to enqueue two recurring_review operations.
   async function saveEditReview() {
     if (!editingReview || savingReview || !editAmountResult?.ok) return;
@@ -246,8 +257,9 @@ export default function InboxScreen() {
       await reportErrors(tr('common.save'), async () => {
         await editRecurringReview(db, editingReview.id, {
           amount: editAmountResult.value,
-          currency_code: editingReview.currencyCode,
+          currency_code: editCurrencyCode,
           ...(editingReview.accountId ? { source_id: editingReview.accountId } : {}),
+          ...(editForeign ? { foreign_amount: editForeign.amount, foreign_currency_code: editForeign.currencyCode } : {}),
         });
         setEditingReview(null);
       }, (message) => setSnackbar({ id: generateId(), message }));
@@ -427,34 +439,35 @@ export default function InboxScreen() {
         visible={!!editingReview}
         onClose={() => setEditingReview(null)}
         title={tr('inbox.editReviewTitle')}
-        footer={<Button title={savingReview ? tr('common.saving') : tr('inbox.saveAndApprove')} disabled={savingReview || editAmountInvalid} onPress={saveEditReview} />}
+        footer={<Button title={savingReview ? tr('common.saving') : tr('inbox.saveAndApprove')} disabled={savingReview || !editAmountResult?.ok} onPress={saveEditReview} />}
       >
         {!!editingReview && (
           <>
+            {editForeign && (
+              <Text style={[t.type.body, { color: t.color.text }]}>
+                {tr('inbox.chargedAs', { amount: formatMoney(editForeign.amount, currencyOf(currencies ?? [], editForeign.currencyCode)) })}
+              </Text>
+            )}
             <TextField
-              placeholder={tr('fields.amount')} value={editingReview.amount} keyboardType="decimal-pad"
+              placeholder={`${tr('fields.amount')}, ${editCurrencyCode}`} value={editingReview.amount} keyboardType="decimal-pad"
+              autoFocus={!!editForeign} invalid={editAmountInvalid}
               onChangeText={(v) => setEditingReview((cur) => (cur ? { ...cur, amount: v } : cur))}
             />
             {editAmountInvalid && (
               <Text style={[t.type.label, { color: t.color.danger }]}>{tr('common.invalidAmount')}</Text>
             )}
-            <TextField
-              placeholder={tr('fields.currency')} value={editingReview.currencyCode}
-              onChangeText={(v) => setEditingReview((cur) => (cur ? { ...cur, currencyCode: v } : cur))}
-            />
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
-              {assetAccounts.map((a) => (
-                <Chip
-                  key={a.id}
-                  label={a.name}
-                  selected={a.id === editingReview.accountId}
-                  onPress={() => setEditingReview((cur) => (cur ? { ...cur, accountId: a.id } : cur))}
-                />
-              ))}
-            </View>
+            <Button title={editAccount?.name ?? tr('fields.from')} variant="secondary" onPress={() => setPickingReviewAccount(true)} />
           </>
         )}
       </Sheet>
+      <AccountPickerSheet
+        visible={pickingReviewAccount}
+        onClose={() => setPickingReviewAccount(false)}
+        title={tr('fields.from')}
+        accounts={assetAccounts}
+        currencies={currencies ?? []}
+        onSelect={(a) => setEditingReview((cur) => (cur ? { ...cur, accountId: a.id } : cur))}
+      />
     </Screen>
   );
 }

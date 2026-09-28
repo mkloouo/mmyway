@@ -317,6 +317,8 @@
     "retry": "Повторити спробу",
     "retryNow": "Повторити зараз",
     "saveAndApprove": "Зберегти та схвалити",
+    "chargedAs": "",
+    "enterChargedAmount": "",
     "sectionAttention": "ПОТРЕБУЄ УВАГИ",
     "sectionConfirm": "ДЛЯ ПІДТВЕРДЖЕННЯ",
     "sectionQueued": "У ЧЕРЗІ",

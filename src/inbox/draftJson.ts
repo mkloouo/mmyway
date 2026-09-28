@@ -57,7 +57,18 @@ const ReviewJournalSchema = z.looseObject({
   date: z.string().optional(),
   source_id: z.string().nullish(),
   source_name: z.string().nullish(),
+  foreign_amount: z.string().nullish(),
+  foreign_currency_code: z.string().nullish(),
 });
+
+/**
+ * The amount a recurring transaction was planned in when that isn't the currency FF3 booked it
+ * in (7.99 USD booked from a PLN account): the review then asks what was actually charged.
+ */
+export function reviewForeign(journal: ReviewJournal): { amount: string; currencyCode: string } | null {
+  const { foreign_amount: amount, foreign_currency_code: currencyCode } = journal;
+  return amount && currencyCode && currencyCode !== journal.currency_code ? { amount, currencyCode } : null;
+}
 
 export type ReviewJournal = z.infer<typeof ReviewJournalSchema>;
 

@@ -17,7 +17,7 @@ import { needsLabel } from './readinessLabel';
 import type { AttentionItem, InboxItemRow, QueuedChange } from '../inbox/useInboxSections';
 import { draftReadiness } from '../inbox/readiness';
 import type { Draft } from '../inbox/draft';
-import { readDraft, readReviewJournal } from '../inbox/draftJson';
+import { readDraft, readReviewJournal, reviewForeign } from '../inbox/draftJson';
 import { draftTotal, isSplitDraft } from '../inbox/draftSplits';
 import { payloadGroupId } from '../sync/payloadJson';
 import { appLocale } from '../i18n';
@@ -173,8 +173,11 @@ export function ReviewCard({
   const [approving, setApproving] = useState(false);
   const journal = readReviewJournal(item.draftJson);
   const dateLabel = journal.date ? new Date(journal.date).toLocaleDateString(appLocale(), { day: 'numeric', month: 'short' }) : undefined;
+  // Planned in another currency: shown as planned, and approving first asks what was charged.
+  const foreign = reviewForeign(journal);
 
   async function approve() {
+    if (foreign) return onEdit();
     if (approving) return;
     setApproving(true);
     try {
@@ -189,15 +192,20 @@ export function ReviewCard({
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
         <Ionicons name="repeat" size={16} color={t.color.textMuted} />
         <Text style={[t.type.heading, { color: t.color.text, flex: 1 }]} numberOfLines={1}>{journal.description}</Text>
-        <Money amount={journal.amount ?? '0'} currency={currencyOf(currencies, journal.currency_code ?? '')} type="withdrawal" size="heading" />
+        <Money
+          amount={foreign?.amount ?? journal.amount ?? '0'}
+          currency={currencyOf(currencies, foreign?.currencyCode ?? journal.currency_code ?? '')}
+          type="withdrawal" size="heading"
+        />
       </View>
       <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]}>
-        {metaLine([journal.source_name, dateLabel, tr('inbox.recurring')])}
+        {metaLine([journal.source_name, dateLabel, tr('inbox.recurring'), foreign ? tr('inbox.enterChargedAmount', { currency: journal.currency_code }) : undefined])}
       </Text>
+      {/* Only Approve stretches: three equal thirds wrapped its label mid-word on a phone. */}
       <View style={{ flexDirection: 'row', gap: t.space.sm, marginTop: t.space.sm }}>
         <Button title={approving ? tr('inbox.approving') : tr('inbox.approve')} variant="secondary" onPress={approve} disabled={approving} style={{ flex: 1 }} />
-        <Button title={tr('common.edit')} variant="ghost" onPress={onEdit} disabled={approving} style={{ flex: 1 }} />
-        <Button title={tr('common.delete')} variant="danger" onPress={onDelete} disabled={approving} style={{ flex: 1 }} />
+        <Button title={tr('common.edit')} variant="ghost" onPress={onEdit} disabled={approving} />
+        <Button title={tr('common.delete')} variant="danger" onPress={onDelete} disabled={approving} />
       </View>
     </Card>
   );

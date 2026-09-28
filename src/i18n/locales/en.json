@@ -215,6 +215,8 @@
     "confirmAllCount_other": "Confirm all ({{count}})",
     "editReviewTitle": "Edit recurring transaction",
     "saveAndApprove": "Save & approve",
+    "chargedAs": "{{amount}} was charged as",
+    "enterChargedAmount": "enter the {{currency}} amount",
     "noneReady": "None of the selected entries is ready to confirm"
   },
   "pickers": {

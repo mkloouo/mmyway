@@ -1,4 +1,4 @@
-import { addDecimal, isNegative, divideDecimal, parseDecimalInput, parseSignedDecimalInput } from './decimal';
+import { addDecimal, isNegative, divideDecimal, parseDecimalInput, parseSignedDecimalInput, trimDecimal } from './decimal';
 
 describe('addDecimal', () => {
   it('adds two decimals with matching scale', () => {
@@ -68,5 +68,13 @@ describe('parseSignedDecimalInput', () => {
     expect(parseSignedDecimalInput('-0')).toEqual({ ok: true, value: '0' });
     expect(parseSignedDecimalInput('12')).toEqual({ ok: true, value: '12' });
     expect(parseSignedDecimalInput('--1').ok).toBe(false);
+  });
+});
+
+describe('trimDecimal', () => {
+  it('drops only trailing fraction zeros', () => {
+    expect(trimDecimal('7.990000000000')).toBe('7.99');
+    expect(trimDecimal('8.000000')).toBe('8');
+    expect(trimDecimal('100')).toBe('100');
   });
 });

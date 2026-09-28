@@ -37,20 +37,28 @@ export async function pullUnreviewedRecurring(db: OutboxDb, client: FF3Client, o
     const journal = group.attributes.transactions[0];
     if (!journal || (journal as { recurrence_id?: string | number | null }).recurrence_id == null || journal.tags?.includes(REVIEWED_TAG)) continue;
 
-    const existing = await db.select().from(inboxItems).where(eq(inboxItems.ff3GroupId, group.id));
-    if (existing.length > 0) continue;
+    const [existing] = await db.select().from(inboxItems).where(eq(inboxItems.ff3GroupId, group.id));
+    if (existing) {
+      // A card pulled before the planned currency was recorded picks it up on the next sync.
+      if (existing.state !== 'confirmed') continue;
+      const stored = readReviewJournal(existing.draftJson);
+      const updated = await withPlannedForeign(db, stored);
+      if (updated !== stored) await db.update(inboxItems).set({ draftJson: writeDraft(updated), updatedAt: now }).where(eq(inboxItems.id, existing.id));
+      continue;
+    }
 
     // FF3 puts updated_at on the group's attributes, not on each split — journal.updated_at is
     // undefined against real API responses despite what TransactionSplit's type claims. Fix it
     // once here so every downstream reader (approve/edit/delete, all of which JSON.parse this
     // draftJson) sees a correct value without having to know about the mismatch.
     const groupUpdatedAt = (group.attributes as { updated_at?: string }).updated_at ?? journal.updated_at;
+    const reviewJournal = await withPlannedForeign(db, readReviewJournal(writeDraft({ ...journal, updated_at: groupUpdatedAt })));
 
     await db.insert(inboxItems).values({
       id: generateId(),
       kind: 'recurring_review',
       state: 'confirmed', // arrives pre-parsed from the server; only needs a user decision (brief §4.3)
-      draftJson: writeDraft({ ...journal, updated_at: groupUpdatedAt }),
+      draftJson: writeDraft(reviewJournal),
       ff3GroupId: group.id,
       createdAt: now,
       updatedAt: now,
@@ -102,19 +110,38 @@ export async function editRecurringReview(db: OutboxDb, inboxItemId: string, cha
  */
 async function plannedDateFor(db: OutboxDb, journal: ReviewJournal): Promise<string | null> {
   if (!journal.date) return null;
+  const time = readPlannedTime((await recurrenceFor(db, journal))?.notes);
+  return time ? atPlannedTime(journal.date, time) : null;
+}
+
+type RecurrenceAttributes = {
+  notes?: string | null;
+  transactions?: { amount?: string | null; currency_code?: string | null }[];
+};
+
+/** The cached recurrence that booked a journal: by the journal's recurrence id, else by title. */
+async function recurrenceFor(db: OutboxDb, journal: ReviewJournal): Promise<RecurrenceAttributes | undefined> {
   const recurrenceId = (journal as { recurrence_id?: string | number | null }).recurrence_id;
-  let notes: string | null | undefined;
   if (recurrenceId != null) {
     const [row] = await db.select().from(plannedObjects).where(eq(plannedObjects.key, plannedKey('recurrence', String(recurrenceId))));
-    notes = row ? (readPlannedRow(row)?.attributes as { notes?: string | null } | undefined)?.notes : undefined;
+    if (row) return readPlannedRow(row)?.attributes as RecurrenceAttributes | undefined;
   }
-  if (notes === undefined && journal.description) {
-    const rows = await db.select().from(plannedObjects).where(eq(plannedObjects.kind, 'recurrence'));
-    const match = rows.find((r) => normkey(r.name) === normkey(journal.description!));
-    notes = match ? (readPlannedRow(match)?.attributes as { notes?: string | null } | undefined)?.notes : undefined;
-  }
-  const time = readPlannedTime(notes);
-  return time ? atPlannedTime(journal.date, time) : null;
+  if (!journal.description) return undefined;
+  const rows = await db.select().from(plannedObjects).where(eq(plannedObjects.kind, 'recurrence'));
+  const match = rows.find((r) => normkey(r.name) === normkey(journal.description!));
+  return match ? readPlannedRow(match)?.attributes as RecurrenceAttributes | undefined : undefined;
+}
+
+/**
+ * A recurrence planned in another currency than its account's (the Planned tab saves Spotify's
+ * 7.99 USD from a PLN account) is booked by FF3 as 7.99 in the account's currency. Records the
+ * planned amount as the journal's foreign amount, so the review asks what was actually charged.
+ */
+async function withPlannedForeign(db: OutboxDb, journal: ReviewJournal): Promise<ReviewJournal> {
+  if (journal.foreign_amount && journal.foreign_currency_code) return journal;
+  const planned = (await recurrenceFor(db, journal))?.transactions?.[0];
+  if (!planned?.amount || !planned.currency_code || planned.currency_code === journal.currency_code) return journal;
+  return { ...journal, foreign_amount: planned.amount, foreign_currency_code: planned.currency_code };
 }
 
 export async function deleteRecurringReview(db: OutboxDb, inboxItemId: string): Promise<void> {

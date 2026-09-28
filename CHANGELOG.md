@@ -32,6 +32,13 @@
   tags and all — and opens it for review.
 
 ### Inbox
+- A recurring transaction planned in another currency than its account's (7.99 USD paid from a
+  PLN account) shows its planned amount on the review card. Approving asks what was actually
+  charged ("7.99 $ was charged as ..."), and saves both amounts to Firefly III.
+- Editing a recurring review is tidier: the amount reads 7.99 instead of 7.990000000000, the
+  account opens a searchable picker instead of a wall of chips, and the currency follows the
+  account instead of being typed.
+- The Approve button on a recurring review card no longer breaks its label across two lines.
 - A change that failed to reach Firefly III says what it was ("Saving a planned transaction
   failed") and what it was for (the transaction, account or planned transaction, by name), and
   its error can be tapped open to read in full. Tap the card to open what it was changing.

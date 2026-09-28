@@ -26,6 +26,11 @@ export function addDecimal(a: string, b: string): string {
   return fromMinorUnits(leftScaled + rightScaled, scale);
 }
 
+/** FF3's `7.990000000000` as `7.99`, for an editable field: only trailing fraction zeros go. */
+export function trimDecimal(a: string): string {
+  return a.includes('.') ? a.replace(/0+$/, '').replace(/\.$/, '') : a;
+}
+
 export function isNegative(a: string): boolean {
   return a.trim().startsWith('-');
 }
