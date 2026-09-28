@@ -12,6 +12,7 @@ import { useTheme } from '../../src/ui/theme';
 import { Screen, AppBar, BarIconButton, Card, Chip, EmptyState, Money } from '../../src/ui/components';
 import { PendingDot } from '../../src/ui/PendingDot';
 import { currencyOf } from '../../src/ui/money';
+import { categoryColor } from '../../src/ui/categoryColor';
 import { appSettings, referenceCurrencies } from '../../src/db/schema';
 import { PLANNED_MODE_KEY, parsePlannedMode, setPlannedMode, type PlannedMode } from '../../src/settings/appSettings';
 import { usePlanned } from '../../src/planned/usePlanned';
@@ -77,12 +78,13 @@ export default function PlannedScreen() {
                   <Money amount={f.amount} currency={currencyOf(currencies ?? [], f.currencyCode)} type={f.type} size="heading" />
                 </View>
                 <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]} numberOfLines={1}>
-                  {[scheduleLabel(f), tr('planned.next', { date: dayLabel(f.date) }), f.categoryName, counterparty].filter(Boolean).join(' · ')}
+                  {[scheduleLabel(f), tr('planned.next', { date: dayLabel(f.date) }), counterparty].filter(Boolean).join(' · ')}
                 </Text>
-                {!!item.group && (
-                  <Text style={[t.type.label, { color: t.color.textFaint, marginTop: t.space.xs }]}>
-                    {[item.group.bill && tr('planned.subscription'), item.group.rule && tr('planned.rule'), item.group.recurrence && tr('planned.recurringOne')].filter(Boolean).join(' + ')}
-                  </Text>
+                {!!f.categoryName && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.xs, marginTop: t.space.xs }}>
+                    <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: categoryColor(f.categoryName, t.dark) }} />
+                    <Text style={[t.type.label, { color: t.color.textMuted, flex: 1 }]} numberOfLines={1}>{f.categoryName}</Text>
+                  </View>
                 )}
               </Card>
             );

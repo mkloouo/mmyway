@@ -35,8 +35,9 @@
   failed") and its error can be tapped open to read in full.
 
 ### Planned
-- A new **Planned** tab. The simple view lists each planned payment once, with its subscription,
-  rule and recurring transaction edited together: name, from and to, exact amount and currency
+- A new **Planned** tab. The simple view lists each planned payment — a subscription, rule and
+  recurring transaction sharing one name — once, with its category, and edits the three together:
+  name, from and to, exact amount and currency
   (Spotify's 7.99 USD from a PLN account), note, whether and how often it repeats, the date it's
   planned on, category and tags. Add one with **+**; delete it from its page. Picking a payee
   fills in its usual category and paying account, unless you've already chosen them.
