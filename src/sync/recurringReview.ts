@@ -9,6 +9,7 @@ import { readReviewJournal, writeDraft, type ReviewJournal } from '../inbox/draf
 import { plannedKey, readPlannedRow } from '../planned/objects';
 import { atPlannedTime, readPlannedTime } from '../planned/plannedTime';
 import { normkey } from '../lookup/normkey';
+import { fetchAll } from './referenceData';
 
 const REVIEWED_TAG = 'mmyway-reviewed';
 
@@ -16,22 +17,25 @@ const REVIEWED_TAG = 'mmyway-reviewed';
 const RECURRING_LOOKBACK_DAYS = 14;
 
 export async function pullUnreviewedRecurring(db: OutboxDb, client: FF3Client, opts: { since?: string | null } = {}): Promise<number> {
-  // Defect (2): `recurring` is a tag applied to transactions spawned from FF3's recurrence
-  // engine, not a `type` value (`type` only takes withdrawal/deposit/transfer/...) — the old
-  // `?type=recurring` filter could never match anything. Fetch by tag instead.
-  // Bounded by date: every recurring transaction ever posted carries the tag, and none from
-  // before this app has the reviewed tag — an unbounded first pull turned up to 100 of them into
-  // review cards. Reaching back from the last sync, not from today, still catches everything
-  // that fired while the app wasn't opened.
+  // FF3 marks a transaction its recurrence engine booked with the journal's recurrence_id — it
+  // adds no tag, so the old `/v1/tags/recurring` fetch never saw one. There's no filter for it,
+  // so every transaction in the window is fetched and the rest skipped.
+  // Bounded by date: none from before this app has the reviewed tag, and an unbounded first pull
+  // turned up to 100 of them into review cards. Reaching back from the last sync, not from today,
+  // still catches everything that fired while the app wasn't opened. The end reaches ahead
+  // because triggering a recurrence early books it on its future date; FF3 ignores a start given
+  // without an end.
   const from = new Date(opts.since ?? Date.now());
   from.setDate(from.getDate() - RECURRING_LOOKBACK_DAYS);
-  const response = await client.request<{ data: TransactionRead[] }>(`/v1/tags/recurring/transactions?start=${from.toISOString().slice(0, 10)}&limit=100`);
+  const to = new Date();
+  to.setFullYear(to.getFullYear() + 1);
+  const groups = await fetchAll<TransactionRead>(client, `/v1/transactions?start=${from.toISOString().slice(0, 10)}&end=${to.toISOString().slice(0, 10)}`);
   let created = 0;
   const now = new Date().toISOString();
 
-  for (const group of response.data) {
+  for (const group of groups) {
     const journal = group.attributes.transactions[0];
-    if (!journal || journal.tags?.includes(REVIEWED_TAG)) continue;
+    if (!journal || (journal as { recurrence_id?: string | number | null }).recurrence_id == null || journal.tags?.includes(REVIEWED_TAG)) continue;
 
     const existing = await db.select().from(inboxItems).where(eq(inboxItems.ff3GroupId, group.id));
     if (existing.length > 0) continue;

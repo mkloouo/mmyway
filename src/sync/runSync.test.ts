@@ -56,7 +56,7 @@ describe('runSync', () => {
 
     expect(summary.replaySucceeded).toBe(0);
     const transactionGets = client.request.mock.calls.filter(
-      ([path, init]) => path.startsWith('/v1/transactions') && init?.method !== 'POST',
+      ([path, init]) => path.startsWith('/v1/transactions') && !path.includes('&end=') && init?.method !== 'POST',
     );
     // one from pullReferenceData's own pullRecentTransactions call — no second, conditional re-pull.
     expect(transactionGets).toHaveLength(1);

@@ -11,7 +11,7 @@ describe('pullUnreviewedRecurring', () => {
   it('creates a review item for a recurring transaction without the reviewed tag', async () => {
     const db = createTestDb();
     const client = fakeClient([
-      { id: 'g1', attributes: { transactions: [{ transaction_journal_id: 'j1', tags: ['recurring'], updated_at: '2026-09-01T00:00:00Z' }] } },
+      { id: 'g1', attributes: { transactions: [{ transaction_journal_id: 'j1', recurrence_id: '1', tags: ['recurring'], updated_at: '2026-09-01T00:00:00Z' }] } },
     ]);
     const created = await pullUnreviewedRecurring(db as any, client as any);
     expect(created).toBe(1);
@@ -19,13 +19,15 @@ describe('pullUnreviewedRecurring', () => {
     expect(rows).toHaveLength(1);
   });
 
-  it('fetches by the recurring tag, not an invalid type filter (defect (2))', async () => {
+  it('picks transactions by recurrence_id, since FF3 tags nothing it books (early triggers included)', async () => {
     const db = createTestDb();
-    const client = fakeClient([]);
-    await pullUnreviewedRecurring(db as any, client as any);
+    const client = fakeClient([
+      { id: 'g1', attributes: { transactions: [{ transaction_journal_id: 'j1', recurrence_id: 7, tags: [] }] } },
+      { id: 'g2', attributes: { transactions: [{ transaction_journal_id: 'j2', recurrence_id: null, tags: [] }] } },
+    ]);
+    expect(await pullUnreviewedRecurring(db as any, client as any)).toBe(1);
     const [path] = (client.request as jest.Mock).mock.calls[0]!;
-    expect(path).toContain('/v1/tags/recurring/transactions');
-    expect(path).not.toContain('type=recurring');
+    expect(path).toMatch(/^\/v1\/transactions\?start=\d{4}-\d\d-\d\d&end=\d{4}-\d\d-\d\d/);
   });
 
   it('reads updated_at from the group, not the split, when storing the review draft', async () => {
@@ -35,7 +37,7 @@ describe('pullUnreviewedRecurring', () => {
         id: 'g1',
         attributes: {
           updated_at: '2026-09-20T12:00:00Z', // group-level, as real FF3 responses shape it
-          transactions: [{ transaction_journal_id: 'j1', tags: ['recurring'] }], // no updated_at on the split
+          transactions: [{ transaction_journal_id: 'j1', recurrence_id: '1', tags: ['recurring'] }], // no updated_at on the split
         },
       },
     ]);
@@ -49,7 +51,7 @@ describe('pullUnreviewedRecurring', () => {
   it('skips a transaction that already has the reviewed tag', async () => {
     const db = createTestDb();
     const client = fakeClient([
-      { id: 'g1', attributes: { transactions: [{ transaction_journal_id: 'j1', tags: ['recurring', 'mmyway-reviewed'], updated_at: '2026-09-01T00:00:00Z' }] } },
+      { id: 'g1', attributes: { transactions: [{ transaction_journal_id: 'j1', recurrence_id: '1', tags: ['recurring', 'mmyway-reviewed'], updated_at: '2026-09-01T00:00:00Z' }] } },
     ]);
     const created = await pullUnreviewedRecurring(db as any, client as any);
     expect(created).toBe(0);
@@ -58,7 +60,7 @@ describe('pullUnreviewedRecurring', () => {
   it('does not duplicate a review item on a second pull', async () => {
     const db = createTestDb();
     const client = fakeClient([
-      { id: 'g1', attributes: { transactions: [{ transaction_journal_id: 'j1', tags: ['recurring'], updated_at: '2026-09-01T00:00:00Z' }] } },
+      { id: 'g1', attributes: { transactions: [{ transaction_journal_id: 'j1', recurrence_id: '1', tags: ['recurring'], updated_at: '2026-09-01T00:00:00Z' }] } },
     ]);
     await pullUnreviewedRecurring(db as any, client as any);
     const secondRun = await pullUnreviewedRecurring(db as any, client as any);
@@ -70,7 +72,7 @@ describe('approveRecurringReview', () => {
   it('enqueues a recurring_review outbox operation with the reviewed tag added', async () => {
     const db = createTestDb();
     const client = fakeClient([
-      { id: 'g1', attributes: { transactions: [{ transaction_journal_id: 'j1', tags: ['recurring'], updated_at: '2026-09-01T00:00:00Z' }] } },
+      { id: 'g1', attributes: { transactions: [{ transaction_journal_id: 'j1', recurrence_id: '1', tags: ['recurring'], updated_at: '2026-09-01T00:00:00Z' }] } },
     ]);
     await pullUnreviewedRecurring(db as any, client as any);
     const item = (await db.select().from(inboxItems))[0]!;
@@ -86,7 +88,7 @@ describe('editRecurringReview', () => {
   it('enqueues a partial PUT keyed by transaction_journal_id with the review tag added (R2/R3)', async () => {
     const db = createTestDb();
     const client = fakeClient([
-      { id: 'g1', attributes: { transactions: [{ transaction_journal_id: 'j1', tags: ['recurring'], updated_at: '2026-09-01T00:00:00Z' }] } },
+      { id: 'g1', attributes: { transactions: [{ transaction_journal_id: 'j1', recurrence_id: '1', tags: ['recurring'], updated_at: '2026-09-01T00:00:00Z' }] } },
     ]);
     await pullUnreviewedRecurring(db as any, client as any);
     const item = (await db.select().from(inboxItems))[0]!;
@@ -106,7 +108,7 @@ describe('deleteRecurringReview', () => {
   it('enqueues a conflict-checked delete', async () => {
     const db = createTestDb();
     const client = fakeClient([
-      { id: 'g1', attributes: { transactions: [{ transaction_journal_id: 'j1', tags: ['recurring'], updated_at: '2026-09-01T00:00:00Z' }] } },
+      { id: 'g1', attributes: { transactions: [{ transaction_journal_id: 'j1', recurrence_id: '1', tags: ['recurring'], updated_at: '2026-09-01T00:00:00Z' }] } },
     ]);
     await pullUnreviewedRecurring(db as any, client as any);
     const item = (await db.select().from(inboxItems))[0]!;
@@ -123,7 +125,7 @@ describe('deleteRecurringReview', () => {
   it('surfaces a stale updated_at as a conflict instead of deleting (Review Focus)', async () => {
     const db = createTestDb();
     const client = fakeClient([
-      { id: 'g1', attributes: { transactions: [{ transaction_journal_id: 'j1', tags: ['recurring'], updated_at: '2026-09-01T00:00:00Z' }] } },
+      { id: 'g1', attributes: { transactions: [{ transaction_journal_id: 'j1', recurrence_id: '1', tags: ['recurring'], updated_at: '2026-09-01T00:00:00Z' }] } },
     ]);
     await pullUnreviewedRecurring(db as any, client as any);
     const item = (await db.select().from(inboxItems))[0]!;

@@ -14,7 +14,7 @@ const PAGE_SIZE = 100;
 // FF3 paginates every collection endpoint, so a single request truncates silently: a real
 // instance has hundreds of expense accounts, and asking for one page of accounts returned
 // nothing but payees — no asset account ever reached the device.
-async function fetchAll<T>(client: FF3Client, path: string): Promise<T[]> {
+export async function fetchAll<T>(client: FF3Client, path: string): Promise<T[]> {
   const separator = path.includes('?') ? '&' : '?';
   const out: T[] = [];
   for (let page = 1; ; page++) {
