@@ -291,14 +291,18 @@ export default function ActivityScreen() {
     />
   ), [selecting, selectedIds, currencies, onRowPress, onRowLongPress]);
 
-  function scrollToTop() {
-    if (displaySections.length > 0) listRef.current?.scrollToLocation({ sectionIndex: 0, itemIndex: 0, animated: true, viewOffset: 0 });
-  }
+  // The listener is added once but reads the current sections through a ref: it used to close
+  // over the first render's (empty) list and never scroll.
+  const hasSectionsRef = useRef(false);
+  useEffect(() => { hasSectionsRef.current = displaySections.length > 0; }, [displaySections]);
   useEffect(() => {
     const unsubscribe = (navigation as unknown as { addListener: (event: string, cb: () => void) => () => void })
-      .addListener('tabPress', () => { if (navigation.isFocused()) scrollToTop(); });
+      .addListener('tabPress', () => {
+        if (navigation.isFocused() && hasSectionsRef.current) {
+          listRef.current?.scrollToLocation({ sectionIndex: 0, itemIndex: 0, animated: true, viewOffset: 0 });
+        }
+      });
     return unsubscribe;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigation]);
 
   // undefined until the first read lands, so a synced-but-empty Activity doesn't flash "Nothing

@@ -93,7 +93,7 @@ export async function confirmInboxItem(db: OutboxDb, inboxItemId: string): Promi
   const item = rows[0];
   if (!item) throw new Error(`inbox item ${inboxItemId} not found`);
 
-  const previousState = item.state as InboxState;
+  const previousState = item.state;
   const nextState = transition(previousState, 'confirm');
   const draft: Draft = JSON.parse(item.draftJson);
 
