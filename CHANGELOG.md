@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-09-28
+
 ### Accounts
 - Each account now has its own page: tap or long-press it in Settings → Accounts, or long-press
   its balance card on Activity. Change its name, currency, role (default, shared, savings, credit
