@@ -1,6 +1,7 @@
 // The DETAILS card (design §6.3, §6.5): one picker implementation shared by the draft screen and
 // the transaction detail screen. Every row opens a sheet; nothing is an inline chip wall.
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Text, TextInput, View } from 'react-native';
 import { Card, Row, Chip, Button, Sheet } from './components';
 import { useTheme } from './theme';
@@ -34,6 +35,7 @@ export interface DetailRowsProps {
 
 export function DetailRows({ value, onChange, onDatePress, readOnly, accounts, pickableAccounts, currencies, categories, budgets }: DetailRowsProps) {
   const t = useTheme();
+  const { t: tr } = useTranslation();
   const [categorySheetOpen, setCategorySheetOpen] = useState(false);
   const [budgetSheetOpen, setBudgetSheetOpen] = useState(false);
   const [accountSheetTarget, setAccountSheetTarget] = useState<'source' | 'destination' | null>(null);
@@ -50,7 +52,7 @@ export function DetailRows({ value, onChange, onDatePress, readOnly, accounts, p
         {value.type !== 'transfer' && (
           <Row
             first
-            label="Category"
+            label={tr('fields.category')}
             value={value.categoryName ?? '—'}
             chevron={!readOnly}
             leading={value.categoryName ? (
@@ -62,7 +64,7 @@ export function DetailRows({ value, onChange, onDatePress, readOnly, accounts, p
         {(value.type === 'withdrawal' || value.type === 'transfer') && (
           <Row
             first={value.type === 'transfer'}
-            label="From"
+            label={tr('fields.from')}
             value={sourceAccount?.name ?? '—'}
             chevron={!readOnly}
             onPress={readOnly ? undefined : () => setAccountSheetTarget('source')}
@@ -70,7 +72,7 @@ export function DetailRows({ value, onChange, onDatePress, readOnly, accounts, p
         )}
         {(value.type === 'deposit' || value.type === 'transfer') && (
           <Row
-            label="To"
+            label={tr('fields.to')}
             value={destinationAccount?.name ?? '—'}
             chevron={!readOnly}
             onPress={readOnly ? undefined : () => setAccountSheetTarget('destination')}
@@ -78,29 +80,29 @@ export function DetailRows({ value, onChange, onDatePress, readOnly, accounts, p
         )}
         {value.type !== 'transfer' && (
           <Row
-            label="Budget"
+            label={tr('fields.budget')}
             value={budget?.name ?? '—'}
             chevron={!readOnly}
             onPress={readOnly ? undefined : () => setBudgetSheetOpen(true)}
           />
         )}
-        <Row label="Date" value={value.dateLabel} chevron={!readOnly} onPress={readOnly ? undefined : onDatePress} />
-        <Row label="Note" value={value.notes || '—'} chevron={!readOnly} onPress={readOnly ? undefined : () => setTextSheetOpen(true)} />
-        <Row label="Shared with" value={value.sharedWith || '—'} chevron={!readOnly} onPress={readOnly ? undefined : () => setTextSheetOpen(true)} />
+        <Row label={tr('fields.date')} value={value.dateLabel} chevron={!readOnly} onPress={readOnly ? undefined : onDatePress} />
+        <Row label={tr('fields.note')} value={value.notes || '—'} chevron={!readOnly} onPress={readOnly ? undefined : () => setTextSheetOpen(true)} />
+        <Row label={tr('fields.sharedWith')} value={value.sharedWith || '—'} chevron={!readOnly} onPress={readOnly ? undefined : () => setTextSheetOpen(true)} />
       </Card>
 
-      <Sheet visible={categorySheetOpen} onClose={() => setCategorySheetOpen(false)} title="Category">
+      <Sheet visible={categorySheetOpen} onClose={() => setCategorySheetOpen(false)} title={tr('fields.category')}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
-          <Chip label="None" selected={!value.categoryName} onPress={() => { onChange({ categoryName: null }); setCategorySheetOpen(false); }} />
+          <Chip label={tr('common.none')} selected={!value.categoryName} onPress={() => { onChange({ categoryName: null }); setCategorySheetOpen(false); }} />
           {categories.map((c) => (
             <Chip key={c.id} label={c.name} selected={c.name === value.categoryName} onPress={() => { onChange({ categoryName: c.name }); setCategorySheetOpen(false); }} />
           ))}
         </View>
       </Sheet>
 
-      <Sheet visible={budgetSheetOpen} onClose={() => setBudgetSheetOpen(false)} title="Budget">
+      <Sheet visible={budgetSheetOpen} onClose={() => setBudgetSheetOpen(false)} title={tr('fields.budget')}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
-          <Chip label="None" selected={!value.budgetId} onPress={() => { onChange({ budgetId: null }); setBudgetSheetOpen(false); }} />
+          <Chip label={tr('common.none')} selected={!value.budgetId} onPress={() => { onChange({ budgetId: null }); setBudgetSheetOpen(false); }} />
           {budgets.map((b) => (
             <Chip key={b.id} label={b.name} selected={b.id === value.budgetId} onPress={() => { onChange({ budgetId: b.id }); setBudgetSheetOpen(false); }} />
           ))}
@@ -110,7 +112,7 @@ export function DetailRows({ value, onChange, onDatePress, readOnly, accounts, p
       <AccountPickerSheet
         visible={!!accountSheetTarget}
         onClose={() => setAccountSheetTarget(null)}
-        title={accountSheetTarget === 'source' ? 'From' : 'To'}
+        title={accountSheetTarget === 'source' ? tr('fields.from') : tr('fields.to')}
         accounts={accountChoices}
         currencies={currencies}
         excludeId={accountSheetTarget === 'destination' && value.type === 'transfer' ? value.sourceAccountId : null}
@@ -120,10 +122,10 @@ export function DetailRows({ value, onChange, onDatePress, readOnly, accounts, p
       <Sheet
         visible={textSheetOpen}
         onClose={() => setTextSheetOpen(false)}
-        title="Note & shared with"
-        footer={<Button title="Done" onPress={() => setTextSheetOpen(false)} />}
+        title={tr('details.noteAndSharedWith')}
+        footer={<Button title={tr('common.done')} onPress={() => setTextSheetOpen(false)} />}
       >
-        <Text style={[t.type.label, { color: t.color.textMuted }]}>Note</Text>
+        <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('fields.note')}</Text>
         <TextInput
           value={value.notes ?? ''}
           onChangeText={(v) => onChange({ notes: v })}
@@ -131,7 +133,7 @@ export function DetailRows({ value, onChange, onDatePress, readOnly, accounts, p
           placeholderTextColor={t.color.textFaint}
           style={{ borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm, padding: t.space.md, color: t.color.text, minHeight: 60 }}
         />
-        <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.sm }]}>Shared with</Text>
+        <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.sm }]}>{tr('fields.sharedWith')}</Text>
         <TextInput
           value={value.sharedWith ?? ''}
           onChangeText={(v) => onChange({ sharedWith: v })}

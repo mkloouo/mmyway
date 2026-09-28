@@ -2,6 +2,7 @@
 // items leave every section (see src/inbox/useInboxSections.ts).
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, SectionList, Text, TextInput, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { eq } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -33,6 +34,8 @@ import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { generateId } from '../../src/utils/id';
 import type { Draft } from '../../src/inbox/draft';
 import { navigateOnce } from '../../src/ui/navigateOnce';
+import { needsLabel } from '../../src/ui/readinessLabel';
+import { appLocale } from '../../src/i18n';
 
 type SectionKey = 'attention' | 'confirm' | 'review';
 type SectionRow = AttentionItem | InboxItemRow;
@@ -60,6 +63,7 @@ function ConfirmCard({
   selection: { active: boolean; selected: boolean; toggle: () => void };
 }) {
   const t = useTheme();
+  const { t: tr } = useTranslation();
   const cardStyle = { marginHorizontal: t.space.lg, marginBottom: t.space.sm };
   const press = selection.active ? selection.toggle : onOpen;
 
@@ -68,7 +72,7 @@ function ConfirmCard({
       <MaybeSwipeable disabled={selection.active} onDelete={onDelete}>
         <Card onPress={press} onLongPress={selection.toggle} selected={selection.selected} style={cardStyle}>
           <Pulse active>
-            <Text style={[t.type.body, { color: t.color.textMuted }]}>▦ Reading receipt…</Text>
+            <Text style={[t.type.body, { color: t.color.textMuted }]}>▦ {tr('inbox.readingReceipt')}</Text>
           </Pulse>
         </Card>
       </MaybeSwipeable>
@@ -82,14 +86,14 @@ function ConfirmCard({
     ? `${draft.sourceName ?? '?'} → ${draft.destinationName ?? '?'}`
     : (draft.type === 'deposit' ? draft.sourceName : draft.destinationName) || draft.description;
   const accountName = draft.type === 'deposit' ? draft.destinationName : draft.sourceName;
-  const time = new Date(draft.date).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  const time = new Date(draft.date).toLocaleTimeString(appLocale(), { hour: '2-digit', minute: '2-digit' });
   const meta = isTransfer ? metaLine([time]) : metaLine([draft.categoryName, accountName, time]);
   const dotColor = draft.categoryName ? categoryColor(draft.categoryName, t.dark) : t.color.textFaint;
 
   const badges: { label: string; tone?: 'warn' }[] = [];
-  if (draft.isNewPayee && !isTransfer) badges.push({ label: 'New payee', tone: 'warn' });
-  if (!readiness.ready) badges.push({ label: `Needs ${readiness.missing.join(', ')}`, tone: 'warn' });
-  if (draft.sharedWith) badges.push({ label: `Shared with ${draft.sharedWith}` });
+  if (draft.isNewPayee && !isTransfer) badges.push({ label: tr('inbox.newPayee'), tone: 'warn' });
+  if (!readiness.ready) badges.push({ label: needsLabel(readiness.missing), tone: 'warn' });
+  if (draft.sharedWith) badges.push({ label: tr('inbox.sharedWith', { name: draft.sharedWith }) });
   // Handed back by the outbox: something it points at was deleted in FF3 (src/sync/outbox.ts).
   if (item.errorMessage) badges.push({ label: item.errorMessage, tone: 'warn' });
 
@@ -113,7 +117,7 @@ function ConfirmCard({
               <Pressable
                 onPress={onConfirm}
                 accessibilityRole="button"
-                accessibilityLabel="Confirm"
+                accessibilityLabel={tr('inbox.confirm')}
                 hitSlop={8}
                 style={({ pressed }) => ({
                   width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center',
@@ -140,9 +144,10 @@ function ReviewCard({
   onDelete: () => void;
 }) {
   const t = useTheme();
+  const { t: tr } = useTranslation();
   const [approving, setApproving] = useState(false);
   const journal = JSON.parse(item.draftJson);
-  const dateLabel = journal.date ? new Date(journal.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : undefined;
+  const dateLabel = journal.date ? new Date(journal.date).toLocaleDateString(appLocale(), { day: 'numeric', month: 'short' }) : undefined;
 
   async function approve() {
     if (approving) return;
@@ -162,12 +167,12 @@ function ReviewCard({
         <Money amount={journal.amount ?? '0'} currency={currencyOf(currencies, journal.currency_code ?? '')} type="withdrawal" size="heading" />
       </View>
       <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]}>
-        {metaLine([journal.source_name, dateLabel, 'recurring'])}
+        {metaLine([journal.source_name, dateLabel, tr('inbox.recurring')])}
       </Text>
       <View style={{ flexDirection: 'row', gap: t.space.sm, marginTop: t.space.sm }}>
-        <Button title={approving ? 'Approving…' : 'Approve'} variant="secondary" onPress={approve} disabled={approving} style={{ flex: 1 }} />
-        <Button title="Edit" variant="ghost" onPress={onEdit} disabled={approving} style={{ flex: 1 }} />
-        <Button title="Delete" variant="danger" onPress={onDelete} disabled={approving} style={{ flex: 1 }} />
+        <Button title={approving ? tr('inbox.approving') : tr('inbox.approve')} variant="secondary" onPress={approve} disabled={approving} style={{ flex: 1 }} />
+        <Button title={tr('common.edit')} variant="ghost" onPress={onEdit} disabled={approving} style={{ flex: 1 }} />
+        <Button title={tr('common.delete')} variant="danger" onPress={onDelete} disabled={approving} style={{ flex: 1 }} />
       </View>
     </Card>
   );
@@ -184,20 +189,21 @@ function AttentionCard({
   onResolveConflict: (groupId: string) => void;
 }) {
   const t = useTheme();
+  const { t: tr } = useTranslation();
   const cardStyle = { marginHorizontal: t.space.lg, marginBottom: t.space.sm };
 
   if (entry.kind === 'inbox_error') {
     const draft: Partial<Draft> = JSON.parse(entry.item.draftJson || '{}');
-    const label = draft.description || draft.destinationName || draft.sourceName || 'Item';
+    const label = draft.description || draft.destinationName || draft.sourceName || tr('inbox.item');
     return (
       <Card style={cardStyle}>
         <Text style={[t.type.heading, { color: t.color.danger }]}>✕ {label}</Text>
         <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]} numberOfLines={2}>
-          {entry.item.errorMessage ?? 'Failed'}
+          {entry.item.errorMessage ?? tr('inbox.failed')}
         </Text>
         <View style={{ flexDirection: 'row', gap: t.space.sm, marginTop: t.space.sm }}>
-          <Button title="Retry" variant="secondary" onPress={() => onRetryError(entry.item.id)} style={{ flex: 1 }} />
-          <Button title="Discard" variant="danger" onPress={() => onDiscardError(entry.item.id)} style={{ flex: 1 }} />
+          <Button title={tr('inbox.retry')} variant="secondary" onPress={() => onRetryError(entry.item.id)} style={{ flex: 1 }} />
+          <Button title={tr('inbox.discard')} variant="danger" onPress={() => onDiscardError(entry.item.id)} style={{ flex: 1 }} />
         </View>
       </Card>
     );
@@ -211,18 +217,18 @@ function AttentionCard({
   return (
     <Card style={cardStyle}>
       <Text style={[t.type.heading, { color: t.color.danger }]}>
-        ✕ {isConflict ? 'Conflict' : `${op.kind.replace(/_/g, ' ')} failed`}
+        ✕ {isConflict ? tr('inbox.conflict') : tr('inbox.operationFailed', { kind: op.kind.replace(/_/g, ' ') })}
       </Text>
       <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]} numberOfLines={2}>
-        {op.lastError ?? 'Unknown error'}
+        {op.lastError ?? tr('inbox.unknownError')}
       </Text>
       <View style={{ flexDirection: 'row', gap: t.space.sm, marginTop: t.space.sm }}>
         {isConflict && groupId ? (
-          <Button title="Resolve ›" variant="secondary" onPress={() => onResolveConflict(groupId!)} style={{ flex: 1 }} />
+          <Button title={tr('inbox.resolve')} variant="secondary" onPress={() => onResolveConflict(groupId!)} style={{ flex: 1 }} />
         ) : (
           <>
-            <Button title="Retry now" variant="secondary" onPress={() => onRetryOp(op.id)} style={{ flex: 1 }} />
-            <Button title="Discard" variant="danger" onPress={() => onDiscardOp(op.id)} style={{ flex: 1 }} />
+            <Button title={tr('inbox.retryNow')} variant="secondary" onPress={() => onRetryOp(op.id)} style={{ flex: 1 }} />
+            <Button title={tr('inbox.discard')} variant="danger" onPress={() => onDiscardOp(op.id)} style={{ flex: 1 }} />
           </>
         )}
       </View>
@@ -233,6 +239,7 @@ function AttentionCard({
 export default function InboxScreen() {
   const db = useDb();
   const t = useTheme();
+  const { t: tr } = useTranslation();
   const { needsAttention, toConfirm, toReview } = useInboxSections();
   const { data: outbox } = useLiveQuery(db.select().from(outboxOperations));
   const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
@@ -293,8 +300,8 @@ export default function InboxScreen() {
     haptics.tick();
     setSnackbar({
       id: generateId(),
-      message: ids.length > 1 ? `Deleted ${ids.length}` : 'Deleted',
-      actionLabel: 'Undo',
+      message: ids.length > 1 ? tr('inbox.deletedCount', { count: ids.length }) : tr('inbox.deleted'),
+      actionLabel: tr('common.undo'),
       onAction: () => {
         for (const id of ids) { clearTimeout(deleteTimers.current.get(id)); deleteTimers.current.delete(id); }
         setHiddenIds((cur) => new Set([...cur].filter((id) => !ids.includes(id))));
@@ -305,20 +312,20 @@ export default function InboxScreen() {
   function showConfirmedSnackbar(batch: { id: string; result: ConfirmResult }[]) {
     setSnackbar({
       id: generateId(),
-      message: batch.length > 1 ? `Confirmed ${batch.length}` : 'Confirmed',
-      actionLabel: 'Undo',
+      message: batch.length > 1 ? tr('inbox.confirmedCount', { count: batch.length }) : tr('inbox.confirmed'),
+      actionLabel: tr('common.undo'),
       onAction: async () => {
         const outcomes = await Promise.all(batch.map(({ id, result }) => undoConfirm(db, id, result)));
         setSnackbar({
           id: generateId(),
-          message: outcomes.includes('already_sent') ? 'Already sent' : 'Undone',
+          message: outcomes.includes('already_sent') ? tr('inbox.alreadySent') : tr('inbox.undone'),
         });
       },
     });
   }
 
   async function confirmSingle(item: InboxItemRow) {
-    await reportErrors('Confirm', async () => {
+    await reportErrors(tr('inbox.confirm'), async () => {
       const result = await confirmInboxItem(db, item.id);
       haptics.tick();
       showConfirmedSnackbar([{ id: item.id, result }]);
@@ -338,7 +345,7 @@ export default function InboxScreen() {
     const batch: { id: string; result: ConfirmResult }[] = [];
     let failed = false;
     try {
-      await reportErrors('Confirm all', async () => {
+      await reportErrors(tr('inbox.confirmAll'), async () => {
         for (const item of readyToConfirm) {
           const result = await confirmInboxItem(db, item.id);
           batch.push({ id: item.id, result });
@@ -346,7 +353,7 @@ export default function InboxScreen() {
         }
       }, (message) => {
         failed = true;
-        setSnackbar({ id: generateId(), message: batch.length > 0 ? `${message} after ${batch.length}` : message });
+        setSnackbar({ id: generateId(), message: batch.length > 0 ? tr('inbox.failedAfter', { message, count: batch.length }) : message });
       });
     } finally {
       setConfirmingAll(false);
@@ -364,7 +371,7 @@ export default function InboxScreen() {
     requestSync();
   }
   async function discardError(id: string) {
-    if (!await confirmDestructive('Discard this item?', 'Discard', 'It is removed from the Inbox and never sent.')) return;
+    if (!await confirmDestructive(tr('inbox.discardItemTitle'), tr('inbox.discard'), tr('inbox.discardItemBody'))) return;
     await deleteInboxItem(db, id);
   }
   async function deleteSelected() {
@@ -377,13 +384,13 @@ export default function InboxScreen() {
     setSelectedIds(new Set());
     if (ready.length === 0) { haptics.warn(); return; }
     const batch: { id: string; result: ConfirmResult }[] = [];
-    await reportErrors('Confirm', async () => {
+    await reportErrors(tr('inbox.confirm'), async () => {
       for (const item of ready) batch.push({ id: item.id, result: await confirmInboxItem(db, item.id) });
     }, (message) => setSnackbar({ id: generateId(), message }));
     if (batch.length > 0) { haptics.tick(); showConfirmedSnackbar(batch); }
   }
   async function discardReview(id: string) {
-    if (!await confirmDestructive('Delete this recurring review?', 'Delete', 'The recurring transaction itself stays in Firefly III.')) return;
+    if (!await confirmDestructive(tr('inbox.deleteReviewTitle'), tr('common.delete'), tr('inbox.deleteReviewBody'))) return;
     await deleteRecurringReview(db, id);
   }
   async function retryOpNow(opId: string) {
@@ -391,7 +398,7 @@ export default function InboxScreen() {
     syncNow();
   }
   async function discardOp(opId: string) {
-    if (!await confirmDestructive('Discard this queued change?', 'Discard', 'It is dropped without being sent to Firefly III.')) return;
+    if (!await confirmDestructive(tr('inbox.discardChangeTitle'), tr('inbox.discard'), tr('inbox.discardChangeBody'))) return;
     await discardOperation(db, opId);
   }
   function resolveConflict(groupId: string) {
@@ -409,7 +416,7 @@ export default function InboxScreen() {
     if (!editingReview || savingReview || !editAmountResult?.ok) return;
     setSavingReview(true);
     try {
-      await reportErrors('Save', async () => {
+      await reportErrors(tr('common.save'), async () => {
         await editRecurringReview(db, editingReview.id, {
           amount: editAmountResult.value,
           currency_code: editingReview.currencyCode,
@@ -423,9 +430,9 @@ export default function InboxScreen() {
   }
 
   const allSections: { key: SectionKey; title: string; data: SectionRow[] }[] = [
-    { key: 'attention', title: 'NEEDS ATTENTION', data: needsAttention },
-    { key: 'confirm', title: 'TO CONFIRM', data: visibleToConfirm },
-    { key: 'review', title: 'TO REVIEW', data: toReview },
+    { key: 'attention', title: tr('inbox.sectionAttention'), data: needsAttention },
+    { key: 'confirm', title: tr('inbox.sectionConfirm'), data: visibleToConfirm },
+    { key: 'review', title: tr('inbox.sectionReview'), data: toReview },
   ];
   const sections = allSections.filter((s) => s.data.length > 0);
 
@@ -435,17 +442,17 @@ export default function InboxScreen() {
     : summary && !summary.ff3Reachable ? 'offline'
     : pendingOutboxCount > 0 ? 'queued'
     : 'ok';
-  const pillLabel = status === 'syncing' ? 'Syncing…'
-    : hasCredentials === false ? 'Not signed in'
-    : summary?.error ? 'Sync error'
-    : summary && !summary.ff3Reachable ? 'Offline'
-    : pendingOutboxCount > 0 ? `Queued ${pendingOutboxCount}`
+  const pillLabel = status === 'syncing' ? tr('sync.syncing')
+    : hasCredentials === false ? tr('sync.notSignedIn')
+    : summary?.error ? tr('sync.error')
+    : summary && !summary.ff3Reachable ? tr('sync.offline')
+    : pendingOutboxCount > 0 ? tr('sync.queued', { count: pendingOutboxCount })
     : relativeTime(summary?.lastSyncedAt);
 
   const subtitleParts: string[] = [];
-  if (toConfirm.length > 0) subtitleParts.push(`${toConfirm.length} to confirm`);
-  if (toReview.length > 0) subtitleParts.push(`${toReview.length} to review`);
-  const dateTitle = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' });
+  if (toConfirm.length > 0) subtitleParts.push(tr('inbox.toConfirmCount', { count: toConfirm.length }));
+  if (toReview.length > 0) subtitleParts.push(tr('inbox.toReviewCount', { count: toReview.length }));
+  const dateTitle = new Date().toLocaleDateString(appLocale(), { weekday: 'long', day: 'numeric', month: 'short' });
 
   const showOfflineBanner = hasCredentials === true && summary && !summary.ff3Reachable && pendingOutboxCount > 0;
   // undefined until the first read lands, so a synced-but-empty Inbox doesn't flash "Nothing
@@ -457,12 +464,12 @@ export default function InboxScreen() {
       <View style={{ flex: 1 }}>
         {selecting ? (
           <AppBar
-            title={`${selectedIds.size} selected`}
-            left={<BarIconButton icon="close" label="Cancel selection" onPress={() => setSelectedIds(new Set())} />}
+            title={tr('inbox.selected', { count: selectedIds.size })}
+            left={<BarIconButton icon="close" label={tr('inbox.cancelSelection')} onPress={() => setSelectedIds(new Set())} />}
             right={(
               <>
-                <Button title="Confirm" variant="secondary" size="bar" onPress={confirmSelected} />
-                <Button title="Delete" variant="danger" size="bar" onPress={deleteSelected} />
+                <Button title={tr('inbox.confirm')} variant="secondary" size="bar" onPress={confirmSelected} />
+                <Button title={tr('common.delete')} variant="danger" size="bar" onPress={deleteSelected} />
               </>
             )}
           />
@@ -471,7 +478,7 @@ export default function InboxScreen() {
           title={dateTitle}
           subtitle={subtitleParts.length > 0 ? subtitleParts.join(' · ') : undefined}
           right={(
-            <Pressable onPress={() => setSyncSheetOpen(true)} accessibilityRole="button" accessibilityLabel="Sync status">
+            <Pressable onPress={() => setSyncSheetOpen(true)} accessibilityRole="button" accessibilityLabel={tr('sync.statusLabel')}>
               <StatusPill state={pillState} label={pillLabel} />
             </Pressable>
           )}
@@ -479,7 +486,7 @@ export default function InboxScreen() {
         )}
         {!!showOfflineBanner && (
           <View style={{ backgroundColor: t.color.warnSoft, paddingHorizontal: t.space.lg, paddingVertical: t.space.sm }}>
-            <Text style={[t.type.label, { color: t.color.warn }]}>⚑ Offline — {pendingOutboxCount} queued, will send later</Text>
+            <Text style={[t.type.label, { color: t.color.warn }]}>⚑ {tr('inbox.offlineBanner', { count: pendingOutboxCount })}</Text>
           </View>
         )}
 
@@ -496,22 +503,22 @@ export default function InboxScreen() {
               {hasCredentials === false && (
                 <EmptyState
                   glyph="⚡"
-                  title="Connect Firefly III"
-                  hint="Sign in to start capturing entries."
-                  action={<Button title="Go to Settings" onPress={() => navigateOnce('/settings')} />}
+                  title={tr('inbox.connectTitle')}
+                  hint={tr('inbox.connectHint')}
+                  action={<Button title={tr('inbox.goToSettings')} onPress={() => navigateOnce('/settings')} />}
                 />
               )}
               {hasCredentials === true && hasSyncedBefore === false && (
-                <EmptyState glyph="↻" title="Nothing synced yet" hint="Pull to refresh." />
+                <EmptyState glyph="↻" title={tr('inbox.nothingSyncedTitle')} hint={tr('inbox.nothingSyncedHint')} />
               )}
               {hasCredentials === true && hasSyncedBefore === true && (
                 <EmptyState
                   glyph="✓"
-                  title="Inbox zero"
-                  hint="Nothing waiting to confirm."
+                  title={tr('inbox.zeroTitle')}
+                  hint={tr('inbox.zeroHint')}
                   action={(
                     <View style={{ flexDirection: 'row', gap: t.space.md }}>
-                      <Button title="＋ Add" onPress={() => navigateOnce('/capture')} />
+                      <Button title={`＋ ${tr('common.add')}`} onPress={() => navigateOnce('/capture')} />
                       <Button title="📷" variant="secondary" onPress={() => navigateOnce('/receipt')} />
                     </View>
                   )}
@@ -525,7 +532,7 @@ export default function InboxScreen() {
               action={section.key === 'confirm' && readyToConfirm.length >= 2 ? (
                 <Pressable onPress={confirmAll} disabled={confirmingAll} accessibilityRole="button">
                   <Text style={[t.type.label, { color: t.color.accent, fontWeight: '700', opacity: confirmingAll ? 0.5 : 1 }]}>
-                    {confirmingAll ? `Confirming ${confirmProgress.done}/${confirmProgress.total}` : `Confirm all (${readyToConfirm.length})`}
+                    {confirmingAll ? tr('inbox.confirmingProgress', { done: confirmProgress.done, total: confirmProgress.total }) : tr('inbox.confirmAllCount', { count: readyToConfirm.length })}
                   </Text>
                 </Pressable>
               ) : undefined}
@@ -550,7 +557,7 @@ export default function InboxScreen() {
                 <ReviewCard
                   item={row}
                   currencies={currencies ?? []}
-                  onApprove={() => reportErrors('Approve', () => approveRecurringReview(db, row.id), (message) => setSnackbar({ id: generateId(), message }))}
+                  onApprove={() => reportErrors(tr('inbox.approve'), () => approveRecurringReview(db, row.id), (message) => setSnackbar({ id: generateId(), message }))}
                   onEdit={() => startEditReview(row)}
                   onDelete={() => discardReview(row.id)}
                 />
@@ -585,22 +592,22 @@ export default function InboxScreen() {
       <Sheet
         visible={!!editingReview}
         onClose={() => setEditingReview(null)}
-        title="Edit recurring transaction"
-        footer={<Button title={savingReview ? 'Saving…' : 'Save & approve'} disabled={savingReview || editAmountInvalid} onPress={saveEditReview} />}
+        title={tr('inbox.editReviewTitle')}
+        footer={<Button title={savingReview ? tr('common.saving') : tr('inbox.saveAndApprove')} disabled={savingReview || editAmountInvalid} onPress={saveEditReview} />}
       >
         {!!editingReview && (
           <>
             <TextInput
-              placeholder="Amount" value={editingReview.amount} keyboardType="decimal-pad"
+              placeholder={tr('fields.amount')} value={editingReview.amount} keyboardType="decimal-pad"
               onChangeText={(v) => setEditingReview((cur) => (cur ? { ...cur, amount: v } : cur))}
               style={{ borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm, padding: t.space.md, color: t.color.text }}
               placeholderTextColor={t.color.textFaint}
             />
             {editAmountInvalid && (
-              <Text style={[t.type.label, { color: t.color.danger }]}>Invalid amount</Text>
+              <Text style={[t.type.label, { color: t.color.danger }]}>{tr('common.invalidAmount')}</Text>
             )}
             <TextInput
-              placeholder="Currency" value={editingReview.currencyCode}
+              placeholder={tr('fields.currency')} value={editingReview.currencyCode}
               onChangeText={(v) => setEditingReview((cur) => (cur ? { ...cur, currencyCode: v } : cur))}
               style={{ borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm, padding: t.space.md, color: t.color.text }}
               placeholderTextColor={t.color.textFaint}

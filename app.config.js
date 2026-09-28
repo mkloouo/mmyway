@@ -25,6 +25,7 @@ module.exports = {
         },
       ],
       '@react-native-community/datetimepicker',
+      'expo-localization',
       [
         'expo-build-properties',
         {

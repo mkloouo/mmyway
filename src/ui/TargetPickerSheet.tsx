@@ -1,6 +1,7 @@
 // Payee alias targets: FF3's expense accounts, or a name FF3 will create on first use. Storing
 // the account id is what lets a matched withdrawal send destination_id (design §3.4).
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, Pressable, Text } from 'react-native';
 import { eq } from 'drizzle-orm';
 import { useLiveQuery } from '../db/useLiveQuery';
@@ -30,6 +31,7 @@ export function TargetPickerSheet({
   onSelect: (target: AliasTarget) => void;
 }) {
   const t = useTheme();
+  const { t: tr } = useTranslation();
   const [query, setQuery] = useState('');
   const candidates = useCandidates();
   const trimmed = query.trim();
@@ -44,7 +46,7 @@ export function TargetPickerSheet({
     <Sheet
       visible={visible}
       onClose={() => { setQuery(''); onClose(); }}
-      title="Choose a payee"
+      title={tr('payeeSheet.payee.choose')}
       scroll={false}
       footer={allowFreeText ? (
         <Pressable
@@ -52,11 +54,11 @@ export function TargetPickerSheet({
           accessibilityRole="button"
           style={({ pressed }) => ({ paddingVertical: t.space.md, opacity: pressed ? 0.6 : 1 })}
         >
-          <Text style={[t.type.body, { color: t.color.accent, fontWeight: '600' }]}>Use &quot;{trimmed}&quot; (will be created)</Text>
+          <Text style={[t.type.body, { color: t.color.accent, fontWeight: '600' }]}>{tr('pickers.useNew', { name: trimmed })}</Text>
         </Pressable>
       ) : undefined}
     >
-      <SearchField value={query} onChangeText={setQuery} placeholder="Search payees" autoFocus style={{ marginBottom: t.space.sm }} />
+      <SearchField value={query} onChangeText={setQuery} placeholder={tr('payeeSheet.payee.search')} autoFocus style={{ marginBottom: t.space.sm }} />
       <FlatList
         data={results}
         keyExtractor={(item) => item.targetId ?? item.targetName}
@@ -74,7 +76,7 @@ export function TargetPickerSheet({
           </Pressable>
         )}
         ListEmptyComponent={(
-          <Text style={[t.type.body, { color: t.color.textFaint, paddingVertical: t.space.lg, textAlign: 'center' }]}>No matches</Text>
+          <Text style={[t.type.body, { color: t.color.textFaint, paddingVertical: t.space.lg, textAlign: 'center' }]}>{tr('pickers.noMatches')}</Text>
         )}
       />
     </Sheet>

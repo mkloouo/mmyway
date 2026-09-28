@@ -1,5 +1,7 @@
 // Activity (design §6.4) — balances, grouped-by-day history with totals, paging, search.
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import i18n, { appLocale } from '../../src/i18n';
 import { Pressable, ScrollView, SectionList, Text, View } from 'react-native';
 import { useNavigation } from 'expo-router';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
@@ -28,16 +30,16 @@ import { inArray } from 'drizzle-orm';
 import { haptics } from '../../src/ui/haptics';
 import { pendingEdits, applyPendingEdit, type PendingEditStatus } from '../../src/transactions/pendingEdits';
 
-const FILTERS: { label: string; type: ActivityTypeFilter }[] = [
-  { label: 'All', type: 'all' },
-  { label: 'Spending', type: 'withdrawal' },
-  { label: 'Income', type: 'deposit' },
-  { label: 'Moves', type: 'transfer' },
+const FILTERS: { labelKey: string; type: ActivityTypeFilter }[] = [
+  { labelKey: 'activity.filterAll', type: 'all' },
+  { labelKey: 'activity.filterSpending', type: 'withdrawal' },
+  { labelKey: 'activity.filterIncome', type: 'deposit' },
+  { labelKey: 'activity.filterMoves', type: 'transfer' },
 ];
 
 const STALE_MS = 24 * 60 * 60 * 1000;
 const REMOTE_SECTION_KEY = 'ff3-search';
-const PENDING_LABELS: Record<PendingEditStatus, string> = { queued: 'Queued', failed: 'Not sent', conflict: 'Conflict' };
+const PENDING_LABEL_KEYS: Record<PendingEditStatus, string> = { queued: 'draft.queued', failed: 'activity.notSent', conflict: 'inbox.conflict' };
 
 /** A cached row, plus the state of any edit to it that is saved here but not yet in FF3. */
 type ActivityCachedRow = CachedTransactionRow & { pendingStatus?: PendingEditStatus };
@@ -103,16 +105,17 @@ function localDayKey(d: Date): string {
 function dayTitle(key: string): string {
   const now = new Date();
   const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-  if (key === localDayKey(now)) return 'TODAY';
-  if (key === localDayKey(yesterday)) return 'YESTERDAY';
+  if (key === localDayKey(now)) return i18n.t('capture.today').toUpperCase();
+  if (key === localDayKey(yesterday)) return i18n.t('capture.yesterday').toUpperCase();
   const [y, m, d] = key.split('-').map(Number);
   // Always with the year: scrolling back past January otherwise gave two identical "14 SEP"s.
-  return new Date(y!, m! - 1, d!).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' }).toUpperCase();
+  return new Date(y!, m! - 1, d!).toLocaleDateString(appLocale(), { day: 'numeric', month: 'short', year: 'numeric' }).toUpperCase();
 }
 
 export default function ActivityScreen() {
   const db = useDb();
   const t = useTheme();
+  const { t: tr } = useTranslation();
   const navigation = useNavigation();
   const listRef = useRef<SectionList<ActivityItem, DisplaySection>>(null);
 
@@ -153,7 +156,7 @@ export default function ActivityScreen() {
   }, []);
   async function deleteSelected() {
     const ids = [...selectedIds];
-    if (!await confirmDestructive(`Delete ${ids.length} transaction${ids.length === 1 ? '' : 's'}?`, 'Delete', 'They are deleted in Firefly III too.')) return;
+    if (!await confirmDestructive(tr('activity.deleteTitle', { count: ids.length }), tr('common.delete'), tr('activity.deleteBody'))) return;
     const rows = await db.select({ groupId: cachedTransactions.groupId, updatedAt: cachedTransactions.updatedAt })
       .from(cachedTransactions).where(inArray(cachedTransactions.groupId, ids));
     for (const row of rows) {
@@ -310,16 +313,16 @@ export default function ActivityScreen() {
             does not shove the balances and the list down the screen. */}
         {selecting ? (
           <AppBar
-            title={`${selectedIds.size} selected`}
-            left={<BarIconButton icon="close" label="Cancel selection" onPress={() => setSelectedIds(new Set())} />}
-            right={<Button title="Delete" variant="danger" size="bar" onPress={deleteSelected} />}
+            title={tr('inbox.selected', { count: selectedIds.size })}
+            left={<BarIconButton icon="close" label={tr('inbox.cancelSelection')} onPress={() => setSelectedIds(new Set())} />}
+            right={<Button title={tr('common.delete')} variant="danger" size="bar" onPress={deleteSelected} />}
           />
         ) : searchOpen ? (
           <BarRow>
             <SearchField
               value={search}
               onChangeText={setSearch}
-              placeholder="Search description or payee"
+              placeholder={tr('activity.searchPlaceholder')}
               autoFocus
               onClear={() => { setSearch(''); setAccountFilter(null); setType('all'); setSearchOpen(false); }}
               style={{ flex: 1 }}
@@ -327,11 +330,11 @@ export default function ActivityScreen() {
           </BarRow>
         ) : (
           <AppBar
-            title="Activity"
+            title={tr('activity.title')}
             right={(
               <>
-                <BarIconButton icon="search" label="Search" onPress={() => setSearchOpen(true)} />
-                <BarIconButton icon="ellipsis-horizontal" label="More" onPress={() => setMenuOpen(true)} />
+                <BarIconButton icon="search" label={tr('activity.search')} onPress={() => setSearchOpen(true)} />
+                <BarIconButton icon="ellipsis-horizontal" label={tr('capture.more')} onPress={() => setMenuOpen(true)} />
               </>
             )}
           />
@@ -358,7 +361,7 @@ export default function ActivityScreen() {
                   <Card style={{ borderColor: selected ? t.color.accent : t.color.border, minWidth: 120 }}>
                     <Text style={[t.type.label, { color: t.color.textMuted }]} numberOfLines={1}>{a.name}</Text>
                     <Money amount={a.currentBalance ?? '0'} currency={currencyOf(currencies ?? [], a.currencyCode)} size="heading" />
-                    <Text style={[t.type.label, { color: t.color.textFaint }]}>as of {relativeTime(a.currentBalanceDate)}</Text>
+                    <Text style={[t.type.label, { color: t.color.textFaint }]}>{tr('count.asOf', { time: relativeTime(a.currentBalanceDate) })}</Text>
                   </Card>
                 </Pressable>
               );
@@ -368,15 +371,15 @@ export default function ActivityScreen() {
 
         <View style={{ flexDirection: 'row', paddingHorizontal: t.space.lg, gap: t.space.sm, paddingBottom: t.space.sm }}>
           {FILTERS.map((f) => (
-            <Chip key={f.type} label={f.label} selected={type === f.type} onPress={() => setType(f.type)} />
+            <Chip key={f.type} label={tr(f.labelKey)} selected={type === f.type} onPress={() => setType(f.type)} />
           ))}
         </View>
 
         {hasSyncedBefore === false && !hasResults && (
-          <EmptyState glyph="↻" title="Nothing cached yet" hint="Pull to sync." />
+          <EmptyState glyph="↻" title={tr('activity.nothingCachedTitle')} hint={tr('activity.nothingCachedHint')} />
         )}
         {hasSyncedBefore === true && !hasResults && (
-          <EmptyState glyph="🔍" title="No results" hint="Try a different search or filter." />
+          <EmptyState glyph="🔍" title={tr('activity.noResultsTitle')} hint={tr('activity.noResultsHint')} />
         )}
 
         {hasResults && (
@@ -396,7 +399,7 @@ export default function ActivityScreen() {
             contentContainerStyle={{ paddingBottom: 140 }}
             renderSectionHeader={({ section }) => (
               <SectionHeader
-                title={section.key === REMOTE_SECTION_KEY ? 'FROM FIREFLY III' : dayTitle(section.key)}
+                title={section.key === REMOTE_SECTION_KEY ? tr('activity.fromFf3') : dayTitle(section.key)}
                 action={section.totals.length > 0 ? (
                   <Text style={[t.type.label, { color: t.color.textMuted }]}>
                     {section.totals.map((tot) => formatMoney(tot.amount, currencyOf(currencies ?? [], tot.currencyCode ?? ''))).join(' · ')}
@@ -409,27 +412,27 @@ export default function ActivityScreen() {
               <>
                 {!reachedRealEnd && (
                   <Text style={[t.type.label, { color: t.color.textFaint, textAlign: 'center', paddingVertical: t.space.lg }]}>
-                    {loadingMore || loadingOlder ? 'Loading more…' : ' '}
+                    {loadingMore || loadingOlder ? tr('activity.loadingMore') : ' '}
                   </Text>
                 )}
                 {remoteSearch.status === 'loading' && (
                   <Text style={[t.type.label, { color: t.color.textFaint, textAlign: 'center', paddingVertical: t.space.lg }]}>
-                    Searching Firefly III…
+                    {tr('activity.searching')}
                   </Text>
                 )}
                 {remoteSearch.status === 'offline' && (
                   <Text style={[t.type.label, { color: t.color.textFaint, textAlign: 'center', paddingVertical: t.space.lg }]}>
-                    Can&apos;t search Firefly III while offline
+                    {tr('activity.searchOffline')}
                   </Text>
                 )}
                 {remoteSearch.status === 'error' && (
                   <Text style={[t.type.label, { color: t.color.warn, textAlign: 'center', paddingVertical: t.space.lg }]}>
-                    Searching Firefly III failed
+                    {tr('activity.searchFailed')}
                   </Text>
                 )}
                 {remoteSearch.status === 'done' && remoteSearch.rows.length === 0 && (
                   <Text style={[t.type.label, { color: t.color.textFaint, textAlign: 'center', paddingVertical: t.space.lg }]}>
-                    Nothing more in Firefly III
+                    {tr('activity.nothingMore')}
                   </Text>
                 )}
               </>
@@ -440,8 +443,8 @@ export default function ActivityScreen() {
         <CaptureDock />
       </View>
 
-      <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title="Activity">
-        <Row first label="Count cash" chevron onPress={() => { setMenuOpen(false); navigateOnce('/count'); }} />
+      <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={tr('activity.title')}>
+        <Row first label={tr('count.title')} chevron onPress={() => { setMenuOpen(false); navigateOnce('/count'); }} />
       </Sheet>
     </Screen>
   );
@@ -458,6 +461,7 @@ const ActivityRow = memo(function ActivityRow({
   onLongPress: (item: ActivityItem) => void;
 }) {
   const t = useTheme();
+  const { t: tr } = useTranslation();
   const queued = 'queued' in item;
   // A remote-search row isn't cached locally yet, so there's nothing for the detail screen
   // (which only reads cachedTransactions) to open.
@@ -485,11 +489,11 @@ const ActivityRow = memo(function ActivityRow({
       <View style={{ flex: 1 }}>
         <Text style={[t.type.body, { color: t.color.text }]} numberOfLines={1}>{description}</Text>
         <Text style={[t.type.label, { color: t.color.textMuted }]} numberOfLines={1}>
-          {[item.categoryName, accountLeg].filter(Boolean).join(' · ') || (queued ? 'Queued' : '—')}
+          {[item.categoryName, accountLeg].filter(Boolean).join(' · ') || (queued ? tr('draft.queued') : '—')}
         </Text>
       </View>
-      {queued && <Chip label="Queued" tone="warn" />}
-      {!!pendingStatus && <Chip label={PENDING_LABELS[pendingStatus]} tone="warn" />}
+      {queued && <Chip label={tr('draft.queued')} tone="warn" />}
+      {!!pendingStatus && <Chip label={tr(PENDING_LABEL_KEYS[pendingStatus])} tone="warn" />}
       <Money amount={item.amount} currency={currencyOf(currencies ?? [], item.currencyCode)} type={item.type} />
     </Pressable>
   );

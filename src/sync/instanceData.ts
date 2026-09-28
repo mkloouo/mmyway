@@ -8,6 +8,7 @@ import {
   appSettings, cachedTransactions, inboxItems, outboxOperations,
   referenceAccounts, referenceBudgets, referenceCategories, referenceCurrencies,
 } from '../db/schema';
+import i18n from '../i18n';
 import { INSTANCE_SETTING_KEYS } from '../settings/appSettings';
 import type { OutboxDb } from './outbox';
 
@@ -46,7 +47,5 @@ export async function clearInstanceData(db: OutboxDb): Promise<void> {
 }
 
 export function describeQueuedOperations(count: number): string {
-  const changes = count === 1 ? '1 change hasn\'t' : `${count} changes haven't`;
-  return `${changes} reached Firefly III yet. Sync, or discard ${count === 1 ? 'it' : 'them'} in the Inbox, first — `
-    + 'queued changes belong to this Firefly III and would go wrong on another.';
+  return i18n.t('settings.queuedOperations', { count });
 }

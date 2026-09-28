@@ -3,6 +3,7 @@
 // magnifier and a clear button, rather than a thin outline that read as disabled on the page
 // background.
 import { Pressable, TextInput, View, type StyleProp, type ViewStyle } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTheme } from './theme';
 
@@ -18,6 +19,7 @@ export function SearchField({
   style?: StyleProp<ViewStyle>;
 }) {
   const t = useTheme();
+  const { t: tr } = useTranslation();
   const showClear = value.length > 0 || !!onClear;
   return (
     <View
@@ -43,7 +45,7 @@ export function SearchField({
         <Pressable
           onPress={onClear ?? (() => onChangeText(''))}
           accessibilityRole="button"
-          accessibilityLabel="Clear search"
+          accessibilityLabel={tr('pickers.clearSearch')}
           hitSlop={8}
           style={({ pressed }) => ({ paddingHorizontal: t.space.md, paddingVertical: t.space.sm, opacity: pressed ? 0.6 : 1 })}
         >

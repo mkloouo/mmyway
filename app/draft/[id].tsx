@@ -1,5 +1,6 @@
 // Draft review (design §6.3) — one legible card for both a manual draft and a receipt.
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, Image, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { eq } from 'drizzle-orm';
@@ -28,11 +29,14 @@ import { Snackbar, type SnackbarEntry } from '../../src/ui/Snackbar';
 import { generateId } from '../../src/utils/id';
 import type { Draft } from '../../src/inbox/draft';
 import { navigateOnce } from '../../src/ui/navigateOnce';
+import { missingLabel } from '../../src/ui/readinessLabel';
+import { appLocale } from '../../src/i18n';
 
 export default function DraftScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const db = useDb();
   const t = useTheme();
+  const { t: tr } = useTranslation();
 
   const { data: rows } = useLiveQuery(db.select().from(inboxItems).where(eq(inboxItems.id, id)));
   const assetAccounts = useAssetAccounts() ?? [];
@@ -59,7 +63,7 @@ export default function DraftScreen() {
     // A receipt goes back to `parsed`: as `captured` the next sync would re-read the photo
     // and overwrite the reviewed draft.
     const outcome = await undoConfirm(db, id, { outboxOperationId: pendingCreate.id, previousState: row?.kind === 'receipt' ? 'parsed' : 'captured' });
-    if (outcome === 'already_sent') Alert.alert('Already sent', 'It reached Firefly III before it could be cancelled.');
+    if (outcome === 'already_sent') Alert.alert(tr('inbox.alreadySent'), tr('draft.alreadySentBody'));
   }
   const draft: Draft | null = row ? JSON.parse(row.draftJson) : null;
 
@@ -79,12 +83,12 @@ export default function DraftScreen() {
 
   const readOnly = row ? row.state === 'confirmed' || row.state === 'synced' : false;
   const payeeName = draft ? (draft.type === 'deposit' ? draft.sourceName : draft.destinationName) : undefined;
-  const aliasCaption = draft?.payeeReadAs && draft.payeeReadAs !== payeeName ? `via alias “${draft.payeeReadAs}”` : null;
+  const aliasCaption = draft?.payeeReadAs && draft.payeeReadAs !== payeeName ? tr('draft.viaAlias', { alias: draft.payeeReadAs }) : null;
 
   if (!row || !draft) {
     return (
       <Screen bottom>
-        <AppBar title="Review" left={<CloseButton />} />
+        <AppBar title={tr('draft.title')} left={<CloseButton />} />
       </Screen>
     );
   }
@@ -108,8 +112,8 @@ export default function DraftScreen() {
     if (!learned || !raw) return;
     setSnackbar({
       id: generateId(),
-      message: `“${raw}” will book to ${name}`,
-      actionLabel: 'Undo',
+      message: tr('draft.willBookTo', { raw, name }),
+      actionLabel: tr('common.undo'),
       onAction: () => {
         if (previous?.matched) void upsertAlias(db, previous.alias);
         else void removeAlias(db, PAYEE, raw);
@@ -155,9 +159,9 @@ export default function DraftScreen() {
 
   function handleDeleteDraft() {
     setMenuOpen(false);
-    Alert.alert('Delete this draft?', 'This cannot be undone.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: async () => { await deleteInboxItem(db, id); router.back(); } },
+    Alert.alert(tr('draft.deleteTitle'), tr('draft.deleteBody'), [
+      { text: tr('common.cancel'), style: 'cancel' },
+      { text: tr('common.delete'), style: 'destructive', onPress: async () => { await deleteInboxItem(db, id); router.back(); } },
     ]);
   }
 
@@ -167,7 +171,7 @@ export default function DraftScreen() {
     sourceAccountId: draft.sourceId ?? null,
     destinationAccountId: draft.destinationId ?? null,
     budgetId: draft.budgetId ?? null,
-    dateLabel: new Date(draft.date).toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
+    dateLabel: new Date(draft.date).toLocaleString(appLocale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
     notes: draft.notes ?? null,
     sharedWith: draft.sharedWith ?? null,
   };
@@ -178,10 +182,10 @@ export default function DraftScreen() {
     <Screen bottom>
       <View style={{ flex: 1 }}>
         <AppBar
-          title="Review"
+          title={tr('draft.title')}
           left={<CloseButton />}
           right={(
-            <BarIconButton icon="ellipsis-horizontal" label="More" onPress={() => setMenuOpen(true)} />
+            <BarIconButton icon="ellipsis-horizontal" label={tr('capture.more')} onPress={() => setMenuOpen(true)} />
           )}
         />
 
@@ -199,7 +203,7 @@ export default function DraftScreen() {
           )}
           {draft.isNewPayee && draft.type !== 'transfer' && (
             <View style={{ marginTop: t.space.sm }}>
-              <Chip label="⚑ New payee — will be created in FF3" tone="warn" />
+              <Chip label={`⚑ ${tr('draft.newPayeeWillBeCreated')}`} tone="warn" />
             </View>
           )}
         </View>
@@ -223,20 +227,20 @@ export default function DraftScreen() {
 
           {row.kind !== 'receipt' && !row.receiptImagePath && row.state !== 'synced' && (
             <Card style={{ marginHorizontal: t.space.lg }}>
-              <Row first label="Receipt photo" value="Attach" chevron onPress={attachPhoto} />
+              <Row first label={tr('capture.receiptPhoto')} value={tr('capture.attach')} chevron onPress={attachPhoto} />
             </Card>
           )}
           {(row.kind === 'receipt' || !!row.receiptImagePath) && (
             <Card style={{ marginHorizontal: t.space.lg, gap: t.space.sm }}>
               {row.receiptImagePath ? (
-                <Pressable onPress={() => setPhotoOpen(true)} accessibilityRole="imagebutton" accessibilityLabel="Show the receipt photo">
+                <Pressable onPress={() => setPhotoOpen(true)} accessibilityRole="imagebutton" accessibilityLabel={tr('draft.showPhoto')}>
                   <Image source={{ uri: row.receiptImagePath }} resizeMode="cover" style={{ width: '100%', height: 140, borderRadius: t.radius.sm, backgroundColor: t.color.surfaceAlt }} />
                 </Pressable>
               ) : (
-                <Text style={[t.type.label, { color: t.color.textFaint }]}>The photo is in Firefly III (no copy kept on this phone).</Text>
+                <Text style={[t.type.label, { color: t.color.textFaint }]}>{tr('draft.photoInFf3')}</Text>
               )}
               <Text style={[t.type.body, { color: t.color.textMuted }]}>
-                {itemCount > 0 ? `${itemCount} item${itemCount === 1 ? '' : 's'}` : 'Receipt'}
+                {itemCount > 0 ? tr('draft.itemCount', { count: itemCount }) : tr('draft.receipt')}
               </Text>
             </Card>
           )}
@@ -244,27 +248,27 @@ export default function DraftScreen() {
 
         {readOnly ? (
           <View style={{ alignItems: 'center', padding: t.space.lg, gap: t.space.md }}>
-            <StatusPill state={row.state === 'synced' ? 'ok' : 'queued'} label={row.state === 'synced' ? 'Synced' : 'Queued'} />
+            <StatusPill state={row.state === 'synced' ? 'ok' : 'queued'} label={row.state === 'synced' ? tr('draft.synced') : tr('draft.queued')} />
             {!!pendingCreate && (
-              <Button title="Cancel sending" variant="secondary" onPress={cancelSending} />
+              <Button title={tr('draft.cancelSending')} variant="secondary" onPress={cancelSending} />
             )}
           </View>
         ) : (
           <View style={{ padding: t.space.lg, gap: t.space.sm }}>
             {readiness.missing.length > 0 && (
-              <Text style={[t.type.label, { color: t.color.warn, textAlign: 'center' }]}>Missing: {readiness.missing.join(', ')}</Text>
+              <Text style={[t.type.label, { color: t.color.warn, textAlign: 'center' }]}>{missingLabel(readiness.missing)}</Text>
             )}
-            <Button title={confirming ? 'Confirming…' : 'Confirm'} onPress={handleConfirm} disabled={confirming || !readiness.ready} size="lg" />
+            <Button title={confirming ? tr('draft.confirming') : tr('inbox.confirm')} onPress={handleConfirm} disabled={confirming || !readiness.ready} size="lg" />
           </View>
         )}
       </View>
 
-      <Sheet visible={amountSheetOpen} onClose={() => setAmountSheetOpen(false)} title="Amount">
+      <Sheet visible={amountSheetOpen} onClose={() => setAmountSheetOpen(false)} title={tr('fields.amount')}>
         <Money amount={draft.amount} currency={currency} type={draft.type} size="display" />
         <Keypad
           compact
           onDigit={(key: KeypadKey) => patch({ amount: applyDigit(draft.amount, key, currency.decimalPlaces) })}
-          saveLabel="Done"
+          saveLabel={tr('common.done')}
           onSave={() => setAmountSheetOpen(false)}
         />
       </Sheet>
@@ -278,20 +282,20 @@ export default function DraftScreen() {
         onCreateNew={(text) => { void choosePayee(draft, text, true); }}
       />
 
-      <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title="Draft">
+      <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={tr('draft.menuTitle')}>
         {readOnly && !!row.ff3GroupId && (
           <Row
             first
-            label="Open in Activity"
+            label={tr('draft.openInActivity')}
             chevron
             onPress={() => { setMenuOpen(false); navigateOnce(`/transactions/${row.ff3GroupId}`); }}
           />
         )}
-        <Row first={!readOnly || !row.ff3GroupId} label="Delete draft" tone="danger" onPress={handleDeleteDraft} />
+        <Row first={!readOnly || !row.ff3GroupId} label={tr('draft.deleteDraft')} tone="danger" onPress={handleDeleteDraft} />
       </Sheet>
       <Snackbar entry={snackbar} onDismiss={dismissSnackbar} />
       <Modal visible={photoOpen && !!row.receiptImagePath} transparent animationType="fade" onRequestClose={() => setPhotoOpen(false)}>
-        <Pressable style={{ flex: 1, backgroundColor: t.color.photoBackdrop, justifyContent: 'center' }} onPress={() => setPhotoOpen(false)} accessibilityLabel="Close the photo">
+        <Pressable style={{ flex: 1, backgroundColor: t.color.photoBackdrop, justifyContent: 'center' }} onPress={() => setPhotoOpen(false)} accessibilityLabel={tr('draft.closePhoto')}>
           {!!row.receiptImagePath && <Image source={{ uri: row.receiptImagePath }} resizeMode="contain" style={{ width: '100%', height: '100%' }} />}
         </Pressable>
       </Modal>
@@ -300,5 +304,6 @@ export default function DraftScreen() {
 }
 
 function CloseButton() {
-  return <BarIconButton icon="close" label="Close" onPress={() => router.back()} />;
+  const { t: tr } = useTranslation();
+  return <BarIconButton icon="close" label={tr('common.close')} onPress={() => router.back()} />;
 }

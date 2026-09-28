@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, InteractionManager, View } from 'react-native';
 import { warmMerchantLookup } from '../lookup/merchantLookup';
 import { getDb, getMigrationDone, schema } from '../db/client';
@@ -14,6 +15,7 @@ export function DbProvider({ children }: { children: ReactNode }) {
   const [db] = useState<Db>(() => getDb());
   const [migrated, setMigrated] = useState(false);
   const t = useTheme();
+  const { t: tr } = useTranslation();
 
   useEffect(() => {
     getMigrationDone().finally(() => {
@@ -32,7 +34,7 @@ export function DbProvider({ children }: { children: ReactNode }) {
   if (!migrated) {
     return (
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: t.color.bg }}>
-        <ActivityIndicator color={t.color.accent} accessibilityLabel="Loading" />
+        <ActivityIndicator color={t.color.accent} accessibilityLabel={tr('common.loading')} />
       </View>
     );
   }

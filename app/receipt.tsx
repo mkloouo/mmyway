@@ -1,6 +1,7 @@
 // Receipt capture (design §6.8) — nearly invisible by design: the camera (or, from the Inbox's
 // gallery shortcut, the gallery) opens on arrival, not after a form.
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
@@ -33,6 +34,7 @@ function SourceTile({ icon, label, onPress, disabled }: { icon: 'camera' | 'imag
 export default function ReceiptScreen() {
   const db = useDb();
   const t = useTheme();
+  const { t: tr } = useTranslation();
   const { attachToJournalId, source } = useLocalSearchParams<{ attachToJournalId?: string; source?: PhotoSource }>();
   const [hint, setHint] = useState('');
   const [hintSheetOpen, setHintSheetOpen] = useState(false);
@@ -58,7 +60,7 @@ export default function ReceiptScreen() {
         // C2: attaching to an already-synced transaction — no inbox item, no parsing, just the upload.
         attachReceiptToJournal(db, { uri: photo.uri, transactionJournalId: attachToJournalId })
           .then(() => requestSync(SYNC_DELAY.afterWrite))
-          .catch((err) => Alert.alert('Couldn\u2019t attach the photo', err instanceof Error ? err.message : String(err)));
+          .catch((err) => Alert.alert(tr('receipt.attachFailed'), err instanceof Error ? err.message : String(err)));
         router.back();
         return;
       }
@@ -66,13 +68,13 @@ export default function ReceiptScreen() {
       captureReceipt(db, { uri: photo.uri, base64: photo.base64, hint: hint || undefined })
         .then((result) => {
           if (result.kind === 'duplicate') {
-            Alert.alert('Already in the Inbox', 'This photo was captured before.', [
-              { text: 'OK', style: 'cancel' },
-              { text: 'Open it', onPress: () => router.push(`/draft/${result.itemId}`) },
+            Alert.alert(tr('receipt.duplicateTitle'), tr('receipt.duplicateBody'), [
+              { text: tr('common.ok'), style: 'cancel' },
+              { text: tr('receipt.openIt'), onPress: () => router.push(`/draft/${result.itemId}`) },
             ]);
           }
         })
-        .catch((err) => Alert.alert('Couldn\u2019t save the receipt', err instanceof Error ? err.message : String(err)));
+        .catch((err) => Alert.alert(tr('receipt.saveFailed'), err instanceof Error ? err.message : String(err)));
       router.replace('/');
     } finally {
       setBusy(false);
@@ -89,8 +91,8 @@ export default function ReceiptScreen() {
   return (
     <Screen bottom>
       <AppBar
-        title={attachToJournalId ? 'Attach receipt' : 'Receipt'}
-        left={<BarIconButton icon="close" label="Close" onPress={() => router.back()} />}
+        title={attachToJournalId ? tr('receipt.attachTitle') : tr('draft.receipt')}
+        left={<BarIconButton icon="close" label={tr('common.close')} onPress={() => router.back()} />}
       />
       {/* Only while the camera/gallery is opening — the screen closes the moment a photo comes back. */}
       {busy && !showChooser && (
@@ -101,15 +103,15 @@ export default function ReceiptScreen() {
       {showChooser && (
         <View style={{ flex: 1, padding: t.space.lg, gap: t.space.xl, justifyContent: 'center' }}>
           <Text style={[t.type.body, { color: t.color.textMuted, textAlign: 'center' }]}>
-            {attachToJournalId ? 'Pick the photo to attach to this transaction.' : 'Photograph the receipt, or pick a photo or screenshot you already have.'}
+            {attachToJournalId ? tr('receipt.attachIntro') : tr('receipt.intro')}
           </Text>
           <View style={{ flexDirection: 'row', gap: t.space.md }}>
-            <SourceTile icon="camera" label="Camera" onPress={() => capture('camera')} disabled={busy} />
-            <SourceTile icon="images" label="Gallery" onPress={() => capture('gallery')} disabled={busy} />
+            <SourceTile icon="camera" label={tr('photo.camera')} onPress={() => capture('camera')} disabled={busy} />
+            <SourceTile icon="images" label={tr('photo.gallery')} onPress={() => capture('gallery')} disabled={busy} />
           </View>
           {!attachToJournalId && (
             <Card>
-              <Row first label="Hint for the reader" value={hint || 'Optional'} chevron onPress={() => setHintSheetOpen(true)} />
+              <Row first label={tr('receipt.hintTitle')} value={hint || tr('receipt.optional')} chevron onPress={() => setHintSheetOpen(true)} />
             </Card>
           )}
         </View>
@@ -118,14 +120,14 @@ export default function ReceiptScreen() {
       <Sheet
         visible={hintSheetOpen}
         onClose={() => setHintSheetOpen(false)}
-        title="Hint for the reader"
-        footer={<Button title="Done" onPress={() => setHintSheetOpen(false)} />}
+        title={tr('receipt.hintTitle')}
+        footer={<Button title={tr('common.done')} onPress={() => setHintSheetOpen(false)} />}
       >
-        <Text style={[t.type.label, { color: t.color.textMuted }]}>A short note to help the model read this receipt.</Text>
+        <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('receipt.hintBody')}</Text>
         <TextInput
           value={hint}
           onChangeText={setHint}
-          placeholder="e.g. this is a fuel receipt"
+          placeholder={tr('receipt.hintPlaceholder')}
           placeholderTextColor={t.color.textFaint}
           style={{
             borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm,

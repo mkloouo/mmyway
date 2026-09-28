@@ -14,7 +14,9 @@
     "test": "jest",
     "check": "tsc --noEmit && jest --ci",
     "db:generate": "drizzle-kit generate",
-    "release": "node scripts/release.mjs"
+    "release": "node scripts/release.mjs",
+    "i18n:push": "tolgee push",
+    "i18n:pull": "tolgee pull"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",
@@ -30,12 +32,15 @@
     "expo-haptics": "^57.0.3",
     "expo-image-picker": "~57.0.20",
     "expo-linking": "~57.0.11",
+    "expo-localization": "~57.0.2",
     "expo-router": "~57.0.23",
     "expo-secure-store": "~57.0.4",
     "expo-share-intent": "^8.0.1",
     "expo-sqlite": "~57.0.3",
     "expo-status-bar": "~57.0.1",
+    "i18next": "^26.4.2",
     "react": "19.2.3",
+    "react-i18next": "^17.0.15",
     "react-native": "0.86.3",
     "react-native-gesture-handler": "~2.32.0",
     "react-native-reanimated": "4.5.1",
@@ -45,6 +50,7 @@
   },
   "devDependencies": {
     "@react-native/jest-preset": "0.86.3",
+    "@tolgee/cli": "^2.20.0",
     "@types/better-sqlite3": "^9.6.0",
     "@types/jest": "^30.0.0",
     "@types/react": "~19.2.2",

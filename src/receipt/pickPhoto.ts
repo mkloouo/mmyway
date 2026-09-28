@@ -2,6 +2,7 @@
 // Details, a draft, a synced transaction.
 import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
+import i18n from '../i18n';
 
 export type PhotoSource = 'camera' | 'gallery';
 
@@ -18,12 +19,12 @@ export async function pickPhoto(source: PhotoSource): Promise<{ uri: string; bas
 }
 
 /** Asks "camera or gallery?" and resolves with the choice (null on cancel). */
-export function askPhotoSource(title = 'Add a receipt photo'): Promise<PhotoSource | null> {
+export function askPhotoSource(title = i18n.t('photo.addReceiptPhoto')): Promise<PhotoSource | null> {
   return new Promise((resolve) => {
     Alert.alert(title, undefined, [
-      { text: 'Cancel', style: 'cancel', onPress: () => resolve(null) },
-      { text: 'Gallery', onPress: () => resolve('gallery') },
-      { text: 'Camera', onPress: () => resolve('camera') },
+      { text: i18n.t('common.cancel'), style: 'cancel', onPress: () => resolve(null) },
+      { text: i18n.t('photo.gallery'), onPress: () => resolve('gallery') },
+      { text: i18n.t('photo.camera'), onPress: () => resolve('camera') },
     ], { onDismiss: () => resolve(null) });
   });
 }

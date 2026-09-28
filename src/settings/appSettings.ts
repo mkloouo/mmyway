@@ -3,6 +3,7 @@
 import { eq } from 'drizzle-orm';
 import { appSettings } from '../db/schema';
 import type { OutboxDb } from '../sync/outbox';
+import type { AppLocale } from '../i18n';
 
 const KEYS = {
   defaultSourceAccountId: 'default_source_account_id',
@@ -20,6 +21,7 @@ const KEYS = {
   useServerTime: 'use_server_time',
   accountOrder: 'account_order',
   balancesStale: 'balances_stale',
+  locale: 'locale',
 } as const;
 
 async function getSetting(db: OutboxDb, key: string): Promise<string | null> {
@@ -130,3 +132,15 @@ export async function getBalancesStale(db: OutboxDb): Promise<boolean> {
   return (await getSetting(db, KEYS.balancesStale)) === '1';
 }
 export const setBalancesStale = (db: OutboxDb, value: boolean) => setSetting(db, KEYS.balancesStale, value ? '1' : '0');
+
+/** The settings key the UI language lives under, for a live query of it (src/i18n/LocaleSync.tsx). */
+export const LOCALE_KEY = KEYS.locale;
+
+const LOCALES: readonly AppLocale[] = ['system', 'en', 'uk-UA'];
+
+/** Settings → Language: a picked language, or "system" (the default) to follow the device. */
+export function parseLocale(raw: string | null | undefined): AppLocale {
+  return LOCALES.find((l) => l === raw) ?? 'system';
+}
+export const getLocale = async (db: OutboxDb) => parseLocale(await getSetting(db, KEYS.locale));
+export const setLocale = (db: OutboxDb, value: AppLocale) => setSetting(db, KEYS.locale, value);
