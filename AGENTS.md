@@ -56,6 +56,13 @@ pipeline.
   5 places; don't repeat that.)
 - **Confirm is mandatory.** No code path may push a create/edit/delete to the outbox without
   the inbox item having passed through the `confirmed` state.
+- **Every change a user could notice, minor to major, goes in `CHANGELOG.md` under
+  `[Unreleased]`** in the same commit — a new feature, a changed behaviour, a fixed bug, a
+  visual tweak. Write it for the person installing the app (it becomes the release notes
+  verbatim, see `scripts/release.mjs --help`): what they'll see, not which file changed. Put it
+  under the section it belongs to (Capture, Receipts, Inbox, ...) or a `### Fixed` section. A
+  fix to something not yet released doesn't get its own line — correct the existing description
+  instead. Internal-only changes (refactors, tests, tooling, docs) are skipped.
 - `src/api/ff3/types.ts` and `src/db/migrations/**/*.sql` are generated/pinned — don't hand-edit
   generated SQL migrations; edit `src/db/schema.ts` and run `npm run db:generate`.
 
