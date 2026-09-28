@@ -1,5 +1,5 @@
 // Capture (design §6.2) — amount first, one screen, no scrolling for the common case.
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n, { appLocale } from '../src/i18n';
 import { Animated, Pressable, ScrollView, Text, View } from 'react-native';
@@ -9,7 +9,7 @@ import { useConfirmDiscard } from '../src/ui/useConfirmDiscard';
 import { useBudgets, useCategories, useCurrencies } from '../src/db/useReferenceData';
 import { useDb } from '../src/providers/DbProvider';
 import { useTheme } from '../src/ui/theme';
-import { Screen, Chip, Button, Sheet, Toast, Row, BarIconButton } from '../src/ui/components';
+import { Screen, Chip, Button, Sheet, Toast, Row, CloseButton } from '../src/ui/components';
 import { Keypad } from '../src/ui/Keypad';
 import { PayeeSheet } from '../src/ui/PayeeSheet';
 import { AccountPickerSheet, type AccountPickerAccount } from '../src/ui/AccountPickerSheet';
@@ -73,6 +73,59 @@ function topChips<T extends AccountPickerAccount>(
     if (selected) return [selected, ...top.slice(0, limit - 1)];
   }
   return top;
+}
+
+/**
+ * A labelled row of account chips with the 🔍 chip that opens the full picker. Capture draws this
+ * three times — from, to, and the single account of a non-transfer.
+ */
+function AccountChipRow({
+  label,
+  searchLabel,
+  accounts,
+  selectedId,
+  onSearch,
+  onSelect,
+  trailing,
+}: {
+  label: string;
+  searchLabel: string;
+  accounts: AccountPickerAccount[];
+  selectedId: string | null | undefined;
+  onSearch: () => void;
+  onSelect: (id: string) => void;
+  /** Chips that share the row, such as Capture's transfer branch putting Details here. */
+  trailing?: ReactNode;
+}) {
+  const t = useTheme();
+  return (
+    <View>
+      <Text style={[t.type.label, { color: t.color.textFaint, paddingHorizontal: t.space.lg }]}>
+        {label}
+      </Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={rowScroll}
+        contentContainerStyle={{
+          paddingHorizontal: t.space.lg,
+          gap: t.space.sm,
+          paddingTop: t.space.xs,
+        }}
+      >
+        <Chip label="🔍" accessibilityLabel={searchLabel} onPress={onSearch} />
+        {topChips(accounts, selectedId).map((a) => (
+          <Chip
+            key={a.id}
+            label={a.name}
+            selected={selectedId === a.id}
+            onPress={() => onSelect(a.id)}
+          />
+        ))}
+        {trailing}
+      </ScrollView>
+    </View>
+  );
 }
 
 export default function CaptureScreen() {
@@ -371,7 +424,7 @@ export default function CaptureScreen() {
             paddingTop: t.space.sm,
           }}
         >
-          <BarIconButton icon="close" label={tr('common.close')} onPress={confirmClose} />
+          <CloseButton onPress={confirmClose} />
           <View style={{ flexDirection: 'row', flex: 1, gap: t.space.xs }}>
             {TX_TYPES.map((option) => (
               <Chip
@@ -520,130 +573,44 @@ export default function CaptureScreen() {
 
           {type === 'transfer' ? (
             <>
-              <View>
-                <Text
-                  style={[
-                    t.type.label,
-                    { color: t.color.textFaint, paddingHorizontal: t.space.lg },
-                  ]}
-                >
-                  {tr('fields.from')}
-                </Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={rowScroll}
-                  contentContainerStyle={{
-                    paddingHorizontal: t.space.lg,
-                    gap: t.space.sm,
-                    paddingTop: t.space.xs,
-                  }}
-                >
-                  <Chip
-                    label="🔍"
-                    accessibilityLabel={tr('capture.searchSourceAccounts')}
-                    onPress={() => setSheet('accountSource')}
-                  />
-                  {topChips(recentAccounts, effectiveSourceId).map((a) => (
-                    <Chip
-                      key={a.id}
-                      label={a.name}
-                      selected={effectiveSourceId === a.id}
-                      onPress={() => set({ sourceId: a.id })}
-                    />
-                  ))}
-                </ScrollView>
-              </View>
-              <View>
-                <Text
-                  style={[
-                    t.type.label,
-                    { color: t.color.textFaint, paddingHorizontal: t.space.lg },
-                  ]}
-                >
-                  {tr('fields.to')}
-                </Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={rowScroll}
-                  contentContainerStyle={{
-                    paddingHorizontal: t.space.lg,
-                    gap: t.space.sm,
-                    paddingTop: t.space.xs,
-                  }}
-                >
-                  <Chip
-                    label="🔍"
-                    accessibilityLabel={tr('capture.searchDestinationAccounts')}
-                    onPress={() => setSheet('accountDestination')}
-                  />
-                  {topChips(
-                    recentAccounts.filter((a) => a.id !== effectiveSourceId),
-                    destinationId,
-                  ).map((a) => (
-                    <Chip
-                      key={a.id}
-                      label={a.name}
-                      selected={destinationId === a.id}
-                      onPress={() => set({ destinationId: a.id })}
-                    />
-                  ))}
+              <AccountChipRow
+                label={tr('fields.from')}
+                searchLabel={tr('capture.searchSourceAccounts')}
+                accounts={recentAccounts}
+                selectedId={effectiveSourceId}
+                onSearch={() => setSheet('accountSource')}
+                onSelect={(id) => set({ sourceId: id })}
+              />
+              <AccountChipRow
+                label={tr('fields.to')}
+                searchLabel={tr('capture.searchDestinationAccounts')}
+                accounts={recentAccounts.filter((a) => a.id !== effectiveSourceId)}
+                selectedId={destinationId}
+                onSearch={() => setSheet('accountDestination')}
+                onSelect={(id) => set({ destinationId: id })}
+                trailing={
                   <Chip
                     label={detailsLabel}
                     selected={detailsParts.length > 0}
                     onPress={() => setSheet('more')}
                   />
-                </ScrollView>
-              </View>
+                }
+              />
             </>
           ) : (
             <>
-              <View>
-                <Text
-                  style={[
-                    t.type.label,
-                    { color: t.color.textFaint, paddingHorizontal: t.space.lg },
-                  ]}
-                >
-                  {type === 'deposit' ? tr('fields.to') : tr('fields.from')}
-                </Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={rowScroll}
-                  contentContainerStyle={{
-                    paddingHorizontal: t.space.lg,
-                    gap: t.space.sm,
-                    paddingTop: t.space.xs,
-                  }}
-                >
-                  <Chip
-                    label="🔍"
-                    accessibilityLabel={tr('pickers.searchAccounts')}
-                    onPress={() =>
-                      setSheet(type === 'withdrawal' ? 'accountSource' : 'accountDestination')
-                    }
-                  />
-                  {topChips(
-                    recentAccounts,
-                    type === 'withdrawal' ? effectiveSourceId : destinationId,
-                  ).map((a) => (
-                    <Chip
-                      key={a.id}
-                      label={a.name}
-                      selected={
-                        (type === 'withdrawal' ? effectiveSourceId : destinationId) === a.id
-                      }
-                      onPress={() =>
-                        type === 'withdrawal'
-                          ? set({ sourceId: a.id })
-                          : set({ destinationId: a.id })
-                      }
-                    />
-                  ))}
-                </ScrollView>
-              </View>
+              <AccountChipRow
+                label={type === 'deposit' ? tr('fields.to') : tr('fields.from')}
+                searchLabel={tr('pickers.searchAccounts')}
+                accounts={recentAccounts}
+                selectedId={type === 'withdrawal' ? effectiveSourceId : destinationId}
+                onSearch={() =>
+                  setSheet(type === 'withdrawal' ? 'accountSource' : 'accountDestination')
+                }
+                onSelect={(id) =>
+                  type === 'withdrawal' ? set({ sourceId: id }) : set({ destinationId: id })
+                }
+              />
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}

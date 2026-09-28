@@ -19,6 +19,7 @@ import {
   StatusPill,
   EmptyState,
   Sheet,
+  Banner,
 } from '../../src/ui/components';
 import { currencyOf, formatMoney } from '../../src/ui/money';
 import { CaptureDock } from '../../src/ui/CaptureDock';
@@ -471,17 +472,7 @@ export default function InboxScreen() {
           />
         )}
         {!!showOfflineBanner && (
-          <View
-            style={{
-              backgroundColor: t.color.warnSoft,
-              paddingHorizontal: t.space.lg,
-              paddingVertical: t.space.sm,
-            }}
-          >
-            <Text style={[t.type.label, { color: t.color.warn }]}>
-              ⚑ {tr('inbox.offlineBanner', { count: pendingOutboxCount })}
-            </Text>
-          </View>
+          <Banner>{`⚑ ${tr('inbox.offlineBanner', { count: pendingOutboxCount })}`}</Banner>
         )}
 
         {/* Always mounted (empty states go in ListEmptyComponent) so pull-to-refresh works on an

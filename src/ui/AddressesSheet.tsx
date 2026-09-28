@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, Text, View } from 'react-native';
-import { Sheet, Button } from './components';
+import { Dot, Sheet, Button } from './components';
 import { confirmDestructive } from './confirm';
 import { useTheme } from './theme';
 import { TextField } from './TextField';
@@ -100,14 +100,7 @@ export function AddressesSheet({
             key={address}
             style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}
           >
-            <View
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: 4,
-                backgroundColor: dotColor(status[address]),
-              }}
-            />
+            <Dot color={dotColor(status[address])} />
             <Text style={[t.type.body, { color: t.color.text, flex: 1 }]} numberOfLines={1}>
               {address}
             </Text>

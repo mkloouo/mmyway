@@ -2,7 +2,7 @@
 // entry (Split, or a duplicated split transaction) shows its tracked total and one page per split.
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Animated, Alert, Image, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Animated, Alert, Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { useShake } from '../../src/ui/feedback';
 import { useLocalSearchParams, router } from 'expo-router';
 import { eq } from 'drizzle-orm';
@@ -22,12 +22,15 @@ import {
   StatusPill,
   Sheet,
   Row,
+  Banner,
+  CloseButton,
 } from '../../src/ui/components';
 import { DetailRows, type DetailRowsValue } from '../../src/ui/DetailRows';
 import { PayeeSheet } from '../../src/ui/PayeeSheet';
 import { Keypad } from '../../src/ui/Keypad';
 import { TextField } from '../../src/ui/TextField';
 import { SplitPager } from '../../src/ui/SplitPager';
+import { PhotoViewer } from '../../src/ui/PhotoViewer';
 import {
   AllocationSheet,
   type AllocationMode,
@@ -147,7 +150,7 @@ export default function DraftScreen() {
   if (!row || !draft) {
     return (
       <Screen bottom>
-        <AppBar title={tr('draft.title')} left={<CloseButton />} />
+        <AppBar title={tr('draft.title')} left={<CloseButton onPress={() => router.back()} />} />
       </Screen>
     );
   }
@@ -463,7 +466,7 @@ export default function DraftScreen() {
       <View style={{ flex: 1 }}>
         <AppBar
           title={tr('draft.title')}
-          left={<CloseButton />}
+          left={<CloseButton onPress={() => router.back()} />}
           right={
             <BarIconButton
               icon="ellipsis-horizontal"
@@ -502,18 +505,7 @@ export default function DraftScreen() {
           style={{ flex: 1 }}
           contentContainerStyle={{ gap: t.space.md, paddingBottom: t.space.lg }}
         >
-          {!!row.errorMessage && !readOnly && (
-            <View
-              style={{
-                marginHorizontal: t.space.lg,
-                padding: t.space.md,
-                borderRadius: t.radius.sm,
-                backgroundColor: t.color.warnSoft,
-              }}
-            >
-              <Text style={[t.type.label, { color: t.color.warn }]}>{row.errorMessage}</Text>
-            </View>
-          )}
+          {!!row.errorMessage && !readOnly && <Banner inset>{row.errorMessage}</Banner>}
           {splitMode ? (
             <>
               <Pressable
@@ -745,31 +737,10 @@ export default function DraftScreen() {
         />
       </Sheet>
       <Snackbar entry={snackbar} onDismiss={dismissSnackbar} />
-      <Modal
-        visible={photoOpen && !!row.receiptImagePath}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setPhotoOpen(false)}
-      >
-        <Pressable
-          style={{ flex: 1, backgroundColor: t.color.photoBackdrop, justifyContent: 'center' }}
-          onPress={() => setPhotoOpen(false)}
-          accessibilityLabel={tr('draft.closePhoto')}
-        >
-          {!!row.receiptImagePath && (
-            <Image
-              source={{ uri: row.receiptImagePath }}
-              resizeMode="contain"
-              style={{ width: '100%', height: '100%' }}
-            />
-          )}
-        </Pressable>
-      </Modal>
+      <PhotoViewer
+        uri={photoOpen ? row.receiptImagePath : null}
+        onClose={() => setPhotoOpen(false)}
+      />
     </Screen>
   );
-}
-
-function CloseButton() {
-  const { t: tr } = useTranslation();
-  return <BarIconButton icon="close" label={tr('common.close')} onPress={() => router.back()} />;
 }

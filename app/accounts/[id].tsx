@@ -14,13 +14,13 @@ import { useTheme } from '../../src/ui/theme';
 import {
   Screen,
   AppBar,
-  BarIconButton,
   SectionHeader,
   Card,
   Row,
   Button,
   Money,
   Toast,
+  CloseButton,
 } from '../../src/ui/components';
 import { Checkbox } from '../../src/ui/Checkbox';
 import { TextField } from '../../src/ui/TextField';
@@ -152,12 +152,7 @@ export default function AccountScreen() {
   if (!account || !form) {
     return (
       <Screen bottom>
-        <AppBar
-          title={tr('account.title')}
-          left={
-            <BarIconButton icon="close" label={tr('common.close')} onPress={() => router.back()} />
-          }
-        />
+        <AppBar title={tr('account.title')} left={<CloseButton onPress={() => router.back()} />} />
       </Screen>
     );
   }
@@ -178,7 +173,7 @@ export default function AccountScreen() {
         <AppBar
           title={account.name}
           subtitle={tr('count.asOf', { time: relativeTime(account.currentBalanceDate) })}
-          left={<BarIconButton icon="close" label={tr('common.close')} onPress={close} />}
+          left={<CloseButton onPress={close} />}
           right={<PendingDot visible={pendingAccounts.has(account.id)} />}
         />
         <ScrollView

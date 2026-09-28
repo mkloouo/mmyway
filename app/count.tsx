@@ -21,6 +21,8 @@ import {
   Money,
   EmptyState,
   useKeyboardHeight,
+  Banner,
+  CloseButton,
 } from '../src/ui/components';
 import { currencyOf, formatMoney } from '../src/ui/money';
 import { parseDecimalInput } from '../src/api/ff3/decimal';
@@ -204,9 +206,7 @@ export default function CountScreen() {
               ? tr('count.asOf', { time: relativeTime(oldestBalanceDate) })
               : undefined
           }
-          left={
-            <BarIconButton icon="close" label={tr('common.close')} onPress={() => router.back()} />
-          }
+          left={<CloseButton onPress={() => router.back()} />}
           right={
             <BarIconButton
               icon="settings-outline"
@@ -215,36 +215,20 @@ export default function CountScreen() {
             />
           }
         />
-        {stale && envelopeAccounts.length > 0 && (
-          <View
-            style={{
-              backgroundColor: t.color.warnSoft,
-              paddingHorizontal: t.space.lg,
-              paddingVertical: t.space.sm,
-            }}
-          >
-            <Text style={[t.type.label, { color: t.color.warn }]}>{tr('count.staleBanner')}</Text>
-          </View>
-        )}
+        {stale && envelopeAccounts.length > 0 && <Banner>{tr('count.staleBanner')}</Banner>}
         {!!blocker && envelopeAccounts.length > 0 && (
-          <View
-            style={{
-              backgroundColor: t.color.warnSoft,
-              paddingHorizontal: t.space.lg,
-              paddingVertical: t.space.sm,
-              gap: t.space.sm,
-            }}
+          <Banner
+            action={
+              <Button
+                title={syncStatus === 'syncing' ? tr('sync.syncing') : tr('sync.syncNow')}
+                variant="secondary"
+                onPress={() => syncNow()}
+                disabled={syncStatus === 'syncing'}
+              />
+            }
           >
-            <Text style={[t.type.label, { color: t.color.warn }]}>
-              {describeCountBlocker(blocker)}
-            </Text>
-            <Button
-              title={syncStatus === 'syncing' ? tr('sync.syncing') : tr('sync.syncNow')}
-              variant="secondary"
-              onPress={() => syncNow()}
-              disabled={syncStatus === 'syncing'}
-            />
-          </View>
+            {describeCountBlocker(blocker)}
+          </Banner>
         )}
 
         {envelopeAccounts.length === 0 ? (

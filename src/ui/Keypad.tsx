@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Animated, Pressable, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useTheme } from './theme';
+import { PRESSED_OPACITY } from './components';
 import { haptics } from './haptics';
 import type { KeypadKey } from '../capture/amountInput';
 
@@ -58,7 +59,7 @@ function Key({
           alignItems: 'center',
           justifyContent: 'center',
           backgroundColor: isAccent ? t.color.accent : t.color.surfaceAlt,
-          opacity: disabled ? 0.4 : pressed ? 0.6 : 1,
+          opacity: disabled ? 0.4 : pressed ? PRESSED_OPACITY : 1,
         })}
       >
         <Text

@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { appLocale } from '../../src/i18n';
-import { Image, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { eq, ne } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
@@ -21,12 +21,14 @@ import {
   Money,
   Row,
   Sheet,
+  CloseButton,
 } from '../../src/ui/components';
 import { DetailRows, type DetailRowsValue } from '../../src/ui/DetailRows';
 import { Keypad } from '../../src/ui/Keypad';
 import { TextField } from '../../src/ui/TextField';
 import { PayeeSheet } from '../../src/ui/PayeeSheet';
 import { SplitPager } from '../../src/ui/SplitPager';
+import { PhotoViewer } from '../../src/ui/PhotoViewer';
 import {
   AllocationSheet,
   type AllocationMode,
@@ -523,7 +525,7 @@ export default function TransactionDetailScreen() {
         });
     return (
       <Screen bottom>
-        <AppBar title={tr('inbox.conflict')} left={<CloseButton />} />
+        <AppBar title={tr('inbox.conflict')} left={<CloseButton onPress={() => router.back()} />} />
         <ScrollView contentContainerStyle={{ padding: t.space.lg, gap: t.space.md }}>
           <Text style={[t.type.body, { color: t.color.textMuted }]}>
             {tr('conflict.changedInFf3', {
@@ -701,7 +703,7 @@ export default function TransactionDetailScreen() {
                 : tr('transaction.changesNotSent')
               : tr('transaction.syncedAgo', { time: relativeTime(row.syncedAt) })
           }
-          left={<CloseButton />}
+          left={<CloseButton onPress={() => router.back()} />}
           right={
             <>
               <BarIconButton
@@ -937,32 +939,7 @@ export default function TransactionDetailScreen() {
         <Row first label={tr('transaction.duplicate')} icon="copy-outline" onPress={onDuplicate} />
         <Row label={tr('common.delete')} icon="trash-outline" tone="danger" onPress={onDelete} />
       </Sheet>
-      {/* Same full-screen view as the draft screen's receipt photo. */}
-      <Modal
-        visible={!!photo}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setPhoto(null)}
-      >
-        <Pressable
-          style={{ flex: 1, backgroundColor: t.color.photoBackdrop, justifyContent: 'center' }}
-          onPress={() => setPhoto(null)}
-          accessibilityLabel={tr('draft.closePhoto')}
-        >
-          {!!photo && (
-            <Image
-              source={{ uri: photo }}
-              resizeMode="contain"
-              style={{ width: '100%', height: '100%' }}
-            />
-          )}
-        </Pressable>
-      </Modal>
+      <PhotoViewer uri={photo} onClose={() => setPhoto(null)} />
     </Screen>
   );
-}
-
-function CloseButton() {
-  const { t: tr } = useTranslation();
-  return <BarIconButton icon="close" label={tr('common.close')} onPress={() => router.back()} />;
 }

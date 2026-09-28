@@ -25,6 +25,8 @@ import {
   Sheet,
   Row,
   Button,
+  Dot,
+  PRESSED_OPACITY,
 } from '../../src/ui/components';
 import { CaptureDock } from '../../src/ui/CaptureDock';
 import { currencyOf, formatMoney } from '../../src/ui/money';
@@ -824,7 +826,7 @@ const ActivityRow = memo(function ActivityRow({
         gap: t.space.sm,
         paddingHorizontal: t.space.lg,
         paddingVertical: t.space.sm,
-        opacity: pressed ? 0.6 : 1,
+        opacity: pressed ? PRESSED_OPACITY : 1,
         backgroundColor: selected ? t.color.accentSoft : undefined,
       })}
     >
@@ -836,7 +838,7 @@ const ActivityRow = memo(function ActivityRow({
             color={selected ? t.color.accent : t.color.textFaint}
           />
         ) : (
-          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor }} />
+          <Dot color={dotColor} />
         )}
       </Animated.View>
       <View style={{ flex: 1 }}>

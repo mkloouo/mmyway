@@ -18,6 +18,7 @@ import {
   Row,
   SectionHeader,
   Sheet,
+  CloseButton,
 } from '../../src/ui/components';
 import { TextField } from '../../src/ui/TextField';
 import { PickerSheet } from '../../src/ui/PickerSheet';
@@ -78,12 +79,7 @@ export default function PlannedEditScreen() {
   if (!isNew && !item) {
     return (
       <Screen bottom>
-        <AppBar
-          title={tr('planned.title')}
-          left={
-            <BarIconButton icon="close" label={tr('common.close')} onPress={() => router.back()} />
-          }
-        />
+        <AppBar title={tr('planned.title')} left={<CloseButton onPress={() => router.back()} />} />
         {loaded && (
           <Text style={[t.type.body, { color: t.color.textMuted, padding: t.space.lg }]}>
             {tr('planned.gone')}
@@ -223,9 +219,7 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
     <Screen bottom avoidKeyboard>
       <AppBar
         title={isNew ? tr('planned.newTitle') : fields.name || tr('planned.title')}
-        left={
-          <BarIconButton icon="close" label={tr('common.close')} onPress={() => router.back()} />
-        }
+        left={<CloseButton onPress={() => router.back()} />}
         right={
           item ? (
             <BarIconButton icon="trash-outline" label={tr('common.delete')} onPress={onDelete} />

@@ -18,6 +18,7 @@ import {
   Chip,
   EmptyState,
   Money,
+  Dot,
 } from '../../src/ui/components';
 import { PendingDot } from '../../src/ui/PendingDot';
 import { currencyOf } from '../../src/ui/money';
@@ -172,14 +173,7 @@ export default function PlannedScreen() {
                       marginTop: t.space.xs,
                     }}
                   >
-                    <View
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: 4,
-                        backgroundColor: categoryColor(f.categoryName, t.dark),
-                      }}
-                    />
+                    <Dot color={categoryColor(f.categoryName, t.dark)} />
                     <Text
                       style={[t.type.label, { color: t.color.textMuted, flex: 1 }]}
                       numberOfLines={1}
