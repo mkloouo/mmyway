@@ -35,6 +35,9 @@
   (Spotify's 7.99 USD from a PLN account), note, whether and how often it repeats, the date it's
   planned on, category and tags. Add one with **+**; delete it from its page. Picking a payee
   fills in its usual category and paying account, unless you've already chosen them.
+- A planned transaction can have a time. Firefly III only plans days, so the time is kept in its
+  recurring transaction's notes (as an `mmyway-time` line); approving the booked transaction in
+  the Inbox moves it to that time.
 - The detailed view lists Firefly III's subscriptions, rules and recurring transactions
   separately, exactly as they are there; tap one to see everything about it.
 

@@ -1,11 +1,14 @@
 import { eq } from 'drizzle-orm';
 import type { FF3Client } from '../api/ff3/client';
 import type { TransactionRead, TransactionSplit } from '../api/ff3/types';
-import { inboxItems } from '../db/schema';
+import { inboxItems, plannedObjects } from '../db/schema';
 import { enqueueOperation } from './outbox';
 import type { NewOutboxOperation, OutboxDb } from './outbox';
 import { generateId } from '../utils/id';
 import { readReviewJournal, writeDraft, type ReviewJournal } from '../inbox/draftJson';
+import { plannedKey, readPlannedRow } from '../planned/objects';
+import { atPlannedTime, readPlannedTime } from '../planned/plannedTime';
+import { normkey } from '../lookup/normkey';
 
 const REVIEWED_TAG = 'mmyway-reviewed';
 
@@ -78,12 +81,36 @@ export async function approveRecurringReview(db: OutboxDb, inboxItemId: string):
 // reviewed tag — one partial update keyed by transaction_journal_id; a plain approve is this
 // with no corrections.
 export async function editRecurringReview(db: OutboxDb, inboxItemId: string, changes: Partial<TransactionSplit>): Promise<void> {
+  const [item] = await db.select({ draftJson: inboxItems.draftJson }).from(inboxItems).where(eq(inboxItems.id, inboxItemId));
+  const plannedDate = item && !changes.date ? await plannedDateFor(db, readReviewJournal(item.draftJson)) : null;
   await decideRecurringReview(db, inboxItemId, (groupId, journal) => ({
     groupId,
     transactionJournalId: journal.transaction_journal_id,
     expectedUpdatedAt: journal.updated_at,
-    changes: { ...changes, tags: [...(journal.tags ?? []), REVIEWED_TAG] },
+    changes: { ...changes, ...(plannedDate ? { date: plannedDate } : {}), tags: [...(journal.tags ?? []), REVIEWED_TAG] },
   }), 'recurring_review');
+}
+
+/**
+ * FF3 books a recurring transaction at whatever time its daily job ran. When the Planned tab gave
+ * its recurrence a time (the `mmyway-time` line in its notes), approving moves it to that time
+ * on the day it was booked. Found by the journal's recurrence id, else by the recurrence's title.
+ */
+async function plannedDateFor(db: OutboxDb, journal: ReviewJournal): Promise<string | null> {
+  if (!journal.date) return null;
+  const recurrenceId = (journal as { recurrence_id?: string | number | null }).recurrence_id;
+  let notes: string | null | undefined;
+  if (recurrenceId != null) {
+    const [row] = await db.select().from(plannedObjects).where(eq(plannedObjects.key, plannedKey('recurrence', String(recurrenceId))));
+    notes = row ? (readPlannedRow(row)?.attributes as { notes?: string | null } | undefined)?.notes : undefined;
+  }
+  if (notes === undefined && journal.description) {
+    const rows = await db.select().from(plannedObjects).where(eq(plannedObjects.kind, 'recurrence'));
+    const match = rows.find((r) => normkey(r.name) === normkey(journal.description!));
+    notes = match ? (readPlannedRow(match)?.attributes as { notes?: string | null } | undefined)?.notes : undefined;
+  }
+  const time = readPlannedTime(notes);
+  return time ? atPlannedTime(journal.date, time) : null;
 }
 
 export async function deleteRecurringReview(db: OutboxDb, inboxItemId: string): Promise<void> {

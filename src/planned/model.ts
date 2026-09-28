@@ -2,6 +2,7 @@
 // transaction that share a name, edited together. This file turns the three FF3 objects into one
 // set of fields and back into what FF3 takes for each. Pure, no db.
 import { normkey } from '../lookup/normkey';
+import { readPlannedTime, stripPlannedTime, withPlannedTime } from './plannedTime';
 import type {
   BillAttributes, PlannedObject, RecurrenceRepetition, RuleAction, RuleAttributes, RuleTrigger,
 } from './objects';
@@ -26,6 +27,8 @@ export interface PlannedFields {
   every: number;
   /** YYYY-MM-DD: the next time it is planned. */
   date: string;
+  /** HH:MM it is planned at, or null for any time (kept in the recurrence's notes, src/planned/plannedTime.ts). */
+  time: string | null;
   categoryName: string | null;
   tags: string[];
 }
@@ -97,7 +100,8 @@ export function fieldsOf(group: PlannedGroup, today: string): PlannedFields {
     destinationName: text(tx?.destination_name) ?? (type === 'withdrawal' ? actionValue(rule, 'set_destination_account') : null),
     amount: text(tx?.amount) ?? text(bill?.amount_max) ?? '0',
     currencyCode: text(tx?.currency_code) ?? text(bill?.currency_code) ?? '',
-    notes: text(rec?.notes) ?? text(bill?.notes),
+    notes: stripPlannedTime(text(rec?.notes) ?? text(bill?.notes)),
+    time: readPlannedTime(rec?.notes),
     repeats,
     ...schedule,
     date,
@@ -179,7 +183,7 @@ export function recurrenceBody(
   return {
     type: f.type,
     title: f.name,
-    notes: f.notes ?? '',
+    notes: withPlannedTime(f.notes, f.time),
     active: true,
     apply_rules: true,
     ...(scheduleChanged(before, f) ? {

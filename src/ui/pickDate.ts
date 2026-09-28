@@ -41,3 +41,21 @@ export function pickDateTime(value: Date, onPick: (picked: Date) => void): void 
     });
   });
 }
+
+/** The system time dialog alone ("HH:MM" in, "HH:MM" out); cancelling changes nothing. */
+export function pickTime(value: string | null, onPick: (time: string) => void): void {
+  if (Platform.OS !== 'android') {
+    logLine('warn', `pickTime: no time picker on ${Platform.OS} yet`);
+    return;
+  }
+  const [h, m] = (value ?? '09:00').split(':').map(Number);
+  const start = new Date();
+  start.setHours(h ?? 9, m ?? 0, 0, 0);
+  DateTimePickerAndroid.open({
+    value: start,
+    mode: 'time',
+    onChange: (event: { type: string }, picked?: Date) => {
+      if (event.type === 'set' && picked) onPick(`${String(picked.getHours()).padStart(2, '0')}:${String(picked.getMinutes()).padStart(2, '0')}`);
+    },
+  });
+}

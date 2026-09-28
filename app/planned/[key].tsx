@@ -14,7 +14,7 @@ import { AccountPickerSheet } from '../../src/ui/AccountPickerSheet';
 import { PayeeSheet } from '../../src/ui/PayeeSheet';
 import { Checkbox } from '../../src/ui/Checkbox';
 import { Keypad } from '../../src/ui/Keypad';
-import { pickDate } from '../../src/ui/pickDate';
+import { pickDate, pickTime } from '../../src/ui/pickDate';
 import { currencyOf, formatMoney } from '../../src/ui/money';
 import { pickableCurrencies, primaryCurrencyCode } from '../../src/ui/currencies';
 import { useAction } from '../../src/ui/useAction';
@@ -40,7 +40,7 @@ function blank(): PlannedFields {
   return {
     name: '', type: 'withdrawal', sourceId: null, sourceName: null, destinationId: null, destinationName: null,
     amount: '0', currencyCode: '', notes: null, repeats: true, frequency: 'monthly', every: 1,
-    date: todayIso(), categoryName: null, tags: [],
+    date: todayIso(), time: null, categoryName: null, tags: [],
   };
 }
 
@@ -199,6 +199,8 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
         <SectionHeader title={tr('planned.sectionWhen')} />
         <Card style={{ marginHorizontal: t.space.lg }}>
           <Row first label={tr('planned.plannedOn')} value={dayLabel(fields.date)} chevron onPress={() => pickDate(new Date(`${fields.date}T12:00:00`), (d) => set({ date: toDateOnly(d) }))} />
+          <Row label={tr('planned.time')} value={fields.time ?? tr('planned.anyTime')} chevron onPress={() => pickTime(fields.time, (time) => set({ time }))} />
+          {!!fields.time && <Row label={tr('planned.clearTime')} icon="close-circle-outline" onPress={() => set({ time: null })} />}
           <Checkbox checked={fields.repeats} onPress={() => set({ repeats: !fields.repeats })} label={tr('planned.repeats')} hint={tr('planned.repeatsHint')} />
           {fields.repeats && (
             <>
@@ -211,6 +213,9 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
             </>
           )}
         </Card>
+        {!!fields.time && (
+          <Text style={[t.type.label, { color: t.color.textMuted, paddingHorizontal: t.space.xl, paddingTop: t.space.sm }]}>{tr('planned.timeHint')}</Text>
+        )}
 
         <SectionHeader title={tr('planned.sectionMore')} />
         <Card style={{ marginHorizontal: t.space.lg, gap: t.space.sm }}>
