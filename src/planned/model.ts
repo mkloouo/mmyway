@@ -118,6 +118,11 @@ export function scheduleChanged(before: PlannedFields | null, after: PlannedFiel
     || before.frequency !== after.frequency || before.every !== after.every;
 }
 
+/** `base` with `from`'s schedule: what FF3 holds once a save sent `from`'s schedule and nothing else. */
+export function withScheduleOf(base: PlannedFields, from: PlannedFields): PlannedFields {
+  return { ...base, date: from.date, repeats: from.repeats, frequency: from.frequency, every: from.every };
+}
+
 function addDays(date: string, days: number): string {
   const d = new Date(`${date}T00:00:00Z`);
   d.setUTCDate(d.getUTCDate() + days);

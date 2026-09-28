@@ -36,14 +36,18 @@
   its error can be tapped open to read in full. Tap the card to open what it was changing.
 - A new **Queued** section lists every change still waiting to reach Firefly III — new
   transactions, edits, deletes, receipt uploads, recurring approvals, account changes and planned
-  transactions — so the count on the sync pill matches what you see. Tap one to open it.
+  transactions — so the count on the sync pill matches what you see. Each card says what the
+  change edits ("Changes: Planned on · Amount"); editing a planned transaction again before the
+  first edit is sent updates that edit instead of queueing a second one. Tap one to open it.
 
 ### Planned
 - A new **Planned** tab. The simple view lists each planned payment — a subscription, rule and
   recurring transaction sharing one name — once, with its category, and edits the three together:
   name, from and to, exact amount and currency
   (Spotify's 7.99 USD from a PLN account), note, whether and how often it repeats, the date it's
-  planned on, category and tags. Add one with **+**; delete it from its page. Picking a payee
+  planned on, category and tags. Changing when it happens (the date, or whether and how often it
+  repeats) replaces its recurring transaction in Firefly III with a new one, because Firefly III
+  can't move most schedules in place. Add one with **+**; delete it from its page. Picking a payee
   fills in its usual category and paying account, unless you've already chosen them; a payee
   Firefly III doesn't have yet is added there as an expense account when it's saved.
 - A planned transaction can have a time. Firefly III only plans days, so the time is kept in its
@@ -69,12 +73,10 @@
 - The payee list on a draft, a transaction or a planned transaction no longer shows another
   type's payees after switching the type quickly.
 - Capture no longer asks to discard an entry whose amount is only "0,".
+- The keyboard no longer covers the lower text fields on an account's page.
 - A transaction's receipt photos show what Firefly III holds now. After the photo a transaction
   was captured from was deleted in Firefly III, the next photo attached to it didn't show and the
   deleted one stayed on screen.
-- Moving the date of a one-time planned transaction no longer fails with "The
-  repetitions.0.moment must be a number". A change that already failed this way goes through with
-  **Retry now** in the Inbox.
 
 ## [1.2.0] - 2026-09-28
 

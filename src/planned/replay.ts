@@ -11,7 +11,7 @@ import { outboxOperations, referenceCategories } from '../db/schema';
 import { accountResolver } from '../sync/accountIds';
 import type { OutboxDb } from '../sync/outbox';
 import { writePayload } from '../sync/payloadJson';
-import { billBody, recurrenceBody, ruleBody, type PlannedFields } from './model';
+import { billBody, recurrenceBody, ruleBody, scheduleChanged, type PlannedFields } from './model';
 import { plannedPath, storePlanned, type PlannedKind, type RecurrenceAttributes, type RuleAttributes } from './objects';
 
 export interface SavePlannedPayload {
@@ -23,6 +23,10 @@ export interface SavePlannedPayload {
   billId?: string | null;
   ruleId?: string | null;
   recurrenceId?: string | null;
+  /** Set once this save replaced the recurring transaction (see replaySavePlanned); not again on a retry. */
+  recurrenceReplaced?: boolean;
+  /** Recurring transactions being replaced, deleted before the new one is created. */
+  replacedRecurrenceIds?: string[];
 }
 
 export interface DeletePlannedPayload {
@@ -80,6 +84,27 @@ export async function replaySavePlanned(db: OutboxDb, client: FF3Client, opId: s
   const destinationId = f.destinationId ?? await resolve(f.type, 'destination', f.destinationName ?? '');
   const categoryId = f.categoryName ? await categoryIdFor(db, client, f.categoryName) : null;
 
+  // FF3's recurrence *update* validates a repetition's moment as a number up to 10, where create
+  // takes up to 10 characters: a yearly moment (a date) fails with "must be a number", a monthly
+  // one after the 10th with "may not be greater than 10". So a schedule change replaces the
+  // recurring transaction instead of updating it: the old one is deleted first (never two booking
+  // at once), then a new one is created with the whole schedule. Recorded at each step, so a retry
+  // carries on rather than replacing again.
+  if (p.recurrenceId && !p.recurrenceReplaced && scheduleChanged(p.before, f)) {
+    p.replacedRecurrenceIds = [...(p.replacedRecurrenceIds ?? []), p.recurrenceId];
+    p.recurrenceId = null;
+    p.recurrenceReplaced = true;
+    await remember();
+  }
+  if (p.replacedRecurrenceIds?.length) {
+    for (const old of p.replacedRecurrenceIds) {
+      await deleteIfPresent(client, 'recurrence', old);
+      await storePlanned(db, 'recurrence', old, null);
+    }
+    p.replacedRecurrenceIds = [];
+    await remember();
+  }
+
   let transactionId: string | null = null;
   let repetitionId: string | null = null;
   if (p.recurrenceId) {
@@ -87,8 +112,10 @@ export async function replaySavePlanned(db: OutboxDb, client: FF3Client, opId: s
     transactionId = current.data.attributes.transactions?.[0]?.id ?? null;
     repetitionId = current.data.attributes.repetitions?.[0]?.id ?? null;
   }
+  // An existing one is sent what changed; after a replacement it already has this schedule.
+  const recurrenceBefore = p.recurrenceId ? (p.recurrenceReplaced ? f : p.before) : null;
   const recurrence = await send<Record<string, unknown>>(client, 'recurrence', p.recurrenceId,
-    recurrenceBody({ ...f, sourceId, destinationId }, p.recurrenceId ? p.before : null, { billId: p.billId, transactionId, repetitionId, categoryId }));
+    recurrenceBody({ ...f, sourceId, destinationId }, recurrenceBefore, { billId: p.billId, transactionId, repetitionId, categoryId }));
   if (!p.recurrenceId) { p.recurrenceId = String(recurrence.data.id); await remember(); }
   await storePlanned(db, 'recurrence', p.recurrenceId, recurrence.data.attributes);
 
@@ -108,12 +135,16 @@ export async function replaySavePlanned(db: OutboxDb, client: FF3Client, opId: s
 export async function replayDeletePlanned(db: OutboxDb, client: FF3Client, payload: DeletePlannedPayload): Promise<void> {
   for (const [kind, id] of [['rule', payload.ruleId], ['recurrence', payload.recurrenceId], ['bill', payload.billId]] as const) {
     if (!id) continue;
-    try {
-      await client.request(plannedPath(kind, id), { method: 'DELETE' });
-    } catch (err) {
-      // Already gone (deleted in FF3's web UI, or by an earlier attempt): that's the goal.
-      if (!(err instanceof FF3RequestError && err.status === 404)) throw err;
-    }
+    await deleteIfPresent(client, kind, id);
     await storePlanned(db, kind, id, null);
+  }
+}
+
+async function deleteIfPresent(client: FF3Client, kind: PlannedKind, id: string): Promise<void> {
+  try {
+    await client.request(plannedPath(kind, id), { method: 'DELETE' });
+  } catch (err) {
+    // Already gone (deleted in FF3's web UI, or by an earlier attempt): that's the goal.
+    if (!(err instanceof FF3RequestError && err.status === 404)) throw err;
   }
 }

@@ -7,7 +7,7 @@ import { readPayload, writePayload } from '../sync/payloadJson';
 import { requestSync } from '../sync/syncTrigger';
 import { generateId } from '../utils/id';
 import type { PlannedItem } from './items';
-import type { PlannedFields } from './model';
+import { withScheduleOf, type PlannedFields } from './model';
 import type { SavePlannedPayload } from './replay';
 
 /** The queued save of a planned transaction that isn't in FF3 yet, while it can still be changed. */
@@ -18,13 +18,20 @@ async function queuedSaveFor(db: OutboxDb, key: string) {
 }
 
 export async function savePlanned(db: OutboxDb, item: PlannedItem | null, fields: PlannedFields): Promise<void> {
-  if (item && !item.group) {
-    // Still only in the queue: change what will be sent rather than queueing a second create.
+  if (item) {
+    // A save of this one still waiting to be sent takes the new fields rather than queueing a
+    // second change for the same planned transaction (two identical cards in the Inbox's queue).
+    // Its `before` stays what FF3 holds, so the schedule diff stays right — including a
+    // recurring transaction it already replaced, which has the queued schedule by now: the new
+    // fields replace it again only if they move the schedule further.
     const op = await queuedSaveFor(db, item.key);
     if (op) {
       const payload = readPayload<SavePlannedPayload>(op.kind, op.payloadJson);
+      const merged: SavePlannedPayload = payload.recurrenceReplaced && payload.before
+        ? { ...payload, fields, before: withScheduleOf(payload.before, payload.fields), recurrenceReplaced: false }
+        : { ...payload, fields };
       await db.update(outboxOperations)
-        .set({ payloadJson: writePayload({ ...payload, fields }), status: 'pending', lastError: null, nextAttemptAt: null })
+        .set({ payloadJson: writePayload(merged), status: 'pending', lastError: null, nextAttemptAt: null })
         .where(eq(outboxOperations.id, op.id));
       requestSync();
       return;
