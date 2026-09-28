@@ -1,5 +1,3 @@
-require('dotenv').config({ path: '.env.local' });
-
 const IS_DEV = process.env.APP_VARIANT === 'development' || process.env.APP_VARIANT === 'preview';
 // Set by eas.json's production-apk profile: per-ABI APKs + a universal one.
 const ABI_SPLITS = process.env.ANDROID_ABI_SPLITS === '1';
@@ -17,6 +15,7 @@ module.exports = {
     scheme: 'mmyway',
     plugins: [
       'expo-router',
+      'expo-font',
       [
         'expo-share-intent',
         {
