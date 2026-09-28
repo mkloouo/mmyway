@@ -158,7 +158,7 @@ export default function AccountScreen() {
     : null;
 
   return (
-    <Screen bottom>
+    <Screen bottom avoidKeyboard>
       <View style={{ flex: 1 }}>
         <AppBar
           title={account.name}

@@ -163,15 +163,10 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
     ]);
   }
 
-  const linked = item?.group
-    ? [item.group.bill && tr('planned.subscription'), item.group.rule && tr('planned.rule'), item.group.recurrence && tr('planned.recurringOne')].filter(Boolean).join(' + ')
-    : null;
-
   return (
-    <Screen bottom>
+    <Screen bottom avoidKeyboard>
       <AppBar
         title={isNew ? tr('planned.newTitle') : fields.name || tr('planned.title')}
-        subtitle={linked ?? undefined}
         left={<BarIconButton icon="close" label={tr('common.close')} onPress={() => router.back()} />}
         right={item ? <BarIconButton icon="trash-outline" label={tr('common.delete')} onPress={onDelete} /> : undefined}
       />

@@ -327,6 +327,8 @@
     "selected_other": "Вибрано {{count, number}}",
     "sharedWith": "Спільно з {{name}}",
     "showLess": "Показати менше",
+    "changes": "",
+    "changedOrder": "",
     "showMore": "Показати всі",
     "toConfirmCount_one": "{{count, number}} для підтвердження",
     "toConfirmCount_few": "{{count, number}} для підтвердження",
