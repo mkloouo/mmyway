@@ -186,7 +186,7 @@ export default function ActivityScreen() {
   // Just "has anything ever synced" — .limit(1) instead of loading the whole cached table.
   const { data: cachedTxProbe } = useLiveQuery(db.select({ id: cachedTransactions.groupId }).from(cachedTransactions).limit(1));
 
-  const { sections, loadMore, loadingMore, atEnd } = useTransactionPage({ search, type, accountId: accountFilter });
+  const { sections, dataKey, loadMore, loadingMore, atEnd } = useTransactionPage({ search, type, accountId: accountFilter });
   const { loadOlder, loadingOlder, exhausted, reset: resetExhausted } = useLoadOlderHistory();
   // The local cache runs out before real history does — reaching the end of what's cached pulls
   // a further chunk from FF3 instead of just stopping (see useLoadOlderHistory).
@@ -443,7 +443,7 @@ export default function ActivityScreen() {
                   onPress={() => setAccountFilter((cur) => (cur === a.id ? null : a.id))}
                   onLongPress={() => navigateOnce(`/accounts/${a.id}`)}
                   delayLongPress={300}
-                  longPressRing
+                  longPressPop
                   accessibilityHint={tr('account.openHint')}
                   style={{ borderColor: selected ? t.color.accent : t.color.border, minWidth: 120, opacity: stale ? 0.5 : 1 }}
                 >
@@ -476,8 +476,10 @@ export default function ActivityScreen() {
           <SectionList<ActivityItem, DisplaySection>
             // A new filter is a new list: without the remount a list scrolled deep into All kept
             // its offset over the much shorter Income list, so onEndReached fired over and over
-            // and the list paged (and scrolled) by itself.
-            key={`${type}:${accountFilter ?? ''}:${search.trim()}`}
+            // and the list paged (and scrolled) by itself. Keyed by the filter the rows were read
+            // for, not the one just picked: that remounted the list over the old rows first, and
+            // then again when the new ones landed — twice the work on every account switch.
+            key={dataKey}
             ref={listRef}
             style={{ flex: 1 }}
             sections={displaySections}

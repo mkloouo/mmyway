@@ -1,0 +1,1 @@
+CREATE INDEX `cached_transactions_date_idx` ON `cached_transactions` (`date`);

@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
 
 export const referenceAccounts = sqliteTable('reference_accounts', {
   id: text('id').primaryKey(), // FF3 server id
@@ -70,7 +70,13 @@ export const cachedTransactions = sqliteTable('cached_transactions', {
   notes: text('notes'),
   updatedAt: text('updated_at').notNull(), // FF3's updated_at, for conflict checks
   syncedAt: text('synced_at').notNull(),
-});
+}, (table) => [
+  // Activity pages newest-first (src/transactions/useTransactionPage.ts). Without it every page
+  // read — each account switch — sorted the whole table, on the JS thread. Only `date` on purpose:
+  // (source_id, date) + (destination_id, date) made SQLite gather and sort all of a busy account's
+  // rows, slower than walking this index and stopping at the page's end.
+  index('cached_transactions_date_idx').on(table.date),
+]);
 
 // Status columns carry `enum` for TypeScript only (Drizzle adds no CHECK constraint for text enums).
 export const inboxItems = sqliteTable('inbox_items', {

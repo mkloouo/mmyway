@@ -22,6 +22,9 @@
 - A split transaction lists its splits under its row: category (or description) and amount for
   the first three, and how many more there are.
 - Account balances roll to their new value after a sync instead of jumping.
+- Switching between accounts shows their transactions faster.
+- Holding an account card no longer thickens its border; the card still pops and the phone ticks
+  when its page opens.
 - Menu actions (Duplicate, Delete, Count cash, Sign out, Diagnostics, Open in Activity) show an
   icon for what they do instead of a dash.
 - **Duplicate** on a transaction makes an Inbox draft with exactly the same data — date, splits,

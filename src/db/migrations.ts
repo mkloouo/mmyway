@@ -14,8 +14,9 @@ import m0006 from './migrations/0006_gray_james_howlett.sql';
 import m0007 from './migrations/0007_flippant_dracula.sql';
 import m0008 from './migrations/0008_blue_surge.sql';
 import m0009 from './migrations/0009_milky_sinister_six.sql';
+import m0010 from './migrations/0010_plain_bastion.sql';
 
 export default {
   journal,
-  migrations: { m0000, m0001, m0002, m0003, m0004, m0005, m0006, m0007, m0008, m0009 },
+  migrations: { m0000, m0001, m0002, m0003, m0004, m0005, m0006, m0007, m0008, m0009, m0010 },
 };
