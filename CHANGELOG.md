@@ -32,7 +32,11 @@
 
 ### Inbox
 - A change that failed to reach Firefly III says what it was ("Saving a planned transaction
-  failed") and its error can be tapped open to read in full.
+  failed") and what it was for (the transaction, account or planned transaction, by name), and
+  its error can be tapped open to read in full. Tap the card to open what it was changing.
+- A new **Queued** section lists every change still waiting to reach Firefly III — new
+  transactions, edits, deletes, receipt uploads, recurring approvals, account changes and planned
+  transactions — so the count on the sync pill matches what you see. Tap one to open it.
 
 ### Planned
 - A new **Planned** tab. The simple view lists each planned payment — a subscription, rule and

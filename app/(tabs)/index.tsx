@@ -15,7 +15,7 @@ import { SyncSheet } from '../../src/ui/SyncSheet';
 import { haptics } from '../../src/ui/haptics';
 import { Snackbar, type SnackbarEntry } from '../../src/ui/Snackbar';
 import { relativeTime } from '../../src/ui/relativeTime';
-import { useInboxSections, type AttentionItem, type InboxItemRow } from '../../src/inbox/useInboxSections';
+import { useInboxSections, type AttentionItem, type InboxItemRow, type QueuedChange } from '../../src/inbox/useInboxSections';
 import { draftReadiness } from '../../src/inbox/readiness';
 import { confirmInboxItem, undoConfirm, type ConfirmResult } from '../../src/inbox/createManualEntry';
 import { deleteInboxItem, retryErroredItem } from '../../src/inbox/updateDraft';
@@ -34,10 +34,10 @@ import { appLocale } from '../../src/i18n';
 import { readDraft, readReviewJournal } from '../../src/inbox/draftJson';
 import { TextField } from '../../src/ui/TextField';
 import { useAction } from '../../src/ui/useAction';
-import { ConfirmCard, ReviewCard, AttentionCard } from '../../src/ui/InboxCards';
+import { ConfirmCard, ReviewCard, AttentionCard, QueuedCard } from '../../src/ui/InboxCards';
 
-type SectionKey = 'attention' | 'confirm' | 'review';
-type SectionRow = AttentionItem | InboxItemRow;
+type SectionKey = 'attention' | 'confirm' | 'review' | 'queued';
+type SectionRow = AttentionItem | InboxItemRow | QueuedChange;
 
 const UNDO_WINDOW_MS = 5000; // matches the Snackbar's visible time
 
@@ -46,7 +46,7 @@ export default function InboxScreen() {
   const t = useTheme();
   const { t: tr } = useTranslation();
   const act = useAction();
-  const { needsAttention, toConfirm, toReview } = useInboxSections();
+  const { needsAttention, toConfirm, toReview, queued } = useInboxSections();
   // Only what the pill counts — not every payload in the queue.
   const { data: outbox } = useLiveQuery(db.select({ id: outboxOperations.id }).from(outboxOperations).where(inArray(outboxOperations.status, ['pending', 'failed'])));
   const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
@@ -259,6 +259,7 @@ export default function InboxScreen() {
     { key: 'attention', title: tr('inbox.sectionAttention'), data: needsAttention },
     { key: 'confirm', title: tr('inbox.sectionConfirm'), data: visibleToConfirm },
     { key: 'review', title: tr('inbox.sectionReview'), data: toReview },
+    { key: 'queued', title: tr('inbox.sectionQueued'), data: queued },
   ];
   const sections = allSections.filter((s) => s.data.length > 0);
 
@@ -376,9 +377,11 @@ export default function InboxScreen() {
                   onRetryOp={retryOpNow}
                   onDiscardOp={discardOp}
                   onResolveConflict={resolveConflict}
+                  onOpen={navigateOnce}
                 />
               );
             }
+            if (section.key === 'queued') return <QueuedCard change={item as QueuedChange} onOpen={navigateOnce} />;
             const row = item as InboxItemRow;
             if (section.key === 'review') {
               return (
