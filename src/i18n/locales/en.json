@@ -456,7 +456,8 @@
     "openingBalanceDate": "Opening balance date",
     "virtualBalance": "Virtual balance",
     "virtualBalanceHint": "Added to the real balance in Firefly III — e.g. a credit limit, or money you set aside.",
-    "monthlyPaymentDateHint": "Only the day of the month matters. Firefly III’s own edit page shows a date set from the app as empty, but it is saved."
+    "monthlyPaymentDateHint": "Only the day of the month matters. Firefly III’s own edit page shows a date set from the app as empty, but it is saved.",
+    "pendingChanges": "Changes waiting to reach Firefly III"
   },
   "migrationFailed": {
     "title": "mmyway couldn’t update its database",

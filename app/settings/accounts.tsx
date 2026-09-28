@@ -14,12 +14,15 @@ import { reorderAccounts } from '../../src/accounts/accountActions';
 import { filterAccounts } from '../../src/accounts/filterAccounts';
 import { navigateOnce } from '../../src/ui/navigateOnce';
 import { useAction } from '../../src/ui/useAction';
+import { PendingDot } from '../../src/ui/PendingDot';
+import { usePendingAccountIds } from '../../src/accounts/usePendingAccountIds';
 
 export default function AccountsScreen() {
   const db = useDb();
   const t = useTheme();
   const { t: tr } = useTranslation();
   const act = useAction();
+  const pendingAccounts = usePendingAccountIds();
   // In FF3's own order — the order every account picker in the app uses, set with Reorder.
   const allAccounts = useAssetAccounts({ includeInactive: true }) ?? [];
   const [search, setSearch] = useState('');
@@ -66,6 +69,7 @@ export default function AccountsScreen() {
             onLongPress={() => navigateOnce(`/accounts/${item.id}`)}
             style={item.active ? undefined : { opacity: 0.5 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
+              <PendingDot visible={pendingAccounts.has(item.id)} />
               <Text style={[t.type.body, { color: t.color.text, flex: 1 }]} numberOfLines={1}>{item.name}</Text>
               {!item.active && <Chip label={tr('accounts.inactive')} />}
               {hasEnvelopeMarker(item.notes) && <Chip label={tr('accounts.envelope')} />}

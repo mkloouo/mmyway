@@ -30,6 +30,8 @@ import { LEDGER_KINDS } from '../src/sync/outbox';
 import { TextField } from '../src/ui/TextField';
 import { useAction } from '../src/ui/useAction';
 import { createAndConfirmAdjustment } from '../src/reconcile/adjustment';
+import { PendingDot } from '../src/ui/PendingDot';
+import { usePendingAccountIds } from '../src/accounts/usePendingAccountIds';
 
 const STALE_MS = 24 * 60 * 60 * 1000;
 
@@ -39,6 +41,7 @@ export default function CountScreen() {
   const t = useTheme();
   const { t: tr } = useTranslation();
   const act = useAction();
+  const pendingAccounts = usePendingAccountIds();
   // Edge to edge, the window isn't resized for the keyboard; the lower envelopes need the room.
   const keyboardHeight = useKeyboardHeight();
 
@@ -195,7 +198,10 @@ export default function CountScreen() {
               const ladder = denominationsFor(a.currencyCode);
               return (
                 <Card key={a.id}>
-                  <Text style={[t.type.heading, { color: t.color.text }]}>{a.name}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
+                    <Text style={[t.type.heading, { color: t.color.text, flexShrink: 1 }]}>{a.name}</Text>
+                    <PendingDot visible={pendingAccounts.has(a.id)} />
+                  </View>
                   <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]}>
                     {tr('count.expected', { amount: a.currentBalance ? `${a.currentBalance} ${currency.symbol}` : '—' })}
                   </Text>

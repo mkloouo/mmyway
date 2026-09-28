@@ -30,6 +30,8 @@ import { haptics } from '../../src/ui/haptics';
 import { pendingEdits, applyPendingEdit, type PendingEditStatus } from '../../src/transactions/pendingEdits';
 import { readPayload } from '../../src/sync/payloadJson';
 import { useAction } from '../../src/ui/useAction';
+import { PendingDot } from '../../src/ui/PendingDot';
+import { usePendingAccountIds } from '../../src/accounts/usePendingAccountIds';
 
 const FILTERS: { labelKey: string; type: ActivityTypeFilter }[] = [
   { labelKey: 'activity.filterAll', type: 'all' },
@@ -118,6 +120,7 @@ export default function ActivityScreen() {
   const t = useTheme();
   const { t: tr } = useTranslation();
   const act = useAction();
+  const pendingAccounts = usePendingAccountIds();
   const navigation = useNavigation();
   const listRef = useRef<SectionList<ActivityItem, DisplaySection>>(null);
 
@@ -364,7 +367,10 @@ export default function ActivityScreen() {
                   style={({ pressed }) => ({ opacity: pressed ? 0.6 : stale ? 0.5 : 1 })}
                 >
                   <Card style={{ borderColor: selected ? t.color.accent : t.color.border, minWidth: 120 }}>
-                    <Text style={[t.type.label, { color: t.color.textMuted }]} numberOfLines={1}>{a.name}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.xs }}>
+                      <Text style={[t.type.label, { color: t.color.textMuted, flexShrink: 1 }]} numberOfLines={1}>{a.name}</Text>
+                      <PendingDot visible={pendingAccounts.has(a.id)} />
+                    </View>
                     <Money amount={a.currentBalance ?? '0'} currency={currencyOf(currencies ?? [], a.currencyCode)} size="heading" />
                     <Text style={[t.type.label, { color: t.color.textFaint }]}>{tr('count.asOf', { time: relativeTime(a.currentBalanceDate) })}</Text>
                   </Card>

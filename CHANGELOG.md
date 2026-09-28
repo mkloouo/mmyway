@@ -8,6 +8,8 @@
   card with its monthly payment date, or cash wallet), whether it's active, a cash envelope or in
   your net worth, its opening balance and date, and its virtual balance. Saved together with
   **Save**, and sent to Firefly III like any other change, offline too.
+- An account with changes still waiting to reach Firefly III shows a yellow dot on its card: on
+  Activity, in Settings → Accounts, on Count cash and on its own page.
 
 ### Activity
 - Search ignores case and accents: "żabka" finds "Żabka", in Polish and Cyrillic too.

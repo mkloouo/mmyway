@@ -28,6 +28,8 @@ import { parseSignedDecimalInput } from '../../src/api/ff3/decimal';
 import { appLocale } from '../../src/i18n';
 import { PickerSheet } from '../../src/ui/PickerSheet';
 import { pickableCurrencies } from '../../src/ui/currencies';
+import { PendingDot } from '../../src/ui/PendingDot';
+import { usePendingAccountIds } from '../../src/accounts/usePendingAccountIds';
 
 const ROLE_LABEL_KEYS: Record<AccountRole, string> = {
   defaultAsset: 'account.roleDefault',
@@ -57,6 +59,7 @@ export default function AccountScreen() {
   const db = useDb();
   const t = useTheme();
   const { t: tr } = useTranslation();
+  const pendingAccounts = usePendingAccountIds();
 
   const { data: rows } = useLiveQuery(db.select().from(referenceAccounts).where(eq(referenceAccounts.id, id)), [id]);
   const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
@@ -161,6 +164,7 @@ export default function AccountScreen() {
           title={account.name}
           subtitle={tr('count.asOf', { time: relativeTime(account.currentBalanceDate) })}
           left={<BarIconButton icon="close" label={tr('common.close')} onPress={close} />}
+          right={<PendingDot visible={pendingAccounts.has(account.id)} />}
         />
         <ScrollView contentContainerStyle={{ paddingBottom: t.space.xl }} keyboardShouldPersistTaps="handled">
           <View style={{ alignItems: 'center', paddingVertical: t.space.md }}>
