@@ -2,13 +2,13 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { eq } from 'drizzle-orm';
-import { Alert, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, ScrollView, Text } from 'react-native';
 import { router } from 'expo-router';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
 import Constants from 'expo-constants';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, AppBar, SectionHeader, Card, Row, Chip, Button, Sheet, Toast } from '../../src/ui/components';
+import { Screen, AppBar, SectionHeader, Card, Row, Button, Sheet, Toast } from '../../src/ui/components';
 import { AddressesSheet } from '../../src/ui/AddressesSheet';
 import { relativeTime } from '../../src/ui/relativeTime';
 import { signIn, signOut, readStoredCredentials, probeAbout } from '../../src/api/ff3/auth';
@@ -31,6 +31,8 @@ import {
   getLocale, setLocale,
 } from '../../src/settings/appSettings';
 import type { AppLocale } from '../../src/i18n';
+import { TextField } from '../../src/ui/TextField';
+import { PickerSheet } from '../../src/ui/PickerSheet';
 
 const SIGN_IN_ERROR_KEYS: Record<AuthErrorReason, string> = {
   invalid_host: 'settings.signInErrors.invalidHost',
@@ -277,15 +279,12 @@ export default function SettingsScreen() {
         title="Firefly III"
         footer={<Button title={signingIn ? tr('settings.connecting') : tr('settings.signIn')} onPress={onSignIn} disabled={signingIn} />}
       >
-        <TextInput
+        <TextField
           value={host} onChangeText={setHost} placeholder="https://firefly.example.com" autoCapitalize="none"
-          placeholderTextColor={t.color.textFaint}
-          style={{ borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm, padding: t.space.md, color: t.color.text }}
         />
-        <TextInput
+        <TextField
           value={token} onChangeText={setToken} placeholder={tr('settings.tokenPlaceholder')} secureTextEntry autoCapitalize="none"
-          placeholderTextColor={t.color.textFaint}
-          style={{ borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm, padding: t.space.md, color: t.color.text, marginTop: t.space.sm }}
+          style={{ marginTop: t.space.sm }}
         />
       </Sheet>
 
@@ -332,10 +331,8 @@ export default function SettingsScreen() {
           />
         )}
       >
-        <TextInput
+        <TextField
           value={localModelName} onChangeText={setLocalModelNameState} placeholder={tr('settings.localModelPlaceholder')} autoCapitalize="none"
-          placeholderTextColor={t.color.textFaint}
-          style={{ borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm, padding: t.space.md, color: t.color.text }}
         />
       </Sheet>
 
@@ -356,52 +353,35 @@ export default function SettingsScreen() {
           />
         )}
       >
-        <TextInput
+        <TextField
           value={geminiKeyInput} onChangeText={setGeminiKeyInput} placeholder={tr('settings.apiKeyPlaceholder')} secureTextEntry autoCapitalize="none"
-          placeholderTextColor={t.color.textFaint}
-          style={{ borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm, padding: t.space.md, color: t.color.text }}
         />
       </Sheet>
 
-      <Sheet visible={accountSheetOpen} onClose={() => setAccountSheetOpen(false)} title={tr('settings.defaultAccount')}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
-          {assetAccounts.map((a) => (
-            <Chip key={a.id} label={a.name} selected={a.id === defaultAccountId} onPress={async () => { await setDefaultSourceAccountId(db, a.id); setDefaultAccountIdState(a.id); setAccountSheetOpen(false); }} />
-          ))}
-          {assetAccounts.length === 0 && noAccountsHint}
-        </View>
-      </Sheet>
+      <PickerSheet
+        visible={accountSheetOpen} onClose={() => setAccountSheetOpen(false)} title={tr('settings.defaultAccount')}
+        options={assetAccounts.map((a) => ({ key: a.id, label: a.name }))} selected={defaultAccountId} empty={noAccountsHint}
+        onSelect={async (id) => { if (!id) return; await setDefaultSourceAccountId(db, id); setDefaultAccountIdState(id); }}
+      />
 
-      <Sheet visible={currencySheetOpen} onClose={() => setCurrencySheetOpen(false)} title={tr('settings.defaultCurrency')}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
-          {(currencies ?? []).map((c) => (
-            <Chip key={c.code} label={c.code} selected={c.code === defaultCurrency} onPress={async () => { await setDefaultCurrencyCode(db, c.code); setDefaultCurrencyState(c.code); setCurrencySheetOpen(false); }} />
-          ))}
-        </View>
-      </Sheet>
+      <PickerSheet
+        visible={currencySheetOpen} onClose={() => setCurrencySheetOpen(false)} title={tr('settings.defaultCurrency')}
+        options={(currencies ?? []).map((c) => ({ key: c.code, label: c.code }))} selected={defaultCurrency}
+        onSelect={async (code) => { if (!code) return; await setDefaultCurrencyCode(db, code); setDefaultCurrencyState(code); }}
+      />
 
-      <Sheet visible={cashAccountSheetOpen} onClose={() => setCashAccountSheetOpen(false)} title={tr('settings.cashPaymentsUse')}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
-          {assetAccounts.map((a) => (
-            <Chip key={a.id} label={a.name} selected={a.id === cashAccountId} onPress={async () => { await setCashAccountId(db, a.id); setCashAccountIdState(a.id); setCashAccountSheetOpen(false); }} />
-          ))}
-          {assetAccounts.length === 0 && noAccountsHint}
-        </View>
-      </Sheet>
+      <PickerSheet
+        visible={cashAccountSheetOpen} onClose={() => setCashAccountSheetOpen(false)} title={tr('settings.cashPaymentsUse')}
+        options={assetAccounts.map((a) => ({ key: a.id, label: a.name }))} selected={cashAccountId} empty={noAccountsHint}
+        onSelect={async (id) => { if (!id) return; await setCashAccountId(db, id); setCashAccountIdState(id); }}
+      />
 
-      <Sheet visible={languageSheetOpen} onClose={() => setLanguageSheetOpen(false)} title={tr('settings.language')}>
-        <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('settings.languageHint')}</Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
-          {LANGUAGE_OPTIONS.map((o) => (
-            <Chip
-              key={o.value}
-              label={tr(o.labelKey)}
-              selected={o.value === locale}
-              onPress={async () => { await setLocale(db, o.value); setLocaleState(o.value); setLanguageSheetOpen(false); }}
-            />
-          ))}
-        </View>
-      </Sheet>
+      <PickerSheet
+        visible={languageSheetOpen} onClose={() => setLanguageSheetOpen(false)} title={tr('settings.language')}
+        header={<Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('settings.languageHint')}</Text>}
+        options={LANGUAGE_OPTIONS.map((o) => ({ key: o.value, label: tr(o.labelKey) }))} selected={locale}
+        onSelect={async (value) => { const next = (value ?? 'system') as AppLocale; await setLocale(db, next); setLocaleState(next); }}
+      />
     </Screen>
   );
 }

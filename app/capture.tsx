@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n, { appLocale } from '../src/i18n';
-import { Alert, BackHandler, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, BackHandler, Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useLiveQuery } from '../src/db/useLiveQuery';
@@ -35,6 +35,8 @@ import { useToast } from '../src/ui/useToast';
 import { Snackbar, type SnackbarEntry } from '../src/ui/Snackbar';
 import type { Draft } from '../src/inbox/draft';
 import { needsLabel } from '../src/ui/readinessLabel';
+import { TextField } from '../src/ui/TextField';
+import { PickerSheet } from '../src/ui/PickerSheet';
 
 // A ScrollView defaults to flexGrow/flexShrink 1, so a row of chips would otherwise stretch or
 // be clipped as it competes with the keypad below it for height.
@@ -347,16 +349,12 @@ export default function CaptureScreen() {
             <Text style={[t.type.label, { color: t.color.textMuted }]}>
               {tr('capture.convertsTo', { amount, currency: effectiveCurrencyCode })}
             </Text>
-            <TextInput
+            <TextField
               value={foreignAmount}
               onChangeText={setForeignAmount}
               keyboardType="decimal-pad"
               placeholder={`___ ${accountCurrencyCode}`}
-              placeholderTextColor={t.color.textFaint}
-              style={{
-                borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm,
-                paddingHorizontal: t.space.md, paddingVertical: t.space.sm, color: t.color.text, marginTop: t.space.xs,
-              }}
+              style={{ marginTop: t.space.xs }}
             />
             {!!impliedRate && !isNegative(impliedRate) && (
               <Text style={[t.type.label, { color: t.color.textFaint, marginTop: t.space.xs }]}>
@@ -477,31 +475,23 @@ export default function CaptureScreen() {
         </View>
       </Sheet>
 
-      <Sheet visible={currencySheetOpen} onClose={() => setCurrencySheetOpen(false)} title={tr('fields.currency')}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
-          {(currencies ?? []).map((c) => (
-            <Chip key={c.code} label={c.code} selected={c.code === effectiveCurrencyCode} onPress={() => { setCurrencyCode(c.code); setCurrencySheetOpen(false); }} />
-          ))}
-        </View>
-      </Sheet>
+      <PickerSheet
+        visible={currencySheetOpen} onClose={() => setCurrencySheetOpen(false)} title={tr('fields.currency')}
+        options={(currencies ?? []).map((c) => ({ key: c.code, label: c.code }))}
+        selected={effectiveCurrencyCode} onSelect={(code) => code && setCurrencyCode(code)}
+      />
 
-      <Sheet visible={categorySheetOpen} onClose={() => setCategorySheetOpen(false)} title={tr('fields.category')}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
-          <Chip label={tr('common.none')} selected={!categoryName} onPress={() => { setCategoryName(null); setCategorySheetOpen(false); }} />
-          {(categories ?? []).map((c) => (
-            <Chip key={c.id} label={c.name} selected={c.name === categoryName} onPress={() => { setCategoryName(c.name); setCategorySheetOpen(false); }} />
-          ))}
-        </View>
-      </Sheet>
+      <PickerSheet
+        visible={categorySheetOpen} onClose={() => setCategorySheetOpen(false)} title={tr('fields.category')}
+        options={(categories ?? []).map((c) => ({ key: c.name, label: c.name }))}
+        selected={categoryName} onSelect={setCategoryName} noneLabel={tr('common.none')}
+      />
 
-      <Sheet visible={budgetSheetOpen} onClose={() => setBudgetSheetOpen(false)} title={tr('fields.budget')}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
-          <Chip label={tr('common.none')} selected={!budgetId} onPress={() => { setBudgetId(null); setBudgetSheetOpen(false); }} />
-          {(budgets ?? []).map((b) => (
-            <Chip key={b.id} label={b.name} selected={b.id === budgetId} onPress={() => { setBudgetId(b.id); setBudgetSheetOpen(false); }} />
-          ))}
-        </View>
-      </Sheet>
+      <PickerSheet
+        visible={budgetSheetOpen} onClose={() => setBudgetSheetOpen(false)} title={tr('fields.budget')}
+        options={(budgets ?? []).map((b) => ({ key: b.id, label: b.name }))}
+        selected={budgetId} onSelect={setBudgetId} noneLabel={tr('common.none')}
+      />
 
       <PayeeSheet
         visible={payeeSheetOpen}
@@ -528,20 +518,14 @@ export default function CaptureScreen() {
         title={tr('capture.more')}
         footer={<Button title={tr('common.done')} onPress={() => setMoreSheetOpen(false)} />}
       >
-        <TextInput
+        <TextField
           placeholder={tr('fields.description')} value={description} onChangeText={setDescription}
-          placeholderTextColor={t.color.textFaint}
-          style={{ borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm, padding: t.space.md, color: t.color.text }}
         />
-        <TextInput
+        <TextField
           placeholder={tr('fields.notes')} value={notes} onChangeText={setNotes}
-          placeholderTextColor={t.color.textFaint}
-          style={{ borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm, padding: t.space.md, color: t.color.text }}
         />
-        <TextInput
+        <TextField
           placeholder={tr('fields.sharedWith')} value={sharedWith} onChangeText={setSharedWith}
-          placeholderTextColor={t.color.textFaint}
-          style={{ borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm, padding: t.space.md, color: t.color.text }}
         />
         <Row first label={tr('capture.receiptPhoto')} value={photoUri ? tr('capture.attached') : tr('capture.attach')} chevron onPress={attachPhoto} />
         {!!photoUri && <Button title={tr('capture.removePhoto')} variant="ghost" onPress={() => setPhotoUri(null)} />}

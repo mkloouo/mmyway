@@ -3,10 +3,11 @@
 // separate Save.
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { Sheet, Button } from './components';
 import { confirmDestructive } from './confirm';
 import { useTheme } from './theme';
+import { TextField } from './TextField';
 
 type Status = 'idle' | 'probing' | 'ok' | 'down' | 'never_reached';
 
@@ -121,17 +122,13 @@ export function AddressesSheet({
         ))}
 
         <View style={{ flexDirection: 'row', gap: t.space.sm, alignItems: 'center', paddingTop: t.space.sm }}>
-          <TextInput
+          <TextField
             value={newAddress}
             onChangeText={setNewAddress}
             placeholder="https://…"
-            placeholderTextColor={t.color.textFaint}
             autoCapitalize="none"
             autoCorrect={false}
-            style={{
-              flex: 1, borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm,
-              paddingHorizontal: t.space.md, paddingVertical: t.space.sm, color: t.color.text,
-            }}
+            style={{ flex: 1 }}
           />
         </View>
         <Button title={adding ? tr('addresses.adding') : tr('addresses.add')} variant="secondary" onPress={addAddress} disabled={adding || !newAddress.trim()} />

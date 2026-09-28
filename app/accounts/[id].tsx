@@ -3,15 +3,16 @@
 // balance card on Activity (long-press).
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, BackHandler, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, BackHandler, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { eq } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, AppBar, BarIconButton, SectionHeader, Card, Row, Chip, Button, Sheet, Money, Toast } from '../../src/ui/components';
+import { Screen, AppBar, BarIconButton, SectionHeader, Card, Row, Button, Money, Toast } from '../../src/ui/components';
 import { Checkbox } from '../../src/ui/Checkbox';
+import { TextField } from '../../src/ui/TextField';
 import { currencyOf } from '../../src/ui/money';
 import { relativeTime } from '../../src/ui/relativeTime';
 import { reportErrors } from '../../src/ui/reportError';
@@ -25,6 +26,7 @@ import {
 } from '../../src/accounts/accountEdit';
 import { parseSignedDecimalInput } from '../../src/api/ff3/decimal';
 import { appLocale } from '../../src/i18n';
+import { PickerSheet } from '../../src/ui/PickerSheet';
 
 const ROLE_LABEL_KEYS: Record<AccountRole, string> = {
   defaultAsset: 'account.roleDefault',
@@ -152,10 +154,6 @@ export default function AccountScreen() {
   }
 
   const currency = currencyOf(currencies ?? [], account.currencyCode);
-  const inputStyle = {
-    borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm,
-    paddingHorizontal: t.space.md, paddingVertical: t.space.sm, color: t.color.text,
-  };
   const problemText = problem === 'name' ? tr('account.problemName')
     : problem === 'openingBalanceDate' ? tr('account.problemOpeningDate')
     : problem === 'monthlyPaymentDate' ? tr('account.problemPaymentDate')
@@ -177,9 +175,9 @@ export default function AccountScreen() {
           <SectionHeader title={tr('account.sectionAccount')} />
           <Card style={{ marginHorizontal: t.space.lg, gap: t.space.sm }}>
             <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('accounts.name')}</Text>
-            <TextInput
+            <TextField
               value={form.name} onChangeText={(name) => patch({ name })}
-              placeholder={tr('accounts.name')} placeholderTextColor={t.color.textFaint} style={inputStyle}
+              placeholder={tr('accounts.name')}
             />
             <Row label={tr('fields.currency')} value={form.currencyCode} chevron onPress={() => setCurrencySheetOpen(true)} />
             <Row label={tr('account.role')} value={tr(ROLE_LABEL_KEYS[form.accountRole])} chevron onPress={() => setRoleSheetOpen(true)} />
@@ -209,9 +207,9 @@ export default function AccountScreen() {
           <SectionHeader title={tr('account.sectionBalances')} />
           <Card style={{ marginHorizontal: t.space.lg, gap: t.space.sm }}>
             <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('account.openingBalance')}</Text>
-            <TextInput
+            <TextField
               value={openingText} onChangeText={setOpeningText} keyboardType="numeric"
-              placeholder="0" placeholderTextColor={t.color.textFaint} style={inputStyle}
+              placeholder="0"
             />
             {!!opening && !opening.ok && <Text style={[t.type.label, { color: t.color.danger }]}>{tr('common.invalidAmount')}</Text>}
             <Row
@@ -221,9 +219,9 @@ export default function AccountScreen() {
               onPress={() => pickDay(form.openingBalanceDate, (day) => patch({ openingBalanceDate: day }))}
             />
             <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.sm }]}>{tr('account.virtualBalance')}</Text>
-            <TextInput
+            <TextField
               value={virtualText} onChangeText={setVirtualText} keyboardType="numeric"
-              placeholder="0" placeholderTextColor={t.color.textFaint} style={inputStyle}
+              placeholder="0"
             />
             {!!virtual && !virtual.ok && <Text style={[t.type.label, { color: t.color.danger }]}>{tr('common.invalidAmount')}</Text>}
             <Text style={[t.type.label, { color: t.color.textFaint }]}>{tr('account.virtualBalanceHint')}</Text>
@@ -237,21 +235,17 @@ export default function AccountScreen() {
         <Toast message={toast} />
       </View>
 
-      <Sheet visible={currencySheetOpen} onClose={() => setCurrencySheetOpen(false)} title={tr('fields.currency')}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
-          {(currencies ?? []).map((c) => (
-            <Chip key={c.code} label={c.code} selected={c.code === form.currencyCode} onPress={() => { patch({ currencyCode: c.code }); setCurrencySheetOpen(false); }} />
-          ))}
-        </View>
-      </Sheet>
+      <PickerSheet
+        visible={currencySheetOpen} onClose={() => setCurrencySheetOpen(false)} title={tr('fields.currency')}
+        options={(currencies ?? []).map((c) => ({ key: c.code, label: c.code }))}
+        selected={form.currencyCode} onSelect={(code) => code && patch({ currencyCode: code })}
+      />
 
-      <Sheet visible={roleSheetOpen} onClose={() => setRoleSheetOpen(false)} title={tr('account.role')}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
-          {ACCOUNT_ROLES.map((role) => (
-            <Chip key={role} label={tr(ROLE_LABEL_KEYS[role])} selected={role === form.accountRole} onPress={() => { patch({ accountRole: role }); setRoleSheetOpen(false); }} />
-          ))}
-        </View>
-      </Sheet>
+      <PickerSheet
+        visible={roleSheetOpen} onClose={() => setRoleSheetOpen(false)} title={tr('account.role')}
+        options={ACCOUNT_ROLES.map((role) => ({ key: role, label: tr(ROLE_LABEL_KEYS[role]) }))}
+        selected={form.accountRole} onSelect={(role) => role && patch({ accountRole: role as AccountRole })}
+      />
     </Screen>
   );
 }

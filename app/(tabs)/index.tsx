@@ -1,7 +1,7 @@
 // Inbox (design §6.1) — the approval queue. Only ever holds unfinished work; confirmed/synced
 // items leave every section (see src/inbox/useInboxSections.ts).
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, SectionList, Text, TextInput, View } from 'react-native';
+import { Pressable, SectionList, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { eq, inArray } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
@@ -37,6 +37,7 @@ import { navigateOnce } from '../../src/ui/navigateOnce';
 import { needsLabel } from '../../src/ui/readinessLabel';
 import { appLocale } from '../../src/i18n';
 import { readDraft, readReviewJournal } from '../../src/inbox/draftJson';
+import { TextField } from '../../src/ui/TextField';
 
 type SectionKey = 'attention' | 'confirm' | 'review';
 type SectionRow = AttentionItem | InboxItemRow;
@@ -599,20 +600,16 @@ export default function InboxScreen() {
       >
         {!!editingReview && (
           <>
-            <TextInput
+            <TextField
               placeholder={tr('fields.amount')} value={editingReview.amount} keyboardType="decimal-pad"
               onChangeText={(v) => setEditingReview((cur) => (cur ? { ...cur, amount: v } : cur))}
-              style={{ borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm, padding: t.space.md, color: t.color.text }}
-              placeholderTextColor={t.color.textFaint}
             />
             {editAmountInvalid && (
               <Text style={[t.type.label, { color: t.color.danger }]}>{tr('common.invalidAmount')}</Text>
             )}
-            <TextInput
+            <TextField
               placeholder={tr('fields.currency')} value={editingReview.currencyCode}
               onChangeText={(v) => setEditingReview((cur) => (cur ? { ...cur, currencyCode: v } : cur))}
-              style={{ borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm, padding: t.space.md, color: t.color.text }}
-              placeholderTextColor={t.color.textFaint}
             />
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
               {assetAccounts.map((a) => (

@@ -2,7 +2,7 @@
 // cash envelope in one pass; one confirm creates one adjustment per envelope that differs.
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { eq, inArray } from 'drizzle-orm';
 import { useLiveQuery } from '../src/db/useLiveQuery';
@@ -31,6 +31,7 @@ import { generateId } from '../src/utils/id';
 import type { Draft } from '../src/inbox/draft';
 import { LEDGER_KINDS, type OutboxDb } from '../src/sync/outbox';
 import { writeDraft } from '../src/inbox/draftJson';
+import { TextField } from '../src/ui/TextField';
 
 const STALE_MS = 24 * 60 * 60 * 1000;
 
@@ -226,16 +227,12 @@ export default function CountScreen() {
                     {tr('count.expected', { amount: a.currentBalance ? `${a.currentBalance} ${currency.symbol}` : '—' })}
                   </Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm, marginTop: t.space.sm }}>
-                    <TextInput
+                    <TextField
                       value={counted}
                       onChangeText={(v) => setCounts((c) => ({ ...c, [a.id]: v }))}
                       keyboardType="decimal-pad"
                       placeholder="—"
-                      placeholderTextColor={t.color.textFaint}
-                      style={{
-                        flex: 1, borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm,
-                        paddingHorizontal: t.space.md, paddingVertical: t.space.sm, color: t.color.text,
-                      }}
+                      style={{ flex: 1 }}
                     />
                     {!!ladder && (
                       <Pressable onPress={() => openDenomPad(a.id)} accessibilityRole="button" accessibilityLabel={tr('count.byDenomination', { name: a.name })}>
@@ -291,13 +288,12 @@ export default function CountScreen() {
           <View key={d.value} style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.md, paddingVertical: t.space.xs }}>
             <Text style={[t.type.body, { color: t.color.text, width: 60 }]}>{d.label}</Text>
             <Text style={[t.type.body, { color: t.color.textMuted }]}>×</Text>
-            <TextInput
+            <TextField
               value={denomCounts[d.value] ? String(denomCounts[d.value]) : ''}
               onChangeText={(v) => setDenomCounts((c) => ({ ...c, [d.value]: Math.max(0, parseInt(v, 10) || 0) }))}
               keyboardType="number-pad"
               placeholder="0"
-              placeholderTextColor={t.color.textFaint}
-              style={{ flex: 1, borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm, paddingHorizontal: t.space.md, paddingVertical: t.space.sm, color: t.color.text }}
+              style={{ flex: 1 }}
             />
           </View>
         ))}

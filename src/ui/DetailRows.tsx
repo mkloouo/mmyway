@@ -2,11 +2,13 @@
 // the transaction detail screen. Every row opens a sheet; nothing is an inline chip wall.
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Text, TextInput, View } from 'react-native';
-import { Card, Row, Chip, Button, Sheet } from './components';
+import { Text, View } from 'react-native';
+import { Card, Row, Button, Sheet } from './components';
 import { useTheme } from './theme';
 import { categoryColor } from './categoryColor';
 import { AccountPickerSheet, type AccountPickerAccount } from './AccountPickerSheet';
+import { TextField } from './TextField';
+import { PickerSheet } from './PickerSheet';
 
 export interface DetailRowsValue {
   type: 'withdrawal' | 'deposit' | 'transfer';
@@ -91,23 +93,17 @@ export function DetailRows({ value, onChange, onDatePress, readOnly, accounts, p
         <Row label={tr('fields.sharedWith')} value={value.sharedWith || '—'} chevron={!readOnly} onPress={readOnly ? undefined : () => setTextSheetOpen(true)} />
       </Card>
 
-      <Sheet visible={categorySheetOpen} onClose={() => setCategorySheetOpen(false)} title={tr('fields.category')}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
-          <Chip label={tr('common.none')} selected={!value.categoryName} onPress={() => { onChange({ categoryName: null }); setCategorySheetOpen(false); }} />
-          {categories.map((c) => (
-            <Chip key={c.id} label={c.name} selected={c.name === value.categoryName} onPress={() => { onChange({ categoryName: c.name }); setCategorySheetOpen(false); }} />
-          ))}
-        </View>
-      </Sheet>
+      <PickerSheet
+        visible={categorySheetOpen} onClose={() => setCategorySheetOpen(false)} title={tr('fields.category')}
+        options={categories.map((c) => ({ key: c.name, label: c.name }))}
+        selected={value.categoryName} onSelect={(categoryName) => onChange({ categoryName })} noneLabel={tr('common.none')}
+      />
 
-      <Sheet visible={budgetSheetOpen} onClose={() => setBudgetSheetOpen(false)} title={tr('fields.budget')}>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
-          <Chip label={tr('common.none')} selected={!value.budgetId} onPress={() => { onChange({ budgetId: null }); setBudgetSheetOpen(false); }} />
-          {budgets.map((b) => (
-            <Chip key={b.id} label={b.name} selected={b.id === value.budgetId} onPress={() => { onChange({ budgetId: b.id }); setBudgetSheetOpen(false); }} />
-          ))}
-        </View>
-      </Sheet>
+      <PickerSheet
+        visible={budgetSheetOpen} onClose={() => setBudgetSheetOpen(false)} title={tr('fields.budget')}
+        options={budgets.map((b) => ({ key: b.id, label: b.name }))}
+        selected={value.budgetId} onSelect={(budgetId) => onChange({ budgetId })} noneLabel={tr('common.none')}
+      />
 
       <AccountPickerSheet
         visible={!!accountSheetTarget}
@@ -126,19 +122,16 @@ export function DetailRows({ value, onChange, onDatePress, readOnly, accounts, p
         footer={<Button title={tr('common.done')} onPress={() => setTextSheetOpen(false)} />}
       >
         <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('fields.note')}</Text>
-        <TextInput
+        <TextField
           value={value.notes ?? ''}
           onChangeText={(v) => onChange({ notes: v })}
           multiline
-          placeholderTextColor={t.color.textFaint}
-          style={{ borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm, padding: t.space.md, color: t.color.text, minHeight: 60 }}
+          style={{ minHeight: 60 }}
         />
         <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.sm }]}>{tr('fields.sharedWith')}</Text>
-        <TextInput
+        <TextField
           value={value.sharedWith ?? ''}
           onChangeText={(v) => onChange({ sharedWith: v })}
-          placeholderTextColor={t.color.textFaint}
-          style={{ borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm, padding: t.space.md, color: t.color.text }}
         />
       </Sheet>
     </>
