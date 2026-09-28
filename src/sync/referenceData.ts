@@ -113,11 +113,14 @@ export async function pullReferenceData(db: OutboxDb, client: FF3Client): Promis
       tx.insert(referenceBudgets).values(row).onConflictDoUpdate({ target: referenceBudgets.id, set: row }).run();
     }
     for (const currency of currencies) {
-      const row = { code: currency.attributes.code, symbol: currency.attributes.symbol, decimalPlaces: currency.attributes.decimal_places, syncedAt: now };
-      const old = currenciesByCode.get(row.code);
-      if (old && old.symbol === row.symbol && old.decimalPlaces === row.decimalPlaces) { unchanged.currencies.push(row.code); continue; }
-      tx.insert(referenceCurrencies).values(row)
-        .onConflictDoUpdate({ target: referenceCurrencies.code, set: { symbol: row.symbol, decimalPlaces: row.decimalPlaces, syncedAt: now } }).run();
+      // CurrencyRead (pinned) predates FF3's `primary`; older servers call it `default`.
+      const flags = currency.attributes as { enabled?: boolean; primary?: boolean; default?: boolean };
+      const row = {
+        code: currency.attributes.code, symbol: currency.attributes.symbol, decimalPlaces: currency.attributes.decimal_places,
+        enabled: flags.enabled ?? true, isDefault: flags.primary ?? flags.default ?? false, syncedAt: now,
+      };
+      if (sameFields(currenciesByCode.get(row.code), row)) { unchanged.currencies.push(row.code); continue; }
+      tx.insert(referenceCurrencies).values(row).onConflictDoUpdate({ target: referenceCurrencies.code, set: row }).run();
     }
     for (const ids of chunks(unchanged.accounts)) tx.update(referenceAccounts).set({ syncedAt: now }).where(inArray(referenceAccounts.id, ids)).run();
     for (const ids of chunks(unchanged.categories)) tx.update(referenceCategories).set({ syncedAt: now }).where(inArray(referenceCategories.id, ids)).run();

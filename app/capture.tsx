@@ -38,6 +38,7 @@ import { needsLabel } from '../src/ui/readinessLabel';
 import { TextField } from '../src/ui/TextField';
 import { PickerSheet } from '../src/ui/PickerSheet';
 import { useAction } from '../src/ui/useAction';
+import { pickableCurrencies, primaryCurrencyCode } from '../src/ui/currencies';
 
 // A ScrollView defaults to flexGrow/flexShrink 1, so a row of chips would otherwise stretch or
 // be clipped as it competes with the keypad below it for height.
@@ -133,7 +134,8 @@ export default function CaptureScreen() {
   // Defaults arrive asynchronously (SecureStore/app_settings) after first render — derived here
   // rather than mirrored into state via an effect, so there is nothing to keep in sync.
   const isPayeeType = type === 'withdrawal' || type === 'deposit';
-  const effectiveCurrencyCode = currencyCode ?? defaultCurrencyCode;
+  // Settings → Default currency, else FF3's primary currency — never nothing at all.
+  const effectiveCurrencyCode = currencyCode ?? defaultCurrencyCode ?? primaryCurrencyCode(currencies);
   const effectiveSourceId = sourceId ?? (type === 'withdrawal' || type === 'transfer' ? defaultAccountId : null);
 
   const [matchedFor, setMatchedFor] = useState<{ text: string; caption: string | null } | null>(null);
@@ -459,7 +461,7 @@ export default function CaptureScreen() {
 
       <PickerSheet
         visible={currencySheetOpen} onClose={() => setCurrencySheetOpen(false)} title={tr('fields.currency')}
-        options={(currencies ?? []).map((c) => ({ key: c.code, label: c.code }))}
+        options={pickableCurrencies(currencies, effectiveCurrencyCode).map((c) => ({ key: c.code, label: c.code }))}
         selected={effectiveCurrencyCode} onSelect={(code) => code && setCurrencyCode(code)}
       />
 

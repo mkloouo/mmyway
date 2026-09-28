@@ -34,6 +34,7 @@ import type { AppLocale } from '../../src/i18n';
 import { TextField } from '../../src/ui/TextField';
 import { PickerSheet } from '../../src/ui/PickerSheet';
 import { useAction } from '../../src/ui/useAction';
+import { pickableCurrencies, primaryCurrencyCode } from '../../src/ui/currencies';
 
 const SIGN_IN_ERROR_KEYS: Record<AuthErrorReason, string> = {
   invalid_host: 'settings.signInErrors.invalidHost',
@@ -242,7 +243,7 @@ export default function SettingsScreen() {
         <SectionHeader title={tr('settings.sectionDefaults')} />
         <Card style={{ marginHorizontal: t.space.lg }}>
           <Row first label={tr('settings.account')} chevron value={accountLabel(defaultAccountId)} onPress={() => setAccountSheetOpen(true)} />
-          <Row label={tr('fields.currency')} chevron value={defaultCurrency ?? tr('settings.none')} onPress={() => setCurrencySheetOpen(true)} />
+          <Row label={tr('fields.currency')} chevron value={defaultCurrency ?? primaryCurrencyCode(currencies) ?? tr('settings.none')} onPress={() => setCurrencySheetOpen(true)} />
           <Row label={tr('settings.cashPaymentsUse')} chevron value={accountLabel(cashAccountId)} onPress={() => setCashAccountSheetOpen(true)} />
         </Card>
 
@@ -369,7 +370,7 @@ export default function SettingsScreen() {
 
       <PickerSheet
         visible={currencySheetOpen} onClose={() => setCurrencySheetOpen(false)} title={tr('settings.defaultCurrency')}
-        options={(currencies ?? []).map((c) => ({ key: c.code, label: c.code }))} selected={defaultCurrency}
+        options={pickableCurrencies(currencies, defaultCurrency).map((c) => ({ key: c.code, label: c.code }))} selected={defaultCurrency ?? primaryCurrencyCode(currencies)}
         onSelect={async (code) => { if (!code) return; await setDefaultCurrencyCode(db, code); setDefaultCurrencyState(code); }}
       />
 

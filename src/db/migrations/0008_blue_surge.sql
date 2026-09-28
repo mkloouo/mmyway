@@ -1,0 +1,1 @@
+ALTER TABLE `reference_currencies` ADD `enabled` integer DEFAULT true NOT NULL;

@@ -39,6 +39,10 @@
 - A shared diagnostics log hides amounts, payees, accounts and notes.
 
 ### Fixed
+- Currency pickers offer only the currencies enabled in your Firefly III (your primary currency
+  first), not every currency it knows, BTC included.
+- With no default currency set in Settings, a new entry uses your Firefly III primary currency
+  instead of none.
 - Reordering accounts now reaches Firefly III; the new order used to stay on the phone.
 - Payee suggestions now also fill in the usual budget.
 - The diagnostics log keeps the lines from before the app was last closed.

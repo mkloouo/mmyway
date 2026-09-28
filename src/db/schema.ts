@@ -37,7 +37,9 @@ export const referenceCurrencies = sqliteTable('reference_currencies', {
   code: text('code').primaryKey(), // e.g. PLN
   symbol: text('symbol').notNull(),
   decimalPlaces: integer('decimal_places').notNull(),
-  isDefault: integer('is_default', { mode: 'boolean' }).notNull().default(false),
+  isDefault: integer('is_default', { mode: 'boolean' }).notNull().default(false), // FF3's primary currency
+  // FF3 knows every currency (BTC included) but only the enabled ones are in use; pickers offer those.
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
   syncedAt: text('synced_at').notNull(),
 });
 

@@ -27,6 +27,7 @@ import {
 import { parseSignedDecimalInput } from '../../src/api/ff3/decimal';
 import { appLocale } from '../../src/i18n';
 import { PickerSheet } from '../../src/ui/PickerSheet';
+import { pickableCurrencies } from '../../src/ui/currencies';
 
 const ROLE_LABEL_KEYS: Record<AccountRole, string> = {
   defaultAsset: 'account.roleDefault',
@@ -184,6 +185,9 @@ export default function AccountScreen() {
                 onPress={() => pickDay(form.monthlyPaymentDate, (day) => patch({ monthlyPaymentDate: day }))}
               />
             )}
+            {form.accountRole === 'ccAsset' && (
+              <Text style={[t.type.label, { color: t.color.textFaint }]}>{tr('account.monthlyPaymentDateHint')}</Text>
+            )}
           </Card>
 
           <SectionHeader title={tr('account.sectionOptions')} />
@@ -231,7 +235,7 @@ export default function AccountScreen() {
 
       <PickerSheet
         visible={currencySheetOpen} onClose={() => setCurrencySheetOpen(false)} title={tr('fields.currency')}
-        options={(currencies ?? []).map((c) => ({ key: c.code, label: c.code }))}
+        options={pickableCurrencies(currencies, form.currencyCode).map((c) => ({ key: c.code, label: c.code }))}
         selected={form.currencyCode} onSelect={(code) => code && patch({ currencyCode: code })}
       />
 

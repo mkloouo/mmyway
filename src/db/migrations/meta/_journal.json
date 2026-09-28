@@ -57,6 +57,13 @@
       "when": 1790562502826,
       "tag": "0007_flippant_dracula",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1790590355080,
+      "tag": "0008_blue_surge",
+      "breakpoints": true
     }
   ]
 }

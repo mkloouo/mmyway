@@ -1,6 +1,6 @@
 import { createTestDb } from '../db/testDb';
 import { pullRecentTransactions, pullOlderTransactions, pullReferenceData } from './referenceData';
-import { cachedTransactions, referenceAccounts } from '../db/schema';
+import { cachedTransactions, referenceAccounts, referenceCurrencies } from '../db/schema';
 import { enqueueOperation } from './outbox';
 
 // `totals` overrides meta.pagination.total per call index — real FF3 responses always carry it,
@@ -212,7 +212,12 @@ describe('pullReferenceData', () => {
         }
         if (path.startsWith('/v1/categories')) return { data: [] };
         if (path.startsWith('/v1/budgets')) return { data: [] };
-        if (path.startsWith('/v1/currencies')) return { data: [] };
+        if (path.startsWith('/v1/currencies')) {
+          return { data: [
+            { id: '1', attributes: { code: 'PLN', symbol: 'zł', decimal_places: 2, enabled: true, primary: true } },
+            { id: '2', attributes: { code: 'BTC', symbol: '₿', decimal_places: 8, enabled: false, primary: false } },
+          ] };
+        }
         return { data: [] }; // transactions pull
       }),
     };
@@ -235,6 +240,13 @@ describe('pullReferenceData', () => {
     const [second] = await db.select().from(referenceAccounts);
     expect(second!.syncedAt > first!.syncedAt).toBe(true);
     expect({ ...second, syncedAt: '' }).toEqual({ ...first, syncedAt: '' });
+  });
+
+  it('keeps which currencies are enabled in FF3 and which is primary', async () => {
+    const db = createTestDb();
+    await pullReferenceData(db as any, fakeReferenceClient() as any);
+    const rows = await db.select().from(referenceCurrencies);
+    expect(rows.map((c) => [c.code, c.enabled, c.isDefault]).sort()).toEqual([['BTC', false, false], ['PLN', true, true]]);
   });
 
   it('keeps the settings the account page edits, dates as calendar days', async () => {
