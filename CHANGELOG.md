@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-09-28
+
 ### Look
 - Change the app name to what I meant to call this app.
 - New app icon: a white stepped arrow on indigo. On Android 13+ it follows your themed-icon colours.
