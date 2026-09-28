@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-09-28
+
 The first release. mmyway is an Android companion for your self-hosted
 [Firefly III](https://www.firefly-iii.org/): quick capture of spending and income, receipts read by
 a model, and an Inbox where every entry waits for your confirmation before it reaches Firefly III.
@@ -85,3 +87,4 @@ It works offline and sends everything once your server answers. It replaces a Te
   find "Żabka").
 - Nothing syncs by itself when the network comes back; the next launch, change or pull does.
 - Android only, English only, and amounts are formatted Polish style (1 234,56).
+
