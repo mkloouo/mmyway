@@ -41,7 +41,7 @@ describe('planned model', () => {
     const fields = fieldsOf(groupPlanned([bill, rule, recurrence])[0]!, '2026-09-28');
     const renamed: PlannedFields = { ...fields, name: 'Spotify Family', amount: '12.99' };
     expect(billBody(renamed, fields)).not.toHaveProperty('date');
-    expect(recurrenceBody(renamed, fields, { billId: '1', transactionId: '7' })).not.toHaveProperty('repetitions');
+    expect(recurrenceBody({ ...renamed, sourceId: '1', destinationId: '4' }, fields, { billId: '1', transactionId: '7' })).not.toHaveProperty('repetitions');
     expect(billBody({ ...renamed, date: '2026-10-07' }, fields)).toMatchObject({ date: '2026-10-07', repeat_freq: 'monthly', skip: 0 });
   });
 
@@ -61,13 +61,23 @@ describe('planned model', () => {
   });
 
   it('sends either a repetition count or an end date, never both', () => {
-    const fields = fieldsOf(groupPlanned([bill, rule, recurrence])[0]!, '2026-09-28');
+    const fields = { ...fieldsOf(groupPlanned([bill, rule, recurrence])[0]!, '2026-09-28'), sourceId: '1', destinationId: '4' };
     const once = recurrenceBody({ ...fields, repeats: false }, null, {});
     expect(once).toMatchObject({ nr_of_repetitions: 1 });
     expect(once).not.toHaveProperty('repeat_until');
     const repeating = recurrenceBody({ ...fields, repeats: true }, null, {});
     expect(repeating).toMatchObject({ repeat_until: '2099-12-31' });
     expect(repeating).not.toHaveProperty('nr_of_repetitions');
+  });
+
+  it('sends accounts and the category by id, never by name', () => {
+    const fields = fieldsOf(groupPlanned([bill, rule, recurrence])[0]!, '2026-09-28');
+    const body = recurrenceBody({ ...fields, sourceId: '1', destinationId: '4' }, null, { categoryId: '12' });
+    const [transaction] = body.transactions as Record<string, unknown>[];
+    expect(transaction).toMatchObject({ source_id: '1', destination_id: '4', category_id: '12' });
+    expect(transaction).not.toHaveProperty('destination_name');
+    expect(transaction).not.toHaveProperty('category_name');
+    expect((recurrenceBody({ ...fields, sourceId: '1', destinationId: '4' }, null, {}).transactions as Record<string, unknown>[])[0]).toMatchObject({ category_id: null });
   });
 
   it('maps frequencies to recurrence repetitions', () => {

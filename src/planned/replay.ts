@@ -2,11 +2,13 @@
 // subscription, recurring transaction and rule, in that order — the recurring transaction links
 // to the subscription by id, the rule by name. Each object created is recorded in the queued
 // payload straight away, so a retry after a failure part-way updates it instead of creating a
-// second one.
+// second one. The recurring transaction is sent its accounts and category by id: FF3's recurrence
+// API ignores names, and a missing account id made it fail after saving half a recurrence.
 import { eq } from 'drizzle-orm';
 import type { FF3Client } from '../api/ff3/client';
 import { FF3RequestError } from '../api/ff3/client';
-import { outboxOperations } from '../db/schema';
+import { outboxOperations, referenceCategories } from '../db/schema';
+import { accountResolver } from '../sync/accountIds';
 import type { OutboxDb } from '../sync/outbox';
 import { writePayload } from '../sync/payloadJson';
 import { billBody, recurrenceBody, ruleBody, type PlannedFields } from './model';
@@ -49,6 +51,15 @@ async function ensureRuleGroup(client: FF3Client): Promise<string> {
   return String(created.data.id);
 }
 
+/** The category's FF3 id: from the synced categories, or a new category when FF3 has none by that name. */
+async function categoryIdFor(db: OutboxDb, client: FF3Client, name: string): Promise<string> {
+  const categories = await db.select().from(referenceCategories);
+  const known = categories.find((c) => c.name === name) ?? categories.find((c) => c.name.toLowerCase() === name.toLowerCase());
+  if (known) return known.id;
+  const created = await client.request<Read<{ name: string }>>('/v1/categories', { method: 'POST', body: JSON.stringify({ name }) });
+  return String(created.data.id);
+}
+
 async function send<T>(client: FF3Client, kind: PlannedKind, id: string | null | undefined, body: Record<string, unknown>): Promise<Read<T>> {
   return client.request<Read<T>>(plannedPath(kind, id ?? undefined), { method: id ? 'PUT' : 'POST', body: JSON.stringify(body) });
 }
@@ -63,6 +74,12 @@ export async function replaySavePlanned(db: OutboxDb, client: FF3Client, opId: s
   if (!p.billId) { p.billId = String(bill.data.id); await remember(); }
   await storePlanned(db, 'bill', p.billId, bill.data.attributes);
 
+  // FF3's recurrence API only takes ids: a payee typed or picked by name becomes its account's.
+  const resolve = accountResolver(client);
+  const sourceId = f.sourceId ?? await resolve(f.type, 'source', f.sourceName ?? '');
+  const destinationId = f.destinationId ?? await resolve(f.type, 'destination', f.destinationName ?? '');
+  const categoryId = f.categoryName ? await categoryIdFor(db, client, f.categoryName) : null;
+
   let transactionId: string | null = null;
   let repetitionId: string | null = null;
   if (p.recurrenceId) {
@@ -71,7 +88,7 @@ export async function replaySavePlanned(db: OutboxDb, client: FF3Client, opId: s
     repetitionId = current.data.attributes.repetitions?.[0]?.id ?? null;
   }
   const recurrence = await send<Record<string, unknown>>(client, 'recurrence', p.recurrenceId,
-    recurrenceBody(f, p.recurrenceId ? p.before : null, { billId: p.billId, transactionId, repetitionId }));
+    recurrenceBody({ ...f, sourceId, destinationId }, p.recurrenceId ? p.before : null, { billId: p.billId, transactionId, repetitionId, categoryId }));
   if (!p.recurrenceId) { p.recurrenceId = String(recurrence.data.id); await remember(); }
   await storePlanned(db, 'recurrence', p.recurrenceId, recurrence.data.attributes);
 

@@ -53,8 +53,8 @@ export interface DraftSplit {
 // Which end of the split is the free-text payee differs by type (defect (1)): a withdrawal's
 // payee is the destination, a deposit's payee is the source, and a transfer has no payee at
 // all — both ends are known asset accounts, so isNewPayee never gates them. A known payee with
-// no id (picked from history, or an alias stored by name) goes by name: sending neither left
-// the transaction with no payee at all.
+// no id (picked from history, or an alias stored by name) is queued by name: sending neither left
+// the transaction with no payee at all. The name becomes an id when it's sent (src/sync/accountIds.ts).
 function payeeGatedEnd(draft: Draft): { source: { id?: string; name?: string }; destination: { id?: string; name?: string } } {
   if (draft.type === 'withdrawal') {
     return {

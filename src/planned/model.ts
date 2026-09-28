@@ -156,27 +156,30 @@ export function repetitionFor(f: PlannedFields): Record<string, unknown> {
   }
 }
 
+/** The end date a repeating planned transaction is given: FF3's API has no "forever". */
+export const REPEAT_FOREVER_UNTIL = '2099-12-31';
+
 /**
  * FF3 recurrence body. `transactionId` is the existing recurrence transaction, updated in place;
  * the amount is sent in the planned currency even when the account keeps another (Spotify's
  * 7.99 USD from a PLN account) — the exact PLN amount is set when the transaction is reviewed.
+ * FF3's recurrence API reads accounts and the category by id only (it drops the names, and a
+ * missing account id fails the save half-way), so `f` must carry both account ids.
  */
-/** The end date a repeating planned transaction is given: FF3's API has no "forever". */
-export const REPEAT_FOREVER_UNTIL = '2099-12-31';
-
 export function recurrenceBody(
-  f: PlannedFields,
+  f: PlannedFields & { sourceId: string; destinationId: string },
   before: PlannedFields | null,
-  opts: { billId?: string | null; transactionId?: string | null; repetitionId?: string | null },
+  opts: { billId?: string | null; transactionId?: string | null; repetitionId?: string | null; categoryId?: string | null },
 ): Record<string, unknown> {
   const transaction: Record<string, unknown> = {
     ...(opts.transactionId ? { id: opts.transactionId } : {}),
     description: f.name,
     amount: f.amount,
     currency_code: f.currencyCode,
-    ...(f.sourceId ? { source_id: f.sourceId } : { source_name: f.sourceName }),
-    ...(f.destinationId ? { destination_id: f.destinationId } : { destination_name: f.destinationName }),
-    category_name: f.categoryName ?? '',
+    source_id: f.sourceId,
+    destination_id: f.destinationId,
+    // Null clears it on an edit.
+    category_id: opts.categoryId ?? null,
     tags: f.tags,
     ...(opts.billId ? { bill_id: opts.billId } : {}),
   };

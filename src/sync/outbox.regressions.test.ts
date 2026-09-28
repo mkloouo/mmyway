@@ -57,6 +57,7 @@ describe('create idempotency', () => {
           throw new FF3RequestError(422, '{"message":"Duplicate of transaction #77."}');
         }
         if (path === '/v1/transactions/77') return { data: group('77', { internal_reference: reference }) };
+        if (path.startsWith('/v1/search/accounts')) return { data: [{ id: '5', attributes: { name: 'lost response', type: 'expense' } }] };
         return {};
       }),
     };

@@ -44,7 +44,8 @@
   name, from and to, exact amount and currency
   (Spotify's 7.99 USD from a PLN account), note, whether and how often it repeats, the date it's
   planned on, category and tags. Add one with **+**; delete it from its page. Picking a payee
-  fills in its usual category and paying account, unless you've already chosen them.
+  fills in its usual category and paying account, unless you've already chosen them; a payee
+  Firefly III doesn't have yet is added there as an expense account when it's saved.
 - A planned transaction can have a time. Firefly III only plans days, so the time is kept in its
   recurring transaction's notes (as an `mmyway-time` line); approving the booked transaction in
   the Inbox moves it to that time.
