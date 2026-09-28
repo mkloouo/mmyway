@@ -1,6 +1,7 @@
 // One search-and-pick sheet for asset accounts, on top of the shared Sheet (design §4). Every
 // account is already local via fetchAll, so the search over filterAccounts is instant and offline.
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, Pressable, Text } from 'react-native';
 import { Sheet } from './components';
 import { SearchField } from './SearchField';
@@ -28,13 +29,14 @@ export function AccountPickerSheet({
   onSelect: (account: AccountPickerAccount) => void;
 }) {
   const t = useTheme();
+  const { t: tr } = useTranslation();
   const [query, setQuery] = useState('');
   const candidates = excludeId ? accounts.filter((a) => a.id !== excludeId) : accounts;
   const results = filterAccounts(candidates, query);
 
   return (
     <Sheet visible={visible} onClose={() => { setQuery(''); onClose(); }} title={title} scroll={false}>
-      <SearchField value={query} onChangeText={setQuery} placeholder="Search accounts" autoFocus style={{ marginBottom: t.space.sm }} />
+      <SearchField value={query} onChangeText={setQuery} placeholder={tr('pickers.searchAccounts')} autoFocus style={{ marginBottom: t.space.sm }} />
       <FlatList
         data={results}
         keyExtractor={(item) => item.id}
@@ -58,7 +60,7 @@ export function AccountPickerSheet({
           </Pressable>
         )}
         ListEmptyComponent={(
-          <Text style={[t.type.body, { color: t.color.textFaint, paddingVertical: t.space.lg, textAlign: 'center' }]}>No matches</Text>
+          <Text style={[t.type.body, { color: t.color.textFaint, paddingVertical: t.space.lg, textAlign: 'center' }]}>{tr('pickers.noMatches')}</Text>
         )}
       />
     </Sheet>

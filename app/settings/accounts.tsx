@@ -1,5 +1,6 @@
 // Asset accounts and the cash-envelope marker (design §6.6).
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FlatList, Pressable, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { eq } from 'drizzle-orm';
@@ -20,6 +21,7 @@ type AccountRow = ReferenceAccountRow;
 export default function AccountsScreen() {
   const db = useDb();
   const t = useTheme();
+  const { t: tr } = useTranslation();
   // In FF3's own order — the order every account picker in the app uses, set with Reorder.
   const allAccounts = useAssetAccounts({ includeInactive: true }) ?? [];
   const [editing, setEditing] = useState<AccountRow | null>(null);
@@ -52,22 +54,22 @@ export default function AccountsScreen() {
   return (
     <Screen bottom>
       <AppBar
-        title="Accounts"
+        title={tr('accounts.title')}
         right={(
           reordering ? (
-            <Button title="Done" variant="ghost" size="bar" onPress={() => setReordering(false)} />
+            <Button title={tr('common.done')} variant="ghost" size="bar" onPress={() => setReordering(false)} />
           ) : (
-            <BarIconButton icon="swap-vertical" label="Reorder accounts" onPress={() => { setReordering(true); setSearch(''); }} />
+            <BarIconButton icon="swap-vertical" label={tr('accounts.reorder')} onPress={() => { setReordering(true); setSearch(''); }} />
           )
         )}
       />
       {reordering ? (
         <Text style={[t.type.label, { color: t.color.textMuted, paddingHorizontal: t.space.lg }]}>
-          Move accounts up or down. The order is saved to Firefly III and used by every account picker.
+          {tr('accounts.reorderHint')}
         </Text>
       ) : (
         <View style={{ paddingHorizontal: t.space.lg }}>
-          <SearchField value={search} onChangeText={setSearch} placeholder="Search accounts" />
+          <SearchField value={search} onChangeText={setSearch} placeholder={tr('pickers.searchAccounts')} />
         </View>
       )}
       <FlatList
@@ -79,14 +81,14 @@ export default function AccountsScreen() {
           <Card onPress={reordering ? undefined : () => setEditing(item)} style={item.active ? undefined : { opacity: 0.5 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
               <Text style={[t.type.body, { color: t.color.text, flex: 1 }]} numberOfLines={1}>{item.name}</Text>
-              {!item.active && <Chip label="Inactive" />}
-              {hasEnvelopeMarker(item.notes) && <Chip label="Envelope" />}
+              {!item.active && <Chip label={tr('accounts.inactive')} />}
+              {hasEnvelopeMarker(item.notes) && <Chip label={tr('accounts.envelope')} />}
               {reordering ? (
                 <View style={{ flexDirection: 'row', gap: t.space.xs }}>
-                  <Pressable onPress={() => move(index, -1)} disabled={index === 0} accessibilityRole="button" accessibilityLabel={`Move ${item.name} up`} hitSlop={8}>
+                  <Pressable onPress={() => move(index, -1)} disabled={index === 0} accessibilityRole="button" accessibilityLabel={tr('accounts.moveUp', { name: item.name })} hitSlop={8}>
                     <Ionicons name="chevron-up" size={22} color={index === 0 ? t.color.textFaint : t.color.accent} />
                   </Pressable>
-                  <Pressable onPress={() => move(index, 1)} disabled={index === visible.length - 1} accessibilityRole="button" accessibilityLabel={`Move ${item.name} down`} hitSlop={8}>
+                  <Pressable onPress={() => move(index, 1)} disabled={index === visible.length - 1} accessibilityRole="button" accessibilityLabel={tr('accounts.moveDown', { name: item.name })} hitSlop={8}>
                     <Ionicons name="chevron-down" size={22} color={index === visible.length - 1 ? t.color.textFaint : t.color.accent} />
                   </Pressable>
                 </View>
@@ -96,30 +98,30 @@ export default function AccountsScreen() {
             </View>
           </Card>
         )}
-        ListEmptyComponent={<Text style={[t.type.body, { color: t.color.textFaint, textAlign: 'center', paddingTop: t.space.xl }]}>No asset accounts synced yet</Text>}
+        ListEmptyComponent={<Text style={[t.type.body, { color: t.color.textFaint, textAlign: 'center', paddingTop: t.space.xl }]}>{tr('accounts.empty')}</Text>}
       />
 
       <Sheet
         visible={!!editing}
         onClose={() => setEditing(null)}
         title={editing?.name ?? ''}
-        footer={<Button title="Done" onPress={() => setEditing(null)} />}
+        footer={<Button title={tr('common.done')} onPress={() => setEditing(null)} />}
       >
         {!!editing && (
           <View>
-            <Row first label="Name" value={editing.name} />
-            <Row label="Currency" value={editing.currencyCode} />
+            <Row first label={tr('accounts.name')} value={editing.name} />
+            <Row label={tr('fields.currency')} value={editing.currencyCode} />
             <Checkbox
               checked={editing.active}
               onPress={() => toggleActive(editing)}
-              label="Active"
-              hint="Shown across the app and offered as a picker choice"
+              label={tr('accounts.active')}
+              hint={tr('accounts.activeHint')}
             />
             <Checkbox
               checked={hasEnvelopeMarker(editing.notes)}
               onPress={() => toggleEnvelope(editing)}
-              label="Cash envelope"
-              hint="Counted in the cash sweep"
+              label={tr('accounts.cashEnvelope')}
+              hint={tr('accounts.cashEnvelopeHint')}
             />
           </View>
         )}

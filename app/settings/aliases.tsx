@@ -2,6 +2,7 @@
 // legal name, a shorthand — mapped to the FF3 payee it books to. Added here, or learned when a
 // draft's payee is corrected (app/draft/[id].tsx).
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { eq } from 'drizzle-orm';
 import { Alert, FlatList, Pressable, Text, TextInput, View } from 'react-native';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
@@ -17,6 +18,7 @@ import { exportAliasesJson, importAliasesJson } from '../../src/lookup/aliasTran
 export default function AliasesScreen() {
   const db = useDb();
   const t = useTheme();
+  const { t: tr } = useTranslation();
   const { data } = useLiveQuery(db.select().from(aliases).where(eq(aliases.kind, PAYEE)));
 
   const [search, setSearch] = useState('');
@@ -44,9 +46,9 @@ export default function AliasesScreen() {
   }
 
   function confirmRemove(row: { kind: string; rawInput: string; targetName: string }) {
-    Alert.alert(`Remove "${row.rawInput}"?`, `It will no longer map to ${row.targetName}.`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Remove', style: 'destructive', onPress: () => removeAlias(db, row.kind, row.rawInput) },
+    Alert.alert(tr('aliases.removeTitle', { raw: row.rawInput }), tr('aliases.removeBody', { target: row.targetName }), [
+      { text: tr('common.cancel'), style: 'cancel' },
+      { text: tr('addresses.remove'), style: 'destructive', onPress: () => removeAlias(db, row.kind, row.rawInput) },
     ]);
   }
 
@@ -59,9 +61,9 @@ export default function AliasesScreen() {
     if (!transferJson) return;
     const result = await importAliasesJson(db, transferJson);
     Alert.alert(
-      'Import complete',
-      `Imported ${result.imported}. ${result.collisions.length} collision(s) kept the existing mapping.`
-        + (result.skipped > 0 ? ` Skipped ${result.skipped} account, budget or currency alias(es) — only payee aliases are used.` : ''),
+      tr('aliases.importCompleteTitle'),
+      tr('aliases.importComplete', { imported: result.imported, collisions: result.collisions.length })
+        + (result.skipped > 0 ? ` ${tr('aliases.importSkipped', { count: result.skipped })}` : ''),
     );
     setTransferSheetOpen(false);
   }
@@ -69,13 +71,13 @@ export default function AliasesScreen() {
   return (
     <Screen bottom>
       <AppBar
-        title="Aliases"
+        title={tr('aliases.title')}
         right={(
-          <BarIconButton icon="ellipsis-horizontal" label="Export or import" onPress={onExport} />
+          <BarIconButton icon="ellipsis-horizontal" label={tr('aliases.exportOrImport')} onPress={onExport} />
         )}
       />
       <View style={{ paddingHorizontal: t.space.lg, gap: t.space.sm }}>
-        <SearchField value={search} onChangeText={setSearch} placeholder="Search aliases" />
+        <SearchField value={search} onChangeText={setSearch} placeholder={tr('aliases.search')} />
       </View>
 
       <FlatList
@@ -85,18 +87,18 @@ export default function AliasesScreen() {
         renderItem={({ item }) => (
           <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: t.space.sm, borderBottomWidth: 1, borderBottomColor: t.color.border }}>
             <Text style={[t.type.body, { color: t.color.text, flex: 1 }]} numberOfLines={1}>{item.rawInput} → {item.targetName}</Text>
-            <Pressable onPress={() => confirmRemove(item)} accessibilityRole="button" accessibilityLabel={`Remove ${item.rawInput}`}>
+            <Pressable onPress={() => confirmRemove(item)} accessibilityRole="button" accessibilityLabel={tr('addresses.removeAddress', { address: item.rawInput })}>
               <Text style={[t.type.body, { color: t.color.danger }]}>✕</Text>
             </Pressable>
           </View>
         )}
-        ListEmptyComponent={<Text style={[t.type.body, { color: t.color.textFaint, paddingTop: t.space.xl, textAlign: 'center' }]}>No aliases yet</Text>}
+        ListEmptyComponent={<Text style={[t.type.body, { color: t.color.textFaint, paddingTop: t.space.xl, textAlign: 'center' }]}>{tr('aliases.empty')}</Text>}
       />
 
       <Pressable
         onPress={openAddSheet}
         accessibilityRole="button"
-        accessibilityLabel="Add alias"
+        accessibilityLabel={tr('aliases.add')}
         style={({ pressed }) => ({
           position: 'absolute', right: t.space.lg, bottom: t.space.lg, width: 56, height: 56, borderRadius: t.radius.pill,
           backgroundColor: t.color.accent, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.7 : 1, elevation: 3,
@@ -108,19 +110,19 @@ export default function AliasesScreen() {
       <Sheet
         visible={addSheetOpen}
         onClose={() => setAddSheetOpen(false)}
-        title="New payee alias"
-        footer={<Button title="Save" onPress={saveAlias} disabled={!rawInput.trim() || !pickedTarget} />}
+        title={tr('aliases.newTitle')}
+        footer={<Button title={tr('common.save')} onPress={saveAlias} disabled={!rawInput.trim() || !pickedTarget} />}
       >
         <TextInput
           value={rawInput}
           onChangeText={setRawInput}
-          placeholder="e.g. zabka"
+          placeholder={tr('aliases.rawPlaceholder')}
           placeholderTextColor={t.color.textFaint}
           autoCapitalize="none"
           style={{ borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm, paddingHorizontal: t.space.md, paddingVertical: t.space.sm, color: t.color.text }}
         />
         <Row
-          label="Maps to"
+          label={tr('aliases.mapsTo')}
           value={pickedTarget?.targetName ?? '—'}
           chevron
           onPress={() => setTargetSheetOpen(true)}
@@ -132,14 +134,14 @@ export default function AliasesScreen() {
       <Sheet
         visible={transferSheetOpen}
         onClose={() => setTransferSheetOpen(false)}
-        title="Export / import"
-        footer={<Button title="Import from text below" onPress={onImport} disabled={!transferJson} />}
+        title={tr('aliases.transferTitle')}
+        footer={<Button title={tr('aliases.importButton')} onPress={onImport} disabled={!transferJson} />}
       >
         <TextInput
           value={transferJson}
           onChangeText={setTransferJson}
           multiline
-          placeholder="Exported JSON appears here — paste JSON here to import"
+          placeholder={tr('aliases.transferPlaceholder')}
           placeholderTextColor={t.color.textFaint}
           style={{ borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.sm, padding: t.space.md, color: t.color.text, minHeight: 160 }}
         />

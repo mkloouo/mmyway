@@ -1,6 +1,8 @@
 // Transaction detail (design §6.5) — the same editing vocabulary as the draft screen: hero
 // amount + DetailRows, one picker implementation for both.
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { appLocale } from '../../src/i18n';
 import { Alert, Image, Modal, Pressable, ScrollView, Text, View, type ImageSourcePropType } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { eq } from 'drizzle-orm';
@@ -28,7 +30,7 @@ import { pendingEdits } from '../../src/transactions/pendingEdits';
 
 const SHARED_TAG_PREFIX = 'mmyway-shared-';
 // The words the rest of the app uses (capture's type chips), not FF3's "Withdrawal"/"Deposit".
-const TYPE_LABELS: Record<string, string> = { withdrawal: 'Expense', deposit: 'Income', transfer: 'Transfer' };
+const TYPE_LABEL_KEYS: Record<string, string> = { withdrawal: 'capture.typeExpense', deposit: 'capture.typeIncome', transfer: 'capture.typeTransfer' };
 
 function sharedWithFromTags(tagsJson: string): string | null {
   try {
@@ -44,6 +46,7 @@ export default function TransactionDetailScreen() {
   const { groupId } = useLocalSearchParams<{ groupId: string }>();
   const db = useDb();
   const t = useTheme();
+  const { t: tr } = useTranslation();
 
   const { data: rows } = useLiveQuery(db.select().from(cachedTransactions).where(eq(cachedTransactions.groupId, groupId)));
   const { data: outbox } = useLiveQuery(db.select().from(outboxOperations));
@@ -79,7 +82,7 @@ export default function TransactionDetailScreen() {
   const [saving, setSaving] = useState(false);
   const [photo, setPhoto] = useState<ImageSourcePropType | null>(null);
 
-  if (!row) return <Screen bottom><AppBar title="Transaction" /></Screen>;
+  if (!row) return <Screen bottom><AppBar title={tr('transaction.title')} /></Screen>;
 
   const conflictOp = (outbox ?? []).find((op) => {
     if (op.status !== 'failed' || op.lastError !== 'conflict') return false;
@@ -180,10 +183,10 @@ export default function TransactionDetailScreen() {
 
   function onDelete() {
     setMenuOpen(false);
-    Alert.alert('Delete this transaction?', undefined, [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(tr('transaction.deleteTitle'), undefined, [
+      { text: tr('common.cancel'), style: 'cancel' },
       {
-        text: 'Delete', style: 'destructive',
+        text: tr('common.delete'), style: 'destructive',
         onPress: async () => {
           await enqueueOperation(db, { id: generateId(), kind: 'delete_transaction', payload: { groupId: row!.groupId, expectedUpdatedAt: row!.updatedAt } });
           router.back();
@@ -202,18 +205,19 @@ export default function TransactionDetailScreen() {
     });
     return (
       <Screen bottom>
-        <AppBar title="Conflict" left={<CloseButton />} />
+        <AppBar title={tr('inbox.conflict')} left={<CloseButton />} />
         <ScrollView contentContainerStyle={{ padding: t.space.lg, gap: t.space.md }}>
           <Text style={[t.type.body, { color: t.color.textMuted }]}>
-            {row.description} was changed in Firefly III {relativeTime(row.updatedAt)} after you edited it here.
-            {isDelete ? ' You asked to delete it.' : ' Compare the fields your change touches:'}
+            {tr('conflict.changedInFf3', { description: row.description, time: relativeTime(row.updatedAt) })}
+            {' '}
+            {isDelete ? tr('conflict.youAskedToDelete') : tr('conflict.compareFields')}
           </Text>
           {!isDelete && (
             <Card>
               <View style={{ flexDirection: 'row', paddingBottom: t.space.sm }}>
-                <Text style={[t.type.caption, { color: t.color.textMuted, flex: 1 }]}>FIELD</Text>
-                <Text style={[t.type.caption, { color: t.color.textMuted, flex: 2 }]}>FIREFLY III</Text>
-                <Text style={[t.type.caption, { color: t.color.textMuted, flex: 2 }]}>YOURS</Text>
+                <Text style={[t.type.caption, { color: t.color.textMuted, flex: 1 }]}>{tr('conflict.field')}</Text>
+                <Text style={[t.type.caption, { color: t.color.textMuted, flex: 2 }]}>{tr('conflict.server')}</Text>
+                <Text style={[t.type.caption, { color: t.color.textMuted, flex: 2 }]}>{tr('conflict.yours')}</Text>
               </View>
               {fields.map((f) => (
                 <View key={f.label} style={{ flexDirection: 'row', paddingVertical: t.space.sm, borderTopWidth: 1, borderTopColor: t.color.border }}>
@@ -224,13 +228,13 @@ export default function TransactionDetailScreen() {
               ))}
               {fields.every((f) => !f.differs) && (
                 <Text style={[t.type.label, { color: t.color.textMuted, paddingTop: t.space.sm }]}>
-                  Your change matches the server on these fields — something else was edited there. Keeping yours is safe.
+                  {tr('conflict.matchesServer')}
                 </Text>
               )}
             </Card>
           )}
-          <Button title={isDelete ? 'Delete it anyway' : 'Keep mine (apply over the server copy)'} onPress={keepMine} />
-          <Button title={isDelete ? 'Keep the transaction' : "Use the server's (drop my change)"} variant="danger" onPress={discardMine} />
+          <Button title={isDelete ? tr('conflict.deleteAnyway') : tr('conflict.keepMine')} onPress={keepMine} />
+          <Button title={isDelete ? tr('conflict.keepTransaction') : tr('conflict.useServer')} variant="danger" onPress={discardMine} />
         </ScrollView>
       </Screen>
     );
@@ -242,7 +246,7 @@ export default function TransactionDetailScreen() {
     sourceAccountId: effectiveSourceId,
     destinationAccountId: effectiveDestinationId,
     budgetId: effectiveBudgetId,
-    dateLabel: effectiveDate.toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
+    dateLabel: effectiveDate.toLocaleString(appLocale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }),
     notes: effectiveNotes,
     sharedWith: effectiveSharedWith,
   };
@@ -251,11 +255,11 @@ export default function TransactionDetailScreen() {
     <Screen bottom>
       <View style={{ flex: 1 }}>
         <AppBar
-          title={TYPE_LABELS[row.type] ?? row.type}
-          subtitle={pendingEdit ? (pendingEdit.status === 'queued' ? 'changes queued' : 'changes not sent') : `synced ${relativeTime(row.syncedAt)}`}
+          title={TYPE_LABEL_KEYS[row.type] ? tr(TYPE_LABEL_KEYS[row.type]!) : row.type}
+          subtitle={pendingEdit ? (pendingEdit.status === 'queued' ? tr('transaction.changesQueued') : tr('transaction.changesNotSent')) : tr('transaction.syncedAgo', { time: relativeTime(row.syncedAt) })}
           left={<CloseButton />}
           right={(
-            <BarIconButton icon="ellipsis-horizontal" label="More" onPress={() => setMenuOpen(true)} />
+            <BarIconButton icon="ellipsis-horizontal" label={tr('capture.more')} onPress={() => setMenuOpen(true)} />
           )}
         />
 
@@ -282,27 +286,27 @@ export default function TransactionDetailScreen() {
           />
           <Card style={{ marginHorizontal: t.space.lg, gap: t.space.sm }}>
             {receiptPreviews.map((p) => (
-              <Pressable key={p.key} onPress={() => setPhoto(p.source)} accessibilityRole="imagebutton" accessibilityLabel="Show the receipt photo">
+              <Pressable key={p.key} onPress={() => setPhoto(p.source)} accessibilityRole="imagebutton" accessibilityLabel={tr('draft.showPhoto')}>
                 <Image source={p.source} resizeMode="cover" style={{ width: '100%', height: 140, borderRadius: t.radius.sm, backgroundColor: t.color.surfaceAlt }} />
               </Pressable>
             ))}
             <View>
               {(attachments.data ?? []).map((a, i) => (
-                <Row key={a.id} first={i === 0} label={i === 0 ? 'Receipt' : ''} value={`📎 ${a.filename}`} />
+                <Row key={a.id} first={i === 0} label={i === 0 ? tr('draft.receipt') : ''} value={`📎 ${a.filename}`} />
               ))}
               {queued.map((q, i) => (
                 <Row
                   key={q.opId}
                   first={i === 0 && !attachments.data?.length}
-                  label={i === 0 && !attachments.data?.length ? 'Receipt' : ''}
-                  value={q.status === 'failed' ? `Upload failed${q.lastError ? `: ${q.lastError}` : ''}` : 'Uploading…'}
+                  label={i === 0 && !attachments.data?.length ? tr('draft.receipt') : ''}
+                  value={q.status === 'failed' ? (q.lastError ? tr('transaction.uploadFailedWith', { error: q.lastError }) : tr('transaction.uploadFailed')) : tr('transaction.uploading')}
                   tone={q.status === 'failed' ? 'danger' : undefined}
                 />
               ))}
               <Row
                 first={!attachments.data?.length && queued.length === 0}
-                label={!attachments.data?.length && queued.length === 0 ? 'Receipt' : ''}
-                value={attachments.data?.length || queued.length ? 'Attach another' : 'Attach receipt'}
+                label={!attachments.data?.length && queued.length === 0 ? tr('draft.receipt') : ''}
+                value={attachments.data?.length || queued.length ? tr('transaction.attachAnother') : tr('receipt.attachTitle')}
                 chevron
                 onPress={() => router.push({ pathname: '/receipt', params: { attachToJournalId: row.journalId } })}
               />
@@ -312,26 +316,26 @@ export default function TransactionDetailScreen() {
         </ScrollView>
 
         <View style={{ padding: t.space.lg }}>
-          <Button title={saving ? 'Saving…' : 'Save'} onPress={onSave} disabled={saving} size="lg" />
+          <Button title={saving ? tr('common.saving') : tr('common.save')} onPress={onSave} disabled={saving} size="lg" />
         </View>
       </View>
 
-      <Sheet visible={amountSheetOpen} onClose={() => setAmountSheetOpen(false)} title="Amount">
+      <Sheet visible={amountSheetOpen} onClose={() => setAmountSheetOpen(false)} title={tr('fields.amount')}>
         <Money amount={effectiveAmount} currency={currency} type={row.type as 'withdrawal' | 'deposit' | 'transfer'} size="display" />
         <Keypad
           compact
           onDigit={(key: KeypadKey) => setChanges((prev) => ({ ...prev, amount: applyDigit(prev.amount ?? pendingEdit?.changes.amount ?? row.amount, key, currency.decimalPlaces) }))}
-          saveLabel="Done"
+          saveLabel={tr('common.done')}
           onSave={() => setAmountSheetOpen(false)}
         />
       </Sheet>
 
-      <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title="Transaction">
-        <Row first label="Delete" tone="danger" onPress={onDelete} />
+      <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={tr('transaction.title')}>
+        <Row first label={tr('common.delete')} tone="danger" onPress={onDelete} />
       </Sheet>
       {/* Same full-screen view as the draft screen's receipt photo. */}
       <Modal visible={!!photo} transparent animationType="fade" onRequestClose={() => setPhoto(null)}>
-        <Pressable style={{ flex: 1, backgroundColor: t.color.photoBackdrop, justifyContent: 'center' }} onPress={() => setPhoto(null)} accessibilityLabel="Close the photo">
+        <Pressable style={{ flex: 1, backgroundColor: t.color.photoBackdrop, justifyContent: 'center' }} onPress={() => setPhoto(null)} accessibilityLabel={tr('draft.closePhoto')}>
           {!!photo && <Image source={photo} resizeMode="contain" style={{ width: '100%', height: '100%' }} />}
         </Pressable>
       </Modal>
@@ -340,5 +344,6 @@ export default function TransactionDetailScreen() {
 }
 
 function CloseButton() {
-  return <BarIconButton icon="close" label="Close" onPress={() => router.back()} />;
+  const { t: tr } = useTranslation();
+  return <BarIconButton icon="close" label={tr('common.close')} onPress={() => router.back()} />;
 }

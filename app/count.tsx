@@ -1,6 +1,7 @@
 // The cash count — the envelope sweep (design §6.9, decision C of §11). Counts every marked
 // cash envelope in one pass; one confirm creates one adjustment per envelope that differs.
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
 import { eq, inArray } from 'drizzle-orm';
@@ -62,6 +63,7 @@ async function createAndConfirmAdjustment(
 export default function CountScreen() {
   const db = useDb();
   const t = useTheme();
+  const { t: tr } = useTranslation();
   // Edge to edge, the window isn't resized for the keyboard; the lower envelopes need the room.
   const keyboardHeight = useKeyboardHeight();
 
@@ -139,7 +141,7 @@ export default function CountScreen() {
       const current = await readCountBlocker(db);
       if (current) {
         setReviewOpen(false);
-        Alert.alert('Balances are out of date', describeCountBlocker(current));
+        Alert.alert(tr('count.outOfDateTitle'), describeCountBlocker(current));
         return;
       }
       for (const adjustment of adjustments) {
@@ -178,21 +180,21 @@ export default function CountScreen() {
     <Screen bottom>
       <View style={{ flex: 1 }}>
         <AppBar
-          title="Count cash"
-          subtitle={oldestBalanceDate ? `as of ${relativeTime(oldestBalanceDate)}` : undefined}
-          left={<BarIconButton icon="close" label="Close" onPress={() => router.back()} />}
-          right={<BarIconButton icon="settings-outline" label="Reconcile settings" onPress={() => setSettingsOpen(true)} />}
+          title={tr('count.title')}
+          subtitle={oldestBalanceDate ? tr('count.asOf', { time: relativeTime(oldestBalanceDate) }) : undefined}
+          left={<BarIconButton icon="close" label={tr('common.close')} onPress={() => router.back()} />}
+          right={<BarIconButton icon="settings-outline" label={tr('count.settingsLabel')} onPress={() => setSettingsOpen(true)} />}
         />
         {stale && envelopeAccounts.length > 0 && (
           <View style={{ backgroundColor: t.color.warnSoft, paddingHorizontal: t.space.lg, paddingVertical: t.space.sm }}>
-            <Text style={[t.type.label, { color: t.color.warn }]}>Balances are more than a day old — counting against a stale expectation may be wrong.</Text>
+            <Text style={[t.type.label, { color: t.color.warn }]}>{tr('count.staleBanner')}</Text>
           </View>
         )}
         {!!blocker && envelopeAccounts.length > 0 && (
           <View style={{ backgroundColor: t.color.warnSoft, paddingHorizontal: t.space.lg, paddingVertical: t.space.sm, gap: t.space.sm }}>
             <Text style={[t.type.label, { color: t.color.warn }]}>{describeCountBlocker(blocker)}</Text>
             <Button
-              title={syncStatus === 'syncing' ? 'Syncing…' : 'Sync now'}
+              title={syncStatus === 'syncing' ? tr('sync.syncing') : tr('sync.syncNow')}
               variant="secondary"
               onPress={() => syncNow()}
               disabled={syncStatus === 'syncing'}
@@ -203,9 +205,9 @@ export default function CountScreen() {
         {envelopeAccounts.length === 0 ? (
           <EmptyState
             glyph="🧮"
-            title="No accounts are marked as cash envelopes"
-            hint="Mark an asset account in its editor."
-            action={<Button title="Go to accounts" onPress={() => router.push('/settings/accounts')} />}
+            title={tr('count.emptyTitle')}
+            hint={tr('count.emptyHint')}
+            action={<Button title={tr('count.goToAccounts')} onPress={() => router.push('/settings/accounts')} />}
           />
         ) : (
           <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: t.space.lg, gap: t.space.sm, paddingBottom: t.space.lg + keyboardHeight }} keyboardShouldPersistTaps="handled">
@@ -220,7 +222,7 @@ export default function CountScreen() {
                 <Card key={a.id}>
                   <Text style={[t.type.heading, { color: t.color.text }]}>{a.name}</Text>
                   <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]}>
-                    expected {a.currentBalance ? `${a.currentBalance} ${currency.symbol}` : '—'}
+                    {tr('count.expected', { amount: a.currentBalance ? `${a.currentBalance} ${currency.symbol}` : '—' })}
                   </Text>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm, marginTop: t.space.sm }}>
                     <TextInput
@@ -235,22 +237,22 @@ export default function CountScreen() {
                       }}
                     />
                     {!!ladder && (
-                      <Pressable onPress={() => openDenomPad(a.id)} accessibilityRole="button" accessibilityLabel={`Count ${a.name} by denomination`}>
+                      <Pressable onPress={() => openDenomPad(a.id)} accessibilityRole="button" accessibilityLabel={tr('count.byDenomination', { name: a.name })}>
                         <Text style={{ fontSize: 20 }}>🧮</Text>
                       </Pressable>
                     )}
                     {invalid ? (
-                      <Text style={[t.type.body, { color: t.color.danger }]}>Invalid</Text>
+                      <Text style={[t.type.body, { color: t.color.danger }]}>{tr('count.invalid')}</Text>
                     ) : matches ? (
                       <Text style={[t.type.body, { color: t.color.income, fontWeight: '600' }]}>✓</Text>
                     ) : adjustment ? (
                       <Money amount={adjustment.type === 'withdrawal' ? `-${adjustment.amount}` : adjustment.amount} currency={currency} />
                     ) : (
-                      <Text style={[t.type.body, { color: t.color.textFaint }]}>skip</Text>
+                      <Text style={[t.type.body, { color: t.color.textFaint }]}>{tr('count.skip')}</Text>
                     )}
                   </View>
                   {invalid && (
-                    <Text style={[t.type.label, { color: t.color.danger, marginTop: t.space.xs }]}>Invalid amount</Text>
+                    <Text style={[t.type.label, { color: t.color.danger, marginTop: t.space.xs }]}>{tr('common.invalidAmount')}</Text>
                   )}
                 </Card>
               );
@@ -262,18 +264,18 @@ export default function CountScreen() {
           <View style={{ padding: t.space.lg, gap: t.space.sm }}>
             {drift.length > 0 && (
               <Text style={[t.type.label, { color: t.color.textMuted, textAlign: 'center' }]}>
-                Drift {drift.map((d) => `${d.amount} ${d.currencyCode}`).join(' · ')}
+                {tr('count.drift', { amounts: drift.map((d) => `${d.amount} ${d.currencyCode}`).join(' · ') })}
               </Text>
             )}
             {invalidCounts.size > 0 ? (
-              <Button title="Fix the invalid amount above" variant="secondary" disabled />
+              <Button title={tr('count.fixInvalid')} variant="secondary" disabled />
             ) : !canCount && countedRows.length > 0 ? (
-              <Button title="Sync before counting" variant="secondary" disabled />
+              <Button title={tr('count.syncFirst')} variant="secondary" disabled />
             ) : countedRows.length > 0 && adjustments.length === 0 ? (
-              <Button title="Everything matches ✓" variant="secondary" disabled />
+              <Button title={tr('count.allMatch')} variant="secondary" disabled />
             ) : (
               <Button
-                title={`Review ${adjustments.length} adjustment${adjustments.length === 1 ? '' : 's'}`}
+                title={tr('count.reviewCount', { count: adjustments.length })}
                 onPress={() => setReviewOpen(true)}
                 disabled={adjustments.length === 0}
                 size="lg"
@@ -283,7 +285,7 @@ export default function CountScreen() {
         )}
       </View>
 
-      <Sheet visible={!!denomAccountId} onClose={() => setDenomAccountId(null)} title="Count denominations" footer={<Button title="Use this total" onPress={applyDenomTotal} />}>
+      <Sheet visible={!!denomAccountId} onClose={() => setDenomAccountId(null)} title={tr('count.denominationsTitle')} footer={<Button title={tr('count.useTotal')} onPress={applyDenomTotal} />}>
         {!!denomLadder && denomLadder.map((d) => (
           <View key={d.value} style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.md, paddingVertical: t.space.xs }}>
             <Text style={[t.type.body, { color: t.color.text, width: 60 }]}>{d.label}</Text>
@@ -303,10 +305,10 @@ export default function CountScreen() {
       <Sheet
         visible={reviewOpen}
         onClose={() => setReviewOpen(false)}
-        title="Review adjustments"
+        title={tr('count.reviewTitle')}
         footer={(
           <Button
-            title={confirming ? 'Confirming…' : missingSettings ? 'Configure payees first (⚙)' : `Confirm ${adjustments.length}`}
+            title={confirming ? tr('draft.confirming') : missingSettings ? tr('count.configureFirst') : tr('count.confirmCount', { count: adjustments.length })}
             onPress={confirmReview}
             disabled={confirming || missingSettings || !canCount}
           />
@@ -325,22 +327,22 @@ export default function CountScreen() {
         })}
       </Sheet>
 
-      <Sheet visible={settingsOpen} onClose={() => setSettingsOpen(false)} title="Cash count settings">
-        <Text style={[t.type.label, { color: t.color.textMuted }]}>Shortfall payee (expense account)</Text>
+      <Sheet visible={settingsOpen} onClose={() => setSettingsOpen(false)} title={tr('count.settingsTitle')}>
+        <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('count.shortfallPayee')}</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm, marginBottom: t.space.md }}>
           {expenseAccounts.map((a) => (
             <Chip key={a.id} label={a.name} selected={a.id === shortfallAccountId} onPress={async () => { await setReconcileShortfallAccountId(db, a.id); setShortfallAccountIdState(a.id); }} />
           ))}
         </View>
-        <Text style={[t.type.label, { color: t.color.textMuted }]}>Surplus payee (revenue account)</Text>
+        <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('count.surplusPayee')}</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm, marginBottom: t.space.md }}>
           {revenueAccounts.map((a) => (
             <Chip key={a.id} label={a.name} selected={a.id === surplusAccountId} onPress={async () => { await setReconcileSurplusAccountId(db, a.id); setSurplusAccountIdState(a.id); }} />
           ))}
         </View>
-        <Text style={[t.type.label, { color: t.color.textMuted }]}>Category (optional)</Text>
+        <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('count.categoryOptional')}</Text>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
-          <Chip label="None" selected={!reconcileCategory} onPress={async () => { await setReconcileCategoryName(db, ''); setReconcileCategoryState(null); }} />
+          <Chip label={tr('common.none')} selected={!reconcileCategory} onPress={async () => { await setReconcileCategoryName(db, ''); setReconcileCategoryState(null); }} />
           {(categories ?? []).map((c) => (
             <Chip key={c.id} label={c.name} selected={c.name === reconcileCategory} onPress={async () => { await setReconcileCategoryName(db, c.name); setReconcileCategoryState(c.name); }} />
           ))}

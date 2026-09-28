@@ -1,6 +1,7 @@
 // Search + live re-rank over merchant history (design §6.2). Uses Sheet's list mode: the
 // history can be ~400 rows, which a ScrollView must not try to mount at once.
 import { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { eq } from 'drizzle-orm';
 import { FlatList, Pressable, Text } from 'react-native';
 import { Sheet } from './components';
@@ -22,9 +23,10 @@ export function PayeeSheet({
   histories: MerchantHistory[];
   onSelect: (history: MerchantHistory) => void;
   onCreateNew: (rawText: string) => void;
-  payeeLabel: string; // "payee" or "payer", matches the screen's transaction type
+  payeeLabel: 'payee' | 'payer'; // matches the screen's transaction type
 }) {
   const t = useTheme();
+  const { t: tr } = useTranslation();
   const db = useDb();
   const [query, setQuery] = useState('');
   const { data: payeeAliases } = useLiveQuery(db.select().from(aliases).where(eq(aliases.kind, PAYEE)));
@@ -65,7 +67,7 @@ export function PayeeSheet({
     <Sheet
       visible={visible}
       onClose={() => { setQuery(''); onClose(); }}
-      title={`Choose a ${payeeLabel}`}
+      title={tr(`payeeSheet.${payeeLabel}.choose`)}
       scroll={false}
       footer={!!trimmed && (
         <Pressable
@@ -75,11 +77,11 @@ export function PayeeSheet({
             paddingVertical: t.space.md, opacity: pressed ? 0.6 : 1,
           })}
         >
-          <Text style={[t.type.body, { color: t.color.accent, fontWeight: '600' }]}>Create new {payeeLabel} &quot;{trimmed}&quot;</Text>
+          <Text style={[t.type.body, { color: t.color.accent, fontWeight: '600' }]}>{tr(`payeeSheet.${payeeLabel}.createNew`, { name: trimmed })}</Text>
         </Pressable>
       )}
     >
-      <SearchField value={query} onChangeText={setQuery} placeholder={`Search ${payeeLabel}s`} autoFocus style={{ marginBottom: t.space.sm }} />
+      <SearchField value={query} onChangeText={setQuery} placeholder={tr(`payeeSheet.${payeeLabel}.search`)} autoFocus style={{ marginBottom: t.space.sm }} />
       <FlatList
         data={results}
         keyExtractor={(r) => r.history.merchantKey}
@@ -96,13 +98,13 @@ export function PayeeSheet({
           >
             <Text style={[t.type.body, { color: t.color.text }]} numberOfLines={1}>{item.displayName}</Text>
             <Text style={[t.type.label, { color: t.color.textMuted }]} numberOfLines={1}>
-              {[via && `alias “${via}”`, item.topCategory, item.topAccountName].filter(Boolean).join(' · ') || `${item.occurrences}×`}
+              {[via && tr('payeeSheet.viaAlias', { alias: via }), item.topCategory, item.topAccountName].filter(Boolean).join(' · ') || `${item.occurrences}×`}
             </Text>
           </Pressable>
         )}
         ListEmptyComponent={(
           <Text style={[t.type.body, { color: t.color.textFaint, paddingVertical: t.space.lg, textAlign: 'center' }]}>
-            No matches
+            {tr('pickers.noMatches')}
           </Text>
         )}
       />

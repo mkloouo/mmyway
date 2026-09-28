@@ -1,10 +1,12 @@
 import { Tabs } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTheme } from '../../src/ui/theme';
 import { useInboxSections } from '../../src/inbox/useInboxSections';
 
 export default function TabsLayout() {
   const t = useTheme();
+  const { t: tr } = useTranslation();
   const { actionableCount } = useInboxSections();
 
   return (
@@ -19,7 +21,7 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Inbox',
+          title: tr('tabs.inbox'),
           tabBarBadge: actionableCount > 0 ? actionableCount : undefined,
           tabBarIcon: ({ color, size }) => <Ionicons name="file-tray-full" color={color} size={size} />,
         }}
@@ -27,14 +29,14 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="activity"
         options={{
-          title: 'Activity',
+          title: tr('activity.title'),
           tabBarIcon: ({ color, size }) => <Ionicons name="list" color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'Settings',
+          title: tr('settings.title'),
           tabBarIcon: ({ color, size }) => <Ionicons name="settings-outline" color={color} size={size} />,
         }}
       />

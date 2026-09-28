@@ -2,6 +2,7 @@
 // card's own button — the guard lives here, not in a second code path: an incomplete draft
 // springs back instead of confirming.
 import { useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
 import Swipeable, { SwipeDirection, type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { useTheme } from './theme';
@@ -17,6 +18,7 @@ export function SwipeableCard({
   onRefused?: () => void;
 }) {
   const t = useTheme();
+  const { t: tr } = useTranslation();
   const ref = useRef<SwipeableMethods>(null);
 
   return (
@@ -27,12 +29,12 @@ export function SwipeableCard({
       rightThreshold={96}
       renderLeftActions={onConfirm ? () => (
         <View style={{ backgroundColor: t.color.accent, justifyContent: 'center', paddingHorizontal: t.space.xl }}>
-          <Text style={{ color: t.color.onAccent, fontWeight: '700' }}>✓ Confirm</Text>
+          <Text style={{ color: t.color.onAccent, fontWeight: '700' }}>✓ {tr('inbox.confirm')}</Text>
         </View>
       ) : undefined}
       renderRightActions={onDelete ? () => (
         <View style={{ backgroundColor: t.color.danger, justifyContent: 'center', alignItems: 'flex-end', paddingHorizontal: t.space.xl }}>
-          <Text style={{ color: t.color.onDanger, fontWeight: '700' }}>✕ Delete</Text>
+          <Text style={{ color: t.color.onDanger, fontWeight: '700' }}>✕ {tr('common.delete')}</Text>
         </View>
       ) : undefined}
       // `direction` is the way the row MOVED: a swipe to the right reveals the left actions

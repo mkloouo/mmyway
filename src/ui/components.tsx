@@ -1,6 +1,7 @@
 // The whole component kit (design §4). Ten primitives, no styling outside this file:
 // a screen that needs a new look adds a variant here rather than inlining styles.
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Animated, Keyboard, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View,
   type StyleProp, type ViewStyle,
@@ -332,6 +333,7 @@ export function Sheet({
   scroll?: boolean;
 }) {
   const t = useTheme();
+  const { t: tr } = useTranslation();
   const insets = useSafeAreaInsets();
   const keyboardHeight = useKeyboardHeight();
   const bodyPadding = { paddingHorizontal: t.space.lg, paddingBottom: t.space.lg, gap: t.space.md };
@@ -350,7 +352,7 @@ export function Sheet({
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={{ flex: 1, justifyContent: 'flex-end' }}>
-        <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: t.color.scrim }]} onPress={onClose} accessibilityLabel="Close" />
+        <Pressable style={[StyleSheet.absoluteFill, { backgroundColor: t.color.scrim }]} onPress={onClose} accessibilityLabel={tr('common.close')} />
         <View
           style={{
             // A `scroll={false}` body hands us a flex: 1 FlatList that needs a resolved height to

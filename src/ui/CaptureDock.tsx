@@ -1,11 +1,13 @@
 // Floating over Inbox and Activity, never Settings (design §5).
 import { Pressable, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTheme } from './theme';
 import { navigateOnce } from './navigateOnce';
 
 export function CaptureDock() {
   const t = useTheme();
+  const { t: tr } = useTranslation();
   return (
     <View
       pointerEvents="box-none"
@@ -17,7 +19,7 @@ export function CaptureDock() {
       <Pressable
         onPress={() => navigateOnce({ pathname: '/receipt', params: { source: 'gallery' } })}
         accessibilityRole="button"
-        accessibilityLabel="Receipt from the gallery"
+        accessibilityLabel={tr('dock.receiptFromGallery')}
         style={({ pressed }) => ({
           width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
           backgroundColor: t.color.surface, borderWidth: 1, borderColor: t.color.border,
@@ -29,7 +31,7 @@ export function CaptureDock() {
       <Pressable
         onPress={() => navigateOnce('/receipt')}
         accessibilityRole="button"
-        accessibilityLabel="Capture a receipt"
+        accessibilityLabel={tr('dock.captureReceipt')}
         style={({ pressed }) => ({
           width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center',
           backgroundColor: t.color.surface, borderWidth: 1, borderColor: t.color.border,
@@ -41,7 +43,7 @@ export function CaptureDock() {
       <Pressable
         onPress={() => navigateOnce('/capture')}
         accessibilityRole="button"
-        accessibilityLabel="Add an entry"
+        accessibilityLabel={tr('dock.addEntry')}
         style={({ pressed }) => ({
           height: 56, paddingHorizontal: t.space.xl, borderRadius: t.radius.pill,
           flexDirection: 'row', alignItems: 'center', gap: t.space.sm,
@@ -49,7 +51,7 @@ export function CaptureDock() {
         })}
       >
         <Ionicons name="add" size={20} color={t.color.onAccent} />
-        <Text style={[t.type.heading, { color: t.color.onAccent }]}>Add</Text>
+        <Text style={[t.type.heading, { color: t.color.onAccent }]}>{tr('common.add')}</Text>
       </Pressable>
     </View>
   );

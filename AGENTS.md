@@ -13,6 +13,8 @@ pipeline.
 - `npm run db:generate` — regenerate Drizzle migrations after editing `src/db/schema.ts`
 - `npm run android:build:dev` / `npm run android:build:pro` — local EAS APK build
 - `npm run release -- X.Y.Z` — see `scripts/release.mjs --help`
+- `npm run i18n:push` / `npm run i18n:pull` — sync UI strings with Tolgee (needs `.env.local`,
+  see `docs/LOCALIZATION.md`)
 
 ## Module layout
 
@@ -32,6 +34,8 @@ pipeline.
   full of plain helper files gets scanned as routes too, crashing every screen with
   "Element type is invalid... forgot to export your component" for each non-route file in
   it. Confirmed on a real device run.
+- `src/i18n/` — i18next setup, `locales/*.json` (en is the source of truth; others are pulled
+  from Tolgee), and `LocaleSync` (applies Settings → Language). See `docs/LOCALIZATION.md`.
 - `src/api/ff3/` — hand-written FF3 client (fetch-based, no generated types — see note below).
 - `src/sync/` — outbox (queued writes) and reference-data pulls. Read `src/sync/outbox.ts`'s
   header comment before changing replay order or retry semantics.
@@ -51,6 +55,10 @@ pipeline.
   key from agent code.** Mock `fetch` in tests. This mirrors the rule in `~/Projects/my-finances/CLAUDE.md`.
 - **FF3 amounts are strings.** Never parse them to `number` for storage or arithmetic — use
   `src/api/ff3/decimal.ts`.
+- **No user-visible string is hardcoded in a screen or component** — add it to
+  `src/i18n/locales/en.json` (and the same key, empty, to every other locale file) and read it
+  with `const { t: tr } = useTranslation()` (`t` is already the theme), or `i18n.t` outside
+  React. Format dates with `appLocale()`, never `undefined`. See `docs/LOCALIZATION.md`.
 - **Categories are never hardcoded** — always read from `src/db/schema.ts`'s
   `referenceCategories` table, synced from FF3. (The bot this app replaces hardcoded them in
   5 places; don't repeat that.)

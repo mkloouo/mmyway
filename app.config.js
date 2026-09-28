@@ -25,6 +25,7 @@ module.exports = {
         },
       ],
       '@react-native-community/datetimepicker',
+      'expo-localization',
       [
         // Assets and colours: scripts/generate-icons.py. Backgrounds are src/ui/theme.ts's bg.
         'expo-splash-screen',

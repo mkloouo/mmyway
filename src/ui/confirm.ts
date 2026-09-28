@@ -1,4 +1,5 @@
 import { Alert } from 'react-native';
+import i18n from '../i18n';
 
 /**
  * One confirmation prompt for every destructive control, so a delete reads the same wherever it
@@ -11,7 +12,7 @@ export function confirmDestructive(title: string, actionLabel: string, message?:
       title,
       message,
       [
-        { text: 'Cancel', style: 'cancel', onPress: () => resolve(false) },
+        { text: i18n.t('common.cancel'), style: 'cancel', onPress: () => resolve(false) },
         { text: actionLabel, style: 'destructive', onPress: () => resolve(true) },
       ],
       { onDismiss: () => resolve(false) },

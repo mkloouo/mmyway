@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Settings
+- **Language**: mmyway now follows your phone's language, or you can pick one in Settings →
+  Language (System, English or Українська). Dates and times follow the language you pick.
+  Text that isn't translated yet shows in English.
+
 ## [1.1.0] - 2026-09-28
 
 ### Look

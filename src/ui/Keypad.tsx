@@ -1,6 +1,7 @@
 // The 4x4 grid of design §6.2: digits plus the date, note and save cells share its layout so
 // the whole bottom cluster reads as one control.
 import { Pressable, Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { useTheme } from './theme';
 import { haptics } from './haptics';
 import type { KeypadKey } from '../capture/amountInput';
@@ -50,6 +51,7 @@ export function Keypad({
   /** Digits, backspace and a single confirm cell — no date/note cells (a sheet's amount edit). */
   compact?: boolean;
 }) {
+  const { t: tr } = useTranslation();
   return (
     <View>
       {DIGIT_ROWS.map((row, rowIndex) => (
@@ -57,7 +59,7 @@ export function Keypad({
           {row.map((key) => <Key key={key} label={key} onPress={() => onDigit(key)} />)}
           {rowIndex === 0 && <Key label="⌫" onPress={() => onDigit('⌫')} />}
           {rowIndex === 1 && (compact ? <View style={{ flex: 1, marginHorizontal: 4, marginVertical: 4 }} /> : <Key label={dateLabel!} onPress={onDatePress!} />)}
-          {rowIndex === 2 && (compact ? <View style={{ flex: 1, marginHorizontal: 4, marginVertical: 4 }} /> : <Key label={noteHasValue ? 'Note ●' : 'Note'} onPress={onNotePress!} />)}
+          {rowIndex === 2 && (compact ? <View style={{ flex: 1, marginHorizontal: 4, marginVertical: 4 }} /> : <Key label={noteHasValue ? `${tr('fields.note')} ●` : tr('fields.note')} onPress={onNotePress!} />)}
           {rowIndex === 3 && <Key label={saveLabel} tone="accent" onPress={onSave} disabled={saveDisabled || saving} />}
         </View>
       ))}

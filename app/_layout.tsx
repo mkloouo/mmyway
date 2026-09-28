@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AppState, Text, View } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -12,6 +13,8 @@ import { useTheme } from '../src/ui/theme';
 import { Button } from '../src/ui/components';
 import { useSharedImages } from '../src/receipt/useSharedImages';
 import { installLogCapture, logLine } from '../src/utils/log';
+import '../src/i18n';
+import { LocaleSync } from '../src/i18n/LocaleSync';
 
 installLogCapture();
 
@@ -42,12 +45,13 @@ function SyncOnResume() {
 /** This build has no dev tools attached — a crash must never be a blank screen (design §7). */
 export function ErrorBoundary({ error, retry }: { error: Error; retry: () => void }) {
   const t = useTheme();
+  const { t: tr } = useTranslation();
   logLine('error', `render crash: ${error.message}\n${error.stack ?? ''}`);
   return (
     <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: t.space.lg, padding: t.space.xxl, backgroundColor: t.color.bg }}>
-      <Text style={[t.type.heading, { color: t.color.text }]}>Something broke</Text>
+      <Text style={[t.type.heading, { color: t.color.text }]}>{tr('errorBoundary.title')}</Text>
       <Text style={[t.type.body, { color: t.color.textMuted, textAlign: 'center' }]}>{error.message}</Text>
-      <Button title="Reload" onPress={retry} />
+      <Button title={tr('errorBoundary.reload')} onPress={retry} />
     </View>
   );
 }
@@ -64,6 +68,7 @@ export default function RootLayout() {
               near-white background. `auto` follows the colour scheme. */}
           <StatusBar style="auto" />
           <DbProvider>
+            <LocaleSync />
             <SyncOnResume />
             <ShareIntentBridge />
             <Stack screenOptions={{ headerShown: false }}>

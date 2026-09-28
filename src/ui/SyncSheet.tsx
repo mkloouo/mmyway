@@ -2,27 +2,29 @@
 // listing every configured address with its own dot (§6.6) — "why is it offline" is answerable
 // here without opening Settings.
 import { Text, View } from 'react-native';
+import { useTranslation } from 'react-i18next';
 import { Sheet, Row, Button } from './components';
 import { useTheme } from './theme';
 import type { SyncSummary } from '../sync/runSync';
 import type { ServerReachability } from '../sync/reachability';
 import { describeSyncTime } from './relativeTime';
 
-const PROVIDER_LABELS: Record<string, string> = { local: 'Local model', gemini: 'Gemini' };
+const PROVIDER_LABEL_KEYS: Record<string, string> = { local: 'sync.providerLocal', gemini: 'sync.providerGemini' };
 
 function AddressRows({ label, report }: { label: string; report: ServerReachability }) {
   const t = useTheme();
+  const { t: tr } = useTranslation();
   if (report.results.length === 0) {
-    return <Row label={label} value="none configured" tone="warn" />;
+    return <Row label={label} value={tr('sync.noneConfigured')} tone="warn" />;
   }
   return (
     <View>
-      <Row label={label} value={report.winner ? 'reachable' : 'unreachable'} tone={report.winner ? 'default' : 'warn'} />
+      <Row label={label} value={report.winner ? tr('sync.reachable') : tr('sync.unreachable')} tone={report.winner ? 'default' : 'warn'} />
       {report.results.map((r) => (
         <View key={r.address} style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm, paddingLeft: t.space.lg, paddingVertical: t.space.xs }}>
           <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: r.ok ? t.color.income : t.color.textFaint }} />
           <Text style={[t.type.label, { color: t.color.textMuted, flex: 1 }]} numberOfLines={1}>{r.address}</Text>
-          {report.winner === r.address && <Text style={[t.type.label, { color: t.color.accent }]}>in use</Text>}
+          {report.winner === r.address && <Text style={[t.type.label, { color: t.color.accent }]}>{tr('addresses.inUse')}</Text>}
         </View>
       ))}
     </View>
@@ -40,6 +42,7 @@ export function SyncSheet({
   onSyncNow: () => void;
 }) {
   const t = useTheme();
+  const { t: tr } = useTranslation();
   const syncing = status === 'syncing';
   const signedIn = summary?.signedIn ?? false;
 
@@ -47,12 +50,12 @@ export function SyncSheet({
     <Sheet
       visible={visible}
       onClose={onClose}
-      title="Sync"
-      footer={<Button title={syncing ? 'Syncing…' : 'Sync now'} onPress={onSyncNow} disabled={syncing} />}
+      title={tr('sync.title')}
+      footer={<Button title={syncing ? tr('sync.syncing') : tr('sync.syncNow')} onPress={onSyncNow} disabled={syncing} />}
     >
       <View>
         {!signedIn ? (
-          <Row first label="Firefly III" value="not signed in" tone="warn" />
+          <Row first label="Firefly III" value={tr('sync.notSignedInValue')} tone="warn" />
         ) : (
           <AddressRows label="Firefly III" report={summary!.ff3} />
         )}
@@ -60,16 +63,16 @@ export function SyncSheet({
             probed — Gemini has no address, and a push sync skips the probe — just shows it's set. */}
         {(summary?.configuredProviders ?? []).map((name) => {
           const report = summary?.providers[name];
-          const label = PROVIDER_LABELS[name] ?? name;
+          const label = PROVIDER_LABEL_KEYS[name] ? tr(PROVIDER_LABEL_KEYS[name]) : name;
           return report
             ? <AddressRows key={name} label={label} report={report} />
-            : <Row key={name} label={label} value="configured" />;
+            : <Row key={name} label={label} value={tr('sync.configured')} />;
         })}
         {signedIn && (summary?.configuredProviders ?? []).length === 0 && (
-          <Row label="Receipt providers" value="none configured" tone="warn" />
+          <Row label={tr('sync.receiptProviders')} value={tr('sync.noneConfigured')} tone="warn" />
         )}
-        <Row label="Pending outbox" value={String(pendingOutboxCount)} tone={pendingOutboxCount > 0 ? 'warn' : 'default'} />
-        <Row label="Last synced" value={describeSyncTime(summary?.lastSyncedAt)} />
+        <Row label={tr('sync.pendingOutbox')} value={String(pendingOutboxCount)} tone={pendingOutboxCount > 0 ? 'warn' : 'default'} />
+        <Row label={tr('sync.lastSynced')} value={describeSyncTime(summary?.lastSyncedAt)} />
         {!!summary?.error && (
           <Text style={[t.type.label, { color: t.color.danger, paddingTop: t.space.sm }]}>{summary.error}</Text>
         )}

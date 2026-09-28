@@ -2,6 +2,7 @@
 // expected amount is FF3's balance as of the last read, so it is wrong in two cases: writes still
 // queued (offline spending FF3 hasn't seen), and writes that reached FF3 after the balances were
 // read. Counting in either case shows that spending as drift and books it a second time.
+import i18n from '../i18n';
 import { getBalancesStale } from '../settings/appSettings';
 import { queuedLedgerOpCount, type OutboxDb } from '../sync/outbox';
 
@@ -20,9 +21,6 @@ export async function readCountBlocker(db: OutboxDb): Promise<CountBlocker | nul
 }
 
 export function describeCountBlocker(blocker: CountBlocker): string {
-  if (blocker.reason === 'queued') {
-    const changes = blocker.count === 1 ? '1 change hasn\'t' : `${blocker.count} changes haven't`;
-    return `${changes} reached Firefly III yet, so the expected balances don't include ${blocker.count === 1 ? 'it' : 'them'}. Sync before counting.`;
-  }
-  return 'The balances were read before your last changes reached Firefly III. Sync before counting.';
+  if (blocker.reason === 'queued') return i18n.t('count.blockerQueued', { count: blocker.count });
+  return i18n.t('count.blockerStale');
 }
