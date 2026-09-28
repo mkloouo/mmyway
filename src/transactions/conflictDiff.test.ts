@@ -3,7 +3,7 @@ import { conflictFields } from './conflictDiff';
 const row = {
   groupId: 'g1', journalId: 'j1', type: 'withdrawal', date: '2026-09-27T10:00:00+02:00', amount: '15.000000000000',
   currencyCode: 'PLN', foreignAmount: null, foreignCurrencyCode: null, description: 'TEST 3.7', sourceName: 'Cash', destinationName: 'Żabka',
-  categoryName: 'Groceries', budgetName: null, tagsJson: '["mmyway-reviewed"]', notes: 'set in the web UI', updatedAt: 'v2', syncedAt: 's',
+  categoryName: 'Groceries', budgetName: null, sourceId: null, destinationId: null, budgetId: null, splitCount: 1, searchKey: null, tagsJson: '["mmyway-reviewed"]', notes: 'set in the web UI', updatedAt: 'v2', syncedAt: 's',
 };
 const lookups = { accountName: (id: string) => ({ a1: 'Revolut' } as Record<string, string>)[id], budgetName: () => undefined, money: (a: string) => `${Number(a).toFixed(2)} zł` };
 

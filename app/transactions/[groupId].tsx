@@ -110,9 +110,9 @@ export default function TransactionDetailScreen() {
     ...remoteImages.map((a) => ({ key: a.id, source: a.imageSource! })),
   ];
   const effectiveAmount = shown.amount ?? row.amount;
-  const effectiveSourceId = shown.source_id ?? allAssetAccounts.find((a) => a.name === row.sourceName)?.id ?? null;
-  const effectiveDestinationId = shown.destination_id ?? allAssetAccounts.find((a) => a.name === row.destinationName)?.id ?? null;
-  const effectiveBudgetId = shown.budget_id ?? (budgets ?? []).find((b) => b.name === row.budgetName)?.id ?? null;
+  const effectiveSourceId = shown.source_id ?? row.sourceId ?? allAssetAccounts.find((a) => a.name === row.sourceName)?.id ?? null;
+  const effectiveDestinationId = shown.destination_id ?? row.destinationId ?? allAssetAccounts.find((a) => a.name === row.destinationName)?.id ?? null;
+  const effectiveBudgetId = shown.budget_id ?? row.budgetId ?? (budgets ?? []).find((b) => b.name === row.budgetName)?.id ?? null;
   const effectiveCategoryName = shown.category_name ?? row.categoryName ?? null;
   const effectiveDate = shown.date ? new Date(shown.date) : new Date(row.date);
   const effectiveNotes = shown.notes ?? row.notes ?? null;
@@ -267,9 +267,13 @@ export default function TransactionDetailScreen() {
         {/* The description can be a long legal name ("TOP-PHARMA spółka z o.o. sp.k. …"): padded,
             centred and capped at two lines instead of running into both screen edges. */}
         <View style={{ alignItems: 'center', paddingVertical: t.space.lg, paddingHorizontal: t.space.xl }}>
-          <Pressable onPress={() => setAmountSheetOpen(true)}>
+          {/* A split group shows its total; edits reach only the first split, so its amount isn't editable here. */}
+          <Pressable onPress={() => setAmountSheetOpen(true)} disabled={row.splitCount > 1}>
             <Money amount={effectiveAmount} currency={currency} type={row.type as 'withdrawal' | 'deposit' | 'transfer'} size="title" />
           </Pressable>
+          {row.splitCount > 1 && (
+            <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('transaction.splits', { count: row.splitCount })}</Text>
+          )}
           <Text style={[t.type.heading, { color: t.color.text, marginTop: t.space.xs, textAlign: 'center' }]} numberOfLines={2}>{row.description}</Text>
         </View>
 

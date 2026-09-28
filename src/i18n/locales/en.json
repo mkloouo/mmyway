@@ -340,7 +340,9 @@
     "uploadFailed": "Upload failed",
     "uploadFailedWith": "Upload failed: {{error}}",
     "uploading": "Uploading…",
-    "attachAnother": "Attach another"
+    "attachAnother": "Attach another",
+    "splits_one": "{{count}} split — edit the amounts in Firefly III",
+    "splits_other": "{{count}} splits — edit the amounts in Firefly III"
   },
   "conflict": {
     "changedInFf3": "{{description}} was changed in Firefly III {{time}} after you edited it here.",

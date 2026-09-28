@@ -3,6 +3,7 @@
 // push into the SQL so a match outside the loaded window is still found.
 import { useMemo, useState } from 'react';
 import { and, desc, eq, like, or } from 'drizzle-orm';
+import { normkey } from '../lookup/normkey';
 import { useLiveQuery } from '../db/useLiveQuery';
 import { useDb } from '../providers/DbProvider';
 import { cachedTransactions } from '../db/schema';
@@ -23,7 +24,7 @@ export interface UseTransactionPageResult {
 }
 
 export function useTransactionPage(
-  { search, type, accountName }: { search: string; type: ActivityTypeFilter; accountName?: string | null },
+  { search, type, accountId }: { search: string; type: ActivityTypeFilter; accountId?: string | null },
 ): UseTransactionPageResult {
   const db = useDb();
   const [limit, setLimit] = useState(PAGE_SIZE);
@@ -33,7 +34,7 @@ export function useTransactionPage(
   // Resets the page size when the filter changes — adjusted during render (React's documented
   // pattern for "resetting state when a prop changes"), not in an effect, so there is no extra
   // commit+repaint between the filter changing and the page resetting.
-  const filterKey = `${type}:${accountName ?? ''}:${trimmed}`;
+  const filterKey = `${type}:${accountId ?? ''}:${trimmed}`;
   const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
   if (filterKey !== prevFilterKey) {
     setPrevFilterKey(filterKey);
@@ -42,18 +43,15 @@ export function useTransactionPage(
 
   const conditions = [];
   if (type !== 'all') conditions.push(eq(cachedTransactions.type, type));
-  if (trimmed) {
-    const pattern = `%${trimmed}%`;
+  // SQLite's LIKE folds case for ASCII only ("żabka" missed "Żabka"), so both sides go through
+  // normkey: the query here, the row's text into search_key when it is cached.
+  const key = normkey(trimmed);
+  if (key) conditions.push(like(cachedTransactions.searchKey, `%${key}%`));
+  // By FF3 id, not name: a renamed account, or two sharing a name, used to break the filter.
+  if (accountId) {
     conditions.push(or(
-      like(cachedTransactions.description, pattern),
-      like(cachedTransactions.sourceName, pattern),
-      like(cachedTransactions.destinationName, pattern),
-    )!);
-  }
-  if (accountName) {
-    conditions.push(or(
-      eq(cachedTransactions.sourceName, accountName),
-      eq(cachedTransactions.destinationName, accountName),
+      eq(cachedTransactions.sourceId, accountId),
+      eq(cachedTransactions.destinationId, accountId),
     )!);
   }
   const where = conditions.length > 0 ? and(...conditions) : undefined;

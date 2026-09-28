@@ -55,6 +55,12 @@ export const cachedTransactions = sqliteTable('cached_transactions', {
   destinationName: text('destination_name'),
   categoryName: text('category_name'),
   budgetName: text('budget_name'),
+  // FF3 ids, so a renamed account or two accounts sharing a name don't break filters and edits.
+  sourceId: text('source_id'),
+  destinationId: text('destination_id'),
+  budgetId: text('budget_id'),
+  splitCount: integer('split_count').notNull().default(1), // amount is the splits' total when > 1
+  searchKey: text('search_key'), // normkey'd description|source|destination, for case/diacritic-blind search
   tagsJson: text('tags_json').notNull().default('[]'),
   notes: text('notes'),
   updatedAt: text('updated_at').notNull(), // FF3's updated_at, for conflict checks

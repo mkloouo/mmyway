@@ -1,10 +1,12 @@
-import { and, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, isNull, lte, sql } from 'drizzle-orm';
 import type { FF3Client } from '../api/ff3/client';
 import type { AccountRead, CategoryRead, BudgetRead, CurrencyRead, TransactionRead } from '../api/ff3/types';
 import { referenceAccounts, referenceCategories, referenceBudgets, referenceCurrencies, cachedTransactions, outboxOperations } from '../db/schema';
 import type { OutboxDb } from './outbox';
 import { logLine } from '../utils/log';
 import { setAccountOrder } from '../settings/appSettings';
+import { addDecimal } from '../api/ff3/decimal';
+import { normkey } from '../lookup/normkey';
 
 const PAGE_SIZE = 100;
 
@@ -149,30 +151,49 @@ async function windowStart(db: OutboxDb): Promise<string> {
 export type CachedTransactionInsert = typeof cachedTransactions.$inferInsert;
 
 /** One cached row per FF3 transaction group. Also used by the outbox to store the server's copy on a conflict. */
+/** What Activity search matches against: each field folded by normkey, kept apart so a query can't span two. */
+export function searchKeyOf(parts: (string | null | undefined)[]): string {
+  return parts.map((p) => normkey(p ?? '')).join('|');
+}
+
 export function cachedRowFromGroup(group: TransactionRead, syncedAt: string): CachedTransactionInsert | null {
-  // Only the first split is cached — cachedTransactions is keyed by groupId (one row per
-  // group), matching src/sync/recurringReview.ts's existing single-journal assumption.
-  const journal = group.attributes.transactions[0];
+  // One row per group (cachedTransactions is keyed by groupId). A split transaction is shown as
+  // one entry: the splits' total (when they share a currency) under the group's title, with the
+  // first split's accounts and category. Edits still go to the first journal, so the detail
+  // screen doesn't offer to change a split group's amount.
+  const splits = group.attributes.transactions;
+  const journal = splits[0];
   if (!journal) return null;
+  // FF3 read responses carry these; TransactionSplit (pinned) doesn't declare them all.
+  const extra = journal as { budget_name?: string | null; budget_id?: string | number | null; source_id?: string | number | null; destination_id?: string | number | null };
+  const sameCurrency = splits.every((s) => s.currency_code === journal.currency_code);
+  const amount = splits.length > 1 && sameCurrency ? splits.map((s) => s.amount).reduce((a, b) => addDecimal(a, b)) : journal.amount;
+  const groupTitle = (group.attributes as { group_title?: string | null }).group_title;
+  const description = splits.length > 1 && groupTitle ? groupTitle : journal.description;
+  const sourceName = journal.source_name ?? null;
+  const destinationName = journal.destination_name ?? null;
 
   return {
     groupId: group.id,
     journalId: journal.transaction_journal_id,
     type: journal.type,
     date: journal.date,
-    amount: journal.amount,
+    amount,
     // Read responses always populate currency_code; TransactionSplit only marks it optional
     // because the same type also covers write payloads, which can omit it.
     currencyCode: journal.currency_code!,
-    foreignAmount: journal.foreign_amount ?? null,
-    foreignCurrencyCode: journal.foreign_currency_code ?? null,
-    description: journal.description,
-    sourceName: journal.source_name ?? null,
-    destinationName: journal.destination_name ?? null,
+    foreignAmount: splits.length > 1 ? null : journal.foreign_amount ?? null,
+    foreignCurrencyCode: splits.length > 1 ? null : journal.foreign_currency_code ?? null,
+    description,
+    sourceName,
+    destinationName,
+    sourceId: extra.source_id != null ? String(extra.source_id) : null,
+    destinationId: extra.destination_id != null ? String(extra.destination_id) : null,
     categoryName: journal.category_name ?? null,
-    // TransactionSplit has no budget_name field (only budget_id) — left null until
-    // src/api/ff3/types.ts (generated/pinned) grows one.
-    budgetName: null as string | null,
+    budgetName: extra.budget_name ?? null,
+    budgetId: extra.budget_id != null ? String(extra.budget_id) : null,
+    splitCount: splits.length,
+    searchKey: searchKeyOf([description, ...splits.map((s) => s.description), sourceName, destinationName]),
     tagsJson: JSON.stringify(journal.tags ?? []),
     notes: journal.notes ?? null,
     // FF3 puts updated_at on the group's attributes, not on each split — journal.updated_at
@@ -181,6 +202,31 @@ export function cachedRowFromGroup(group: TransactionRead, syncedAt: string): Ca
     updatedAt: (group.attributes as { updated_at?: string }).updated_at ?? journal.updated_at ?? syncedAt,
     syncedAt,
   };
+}
+
+/**
+ * Rows cached before the search key and account ids existed (migration 0007) get them here, once:
+ * the key from their own text, the ids by account name — the best a row without them can do.
+ */
+export async function backfillCachedTransactions(db: OutboxDb): Promise<void> {
+  const rows = await db.select({
+    groupId: cachedTransactions.groupId, description: cachedTransactions.description,
+    sourceName: cachedTransactions.sourceName, destinationName: cachedTransactions.destinationName,
+  }).from(cachedTransactions).where(isNull(cachedTransactions.searchKey));
+  if (rows.length === 0) return;
+  db.transaction((tx) => {
+    for (const row of rows) {
+      tx.update(cachedTransactions)
+        .set({ searchKey: searchKeyOf([row.description, row.sourceName, row.destinationName]) })
+        .where(eq(cachedTransactions.groupId, row.groupId)).run();
+    }
+  });
+  await db.update(cachedTransactions)
+    .set({ sourceId: sql`(select id from reference_accounts where reference_accounts.name = cached_transactions.source_name limit 1)` })
+    .where(isNull(cachedTransactions.sourceId));
+  await db.update(cachedTransactions)
+    .set({ destinationId: sql`(select id from reference_accounts where reference_accounts.name = cached_transactions.destination_name limit 1)` })
+    .where(isNull(cachedTransactions.destinationId));
 }
 
 // Shared by pullRecentTransactions (catch-up window) and pullOlderTransactions (scrolling past

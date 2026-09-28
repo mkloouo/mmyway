@@ -131,7 +131,7 @@ export default function ActivityScreen() {
   // Just "has anything ever synced" — .limit(1) instead of loading the whole cached table.
   const { data: cachedTxProbe } = useLiveQuery(db.select({ id: cachedTransactions.groupId }).from(cachedTransactions).limit(1));
 
-  const { sections, loadMore, loadingMore, atEnd } = useTransactionPage({ search, type, accountName: accountFilter });
+  const { sections, loadMore, loadingMore, atEnd } = useTransactionPage({ search, type, accountId: accountFilter });
   const { loadOlder, loadingOlder, exhausted, reset: resetExhausted } = useLoadOlderHistory();
   // The local cache runs out before real history does — reaching the end of what's cached pulls
   // a further chunk from FF3 instead of just stopping (see useLoadOlderHistory).
@@ -351,11 +351,11 @@ export default function ActivityScreen() {
           >
             {assetAccounts.map((a) => {
               const stale = a.currentBalanceDate ? new Date().getTime() - new Date(a.currentBalanceDate).getTime() > STALE_MS : true;
-              const selected = accountFilter === a.name;
+              const selected = accountFilter === a.id;
               return (
                 <Pressable
                   key={a.id}
-                  onPress={() => setAccountFilter((cur) => (cur === a.name ? null : a.name))}
+                  onPress={() => setAccountFilter((cur) => (cur === a.id ? null : a.id))}
                   onLongPress={() => navigateOnce(`/accounts/${a.id}`)}
                   delayLongPress={300}
                   accessibilityHint={tr('account.openHint')}
