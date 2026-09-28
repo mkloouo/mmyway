@@ -31,6 +31,12 @@ async function setSetting(db: OutboxDb, key: string, value: string): Promise<voi
   await db.insert(appSettings).values({ key, value }).onConflictDoUpdate({ target: appSettings.key, set: { value } });
 }
 
+/**
+ * The settings that describe one FF3 instance rather than the user's preferences: they must not
+ * carry over when the app is pointed at another instance (src/sync/instanceData.ts).
+ */
+export const INSTANCE_SETTING_KEYS: readonly string[] = [KEYS.ff3ActiveHost, KEYS.lastSyncedAt, KEYS.accountOrder, KEYS.balancesStale];
+
 export const getDefaultSourceAccountId = (db: OutboxDb) => getSetting(db, KEYS.defaultSourceAccountId);
 export const setDefaultSourceAccountId = (db: OutboxDb, value: string) => setSetting(db, KEYS.defaultSourceAccountId, value);
 
