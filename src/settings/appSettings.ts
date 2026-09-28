@@ -19,6 +19,7 @@ const KEYS = {
   lastSyncedAt: 'last_synced_at',
   useServerTime: 'use_server_time',
   accountOrder: 'account_order',
+  balancesStale: 'balances_stale',
 } as const;
 
 async function getSetting(db: OutboxDb, key: string): Promise<string | null> {
@@ -110,3 +111,16 @@ export async function getAccountOrder(db: OutboxDb): Promise<Record<string, numb
   return parseAccountOrder(await getSetting(db, KEYS.accountOrder));
 }
 export const setAccountOrder = (db: OutboxDb, order: Record<string, number>) => setSetting(db, KEYS.accountOrder, JSON.stringify(order));
+
+/** The settings key balancesStale lives under, for a live query of it (app/count.tsx). */
+export const BALANCES_STALE_KEY = KEYS.balancesStale;
+
+/**
+ * Set while a write may have reached FF3 since account balances were last read (runSync), so the
+ * cached `current_balance` can be missing it. The cash count must not compare against such a
+ * balance: it would see the synced spending as drift and book it a second time.
+ */
+export async function getBalancesStale(db: OutboxDb): Promise<boolean> {
+  return (await getSetting(db, KEYS.balancesStale)) === '1';
+}
+export const setBalancesStale = (db: OutboxDb, value: boolean) => setSetting(db, KEYS.balancesStale, value ? '1' : '0');
