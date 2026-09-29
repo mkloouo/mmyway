@@ -137,6 +137,34 @@ describe('createManualEntry + confirmInboxItem', () => {
     expect(item?.state).toBe('captured');
   });
 
+  it('undo still works while the operation waits to be retried, but not while it is sending', async () => {
+    const db = createTestDb();
+    const entry = () =>
+      createManualEntry(db as any, {
+        type: 'withdrawal',
+        amount: '30.00',
+        currencyCode: 'PLN',
+        date: new Date().toISOString(),
+        description: 'McDonalds',
+        merchantRawInput: 'McDonalds',
+      });
+    const retrying = await confirmInboxItem(db as any, (await entry()).inboxItemId);
+    await db
+      .update(outboxOperations)
+      .set({ status: 'failed', lastError: 'Network request failed' })
+      .where(eq(outboxOperations.id, retrying.outboxOperationId));
+    const { inboxItemId: sendingId } = await entry();
+    const sending = await confirmInboxItem(db as any, sendingId);
+    await db
+      .update(outboxOperations)
+      .set({ status: 'in_flight' })
+      .where(eq(outboxOperations.id, sending.outboxOperationId));
+
+    const [retryingItem] = await db.select().from(outboxOperations);
+    expect(await undoConfirm(db as any, retryingItem!.inboxItemId!, retrying)).toBe('undone');
+    expect(await undoConfirm(db as any, sendingId, sending)).toBe('already_sent');
+  });
+
   it('undo reports already_sent once the operation is no longer pending', async () => {
     const db = createTestDb();
     const { inboxItemId } = await createManualEntry(db as any, {

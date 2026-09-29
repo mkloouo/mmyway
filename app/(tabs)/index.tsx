@@ -1,7 +1,7 @@
 // Inbox (design §6.1) — the approval queue. Only ever holds unfinished work; confirmed/synced
 // items leave every section (see src/inbox/useInboxSections.ts).
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Pressable, SectionList, Text, View } from 'react-native';
+import { Alert, Animated, Pressable, SectionList, Text, View } from 'react-native';
 import { usePopOnChange } from '../../src/ui/feedback';
 import { Collapsible, leaveThen } from '../../src/ui/Collapsible';
 import { useTranslation } from 'react-i18next';
@@ -317,6 +317,21 @@ export default function InboxScreen() {
       return;
     await discardOperation(db, opId);
   });
+  // A new transaction goes back to the Inbox to edit, so it needs no confirmation; any other
+  // change is gone once cancelled.
+  const cancelQueued = act(tr('inbox.cancelChange'), async (op: QueuedChange['op']) => {
+    if (
+      op.kind !== 'create_transaction' &&
+      !(await confirmDestructive(
+        tr('inbox.cancelChangeTitle'),
+        tr('inbox.cancelChange'),
+        tr('inbox.discardChangeBody'),
+      ))
+    )
+      return;
+    if ((await discardOperation(db, op.id)) === 'sending')
+      Alert.alert(tr('inbox.alreadySending'), tr('inbox.alreadySendingBody'));
+  });
   function resolveConflict(groupId: string) {
     navigateOnce(`/transactions/${groupId}`);
   }
@@ -510,7 +525,13 @@ export default function InboxScreen() {
               );
             }
             if (section.key === 'queued')
-              return <QueuedCard change={item as QueuedChange} onOpen={navigateOnce} />;
+              return (
+                <QueuedCard
+                  change={item as QueuedChange}
+                  onOpen={navigateOnce}
+                  onCancel={cancelQueued}
+                />
+              );
             if (section.key === 'confirm') {
               const entry = item as ConfirmEntry;
               return (

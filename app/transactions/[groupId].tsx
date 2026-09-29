@@ -187,7 +187,7 @@ function TransactionEditor({ row }: { row: CachedRow }) {
     base: EditableSplit[];
   } | null>(null);
   const [keypadFor, setKeypadFor] = useState<number | 'total' | null>(null);
-  const [textFor, setTextFor] = useState<number | 'title' | null>(null);
+  const [textFor, setTextFor] = useState<number | 'title' | 'description' | null>(null);
   const [payeeFor, setPayeeFor] = useState<number | null>(null);
   const [removed, setRemoved] = useState<string[]>([]);
 
@@ -472,6 +472,8 @@ function TransactionEditor({ row }: { row: CachedRow }) {
       return;
     }
     const toSend = changedFields(changes, baseline);
+    // FF3 requires a description: one cleared out is left as it was rather than refused with a 422.
+    if ('description' in toSend && !toSend.description?.trim()) delete toSend.description;
     if (Object.keys(toSend).length === 0) {
       router.back();
       return;
@@ -680,15 +682,21 @@ function TransactionEditor({ row }: { row: CachedRow }) {
                       : tr('splits.loading')}
                   </Text>
                 )}
-                <Text
-                  style={[
-                    t.type.heading,
-                    { color: t.color.text, marginTop: t.space.xs, textAlign: 'center' },
-                  ]}
-                  numberOfLines={2}
+                <Pressable
+                  onPress={() => setTextFor('description')}
+                  accessibilityRole="button"
+                  accessibilityLabel={tr('fields.description')}
                 >
-                  {row.description}
-                </Text>
+                  <Text
+                    style={[
+                      t.type.heading,
+                      { color: t.color.text, marginTop: t.space.xs, textAlign: 'center' },
+                    ]}
+                    numberOfLines={2}
+                  >
+                    {shown.description ?? row.description}
+                  </Text>
+                </Pressable>
               </View>
               <DetailRows
                 value={detailValue}
@@ -765,12 +773,16 @@ function TransactionEditor({ row }: { row: CachedRow }) {
           value={
             textFor === 'title'
               ? groupTitle
-              : typeof textFor === 'number'
-                ? (splits[textFor]?.description ?? '')
-                : ''
+              : textFor === 'description'
+                ? (shown.description ?? row.description)
+                : typeof textFor === 'number'
+                  ? (splits[textFor]?.description ?? '')
+                  : ''
           }
           onChangeText={(value) => {
             if (textFor === 'title') setTitleEdit(value);
+            else if (textFor === 'description')
+              setChanges((prev) => ({ ...prev, description: value }));
             else if (typeof textFor === 'number') editSplit(textFor, { description: value });
           }}
           autoFocus

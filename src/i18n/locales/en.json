@@ -218,7 +218,11 @@
     "chargedAs": "{{amount}} was charged as",
     "enterChargedAmount": "enter the {{currency}} amount",
     "noneReady": "None of the selected entries is ready to confirm",
-    "readingReceiptWith": "Reading receipt with {{provider}}…"
+    "readingReceiptWith": "Reading receipt with {{provider}}…",
+    "cancelChange": "Cancel",
+    "cancelChangeTitle": "Cancel this change?",
+    "alreadySending": "Already sending",
+    "alreadySendingBody": "It was on its way to Firefly III before it could be cancelled."
   },
   "pickers": {
     "searchAccounts": "Search accounts",
@@ -310,7 +314,8 @@
     "openInActivity": "Open in Activity",
     "deleteDraft": "Delete draft",
     "closePhoto": "Close the photo",
-    "pickCurrency": "Pick a currency"
+    "pickCurrency": "Pick a currency",
+    "cancelSendingHint": "It goes back to the Inbox, where you can edit it and confirm it again."
   },
   "receipt": {
     "attachFailed": "Couldn’t attach the photo",

@@ -91,6 +91,21 @@ describe('buildManualEntryInput', () => {
     ).toBe('Weekly shop');
   });
 
+  it('names a transfer after its accounts rather than "transfer"', () => {
+    const input = buildManualEntryInput(
+      {
+        ...base,
+        type: 'transfer',
+        description: '',
+        merchantRawInput: '',
+        sourceId: 'acc-pko',
+        destinationId: 'acc-cash',
+      },
+      accounts,
+    );
+    expect(input.description).toBe('PKO → Cash');
+  });
+
   it('FX: books the account-currency figure as the amount and the typed one as foreign', () => {
     // 123.12 PLN typed, paid from a EUR account that moved 1000 EUR.
     const input = buildManualEntryInput(

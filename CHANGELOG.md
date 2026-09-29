@@ -2,6 +2,37 @@
 
 ## [Unreleased]
 
+### Capture
+
+- A transfer is named after its accounts ("PKO · Personal → Cash · Base") instead of "transfer",
+  unless you give it a description.
+
+### Inbox
+
+- A change waiting in the Queued section can be cancelled with its **Cancel** button. A new
+  transaction goes back to the Inbox to edit and confirm again; any other change is dropped
+  without being sent.
+- **Cancel sending** on a queued transaction also works after a failed attempt to send it, and
+  says that the transaction goes back to the Inbox to edit.
+
+### Activity
+
+- A transaction's title can be edited: tap it under the amount. On a draft, a transfer's title
+  (or any title that says more than the payee) shows under the amount and can be tapped too.
+
+### Planned
+
+- **Save** on a planned transaction stays off until you change something.
+
+### Fixed
+
+- Changes no longer sit in the queue after a moment without network, such as a failed address
+  lookup right after switching networks. The app tries again by itself, after 5 seconds, then
+  less and less often, up to every 5 minutes, instead of waiting for you to reopen it or pull to
+  refresh.
+- The Inbox's status no longer keeps saying **Offline** or **Sync error** after changes were sent
+  since.
+
 ## [1.4.1] - 2026-09-29
 
 ### Receipts
