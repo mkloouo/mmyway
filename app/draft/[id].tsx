@@ -38,6 +38,8 @@ import {
   type AllocationResult,
 } from '../../src/ui/AllocationSheet';
 import { currencyOf } from '../../src/ui/money';
+import { pickableCurrencies } from '../../src/ui/currencies';
+import { PickerSheet } from '../../src/ui/PickerSheet';
 import { haptics } from '../../src/ui/haptics';
 import { inboxItems, outboxOperations } from '../../src/db/schema';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
@@ -143,7 +145,7 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
   const histories = useMerchantHistories(draft.type === 'transfer' ? undefined : draft.type);
 
   // One open at a time (#21); the split sheets below carry which split they're for.
-  const [sheet, setSheet] = useState<'payee' | 'menu' | 'photo' | null>(null);
+  const [sheet, setSheet] = useState<'payee' | 'menu' | 'photo' | 'currency' | null>(null);
   const closeSheet = () => setSheet(null);
   const [snackbar, setSnackbar] = useState<SnackbarEntry | null>(null);
   const dismissSnackbar = useCallback(() => setSnackbar(null), []);
@@ -461,6 +463,16 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
           contentContainerStyle={{ gap: t.space.md, paddingBottom: t.space.lg }}
         >
           {!!row.errorMessage && !readOnly && <Banner inset>{row.errorMessage}</Banner>}
+          {/* A receipt the model couldn't read a currency from can't be confirmed without one. */}
+          {!readOnly && !draft.currencyCode && (
+            <View style={{ alignItems: 'center' }}>
+              <Chip
+                label={`${tr('draft.pickCurrency')} ▾`}
+                tone="warn"
+                onPress={() => setSheet('currency')}
+              />
+            </View>
+          )}
           {splitMode ? (
             <>
               <Pressable
@@ -668,14 +680,34 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
             }}
           />
         )}
+        {!readOnly && (
+          <Row
+            first
+            label={tr('fields.currency')}
+            value={draft.currencyCode || '—'}
+            chevron
+            onPress={() => setSheet('currency')}
+          />
+        )}
         <Row
-          first={!readOnly || !row.ff3GroupId}
+          first={readOnly && !row.ff3GroupId}
           label={tr('draft.deleteDraft')}
           icon="trash-outline"
           tone="danger"
           onPress={handleDeleteDraft}
         />
       </Sheet>
+      <PickerSheet
+        visible={sheet === 'currency'}
+        onClose={closeSheet}
+        title={tr('fields.currency')}
+        options={pickableCurrencies(currencies, draft.currencyCode).map((c) => ({
+          key: c.code,
+          label: c.code,
+        }))}
+        selected={draft.currencyCode}
+        onSelect={(code) => code && patch({ currencyCode: code })}
+      />
       <Snackbar entry={snackbar} onDismiss={dismissSnackbar} />
       <PhotoViewer uri={sheet === 'photo' ? row.receiptImagePath : null} onClose={closeSheet} />
     </Screen>

@@ -4,6 +4,7 @@ import { getDefaultSourceAccountId, getCashAccountId } from '../settings/appSett
 import { transition } from '../inbox/state';
 import { buildChain } from './buildChain';
 import { runProviderChain } from './chain';
+import { setReadingProvider } from './readingProgress';
 import type { OutboxDb } from '../sync/outbox';
 import type { Draft } from '../inbox/draft';
 import type { ReceiptExtraction } from './types';
@@ -147,12 +148,16 @@ export async function parseReceiptItem(
   }
 
   const reference = await buildReceiptDraftReference(db);
-  const result = await runProviderChain(providers, {
-    imageBase64,
-    hint,
-    categoryNames: reference.categoryNames,
-    currencyCodes: reference.currencyCodes,
-  });
+  const result = await runProviderChain(
+    providers,
+    {
+      imageBase64,
+      hint,
+      categoryNames: reference.categoryNames,
+      currencyCodes: reference.currencyCodes,
+    },
+    (name) => setReadingProvider(itemId, name),
+  ).finally(() => setReadingProvider(itemId, null));
   if (!result.ok) {
     logLine('warn', `receipt ${itemId}: ${result.reason} — ${result.errors.join('; ')}`);
     if (result.reason === 'all_providers_unreachable') return 'waiting';

@@ -231,7 +231,8 @@
     "synced": "Синхронізовано",
     "title": "Огляд",
     "viaAlias": "через псевдонім «{{alias}}»",
-    "willBookTo": "«{{raw}}» забронює для {{name}}"
+    "willBookTo": "«{{raw}}» забронює для {{name}}",
+    "pickCurrency": ""
   },
   "errorBoundary": {
     "reload": "Перезавантажити",
@@ -345,7 +346,8 @@
     "undone": "Скасовано",
     "unknownError": "Невідома помилка",
     "zeroHint": "Нічого, що чекає на підтвердження.",
-    "zeroTitle": "Вхідні нуль"
+    "zeroTitle": "Вхідні нуль",
+    "readingReceiptWith": ""
   },
   "logs": {
     "clear": "Очистити",

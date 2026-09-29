@@ -22,6 +22,7 @@ import { readDraft, readReviewJournal, reviewForeign } from '../inbox/draftJson'
 import { draftTotal, isSplitDraft } from '../inbox/draftSplits';
 import { payloadGroupId } from '../sync/payloadJson';
 import { appLocale } from '../i18n';
+import { useReadingProvider } from '../receipt/readingProgress';
 
 /** An error message cut to two lines; tapping it shows the whole of it, and again folds it. */
 function ErrorText({ message }: { message: string }) {
@@ -98,6 +99,7 @@ export function ConfirmCard({
   const { t: tr } = useTranslation();
   const cardStyle = { marginHorizontal: t.space.lg, marginBottom: t.space.sm };
   const press = selection.active ? selection.toggle : onOpen;
+  const readingWith = useReadingProvider(item.id);
 
   if (!draft || !readiness) {
     return (
@@ -111,7 +113,10 @@ export function ConfirmCard({
           >
             <Pulse active>
               <Text style={[t.type.body, { color: t.color.textMuted }]}>
-                ▦ {tr('inbox.readingReceipt')}
+                ▦{' '}
+                {readingWith
+                  ? tr('inbox.readingReceiptWith', { provider: readingWith })
+                  : tr('inbox.readingReceipt')}
               </Text>
             </Pulse>
           </Card>

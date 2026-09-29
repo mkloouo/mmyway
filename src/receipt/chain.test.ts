@@ -35,11 +35,15 @@ describe('runProviderChain', () => {
       confidence: 0.9,
       payment_method: 'cash',
     });
-    const result = await runProviderChain([local, gemini], {
-      imageBase64: 'x',
-      categoryNames: ['Groceries'],
-    });
+    const tried: string[] = [];
+    const result = await runProviderChain(
+      [local, gemini],
+      { imageBase64: 'x', categoryNames: ['Groceries'] },
+      (name) => tried.push(name),
+    );
     expect(result).toMatchObject({ ok: true, providerName: 'gemini' });
+    // The Inbox card names each reader as the chain reaches it.
+    expect(tried).toEqual(['local', 'gemini']);
   });
 
   it('reports unreachable when every provider fails', async () => {

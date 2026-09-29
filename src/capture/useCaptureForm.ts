@@ -3,6 +3,7 @@
 // remembered list of setters.
 import { useCallback, useReducer } from 'react';
 import type { Draft } from '../inbox/draft';
+import { applyDigit, type KeypadKey } from './amountInput';
 
 export type DateMode = 'today' | 'yesterday' | 'custom';
 
@@ -25,7 +26,10 @@ export interface CaptureForm {
   photoUri: string | null; // a receipt photo, uploaded to FF3 once the transaction exists
 }
 
-type Action = { kind: 'set'; patch: Partial<CaptureForm> } | { kind: 'saved' };
+type Action =
+  | { kind: 'set'; patch: Partial<CaptureForm> }
+  | { kind: 'key'; key: KeypadKey; decimalPlaces: number }
+  | { kind: 'saved' };
 
 export function initialCaptureForm(now: Date = new Date()): CaptureForm {
   return {
@@ -57,6 +61,10 @@ export function captureFormReducer(state: CaptureForm, action: Action): CaptureF
         ? state
         : { ...state, ...action.patch };
     }
+    case 'key':
+      // Applied to the amount as it is now, not as the last render saw it: two quick taps that
+      // land before a re-render used to both start from the same amount, and the first was lost.
+      return { ...state, amount: applyDigit(state.amount, action.key, action.decimalPlaces) };
     case 'saved':
       // The screen stays open for the next entry (design §6.2): the amount clears, the rest of
       // the context (type, payee, accounts, date) is kept for a run of similar entries.
@@ -66,10 +74,15 @@ export function captureFormReducer(state: CaptureForm, action: Action): CaptureF
 
 export function useCaptureForm(): CaptureForm & {
   set: (patch: Partial<CaptureForm>) => void;
+  pressKey: (key: KeypadKey, decimalPlaces: number) => void;
   markSaved: () => void;
 } {
   const [form, dispatch] = useReducer(captureFormReducer, undefined, () => initialCaptureForm());
   const set = useCallback((patch: Partial<CaptureForm>) => dispatch({ kind: 'set', patch }), []);
+  const pressKey = useCallback(
+    (key: KeypadKey, decimalPlaces: number) => dispatch({ kind: 'key', key, decimalPlaces }),
+    [],
+  );
   const markSaved = useCallback(() => dispatch({ kind: 'saved' }), []);
-  return { ...form, set, markSaved };
+  return { ...form, set, pressKey, markSaved };
 }
