@@ -60,10 +60,11 @@ jobs:
       - name: Generate typed routes
         run: CI=1 timeout 90 npx expo start --offline || true
 
-      - name: Commit as the person who started the run
+      # The same identity as a release made on the laptop; only the owner can start this run.
+      - name: Commit as the owner
         run: |
-          git config user.name "$GITHUB_ACTOR"
-          git config user.email "$GITHUB_ACTOR_ID+$GITHUB_ACTOR@users.noreply.github.com"
+          git config user.name "Mykola Odnosumov"
+          git config user.email "mkloouo@gmail.com"
 
       - name: Build
         if: inputs.mode == 'build'
