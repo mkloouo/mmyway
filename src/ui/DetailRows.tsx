@@ -125,6 +125,7 @@ export function DetailRows({ value, onChange, onDatePress, readOnly, accounts, p
         <TextField
           value={value.notes ?? ''}
           onChangeText={(v) => onChange({ notes: v })}
+          buffered
           multiline
           style={{ minHeight: 60 }}
         />
@@ -132,6 +133,7 @@ export function DetailRows({ value, onChange, onDatePress, readOnly, accounts, p
         <TextField
           value={value.sharedWith ?? ''}
           onChangeText={(v) => onChange({ sharedWith: v })}
+          buffered
         />
       </Sheet>
     </>

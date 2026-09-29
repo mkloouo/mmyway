@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+- Typing or deleting in a draft's note, shared-with or description no longer jumps the cursor
+  around, drops letters or deletes the wrong ones.
+
 ## [1.3.0] - 2026-09-28
 
 - The app is now called **Money My Way**.
