@@ -75,15 +75,9 @@ import {
 import { absorb, leftover } from '../../src/splits/allocate';
 import { useMerchantHistories } from '../../src/lookup/useMerchantHistories';
 import { ReceiptThumb } from '../../src/ui/ReceiptThumb';
+import { txTypeLabelKey } from '../../src/transactions/txTypes';
 
 const SHARED_TAG_PREFIX = 'mmyway-shared-';
-// The words the rest of the app uses (capture's type chips), not FF3's "Withdrawal"/"Deposit".
-const TYPE_LABEL_KEYS: Record<string, string> = {
-  withdrawal: 'capture.typeExpense',
-  deposit: 'capture.typeIncome',
-  transfer: 'capture.typeTransfer',
-};
-
 type TxType = 'withdrawal' | 'deposit' | 'transfer';
 
 function parseTags(tagsJson: string): string[] {
@@ -114,6 +108,7 @@ export default function TransactionDetailScreen() {
 
   const { data: rows } = useLiveQuery(
     db.select().from(cachedTransactions).where(eq(cachedTransactions.groupId, groupId)),
+    [groupId],
   );
   // The kinds that can touch one transaction; account edits never do.
   const { data: outbox } = useLiveQuery(
@@ -134,6 +129,7 @@ export default function TransactionDetailScreen() {
       .select({ path: inboxItems.receiptImagePath })
       .from(inboxItems)
       .where(eq(inboxItems.ff3GroupId, groupId)),
+    [groupId],
   );
   const localReceiptPath = sourceItems?.find((i) => !!i.path)?.path ?? null;
 
@@ -688,7 +684,7 @@ export default function TransactionDetailScreen() {
     <Screen bottom>
       <View style={{ flex: 1 }}>
         <AppBar
-          title={TYPE_LABEL_KEYS[row.type] ? tr(TYPE_LABEL_KEYS[row.type]!) : row.type}
+          title={txTypeLabelKey(row.type) ? tr(txTypeLabelKey(row.type)!) : row.type}
           subtitle={
             pendingEdit
               ? pendingEdit.status === 'queued'

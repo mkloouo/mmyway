@@ -36,15 +36,13 @@ export async function createAndConfirmAdjustment(
     extraTags: ['mmyway-reconcile'],
   };
   const id = generateId();
-  await db
-    .insert(inboxItems)
-    .values({
-      id,
-      kind: 'manual_entry',
-      state: 'captured',
-      draftJson: writeDraft(draft),
-      createdAt: now,
-      updatedAt: now,
-    });
+  await db.insert(inboxItems).values({
+    id,
+    kind: 'manual_entry',
+    state: 'captured',
+    draftJson: writeDraft(draft),
+    createdAt: now,
+    updatedAt: now,
+  });
   await confirmInboxItem(db, id);
 }

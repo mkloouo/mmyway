@@ -6,11 +6,7 @@ import { useLiveQuery } from '../db/useLiveQuery';
 import { useDb } from '../providers/DbProvider';
 import { plannedItems, type PlannedItem } from './items';
 import { readPlannedRow, type PlannedObject } from './objects';
-
-export function todayIso(): string {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-}
+import { localDay } from '../utils/day';
 
 export function usePlanned(): { objects: PlannedObject[]; items: PlannedItem[]; loaded: boolean } {
   const db = useDb();
@@ -25,7 +21,7 @@ export function usePlanned(): { objects: PlannedObject[]; items: PlannedItem[]; 
     const objects = (rows ?? []).map(readPlannedRow).filter((o): o is PlannedObject => !!o);
     return {
       objects,
-      items: plannedItems(objects, ops ?? [], todayIso()),
+      items: plannedItems(objects, ops ?? [], localDay()),
       loaded: rows !== undefined,
     };
   }, [rows, ops]);

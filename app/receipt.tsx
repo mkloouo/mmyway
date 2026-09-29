@@ -12,6 +12,7 @@ import { captureReceipt, attachReceiptToJournal } from '../src/receipt/ingest';
 import { pickPhoto, type PhotoSource } from '../src/receipt/pickPhoto';
 import { requestSync, SYNC_DELAY } from '../src/sync/syncTrigger';
 import { TextField } from '../src/ui/TextField';
+import { errorMessage } from '../src/utils/errorMessage';
 
 function SourceTile({
   icon,
@@ -80,12 +81,7 @@ export default function ReceiptScreen() {
         // C2: attaching to an already-synced transaction — no inbox item, no parsing, just the upload.
         attachReceiptToJournal(db, { uri: photo.uri, transactionJournalId: attachToJournalId })
           .then(() => requestSync(SYNC_DELAY.afterWrite))
-          .catch((err) =>
-            Alert.alert(
-              tr('receipt.attachFailed'),
-              err instanceof Error ? err.message : String(err),
-            ),
-          );
+          .catch((err) => Alert.alert(tr('receipt.attachFailed'), errorMessage(err)));
         router.back();
         return;
       }
@@ -99,9 +95,7 @@ export default function ReceiptScreen() {
             ]);
           }
         })
-        .catch((err) =>
-          Alert.alert(tr('receipt.saveFailed'), err instanceof Error ? err.message : String(err)),
-        );
+        .catch((err) => Alert.alert(tr('receipt.saveFailed'), errorMessage(err)));
       router.replace('/');
     } finally {
       setBusy(false);

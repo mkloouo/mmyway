@@ -84,7 +84,9 @@ export default function DraftScreen() {
   const act = useAction();
   const { shake, shakeStyle } = useShake(); // the visual twin of the warn haptic
 
-  const { data: rows } = useLiveQuery(db.select().from(inboxItems).where(eq(inboxItems.id, id)));
+  const { data: rows } = useLiveQuery(db.select().from(inboxItems).where(eq(inboxItems.id, id)), [
+    id,
+  ]);
   const assetAccounts = useAssetAccounts() ?? [];
   const { data: categories } = useLiveQuery(db.select().from(referenceCategories));
   const { data: budgets } = useLiveQuery(db.select().from(referenceBudgets));

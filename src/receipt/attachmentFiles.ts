@@ -4,6 +4,7 @@
 // A download through expo-file-system sends the same headers as every other API call and reports
 // what went wrong, which lands in the Diagnostics log.
 import { logLine } from '../utils/log';
+import { errorMessage } from '../utils/errorMessage';
 
 const CACHE_DIR = 'ff3-attachments';
 
@@ -27,10 +28,7 @@ export async function attachmentFile(
     });
     return downloaded.uri;
   } catch (err) {
-    logLine(
-      'error',
-      `attachment ${attachmentId} download failed: ${err instanceof Error ? err.message : String(err)}`,
-    );
+    logLine('error', `attachment ${attachmentId} download failed: ${errorMessage(err)}`);
     if (file.exists) file.delete();
     throw err;
   }

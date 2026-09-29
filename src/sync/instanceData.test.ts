@@ -96,16 +96,14 @@ describe('clearInstanceData', () => {
         updatedAt: T,
       },
     ]);
-    await db
-      .insert(aliases)
-      .values({
-        id: 'al',
-        kind: 'payee',
-        normalizedKey: 'k',
-        rawInput: 'k',
-        targetName: 'K',
-        createdAt: T,
-      });
+    await db.insert(aliases).values({
+      id: 'al',
+      kind: 'payee',
+      normalizedKey: 'k',
+      rawInput: 'k',
+      targetName: 'K',
+      createdAt: T,
+    });
     await setLastSyncedAt(db, T);
     await setFf3ActiveHost(db, 'https://ff3.example.com');
     await setBalancesStale(db, true);

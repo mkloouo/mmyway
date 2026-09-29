@@ -46,23 +46,18 @@ import { TextField } from '../src/ui/TextField';
 import { PickerSheet } from '../src/ui/PickerSheet';
 import { useAction } from '../src/ui/useAction';
 import { pickableCurrencies, primaryCurrencyCode } from '../src/ui/currencies';
+import { TX_TYPES } from '../src/transactions/txTypes';
 
 // A ScrollView defaults to flexGrow/flexShrink 1, so a row of chips would otherwise stretch or
 // be clipped as it competes with the keypad below it for height.
 const rowScroll = { flexGrow: 0, flexShrink: 0 } as const;
-
-const TYPES: { type: Draft['type']; labelKey: string }[] = [
-  { type: 'withdrawal', labelKey: 'capture.typeExpense' },
-  { type: 'deposit', labelKey: 'capture.typeIncome' },
-  { type: 'transfer', labelKey: 'capture.typeTransfer' },
-];
 
 function isDirtyAmount(amount: string): boolean {
   return !/^0*[.,]?0*$/.test(amount);
 }
 
 function labelKeyForType(t: Draft['type']): string {
-  return TYPES.find((x) => x.type === t)!.labelKey;
+  return TX_TYPES.find((x) => x.type === t)!.labelKey;
 }
 
 // The chip row shows a handful of choices, not a wall — the rest live behind the 🔍 chip's
@@ -424,7 +419,7 @@ export default function CaptureScreen() {
             <Text style={[t.type.heading, { color: t.color.text }]}>✕</Text>
           </Pressable>
           <View style={{ flexDirection: 'row', flex: 1, gap: t.space.xs }}>
-            {TYPES.map((option) => (
+            {TX_TYPES.map((option) => (
               <Chip
                 key={option.type}
                 label={tr(option.labelKey)}

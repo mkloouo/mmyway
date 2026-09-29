@@ -21,7 +21,7 @@ import {
   EmptyState,
   useKeyboardHeight,
 } from '../src/ui/components';
-import { currencyOf } from '../src/ui/money';
+import { currencyOf, formatMoney } from '../src/ui/money';
 import { parseDecimalInput } from '../src/api/ff3/decimal';
 import { relativeTime } from '../src/ui/relativeTime';
 import { haptics } from '../src/ui/haptics';
@@ -57,8 +57,7 @@ import { useAction } from '../src/ui/useAction';
 import { createAndConfirmAdjustment } from '../src/reconcile/adjustment';
 import { PendingDot } from '../src/ui/PendingDot';
 import { usePendingAccountIds } from '../src/accounts/usePendingAccountIds';
-
-const STALE_MS = 24 * 60 * 60 * 1000;
+import { isBalanceStale } from '../src/utils/day';
 
 export default function CountScreen() {
   const db = useDb();
@@ -156,9 +155,7 @@ export default function CountScreen() {
       .map((a) => a.currentBalanceDate)
       .filter((d): d is string => !!d)
       .sort()[0] ?? null;
-  const stale = oldestBalanceDate
-    ? new Date().getTime() - new Date(oldestBalanceDate).getTime() > STALE_MS
-    : true;
+  const stale = isBalanceStale(oldestBalanceDate);
 
   const confirmReview = act(tr('inbox.confirm'), async () => {
     if (confirming) return;
@@ -300,7 +297,7 @@ export default function CountScreen() {
                   </View>
                   <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]}>
                     {tr('count.expected', {
-                      amount: a.currentBalance ? `${a.currentBalance} ${currency.symbol}` : '—',
+                      amount: a.currentBalance ? formatMoney(a.currentBalance, currency) : '—',
                     })}
                   </Text>
                   <View
@@ -366,7 +363,9 @@ export default function CountScreen() {
             {drift.length > 0 && (
               <Text style={[t.type.label, { color: t.color.textMuted, textAlign: 'center' }]}>
                 {tr('count.drift', {
-                  amounts: drift.map((d) => `${d.amount} ${d.currencyCode}`).join(' · '),
+                  amounts: drift
+                    .map((d) => formatMoney(d.amount, currencyOf(currencies ?? [], d.currencyCode)))
+                    .join(' · '),
                 })}
               </Text>
             )}
@@ -444,7 +443,10 @@ export default function CountScreen() {
             <Row
               key={a.accountId}
               label={account?.name ?? a.accountId}
-              value={`${a.type === 'withdrawal' ? '−' : '+'}${a.amount} ${a.currencyCode}`}
+              value={`${a.type === 'withdrawal' ? '−' : '+'}${formatMoney(
+                a.amount,
+                currencyOf(currencies ?? [], a.currencyCode),
+              )}`}
               tone={a.type === 'withdrawal' ? 'danger' : 'default'}
             />
           );

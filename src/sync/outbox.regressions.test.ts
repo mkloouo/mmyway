@@ -333,20 +333,18 @@ describe('error text', () => {
 describe('conflict details', () => {
   it("stores the server's current copy so the conflict screen can compare it", async () => {
     const db = createTestDb();
-    await db
-      .insert(cachedTransactions)
-      .values({
-        groupId: 'g1',
-        journalId: 'j1',
-        type: 'withdrawal',
-        date: '2026-01-01',
-        amount: '10.00',
-        currencyCode: 'PLN',
-        description: 'old',
-        tagsJson: '[]',
-        updatedAt: 'v1',
-        syncedAt: 's',
-      });
+    await db.insert(cachedTransactions).values({
+      groupId: 'g1',
+      journalId: 'j1',
+      type: 'withdrawal',
+      date: '2026-01-01',
+      amount: '10.00',
+      currencyCode: 'PLN',
+      description: 'old',
+      tagsJson: '[]',
+      updatedAt: 'v1',
+      syncedAt: 's',
+    });
     await enqueueOperation(db, {
       id: 'op-1',
       kind: 'update_transaction',
@@ -439,16 +437,14 @@ describe('references deleted in FF3', () => {
   it('hands a create back to the Inbox when its category is gone, and keeps the queue moving', async () => {
     const db = createTestDb();
     const { referenceCategories, referenceAccounts } = jest.requireActual('../db/schema');
-    await db
-      .insert(referenceAccounts)
-      .values({
-        id: '1',
-        name: 'Cash',
-        type: 'asset',
-        currencyCode: 'PLN',
-        active: true,
-        syncedAt: 's',
-      });
+    await db.insert(referenceAccounts).values({
+      id: '1',
+      name: 'Cash',
+      type: 'asset',
+      currencyCode: 'PLN',
+      active: true,
+      syncedAt: 's',
+    });
     await db.insert(referenceCategories).values({ id: 'c1', name: 'Groceries', syncedAt: 's' });
     const { inboxItemId } = await createManualEntry(db as any, {
       type: 'withdrawal',

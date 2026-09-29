@@ -35,18 +35,15 @@ import { applyDigit, type KeypadKey } from '../../src/capture/amountInput';
 import type { MerchantHistory } from '../../src/lookup/merchantLookup';
 import { useMerchantHistories } from '../../src/lookup/useMerchantHistories';
 import { getDefaultCurrencyCode, getDefaultSourceAccountId } from '../../src/settings/appSettings';
-import { usePlanned, todayIso } from '../../src/planned/usePlanned';
+import { usePlanned } from '../../src/planned/usePlanned';
 import { FREQUENCIES, plannedProblems, type PlannedFields } from '../../src/planned/model';
 import { dayLabel, frequencyName } from '../../src/planned/labels';
 import { deletePlanned, savePlanned } from '../../src/planned/actions';
 import type { PlannedItem } from '../../src/planned/items';
+import { localDay } from '../../src/utils/day';
+import { TX_TYPES } from '../../src/transactions/txTypes';
 
 type TxType = PlannedFields['type'];
-const TYPES: { type: TxType; labelKey: string }[] = [
-  { type: 'withdrawal', labelKey: 'capture.typeExpense' },
-  { type: 'deposit', labelKey: 'capture.typeIncome' },
-  { type: 'transfer', labelKey: 'capture.typeTransfer' },
-];
 
 function blank(): PlannedFields {
   return {
@@ -62,15 +59,11 @@ function blank(): PlannedFields {
     repeats: true,
     frequency: 'monthly',
     every: 1,
-    date: todayIso(),
+    date: localDay(),
     time: null,
     categoryName: null,
     tags: [],
   };
-}
-
-function toDateOnly(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 export default function PlannedEditScreen() {
@@ -249,7 +242,7 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
         keyboardShouldPersistTaps="handled"
       >
         <View style={{ flexDirection: 'row', gap: t.space.sm, paddingHorizontal: t.space.lg }}>
-          {TYPES.map((x) => (
+          {TX_TYPES.map((x) => (
             <Chip
               key={x.type}
               label={tr(x.labelKey)}
@@ -321,7 +314,7 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
             value={dayLabel(fields.date)}
             chevron
             onPress={() =>
-              pickDate(new Date(`${fields.date}T12:00:00`), (d) => set({ date: toDateOnly(d) }))
+              pickDate(new Date(`${fields.date}T12:00:00`), (d) => set({ date: localDay(d) }))
             }
           />
           <Row
