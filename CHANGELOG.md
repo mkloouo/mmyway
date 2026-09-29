@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Inbox
+
+- A change Firefly III refuses now says which request it refused and which fields, e.g. "— PUT
+  /v1/recurrences/12 (notes)", after Firefly III's message.
+
 ### Fixed
 
 - Saving a planned transaction that has no notes no longer fails with "The notes must be at least
