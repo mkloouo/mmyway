@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Saving a planned transaction that has no notes no longer fails with "The notes must be at least
+  1 characters". A save that already failed this way goes through with **Retry now**.
+
 ## [1.4.3] - 2026-09-29
 
 ### Capture

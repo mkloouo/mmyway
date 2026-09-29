@@ -121,16 +121,22 @@ describe('planned model', () => {
     });
   });
 
-  it('sends empty notes as null: FF3 refuses an empty string', () => {
+  it('leaves empty notes out: FF3 refuses both an empty string and null there', () => {
     const fields = { ...fieldsOf(groupPlanned([bill, rule, recurrence])[0]!, '2026-09-28') };
-    const blank: PlannedFields = { ...fields, notes: '', time: null };
-    expect(billBody(blank, fields).notes).toBeNull();
+    for (const notes of ['', null]) {
+      const blank: PlannedFields = { ...fields, notes, time: null };
+      expect(billBody(blank, fields)).not.toHaveProperty('notes');
+      expect(
+        recurrenceBody({ ...blank, sourceId: '1', destinationId: '4' }, fields, {}),
+      ).not.toHaveProperty('notes');
+    }
+    expect(billBody({ ...fields, notes: 'Family plan' }, fields).notes).toBe('Family plan');
     expect(
-      recurrenceBody({ ...blank, sourceId: '1', destinationId: '4' }, fields, {}).notes,
-    ).toBeNull();
-    expect(
-      recurrenceBody({ ...blank, time: '09:30', sourceId: '1', destinationId: '4' }, fields, {})
-        .notes,
+      recurrenceBody(
+        { ...fields, notes: '', time: '09:30', sourceId: '1', destinationId: '4' },
+        fields,
+        {},
+      ).notes,
     ).toBe('mmyway-time: 09:30');
   });
 

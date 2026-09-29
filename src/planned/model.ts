@@ -185,6 +185,15 @@ function addDays(date: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
+/**
+ * Notes for a bill or recurrence body, or nothing. FF3 refuses empty notes there in any form: an
+ * empty string becomes null on its side, and null fails "The notes must be at least 1 characters"
+ * (a transaction's notes take null; these don't). Left out, the notes FF3 has stay as they are.
+ */
+function notesField(notes: string | null | undefined): { notes?: string } {
+  return notes ? { notes } : {};
+}
+
 /** FF3 bill body. A one-off is a yearly bill that ends the day after it's due. */
 export function billBody(f: PlannedFields, before: PlannedFields | null): Record<string, unknown> {
   return {
@@ -192,8 +201,7 @@ export function billBody(f: PlannedFields, before: PlannedFields | null): Record
     amount_min: f.amount,
     amount_max: f.amount,
     currency_code: f.currencyCode,
-    // FF3 refuses an empty string ("notes must be at least 1 character"); null clears them.
-    notes: f.notes || null,
+    ...notesField(f.notes),
     active: true,
     ...(scheduleChanged(before, f)
       ? {
@@ -267,7 +275,7 @@ export function recurrenceBody(
   return {
     type: f.type,
     title: f.name,
-    notes: withPlannedTime(f.notes, f.time) || null,
+    ...notesField(withPlannedTime(f.notes, f.time)),
     active: true,
     apply_rules: true,
     ...(scheduleChanged(before, f)
