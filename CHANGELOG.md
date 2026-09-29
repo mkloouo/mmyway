@@ -13,6 +13,12 @@
 - A screen reader now names the Inbox's 📷 button, Capture's currency button and Capture's close
   button, and an alias's remove button says it removes an alias rather than an address.
 - Holding an account row in Settings → Accounts no longer does the same as tapping it.
+- A planned transaction's card gives the payee a line of its own, so a long name is no longer cut
+  off by the schedule sharing the line with it.
+- The Connection section in Settings, and a planned transaction's amount, no longer shift a moment
+  after the screen opens.
+- In Ukrainian, the planned editor's **Repeats** hint said "discount for a one-time payment", and
+  "every N periods" lost its number for 21, 31 and so on. Both now read correctly.
 
 ## [1.3.0] - 2026-09-28
 

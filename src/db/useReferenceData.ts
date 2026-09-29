@@ -7,10 +7,19 @@ import { useDb } from '../providers/DbProvider';
 
 const EMPTY: never[] = [];
 
-export function useCurrencies(): (typeof referenceCurrencies.$inferSelect)[] {
+/**
+ * undefined until the first read lands. A screen that draws an amount wants this: `currencyOf`
+ * falls back to the currency *code* as the symbol, so "12,00 PLN" would be replaced by "12,00 zł"
+ * a frame later and the amount would visibly shift.
+ */
+export function useCurrencyRows(): (typeof referenceCurrencies.$inferSelect)[] | undefined {
   const db = useDb();
   const { data } = useLiveQuery(db.select().from(referenceCurrencies));
-  return data ?? EMPTY;
+  return data;
+}
+
+export function useCurrencies(): (typeof referenceCurrencies.$inferSelect)[] {
+  return useCurrencyRows() ?? EMPTY;
 }
 
 export function useCategories(): (typeof referenceCategories.$inferSelect)[] {
