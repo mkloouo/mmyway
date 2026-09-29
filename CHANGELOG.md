@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-09-29
+
 ### Receipts
 
 - While a receipt is being read, its Inbox card says which reader is reading it (your local model
