@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-09-29
+
 ### Fixed
 
 - A change Firefly III refuses no longer holds back every change queued after it: only the
