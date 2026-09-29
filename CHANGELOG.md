@@ -19,6 +19,8 @@
   after the screen opens.
 - In Ukrainian, the planned editor's **Repeats** hint said "discount for a one-time payment", and
   "every N periods" lost its number for 21, 31 and so on. Both now read correctly.
+- Typing or deleting in a draft's note, shared-with or description no longer jumps the cursor
+  around, drops letters or deletes the wrong ones.
 
 ## [1.3.0] - 2026-09-28
 
