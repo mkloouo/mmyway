@@ -453,6 +453,23 @@ export default function DraftScreen() {
         ? (amounts[keypadFor] ?? '0')
         : draft.amount;
 
+  // The text sheet edits one of three things; the value and its setter stay in step as one pair.
+  const textField: { value: string; onChange: (value: string) => void } =
+    textFor === 'title'
+      ? {
+          value: draft.groupTitle ?? draft.description,
+          onChange: (groupTitle) => patch({ groupTitle }),
+        }
+      : textFor === 0
+        ? { value: draft.description, onChange: (description) => patch({ description }) }
+        : typeof textFor === 'number'
+          ? {
+              value: extras[textFor - 1]?.description ?? '',
+              onChange: (description) =>
+                patch(patchExtraSplit(draft, textFor - 1, { description })),
+            }
+          : { value: '', onChange: () => {} };
+
   return (
     <Screen bottom>
       <View style={{ flex: 1 }}>
@@ -470,11 +487,11 @@ export default function DraftScreen() {
 
         {!splitMode && (
           <View style={{ alignItems: 'center', paddingVertical: t.space.lg }}>
-            <Pressable onPress={() => !readOnly && setAmountSheetOpen(true)} disabled={readOnly}>
+            <Pressable onPress={() => setAmountSheetOpen(true)} disabled={readOnly}>
               <Money amount={draft.amount} currency={currency} type={draft.type} size="title" />
             </Pressable>
             {draft.type !== 'transfer' && (
-              <Pressable onPress={() => !readOnly && setPayeeSheetOpen(true)} disabled={readOnly}>
+              <Pressable onPress={() => setPayeeSheetOpen(true)} disabled={readOnly}>
                 <Text style={[t.type.heading, { color: t.color.text, marginTop: t.space.xs }]}>
                   {payeeName || '—'}
                 </Text>
@@ -657,24 +674,7 @@ export default function DraftScreen() {
         title={textFor === 'title' ? tr('splits.title') : tr('fields.description')}
         footer={<Button title={tr('common.done')} onPress={() => setTextFor(null)} />}
       >
-        <TextField
-          value={
-            textFor === 'title'
-              ? (draft.groupTitle ?? draft.description)
-              : textFor === 0
-                ? draft.description
-                : typeof textFor === 'number'
-                  ? (extras[textFor - 1]?.description ?? '')
-                  : ''
-          }
-          onChangeText={(value) => {
-            if (textFor === 'title') patch({ groupTitle: value });
-            else if (textFor === 0) patch({ description: value });
-            else if (typeof textFor === 'number')
-              patch(patchExtraSplit(draft, textFor - 1, { description: value }));
-          }}
-          autoFocus
-        />
+        <TextField value={textField.value} onChangeText={textField.onChange} autoFocus />
       </Sheet>
 
       <PayeeSheet

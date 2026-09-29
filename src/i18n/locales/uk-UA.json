@@ -100,7 +100,8 @@
     "search": "Пошук псевдонімів",
     "title": "Псевдоніми",
     "transferPlaceholder": "Експортований JSON відображається тут — вставте JSON сюди для імпорту",
-    "transferTitle": "Експорт / імпорт"
+    "transferTitle": "Експорт / імпорт",
+    "removeAlias": ""
   },
   "capture": {
     "attach": "Прикріпити",
@@ -129,7 +130,8 @@
     "typeIncome": "Дохід",
     "typeTransfer": "Переказ",
     "undoneBackInInbox": "Скасовано — воно знову у вхідних",
-    "yesterday": "Вчора"
+    "yesterday": "Вчора",
+    "changeCurrency": ""
   },
   "common": {
     "actionFailed": "{{action}} не вдалося",

@@ -10,6 +10,9 @@
   rows they don't show, so scrolling stays smooth while a sync runs.
 - Opening a payee or a target picker no longer costs a database read taken while the sheet was
   still closed.
+- A screen reader now names the Inbox's 📷 button, Capture's currency button and Capture's close
+  button, and an alias's remove button says it removes an alias rather than an address.
+- Holding an account row in Settings → Accounts no longer does the same as tapping it.
 
 ## [1.3.0] - 2026-09-28
 

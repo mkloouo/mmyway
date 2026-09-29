@@ -399,30 +399,19 @@ export default function InboxScreen() {
   ];
   const sections = allSections.filter((s) => s.data.length > 0);
 
-  const pillState: 'ok' | 'syncing' | 'queued' | 'offline' | 'error' =
-    status === 'syncing'
-      ? 'syncing'
-      : hasCredentials === false
-        ? 'offline'
-        : summary?.error
-          ? 'error'
-          : summary && !summary.ff3Reachable
-            ? 'offline'
-            : pendingOutboxCount > 0
-              ? 'queued'
-              : 'ok';
-  const pillLabel =
-    status === 'syncing'
-      ? tr('sync.syncing')
-      : hasCredentials === false
-        ? tr('sync.notSignedIn')
-        : summary?.error
-          ? tr('sync.error')
-          : summary && !summary.ff3Reachable
-            ? tr('sync.offline')
-            : pendingOutboxCount > 0
-              ? tr('sync.queued', { count: pendingOutboxCount })
-              : relativeTime(summary?.lastSyncedAt);
+  // One chain, not two over the same five conditions: the state and its label can't drift apart.
+  const { state: pillState, label: pillLabel } = ((): {
+    state: 'ok' | 'syncing' | 'queued' | 'offline' | 'error';
+    label: string;
+  } => {
+    if (status === 'syncing') return { state: 'syncing', label: tr('sync.syncing') };
+    if (hasCredentials === false) return { state: 'offline', label: tr('sync.notSignedIn') };
+    if (summary?.error) return { state: 'error', label: tr('sync.error') };
+    if (summary && !summary.ff3Reachable) return { state: 'offline', label: tr('sync.offline') };
+    if (pendingOutboxCount > 0)
+      return { state: 'queued', label: tr('sync.queued', { count: pendingOutboxCount }) };
+    return { state: 'ok', label: relativeTime(summary?.lastSyncedAt) };
+  })();
 
   const subtitleParts: string[] = [];
   if (toConfirm.length > 0)
@@ -545,6 +534,7 @@ export default function InboxScreen() {
                       />
                       <Button
                         title="📷"
+                        accessibilityLabel={tr('dock.captureReceipt')}
                         variant="secondary"
                         onPress={() => navigateOnce('/receipt')}
                       />

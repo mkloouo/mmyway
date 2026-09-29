@@ -46,7 +46,6 @@ export function SplitPager({
   const { t: tr } = useTranslation();
   const { width } = useWindowDimensions();
   const scroller = useRef<ScrollView>(null);
-  const shown = index;
 
   // Follows a page the screen picked (a new split, a removed one, a dot tapped); after a swipe
   // the pager is already there and this is a no-op.
@@ -56,7 +55,7 @@ export function SplitPager({
 
   function onScrollEnd(e: NativeSyntheticEvent<NativeScrollEvent>) {
     const page = Math.round(e.nativeEvent.contentOffset.x / Math.max(1, width));
-    if (page !== shown) onIndexChange(page);
+    if (page !== index) onIndexChange(page);
   }
 
   return (
@@ -107,7 +106,7 @@ export function SplitPager({
         }}
       >
         <Text style={[t.type.label, { color: t.color.textMuted }]}>
-          {tr('splits.position', { index: shown + 1, count })}
+          {tr('splits.position', { index: index + 1, count })}
         </Text>
         {Array.from({ length: count }, (_, i) => (
           <Pressable
@@ -121,7 +120,7 @@ export function SplitPager({
                 width: 8,
                 height: 8,
                 borderRadius: 4,
-                backgroundColor: i === shown ? t.color.accent : t.color.border,
+                backgroundColor: i === index ? t.color.accent : t.color.border,
               }}
             />
           </Pressable>

@@ -1,5 +1,5 @@
-// The whole component kit (design §4). Ten primitives, no styling outside this file:
-// a screen that needs a new look adds a variant here rather than inlining styles.
+// The whole component kit (design §4). Screens take their styling from this kit and `useTheme()`,
+// never from literals: a screen that needs a new look adds a variant here.
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -380,6 +380,7 @@ export function Button({
   size = 'md',
   disabled,
   style,
+  accessibilityLabel,
 }: {
   title: string;
   onPress?: () => void;
@@ -388,6 +389,8 @@ export function Button({
   size?: 'bar' | 'md' | 'lg';
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
+  /** For a title that is an emoji or a glyph: what a screen reader should say instead. */
+  accessibilityLabel?: string;
 }) {
   const t = useTheme();
   const fill =
@@ -411,6 +414,7 @@ export function Button({
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled: !!disabled }}
       style={({ pressed }) => [
         {

@@ -216,6 +216,34 @@ export default function TransactionDetailScreen() {
     capturedPath: localReceiptPath,
     remote: attachments.data,
   });
+  // The receipt card's rows in order: what FF3 holds, what is still uploading, then "Attach".
+  const receiptRows: {
+    key: string;
+    value: string;
+    tone?: 'danger';
+    onPress?: () => void;
+  }[] = [
+    ...(attachments.data ?? []).map((a) => ({ key: a.id, value: `📎 ${a.filename}` })),
+    ...queued.map((q) => ({
+      key: q.opId,
+      value:
+        q.status === 'failed'
+          ? q.lastError
+            ? tr('transaction.uploadFailedWith', { error: q.lastError })
+            : tr('transaction.uploadFailed')
+          : tr('transaction.uploading'),
+      tone: q.status === 'failed' ? ('danger' as const) : undefined,
+    })),
+    {
+      key: 'attach',
+      value:
+        attachments.data?.length || queued.length
+          ? tr('transaction.attachAnother')
+          : tr('receipt.attachTitle'),
+      onPress: () =>
+        router.push({ pathname: '/receipt', params: { attachToJournalId: row.journalId } }),
+    },
+  ];
   const effectiveAmount = shown.amount ?? row.amount;
   const effectiveSourceId =
     shown.source_id ??
@@ -788,46 +816,19 @@ export default function TransactionDetailScreen() {
             {previews.map((p) => (
               <ReceiptThumb key={p.key} preview={p} onOpen={setPhoto} />
             ))}
+            {/* One list, so only the first row carries the "Receipt" label and the top border. */}
             <View>
-              {(attachments.data ?? []).map((a, i) => (
+              {receiptRows.map((r, i) => (
                 <Row
-                  key={a.id}
+                  key={r.key}
                   first={i === 0}
                   label={i === 0 ? tr('draft.receipt') : ''}
-                  value={`📎 ${a.filename}`}
+                  value={r.value}
+                  tone={r.tone}
+                  chevron={r.onPress ? true : undefined}
+                  onPress={r.onPress}
                 />
               ))}
-              {queued.map((q, i) => (
-                <Row
-                  key={q.opId}
-                  first={i === 0 && !attachments.data?.length}
-                  label={i === 0 && !attachments.data?.length ? tr('draft.receipt') : ''}
-                  value={
-                    q.status === 'failed'
-                      ? q.lastError
-                        ? tr('transaction.uploadFailedWith', { error: q.lastError })
-                        : tr('transaction.uploadFailed')
-                      : tr('transaction.uploading')
-                  }
-                  tone={q.status === 'failed' ? 'danger' : undefined}
-                />
-              ))}
-              <Row
-                first={!attachments.data?.length && queued.length === 0}
-                label={!attachments.data?.length && queued.length === 0 ? tr('draft.receipt') : ''}
-                value={
-                  attachments.data?.length || queued.length
-                    ? tr('transaction.attachAnother')
-                    : tr('receipt.attachTitle')
-                }
-                chevron
-                onPress={() =>
-                  router.push({
-                    pathname: '/receipt',
-                    params: { attachToJournalId: row.journalId },
-                  })
-                }
-              />
             </View>
           </Card>
         </ScrollView>

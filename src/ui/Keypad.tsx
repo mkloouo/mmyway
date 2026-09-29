@@ -75,30 +75,38 @@ function Key({
   );
 }
 
-export function Keypad({
-  onDigit,
-  dateLabel,
-  onDatePress,
-  onNotePress,
-  noteHasValue,
-  saveLabel,
-  onSave,
-  saveDisabled,
-  saving,
-  compact,
-}: {
+interface KeypadBaseProps {
   onDigit: (key: KeypadKey) => void;
-  dateLabel?: string;
-  onDatePress?: () => void;
-  onNotePress?: () => void;
-  noteHasValue?: boolean;
   saveLabel: string;
   onSave: () => void;
   saveDisabled?: boolean;
   saving?: boolean;
-  /** Digits, backspace and a single confirm cell — no date/note cells (a sheet's amount edit). */
-  compact?: boolean;
-}) {
+}
+
+/**
+ * `compact` is digits, backspace and a single confirm cell (a sheet's amount edit); the full
+ * keypad also has the date and note cells, and needs all three of their props — a union rather
+ * than optional props, so a caller that forgets one doesn't compile.
+ */
+export type KeypadProps = KeypadBaseProps &
+  (
+    | { compact: true }
+    | {
+        compact?: false;
+        dateLabel: string;
+        onDatePress: () => void;
+        onNotePress: () => void;
+        noteHasValue?: boolean;
+      }
+  );
+
+/** The empty cell that stands in for the date and note keys in `compact` mode. */
+function Spacer() {
+  return <View style={{ flex: 1, marginHorizontal: 4, marginVertical: 4 }} />;
+}
+
+export function Keypad(props: KeypadProps) {
+  const { onDigit, saveLabel, onSave, saveDisabled, saving } = props;
   const { t: tr } = useTranslation();
   return (
     <View>
@@ -109,18 +117,18 @@ export function Keypad({
           ))}
           {rowIndex === 0 && <Key label="⌫" onPress={() => onDigit('⌫')} />}
           {rowIndex === 1 &&
-            (compact ? (
-              <View style={{ flex: 1, marginHorizontal: 4, marginVertical: 4 }} />
+            (props.compact ? (
+              <Spacer />
             ) : (
-              <Key label={dateLabel!} onPress={onDatePress!} />
+              <Key label={props.dateLabel} onPress={props.onDatePress} />
             ))}
           {rowIndex === 2 &&
-            (compact ? (
-              <View style={{ flex: 1, marginHorizontal: 4, marginVertical: 4 }} />
+            (props.compact ? (
+              <Spacer />
             ) : (
               <Key
-                label={noteHasValue ? `${tr('fields.note')} ●` : tr('fields.note')}
-                onPress={onNotePress!}
+                label={props.noteHasValue ? `${tr('fields.note')} ●` : tr('fields.note')}
+                onPress={props.onNotePress}
               />
             ))}
           {rowIndex === 3 && (

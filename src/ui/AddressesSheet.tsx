@@ -162,23 +162,14 @@ export function AddressesSheet({
           </View>
         ))}
 
-        <View
-          style={{
-            flexDirection: 'row',
-            gap: t.space.sm,
-            alignItems: 'center',
-            paddingTop: t.space.sm,
-          }}
-        >
-          <TextField
-            value={newAddress}
-            onChangeText={setNewAddress}
-            placeholder="https://…"
-            autoCapitalize="none"
-            autoCorrect={false}
-            style={{ flex: 1 }}
-          />
-        </View>
+        <TextField
+          value={newAddress}
+          onChangeText={setNewAddress}
+          placeholder="https://…"
+          autoCapitalize="none"
+          autoCorrect={false}
+          style={{ marginTop: t.space.sm }}
+        />
         <Button
           title={adding ? tr('addresses.adding') : tr('addresses.add')}
           variant="secondary"

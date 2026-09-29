@@ -54,6 +54,8 @@ export function DetailRows({
     null,
   );
   const [textSheetOpen, setTextSheetOpen] = useState(false);
+  /** A row is tappable, with a chevron, unless the screen is read-only. */
+  const edit = (onPress: () => void) => (readOnly ? {} : { chevron: true, onPress });
 
   const sourceAccount = accounts.find((a) => a.id === value.sourceAccountId);
   const destinationAccount = accounts.find((a) => a.id === value.destinationAccountId);
@@ -68,7 +70,6 @@ export function DetailRows({
             first
             label={tr('fields.category')}
             value={value.categoryName ?? '—'}
-            chevron={!readOnly}
             leading={
               value.categoryName ? (
                 <View
@@ -81,7 +82,7 @@ export function DetailRows({
                 />
               ) : undefined
             }
-            onPress={readOnly ? undefined : () => setCategorySheetOpen(true)}
+            {...edit(() => setCategorySheetOpen(true))}
           />
         )}
         {(value.type === 'withdrawal' || value.type === 'transfer') && (
@@ -89,43 +90,33 @@ export function DetailRows({
             first={value.type === 'transfer'}
             label={tr('fields.from')}
             value={sourceAccount?.name ?? '—'}
-            chevron={!readOnly}
-            onPress={readOnly ? undefined : () => setAccountSheetTarget('source')}
+            {...edit(() => setAccountSheetTarget('source'))}
           />
         )}
         {(value.type === 'deposit' || value.type === 'transfer') && (
           <Row
             label={tr('fields.to')}
             value={destinationAccount?.name ?? '—'}
-            chevron={!readOnly}
-            onPress={readOnly ? undefined : () => setAccountSheetTarget('destination')}
+            {...edit(() => setAccountSheetTarget('destination'))}
           />
         )}
         {value.type !== 'transfer' && (
           <Row
             label={tr('fields.budget')}
             value={budget?.name ?? '—'}
-            chevron={!readOnly}
-            onPress={readOnly ? undefined : () => setBudgetSheetOpen(true)}
+            {...edit(() => setBudgetSheetOpen(true))}
           />
         )}
-        <Row
-          label={tr('fields.date')}
-          value={value.dateLabel}
-          chevron={!readOnly}
-          onPress={readOnly ? undefined : onDatePress}
-        />
+        <Row label={tr('fields.date')} value={value.dateLabel} {...edit(onDatePress)} />
         <Row
           label={tr('fields.note')}
           value={value.notes || '—'}
-          chevron={!readOnly}
-          onPress={readOnly ? undefined : () => setTextSheetOpen(true)}
+          {...edit(() => setTextSheetOpen(true))}
         />
         <Row
           label={tr('fields.sharedWith')}
           value={value.sharedWith || '—'}
-          chevron={!readOnly}
-          onPress={readOnly ? undefined : () => setTextSheetOpen(true)}
+          {...edit(() => setTextSheetOpen(true))}
         />
       </Card>
 

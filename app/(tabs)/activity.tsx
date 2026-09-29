@@ -228,7 +228,12 @@ export default function ActivityScreen() {
   const { t: tr } = useTranslation();
   const act = useAction();
   const pendingAccounts = usePendingAccountIds();
-  const navigation = useNavigation();
+  // `tabPress` is a bottom-tab event; expo-router doesn't export the tab navigation type from a
+  // public path, so the hook is told what this screen uses of it instead of casting afterwards.
+  const navigation = useNavigation<{
+    addListener: (event: 'tabPress', cb: () => void) => () => void;
+    isFocused: () => boolean;
+  }>();
   const listRef = useRef<SectionList<ActivityItem, DisplaySection>>(null);
 
   const [type, setType] = useState<ActivityTypeFilter>('all');
@@ -457,6 +462,17 @@ export default function ActivityScreen() {
   );
 
   const remoteRows = remoteSearch.status === 'done' ? remoteSearch.rows : null;
+  /** What the list's footer says about the FF3-side search, if anything. */
+  const searchFooter: { key: string; warn?: boolean } | null =
+    remoteSearch.status === 'loading'
+      ? { key: 'activity.searching' }
+      : remoteSearch.status === 'offline'
+        ? { key: 'activity.searchOffline' }
+        : remoteSearch.status === 'error'
+          ? { key: 'activity.searchFailed', warn: true }
+          : remoteSearch.status === 'done' && remoteSearch.rows.length === 0
+            ? { key: 'activity.nothingMore' }
+            : null;
   const displaySections = useMemo(() => {
     const todayKey = localDay();
     const queuedInbox = new Set(queuedRows.map((r) => r.inboxItemId));
@@ -568,9 +584,7 @@ export default function ActivityScreen() {
     hasSectionsRef.current = displaySections.length > 0;
   }, [displaySections]);
   useEffect(() => {
-    const unsubscribe = (
-      navigation as unknown as { addListener: (event: string, cb: () => void) => () => void }
-    ).addListener('tabPress', () => {
+    const unsubscribe = navigation.addListener('tabPress', () => {
       if (navigation.isFocused() && hasSectionsRef.current) {
         listRef.current?.scrollToLocation({
           sectionIndex: 0,
@@ -733,56 +747,18 @@ export default function ActivityScreen() {
                     {loadingMore || loadingOlder ? tr('activity.loadingMore') : ' '}
                   </Text>
                 )}
-                {remoteSearch.status === 'loading' && (
+                {searchFooter && (
                   <Text
                     style={[
                       t.type.label,
                       {
-                        color: t.color.textFaint,
+                        color: searchFooter.warn ? t.color.warn : t.color.textFaint,
                         textAlign: 'center',
                         paddingVertical: t.space.lg,
                       },
                     ]}
                   >
-                    {tr('activity.searching')}
-                  </Text>
-                )}
-                {remoteSearch.status === 'offline' && (
-                  <Text
-                    style={[
-                      t.type.label,
-                      {
-                        color: t.color.textFaint,
-                        textAlign: 'center',
-                        paddingVertical: t.space.lg,
-                      },
-                    ]}
-                  >
-                    {tr('activity.searchOffline')}
-                  </Text>
-                )}
-                {remoteSearch.status === 'error' && (
-                  <Text
-                    style={[
-                      t.type.label,
-                      { color: t.color.warn, textAlign: 'center', paddingVertical: t.space.lg },
-                    ]}
-                  >
-                    {tr('activity.searchFailed')}
-                  </Text>
-                )}
-                {remoteSearch.status === 'done' && remoteSearch.rows.length === 0 && (
-                  <Text
-                    style={[
-                      t.type.label,
-                      {
-                        color: t.color.textFaint,
-                        textAlign: 'center',
-                        paddingVertical: t.space.lg,
-                      },
-                    ]}
-                  >
-                    {tr('activity.nothingMore')}
+                    {tr(searchFooter.key)}
                   </Text>
                 )}
               </>

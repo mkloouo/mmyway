@@ -22,18 +22,6 @@ import { draftTotal, isSplitDraft } from '../inbox/draftSplits';
 import { payloadGroupId } from '../sync/payloadJson';
 import { appLocale } from '../i18n';
 
-/** What a failed queued change was, in words ("Saving a planned transaction failed"). */
-const OP_KIND_KEYS: Record<string, string> = {
-  create_transaction: 'inbox.opKind.create_transaction',
-  update_transaction: 'inbox.opKind.update_transaction',
-  delete_transaction: 'inbox.opKind.delete_transaction',
-  attach_receipt: 'inbox.opKind.attach_receipt',
-  recurring_review: 'inbox.opKind.recurring_review',
-  update_account: 'inbox.opKind.update_account',
-  save_planned: 'inbox.opKind.save_planned',
-  delete_planned: 'inbox.opKind.delete_planned',
-};
-
 /** An error message cut to two lines; tapping it shows the whole of it, and again folds it. */
 function ErrorText({ message }: { message: string }) {
   const t = useTheme();
@@ -346,7 +334,7 @@ export function QueuedCard({
           color={t.color.textMuted}
         />
         <Text style={[t.type.label, { color: t.color.textMuted, flex: 1 }]} numberOfLines={2}>
-          {tr(OP_KIND_KEYS[op.kind] ?? 'inbox.opKind.other')}
+          {tr(`inbox.opKind.${op.kind}`, { defaultValue: tr('inbox.opKind.other') })}
         </Text>
         {!!info.route && <Ionicons name="chevron-forward" size={18} color={t.color.textFaint} />}
       </View>
@@ -429,7 +417,7 @@ export function AttentionCard({
           {isConflict
             ? tr('inbox.conflict')
             : tr('inbox.operationFailed', {
-                kind: tr(OP_KIND_KEYS[op.kind] ?? 'inbox.opKind.other'),
+                kind: tr(`inbox.opKind.${op.kind}`, { defaultValue: tr('inbox.opKind.other') }),
               })}
         </Text>
         {!!info.route && <Ionicons name="chevron-forward" size={18} color={t.color.textFaint} />}

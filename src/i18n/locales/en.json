@@ -285,7 +285,8 @@
     "receiptPhoto": "Receipt photo",
     "attached": "Attached ✓",
     "attach": "Attach",
-    "removePhoto": "Remove photo"
+    "removePhoto": "Remove photo",
+    "changeCurrency": "Change currency"
   },
   "draft": {
     "alreadySentBody": "It reached Firefly III before it could be cancelled.",
@@ -534,7 +535,8 @@
     "mapsTo": "Maps to",
     "transferTitle": "Export / import",
     "importButton": "Import from text below",
-    "transferPlaceholder": "Exported JSON appears here — paste JSON here to import"
+    "transferPlaceholder": "Exported JSON appears here — paste JSON here to import",
+    "removeAlias": "Remove alias {{raw}}"
   },
   "logs": {
     "clearTitle": "Clear the log?",
