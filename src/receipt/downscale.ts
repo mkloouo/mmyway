@@ -12,7 +12,7 @@ export async function downscaleReceipt(
 ): Promise<{ uri: string; base64: string } | null> {
   try {
     // Lazy: expo-image-manipulator is native-only, and ingest.ts is loaded by Jest.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+     
     const { ImageManipulator, SaveFormat } =
       require('expo-image-manipulator') as typeof import('expo-image-manipulator');
     const original = await ImageManipulator.manipulate(uri).renderAsync();
