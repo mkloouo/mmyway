@@ -1,33 +1,35 @@
 // One asset account's page (design §6.6): everything FF3 lets you set on it, saved together and
 // queued like any other write. Opened from Settings → Accounts (tap or long-press) and from a
 // balance card on Activity (long-press).
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, BackHandler, ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { pickDate } from '../../src/ui/pickDate';
 import { eq } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
+import { useCurrencies } from '../../src/db/useReferenceData';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
 import {
   Screen,
   AppBar,
-  BarIconButton,
   SectionHeader,
   Card,
   Row,
   Button,
   Money,
   Toast,
+  CloseButton,
 } from '../../src/ui/components';
 import { Checkbox } from '../../src/ui/Checkbox';
 import { TextField } from '../../src/ui/TextField';
 import { currencyOf } from '../../src/ui/money';
 import { relativeTime } from '../../src/ui/relativeTime';
-import { reportErrors } from '../../src/ui/reportError';
+import { useAction } from '../../src/ui/useAction';
+import { useConfirmDiscard } from '../../src/ui/useConfirmDiscard';
 import { useToast } from '../../src/ui/useToast';
-import { referenceAccounts, referenceCurrencies } from '../../src/db/schema';
+import { referenceAccounts } from '../../src/db/schema';
 import { hasEnvelopeMarker } from '../../src/accounts/envelopeMarker';
 import {
   setAccountActive,
@@ -79,7 +81,7 @@ export default function AccountScreen() {
     db.select().from(referenceAccounts).where(eq(referenceAccounts.id, id)),
     [id],
   );
-  const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
+  const currencies = useCurrencies();
   const account = rows?.[0];
 
   // The form starts from the row as it was when the page opened; a sync landing meanwhile doesn't
@@ -93,7 +95,8 @@ export default function AccountScreen() {
   const [virtualText, setVirtualText] = useState('');
   const [currencySheetOpen, setCurrencySheetOpen] = useState(false);
   const [roleSheetOpen, setRoleSheetOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const act = useAction();
+  const saving = act.pending(tr('common.save'));
   const [toast, setToast] = useToast();
 
   if (account && !initial) {
@@ -127,65 +130,34 @@ export default function AccountScreen() {
     setForm((cur) => (cur ? { ...cur, ...fields } : cur));
   }
 
-  function close() {
-    if (!dirty) {
-      router.back();
-      return;
-    }
-    Alert.alert(tr('account.discardTitle'), undefined, [
-      { text: tr('capture.keepEditing'), style: 'cancel' },
-      { text: tr('inbox.discard'), style: 'destructive', onPress: () => router.back() },
-    ]);
-  }
-
-  // Re-subscribed every render so the handler sees the current `dirty`.
-  useEffect(() => {
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (!dirty) return false;
-      close();
-      return true;
-    });
-    return () => sub.remove();
-  });
+  const close = useConfirmDiscard(dirty, 'account.discardTitle');
 
   function pickDay(value: string | null, onPick: (day: string) => void) {
     pickDate(value ? dayDate(value) : new Date(), (picked) => onPick(localDay(picked)));
   }
 
-  async function save() {
-    if (!canSave || !account) return;
-    setSaving(true);
-    try {
-      await reportErrors(
-        tr('common.save'),
-        async () => {
-          await updateAccount(db, account.id, edit);
-          if (active !== account.active) await setAccountActive(db, account.id, active);
-          if (envelope !== hasEnvelopeMarker(account.notes))
-            await setAccountEnvelope(db, account.id, envelope);
-          router.back();
-        },
-        setToast,
-      );
-    } finally {
-      setSaving(false);
-    }
-  }
+  const save = act(
+    tr('common.save'),
+    async () => {
+      if (!canSave || !account) return;
+      await updateAccount(db, account.id, edit);
+      if (active !== account.active) await setAccountActive(db, account.id, active);
+      if (envelope !== hasEnvelopeMarker(account.notes))
+        await setAccountEnvelope(db, account.id, envelope);
+      router.back();
+    },
+    setToast,
+  );
 
   if (!account || !form) {
     return (
       <Screen bottom>
-        <AppBar
-          title={tr('account.title')}
-          left={
-            <BarIconButton icon="close" label={tr('common.close')} onPress={() => router.back()} />
-          }
-        />
+        <AppBar title={tr('account.title')} left={<CloseButton onPress={() => router.back()} />} />
       </Screen>
     );
   }
 
-  const currency = currencyOf(currencies ?? [], account.currencyCode);
+  const currency = currencyOf(currencies, account.currencyCode);
   const problemText =
     problem === 'name'
       ? tr('account.problemName')
@@ -201,7 +173,7 @@ export default function AccountScreen() {
         <AppBar
           title={account.name}
           subtitle={tr('count.asOf', { time: relativeTime(account.currentBalanceDate) })}
-          left={<BarIconButton icon="close" label={tr('common.close')} onPress={close} />}
+          left={<CloseButton onPress={close} />}
           right={<PendingDot visible={pendingAccounts.has(account.id)} />}
         />
         <ScrollView

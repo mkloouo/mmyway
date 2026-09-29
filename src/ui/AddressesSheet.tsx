@@ -4,13 +4,16 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, Text, View } from 'react-native';
-import { Sheet, Button } from './components';
+import { Dot, Sheet, Button } from './components';
 import { confirmDestructive } from './confirm';
 import { useTheme } from './theme';
 import { TextField } from './TextField';
 import { useAction } from './useAction';
 
 type Status = 'idle' | 'probing' | 'ok' | 'down' | 'never_reached';
+
+/** Remove and Make primary both rewrite the whole list, so they share one in-flight guard. */
+const WRITE_LIST = 'addresses:write-list';
 
 export function AddressesSheet({
   visible,
@@ -35,10 +38,10 @@ export function AddressesSheet({
   const [list, setList] = useState(addresses);
   const [status, setStatus] = useState<Record<string, Status>>({});
   const [newAddress, setNewAddress] = useState('');
-  const [adding, setAdding] = useState(false);
-  const [testingAll, setTestingAll] = useState(false);
+  const adding = act.pending(tr('addresses.add'));
+  const testingAll = act.pending(tr('addresses.testAll'));
   /** Reorder and remove both write the whole list — a second tap mid-write would race it. */
-  const [busy, setBusy] = useState(false);
+  const busy = act.pending(WRITE_LIST);
 
   // Reset the working copy whenever the sheet opens — adjusted during render (React's documented
   // pattern for this), not in an effect.
@@ -57,60 +60,37 @@ export function AddressesSheet({
     return t.color.textFaint; // idle, down, never_reached
   }
 
-  async function addAddress() {
+  const addAddress = act(tr('addresses.add'), async () => {
     const trimmed = newAddress.trim().replace(/\/+$/, '');
-    if (!trimmed || adding) return;
-    setAdding(true);
+    if (!trimmed) return;
     setStatus((s) => ({ ...s, [trimmed]: 'probing' }));
-    try {
-      const ok = await probe(trimmed);
-      const next = [...list, trimmed];
-      setList(next);
-      setStatus((s) => ({ ...s, [trimmed]: ok ? 'ok' : 'never_reached' }));
-      setNewAddress('');
-      await onSave(next);
-    } finally {
-      setAdding(false);
-    }
-  }
+    const ok = await probe(trimmed);
+    const next = [...list, trimmed];
+    setList(next);
+    setStatus((s) => ({ ...s, [trimmed]: ok ? 'ok' : 'never_reached' }));
+    setNewAddress('');
+    await onSave(next);
+  });
 
-  async function removeAddress(address: string) {
-    if (busy) return;
+  const removeAddress = act(WRITE_LIST, async (address: string) => {
     if (!(await confirmDestructive(tr('addresses.removeTitle'), tr('addresses.remove'), address)))
       return;
-    setBusy(true);
-    try {
-      const next = list.filter((a) => a !== address);
-      setList(next);
-      await onSave(next);
-    } finally {
-      setBusy(false);
-    }
-  }
+    const next = list.filter((a) => a !== address);
+    setList(next);
+    await onSave(next);
+  });
 
-  async function makePrimary(address: string) {
-    if (busy) return;
-    setBusy(true);
-    try {
-      const next = [address, ...list.filter((a) => a !== address)];
-      setList(next);
-      await onSave(next);
-    } finally {
-      setBusy(false);
-    }
-  }
+  const makePrimary = act(WRITE_LIST, async (address: string) => {
+    const next = [address, ...list.filter((a) => a !== address)];
+    setList(next);
+    await onSave(next);
+  });
 
-  async function testAll() {
-    if (testingAll) return;
-    setTestingAll(true);
+  const testAll = act(tr('addresses.testAll'), async () => {
     setStatus(Object.fromEntries(list.map((a) => [a, 'probing' as Status])));
-    try {
-      const results = await Promise.all(list.map(async (a) => [a, await probe(a)] as const));
-      setStatus(Object.fromEntries(results.map(([a, ok]) => [a, ok ? 'ok' : 'down'])));
-    } finally {
-      setTestingAll(false);
-    }
-  }
+    const results = await Promise.all(list.map(async (a) => [a, await probe(a)] as const));
+    setStatus(Object.fromEntries(results.map(([a, ok]) => [a, ok ? 'ok' : 'down'])));
+  });
 
   return (
     <Sheet visible={visible} onClose={onClose} title={title}>
@@ -120,14 +100,7 @@ export function AddressesSheet({
             key={address}
             style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}
           >
-            <View
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: 4,
-                backgroundColor: dotColor(status[address]),
-              }}
-            />
+            <Dot color={dotColor(status[address])} />
             <Text style={[t.type.body, { color: t.color.text, flex: 1 }]} numberOfLines={1}>
               {address}
             </Text>
@@ -140,7 +113,7 @@ export function AddressesSheet({
               </Text>
             )}
             <Pressable
-              onPress={() => act(tr('addresses.makePrimary', { address }), makePrimary)(address)}
+              onPress={() => void makePrimary(address)}
               disabled={busy}
               accessibilityRole="button"
               accessibilityLabel={tr('addresses.makePrimary', { address })}
@@ -150,7 +123,7 @@ export function AddressesSheet({
               </Text>
             </Pressable>
             <Pressable
-              onPress={() => act(tr('addresses.remove'), removeAddress)(address)}
+              onPress={() => void removeAddress(address)}
               disabled={busy}
               accessibilityRole="button"
               accessibilityLabel={tr('addresses.removeAddress', { address })}
@@ -173,13 +146,13 @@ export function AddressesSheet({
         <Button
           title={adding ? tr('addresses.adding') : tr('addresses.add')}
           variant="secondary"
-          onPress={act(tr('addresses.add'), addAddress)}
+          onPress={() => void addAddress()}
           disabled={adding || !newAddress.trim()}
         />
         <Button
           title={testingAll ? tr('addresses.testing') : tr('addresses.testAll')}
           variant="ghost"
-          onPress={act(tr('addresses.testAll'), testAll)}
+          onPress={() => void testAll()}
           disabled={testingAll || list.length === 0}
         />
       </View>

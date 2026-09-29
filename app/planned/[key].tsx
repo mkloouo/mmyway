@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useDb } from '../../src/providers/DbProvider';
-import { useLiveQuery } from '../../src/db/useLiveQuery';
+import { useCategories, useCurrencyRows } from '../../src/db/useReferenceData';
 import { useTheme } from '../../src/ui/theme';
 import {
   Screen,
@@ -18,6 +18,7 @@ import {
   Row,
   SectionHeader,
   Sheet,
+  CloseButton,
 } from '../../src/ui/components';
 import { TextField } from '../../src/ui/TextField';
 import { PickerSheet } from '../../src/ui/PickerSheet';
@@ -29,7 +30,7 @@ import { pickDate, pickTime } from '../../src/ui/pickDate';
 import { currencyOf, formatMoney } from '../../src/ui/money';
 import { pickableCurrencies, primaryCurrencyCode } from '../../src/ui/currencies';
 import { useAction } from '../../src/ui/useAction';
-import { referenceCategories, referenceCurrencies } from '../../src/db/schema';
+import { referenceCurrencies } from '../../src/db/schema';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { applyDigit, type KeypadKey } from '../../src/capture/amountInput';
 import type { MerchantHistory } from '../../src/lookup/merchantLookup';
@@ -78,12 +79,7 @@ export default function PlannedEditScreen() {
   if (!isNew && !item) {
     return (
       <Screen bottom>
-        <AppBar
-          title={tr('planned.title')}
-          left={
-            <BarIconButton icon="close" label={tr('common.close')} onPress={() => router.back()} />
-          }
-        />
+        <AppBar title={tr('planned.title')} left={<CloseButton onPress={() => router.back()} />} />
         {loaded && (
           <Text style={[t.type.body, { color: t.color.textMuted, padding: t.space.lg }]}>
             {tr('planned.gone')}
@@ -103,15 +99,17 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
   const { t: tr } = useTranslation();
   const act = useAction();
   const assetAccounts = useAssetAccounts() ?? [];
-  const { data: categories } = useLiveQuery(db.select().from(referenceCategories));
-  const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
+  const categories = useCategories();
+  // undefined until the reference currencies load: the amount would otherwise be drawn with the
+  // currency code standing in for its symbol, then redrawn a frame later at a different width.
+  const currencyRows = useCurrencyRows();
+  const currencies = currencyRows ?? [];
 
   const [fields, setFields] = useState<PlannedFields>(() => item?.fields ?? blank());
   const [tagsText, setTagsText] = useState(() => item?.fields.tags.join(', ') ?? '');
   const [sheet, setSheet] = useState<
     'amount' | 'currency' | 'own' | 'ownTo' | 'payee' | 'category' | 'frequency' | null
   >(null);
-  const [saving, setSaving] = useState(false);
   // What the user chose themselves: a payee's history never overwrites those. The default
   // account a new one starts with isn't a choice, so history may replace it.
   const [chosen, setChosen] = useState<{ category: boolean; account: boolean }>(() => ({
@@ -140,7 +138,7 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
   const histories = useMerchantHistories(payeeType);
 
   const set = (patch: Partial<PlannedFields>) => setFields((f) => ({ ...f, ...patch }));
-  const currency = currencyOf(currencies ?? [], fields.currencyCode);
+  const currency = currencyOf(currencies, fields.currencyCode);
   const problems = plannedProblems(fields);
   const accountName = (id: string | null, name: string | null) =>
     (id ? (assetAccounts.find((a) => a.id === id)?.name ?? name) : name) ?? '—';
@@ -195,19 +193,15 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
   }
 
   const onSave = act(tr('common.save'), async () => {
-    if (saving || problems.length > 0) return;
-    setSaving(true);
-    try {
-      const tags = tagsText
-        .split(',')
-        .map((s) => s.trim())
-        .filter(Boolean);
-      await savePlanned(db, item, { ...fields, name: fields.name.trim(), tags });
-      router.back();
-    } finally {
-      setSaving(false);
-    }
+    if (problems.length > 0) return;
+    const tags = tagsText
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    await savePlanned(db, item, { ...fields, name: fields.name.trim(), tags });
+    router.back();
   });
+  const saving = act.pending(tr('common.save'));
 
   function onDelete() {
     if (!item) return;
@@ -228,9 +222,7 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
     <Screen bottom avoidKeyboard>
       <AppBar
         title={isNew ? tr('planned.newTitle') : fields.name || tr('planned.title')}
-        left={
-          <BarIconButton icon="close" label={tr('common.close')} onPress={() => router.back()} />
-        }
+        left={<CloseButton onPress={() => router.back()} />}
         right={
           item ? (
             <BarIconButton icon="trash-outline" label={tr('common.delete')} onPress={onDelete} />
@@ -262,7 +254,7 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
           />
           <Row
             label={tr('fields.amount')}
-            value={formatMoney(fields.amount, currency)}
+            value={currencyRows ? formatMoney(fields.amount, currency) : ''}
             chevron
             onPress={() => setSheet('amount')}
           />
@@ -451,7 +443,7 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
         onClose={() => setSheet(null)}
         title={sheet === 'ownTo' ? tr('fields.to') : tr('fields.from')}
         accounts={assetAccounts}
-        currencies={currencies ?? []}
+        currencies={currencies}
         onSelect={(a) => {
           setChosen((c) => ({ ...c, account: true }));
           set(
@@ -479,7 +471,7 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
         visible={sheet === 'category'}
         onClose={() => setSheet(null)}
         title={tr('fields.category')}
-        options={(categories ?? []).map((c) => ({ key: c.name, label: c.name }))}
+        options={categories.map((c) => ({ key: c.name, label: c.name }))}
         selected={fields.categoryName}
         onSelect={(categoryName) => {
           setChosen((c) => ({ ...c, category: true }));

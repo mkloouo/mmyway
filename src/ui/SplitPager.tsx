@@ -11,7 +11,7 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
-import { Button, Money } from './components';
+import { Banner, Button, Dot, Money } from './components';
 import { useTheme } from './theme';
 import { formatMoney, type DisplayCurrency } from './money';
 import { fromMinor } from '../splits/allocate';
@@ -74,28 +74,22 @@ export function SplitPager({
         </Pressable>
       </View>
       {leftover !== 0n && (
-        <View
-          style={{
-            marginHorizontal: t.space.lg,
-            padding: t.space.md,
-            borderRadius: t.radius.sm,
-            backgroundColor: t.color.warnSoft,
-            gap: t.space.sm,
-          }}
+        <Banner
+          inset
+          action={
+            readOnly ? undefined : (
+              <Button title={tr('splits.reassign')} variant="secondary" onPress={onReassign} />
+            )
+          }
         >
-          <Text style={[t.type.label, { color: t.color.warn }]}>
-            {leftover > 0n
-              ? tr('splits.leftoverUnassigned', {
-                  amount: formatMoney(fromMinor(leftover, currency.decimalPlaces), currency),
-                })
-              : tr('splits.leftoverOver', {
-                  amount: formatMoney(fromMinor(-leftover, currency.decimalPlaces), currency),
-                })}
-          </Text>
-          {!readOnly && (
-            <Button title={tr('splits.reassign')} variant="secondary" onPress={onReassign} />
-          )}
-        </View>
+          {leftover > 0n
+            ? tr('splits.leftoverUnassigned', {
+                amount: formatMoney(fromMinor(leftover, currency.decimalPlaces), currency),
+              })
+            : tr('splits.leftoverOver', {
+                amount: formatMoney(fromMinor(-leftover, currency.decimalPlaces), currency),
+              })}
+        </Banner>
       )}
       <View
         style={{
@@ -115,14 +109,7 @@ export function SplitPager({
             hitSlop={6}
             accessibilityLabel={tr('splits.position', { index: i + 1, count })}
           >
-            <View
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: 4,
-                backgroundColor: i === index ? t.color.accent : t.color.border,
-              }}
-            />
+            <Dot color={i === index ? t.color.accent : t.color.border} />
           </Pressable>
         ))}
       </View>

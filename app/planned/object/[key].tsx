@@ -5,14 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { ScrollView, Text } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTheme } from '../../../src/ui/theme';
-import {
-  Screen,
-  AppBar,
-  BarIconButton,
-  Card,
-  Row,
-  SectionHeader,
-} from '../../../src/ui/components';
+import { Screen, AppBar, Card, Row, SectionHeader, CloseButton } from '../../../src/ui/components';
 import { usePlanned } from '../../../src/planned/usePlanned';
 
 const KIND_LABEL_KEYS = {
@@ -88,9 +81,7 @@ export default function PlannedObjectScreen() {
       <AppBar
         title={object?.name || tr('planned.title')}
         subtitle={object ? tr(KIND_LABEL_KEYS[object.kind]) : undefined}
-        left={
-          <BarIconButton icon="close" label={tr('common.close')} onPress={() => router.back()} />
-        }
+        left={<CloseButton onPress={() => router.back()} />}
       />
       <ScrollView contentContainerStyle={{ paddingBottom: t.space.xxl }}>
         {object ? (

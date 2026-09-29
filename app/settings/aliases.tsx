@@ -9,7 +9,7 @@ import { useLiveQuery } from '../../src/db/useLiveQuery';
 import { useDb } from '../../src/providers/DbProvider';
 import { SearchField } from '../../src/ui/SearchField';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, AppBar, BarIconButton, Button, Sheet, Row } from '../../src/ui/components';
+import { Screen, AppBar, BarIconButton, Button, Fab, Sheet, Row } from '../../src/ui/components';
 import { TargetPickerSheet, type AliasTarget } from '../../src/ui/TargetPickerSheet';
 import { aliases } from '../../src/db/schema';
 import { upsertAlias, removeAlias, PAYEE } from '../../src/lookup/aliases';
@@ -147,26 +147,14 @@ export default function AliasesScreen() {
         }
       />
 
-      <Pressable
+      <Fab
+        icon="add"
+        label={tr('aliases.add')}
         onPress={openAddSheet}
-        accessibilityRole="button"
-        accessibilityLabel={tr('aliases.add')}
-        style={({ pressed }) => ({
-          position: 'absolute',
-          right: t.space.lg,
-          bottom: t.space.lg,
-          width: 56,
-          height: 56,
-          borderRadius: t.radius.pill,
-          backgroundColor: t.color.accent,
-          alignItems: 'center',
-          justifyContent: 'center',
-          opacity: pressed ? 0.7 : 1,
-          elevation: 3,
-        })}
-      >
-        <Text style={[t.type.title, { color: t.color.onAccent }]}>＋</Text>
-      </Pressable>
+        accent
+        size={56}
+        style={{ position: 'absolute', right: t.space.lg, bottom: t.space.lg }}
+      />
 
       <Sheet
         visible={addSheetOpen}

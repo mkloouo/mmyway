@@ -2,8 +2,8 @@
 // the transaction detail screen. Every row opens a sheet; nothing is an inline chip wall.
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Text, View } from 'react-native';
-import { Card, Row, Button, Sheet } from './components';
+import { Text } from 'react-native';
+import { Card, Dot, Row, Button, Sheet } from './components';
 import { useTheme } from './theme';
 import { categoryColor } from './categoryColor';
 import { AccountPickerSheet, type AccountPickerAccount } from './AccountPickerSheet';
@@ -72,14 +72,7 @@ export function DetailRows({
             value={value.categoryName ?? '—'}
             leading={
               value.categoryName ? (
-                <View
-                  style={{
-                    width: 8,
-                    height: 8,
-                    borderRadius: 4,
-                    backgroundColor: categoryColor(value.categoryName, t.dark),
-                  }}
-                />
+                <Dot color={categoryColor(value.categoryName, t.dark)} />
               ) : undefined
             }
             {...edit(() => setCategorySheetOpen(true))}

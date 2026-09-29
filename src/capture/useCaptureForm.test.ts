@@ -3,24 +3,21 @@ import { captureFormReducer, initialCaptureForm } from './useCaptureForm';
 describe('captureFormReducer', () => {
   const start = initialCaptureForm(new Date(2026, 8, 28));
 
-  it('sets a field, keeping the same object when nothing changed', () => {
-    const next = captureFormReducer(start, {
-      kind: 'set',
-      field: 'merchantRawInput',
-      value: 'Żabka',
-    });
+  it('applies a patch, keeping the same object when nothing changed', () => {
+    const next = captureFormReducer(start, { kind: 'set', patch: { merchantRawInput: 'Żabka' } });
     expect(next.merchantRawInput).toBe('Żabka');
-    expect(
-      captureFormReducer(next, { kind: 'set', field: 'merchantRawInput', value: 'Żabka' }),
-    ).toBe(next);
+    expect(captureFormReducer(next, { kind: 'set', patch: { merchantRawInput: 'Żabka' } })).toBe(
+      next,
+    );
   });
 
-  it('applies an updater to the current value', () => {
-    const next = captureFormReducer(
-      { ...start, amount: '1' },
-      { kind: 'update', field: 'amount', updater: ((a: string) => `${a}2`) as never },
-    );
-    expect(next.amount).toBe('12');
+  it('sets several fields at once', () => {
+    const next = captureFormReducer(start, {
+      kind: 'set',
+      patch: { dateMode: 'yesterday', sourceId: 'a1' },
+    });
+    expect(next.dateMode).toBe('yesterday');
+    expect(next.sourceId).toBe('a1');
   });
 
   it('after a save clears the amount, conversion and photo but keeps the context', () => {

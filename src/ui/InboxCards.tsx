@@ -8,12 +8,13 @@ import { useTranslation } from 'react-i18next';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import type { Href } from 'expo-router';
 import { useTheme } from './theme';
-import { Card, Chip, Button, Money, Pulse } from './components';
+import { Card, Chip, Button, Dot, Money, PRESSED_OPACITY, Pulse } from './components';
 import { SwipeableCard } from './SwipeableCard';
 import { haptics } from './haptics';
 import { currencyOf } from './money';
 import { categoryColor } from './categoryColor';
 import { needsLabel } from './readinessLabel';
+import { useAction } from './useAction';
 import type { AttentionItem, InboxItemRow, QueuedChange } from '../inbox/useInboxSections';
 import type { DraftReadiness } from '../inbox/readiness';
 import type { Draft } from '../inbox/draft';
@@ -160,7 +161,7 @@ export function ConfirmCard({
           style={cardStyle}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
-            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor }} />
+            <Dot color={dotColor} />
             <Text style={[t.type.heading, { color: t.color.text, flex: 1 }]} numberOfLines={1}>
               {payeeName}
             </Text>
@@ -205,7 +206,7 @@ export function ConfirmCard({
                     alignItems: 'center',
                     justifyContent: 'center',
                     backgroundColor: t.color.accentSoft,
-                    opacity: pressed ? 0.6 : 1,
+                    opacity: pressed ? PRESSED_OPACITY : 1,
                   })}
                 >
                   <Ionicons name="checkmark" size={20} color={t.color.accent} />
@@ -234,7 +235,8 @@ export function ReviewCard({
 }) {
   const t = useTheme();
   const { t: tr } = useTranslation();
-  const [approving, setApproving] = useState(false);
+  const act = useAction();
+  const approving = act.pending(tr('inbox.approve'));
   const journal = readReviewJournal(item.draftJson);
   const dateLabel = journal.date
     ? new Date(journal.date).toLocaleDateString(appLocale(), { day: 'numeric', month: 'short' })
@@ -242,15 +244,10 @@ export function ReviewCard({
   // Planned in another currency: shown as planned, and approving first asks what was charged.
   const foreign = reviewForeign(journal);
 
-  async function approve() {
+  const runApprove = act(tr('inbox.approve'), onApprove);
+  function approve() {
     if (foreign) return onEdit();
-    if (approving) return;
-    setApproving(true);
-    try {
-      await onApprove();
-    } finally {
-      setApproving(false);
-    }
+    void runApprove();
   }
 
   return (

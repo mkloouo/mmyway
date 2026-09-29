@@ -1,22 +1,22 @@
 // Capture (design §6.2) — amount first, one screen, no scrolling for the common case.
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n, { appLocale } from '../src/i18n';
-import { Animated, Alert, BackHandler, Pressable, ScrollView, Text, View } from 'react-native';
+import { Animated, Pressable, ScrollView, Text, View } from 'react-native';
 import { useFlyAway, useShake } from '../src/ui/feedback';
-import { router } from 'expo-router';
 import { pickDateTime } from '../src/ui/pickDate';
-import { useLiveQuery } from '../src/db/useLiveQuery';
+import { useConfirmDiscard } from '../src/ui/useConfirmDiscard';
+import { useBudgets, useCategories, useCurrencies } from '../src/db/useReferenceData';
 import { useDb } from '../src/providers/DbProvider';
 import { useTheme } from '../src/ui/theme';
-import { Screen, Chip, Button, Sheet, Toast, Row, BarIconButton } from '../src/ui/components';
+import { Screen, Chip, Button, Sheet, Toast, Row, CloseButton } from '../src/ui/components';
 import { Keypad } from '../src/ui/Keypad';
 import { PayeeSheet } from '../src/ui/PayeeSheet';
 import { AccountPickerSheet, type AccountPickerAccount } from '../src/ui/AccountPickerSheet';
 import { currencyOf, formatAmountInput } from '../src/ui/money';
 import { categoryColor } from '../src/ui/categoryColor';
 import { haptics } from '../src/ui/haptics';
-import { referenceCategories, referenceBudgets, referenceCurrencies } from '../src/db/schema';
+
 import { askPhotoSource, pickPhoto } from '../src/receipt/pickPhoto';
 import { useAssetAccounts } from '../src/accounts/useAssetAccounts';
 import { applyDigit, type KeypadKey } from '../src/capture/amountInput';
@@ -37,7 +37,6 @@ import {
 import { matchAlias, PAYEE } from '../src/lookup/aliases';
 import { rankCandidates } from '../src/suggest/rank';
 import { divideDecimal, isNegative, parseDecimalInput } from '../src/api/ff3/decimal';
-import { reportErrors } from '../src/ui/reportError';
 import { useToast } from '../src/ui/useToast';
 import { Snackbar, type SnackbarEntry } from '../src/ui/Snackbar';
 import type { Draft } from '../src/inbox/draft';
@@ -76,6 +75,59 @@ function topChips<T extends AccountPickerAccount>(
   return top;
 }
 
+/**
+ * A labelled row of account chips with the 🔍 chip that opens the full picker. Capture draws this
+ * three times — from, to, and the single account of a non-transfer.
+ */
+function AccountChipRow({
+  label,
+  searchLabel,
+  accounts,
+  selectedId,
+  onSearch,
+  onSelect,
+  trailing,
+}: {
+  label: string;
+  searchLabel: string;
+  accounts: AccountPickerAccount[];
+  selectedId: string | null | undefined;
+  onSearch: () => void;
+  onSelect: (id: string) => void;
+  /** Chips that share the row, such as Capture's transfer branch putting Details here. */
+  trailing?: ReactNode;
+}) {
+  const t = useTheme();
+  return (
+    <View>
+      <Text style={[t.type.label, { color: t.color.textFaint, paddingHorizontal: t.space.lg }]}>
+        {label}
+      </Text>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={rowScroll}
+        contentContainerStyle={{
+          paddingHorizontal: t.space.lg,
+          gap: t.space.sm,
+          paddingTop: t.space.xs,
+        }}
+      >
+        <Chip label="🔍" accessibilityLabel={searchLabel} onPress={onSearch} />
+        {topChips(accounts, selectedId).map((a) => (
+          <Chip
+            key={a.id}
+            label={a.name}
+            selected={selectedId === a.id}
+            onPress={() => onSelect(a.id)}
+          />
+        ))}
+        {trailing}
+      </ScrollView>
+    </View>
+  );
+}
+
 export default function CaptureScreen() {
   const db = useDb();
   const t = useTheme();
@@ -89,65 +141,54 @@ export default function CaptureScreen() {
 
   const assetAccountRows = useAssetAccounts();
   const assetAccounts = useMemo(() => assetAccountRows ?? [], [assetAccountRows]);
-  const { data: categories } = useLiveQuery(db.select().from(referenceCategories));
-  const { data: budgets } = useLiveQuery(db.select().from(referenceBudgets));
-  const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
+  const categories = useCategories();
+  const budgets = useBudgets();
+  const currencies = useCurrencies();
 
   const {
     type,
-    setType,
     amount,
-    setAmount,
     currencyCode,
-    setCurrencyCode,
     date,
-    setDate,
     dateMode,
-    setDateMode,
     merchantRawInput,
-    setMerchantRawInput,
     forceNewPayee,
-    setForceNewPayee,
     sourceId,
-    setSourceId,
     destinationId,
-    setDestinationId,
     categoryName,
-    setCategoryName,
     budgetId,
-    setBudgetId,
     description,
-    setDescription,
     notes,
-    setNotes,
     sharedWith,
-    setSharedWith,
     foreignAmount,
-    setForeignAmount,
     photoUri,
-    setPhotoUri,
+    set,
     markSaved,
   } = useCaptureForm();
   const attachPhoto = act(tr('capture.receiptPhoto'), async () => {
     const source = await askPhotoSource();
     if (!source) return;
     const photo = await pickPhoto(source);
-    if (photo) setPhotoUri(photo.uri);
+    if (photo) set({ photoUri: photo.uri });
   });
-  const [saving, setSaving] = useState(false);
   const [toast, setToast] = useToast();
   const [snackbar, setSnackbar] = useState<SnackbarEntry | null>(null);
   const dismissSnackbar = useCallback(() => setSnackbar(null), []);
 
-  const [payeeSheetOpen, setPayeeSheetOpen] = useState(false);
-  const [accountSheetTarget, setAccountSheetTarget] = useState<'source' | 'destination' | null>(
-    null,
-  );
-  const [currencySheetOpen, setCurrencySheetOpen] = useState(false);
-  const [categorySheetOpen, setCategorySheetOpen] = useState(false);
-  const [budgetSheetOpen, setBudgetSheetOpen] = useState(false);
-  const [moreSheetOpen, setMoreSheetOpen] = useState(false);
-  const [dateSheetOpen, setDateSheetOpen] = useState(false);
+  // Only one sheet is ever open, so it is one state rather than a boolean each.
+  const [sheet, setSheet] = useState<
+    | 'payee'
+    | 'accountSource'
+    | 'accountDestination'
+    | 'currency'
+    | 'category'
+    | 'budget'
+    | 'more'
+    | 'date'
+    | null
+  >(null);
+  const accountSheetTarget =
+    sheet === 'accountSource' ? 'source' : sheet === 'accountDestination' ? 'destination' : null;
 
   // Seeded from the lookup warmed at startup (DbProvider, runSync) so the first frame already has
   // suggestions; the effect then refreshes it in case the cache moved since.
@@ -232,7 +273,7 @@ export default function CaptureScreen() {
 
   const sourceAccount = assetAccounts.find((a) => a.id === effectiveSourceId);
   const destinationAccount = assetAccounts.find((a) => a.id === destinationId);
-  const budget = (budgets ?? []).find((b) => b.id === budgetId);
+  const budget = budgets.find((b) => b.id === budgetId);
 
   // FX (design §6.2): reveal when the account leg's currency differs from the chosen currency.
   const accountCurrencyCode =
@@ -290,106 +331,78 @@ export default function CaptureScreen() {
   };
   const readiness = draftReadiness(previewDraft);
 
-  const confirmClose = useCallback(() => {
-    if (!isDirty) {
-      router.back();
-      return;
-    }
-    Alert.alert(tr('capture.discardTitle'), undefined, [
-      { text: tr('capture.keepEditing'), style: 'cancel' },
-      { text: tr('inbox.discard'), style: 'destructive', onPress: () => router.back() },
-    ]);
-  }, [isDirty, tr]);
-
-  useEffect(() => {
-    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      if (isDirty) {
-        confirmClose();
-        return true;
-      }
-      return false;
-    });
-    return () => sub.remove();
-  }, [isDirty, confirmClose]);
+  const confirmClose = useConfirmDiscard(isDirty, 'capture.discardTitle');
 
   function applyPayeeHistory(h: MerchantHistory) {
-    setMerchantRawInput(h.displayName);
-    setForceNewPayee(false);
-    if (h.topCategory) setCategoryName(h.topCategory);
+    set({ merchantRawInput: h.displayName, forceNewPayee: false });
+    if (h.topCategory) set({ categoryName: h.topCategory });
     if (h.topAccountName) {
       const acc = assetAccounts.find((a) => a.name === h.topAccountName);
       if (acc) {
-        if (type === 'withdrawal') setSourceId(acc.id);
-        else if (type === 'deposit') setDestinationId(acc.id);
+        if (type === 'withdrawal') set({ sourceId: acc.id });
+        else if (type === 'deposit') set({ destinationId: acc.id });
       }
     }
     if (h.topBudgetName) {
-      const b = (budgets ?? []).find((x) => x.name === h.topBudgetName);
-      if (b) setBudgetId(b.id);
+      const b = budgets.find((x) => x.name === h.topBudgetName);
+      if (b) set({ budgetId: b.id });
     }
   }
 
   function pickDate(mode: 'today' | 'yesterday') {
-    setDateMode(mode);
-    setDate(mode === 'today' ? new Date() : yesterday());
-    setDateSheetOpen(false);
+    set({ dateMode: mode, date: mode === 'today' ? new Date() : yesterday() });
+    setSheet(null);
   }
 
   function openNativeDatePicker() {
-    setDateSheetOpen(false);
+    setSheet(null);
     // Starts from now's time, so a past day picked and the time dialog dismissed still keeps the
     // clock time rather than midnight (src/capture/entryDate.ts).
     pickDateTime(buildEntryDate(date, new Date()), (picked) => {
-      setDate(picked);
-      setDateMode('custom');
+      set({ date: picked, dateMode: 'custom' });
     });
   }
 
-  async function handleSave(andConfirm: boolean) {
-    if (saving || foreignAmountInvalid || fxMissing) return;
+  const handleSave = (andConfirm: boolean) => {
+    if (foreignAmountInvalid || fxMissing) return;
     if (andConfirm && !readiness.ready) {
       haptics.warn();
       shake();
       return;
     }
-    setSaving(true);
-    try {
-      await reportErrors(
-        tr('common.save'),
-        async () => {
-          const input = buildManualEntryInput(formState, assetAccounts);
-          const { inboxItemId } = await createManualEntry(db, input);
-          if (photoUri) await attachReceiptImage(db, inboxItemId, photoUri);
-          const label = merchantRawInput || description || tr(labelKeyForType(type));
-          haptics.tick();
-          fly(formatAmountInput(amount, currency));
-          if (andConfirm) {
-            const confirmed = await confirmInboxItem(db, inboxItemId);
-            // Same Undo the Inbox gives a confirm: the entry stays unsent while this is on screen.
-            setSnackbar({
-              id: inboxItemId,
-              message: tr('capture.confirmedLabel', { label }),
-              actionLabel: tr('common.undo'),
-              onAction: async () => {
-                const outcome = await undoConfirm(db, inboxItemId, confirmed);
-                setToast(
-                  outcome === 'undone' ? tr('capture.undoneBackInInbox') : tr('inbox.alreadySent'),
-                );
-              },
-            });
-          } else {
-            setToast(tr('capture.savedLabel', { label }));
-          }
-          markSaved();
-        },
-        setToast,
-      );
-    } finally {
-      setSaving(false);
-    }
-  }
+    void act(
+      tr('common.save'),
+      async () => {
+        const input = buildManualEntryInput(formState, assetAccounts);
+        const { inboxItemId } = await createManualEntry(db, input);
+        if (photoUri) await attachReceiptImage(db, inboxItemId, photoUri);
+        const label = merchantRawInput || description || tr(labelKeyForType(type));
+        haptics.tick();
+        fly(formatAmountInput(amount, currency));
+        if (andConfirm) {
+          const confirmed = await confirmInboxItem(db, inboxItemId);
+          // Same Undo the Inbox gives a confirm: the entry stays unsent while this is on screen.
+          setSnackbar({
+            id: inboxItemId,
+            message: tr('capture.confirmedLabel', { label }),
+            actionLabel: tr('common.undo'),
+            onAction: async () => {
+              const outcome = await undoConfirm(db, inboxItemId, confirmed);
+              setToast(
+                outcome === 'undone' ? tr('capture.undoneBackInInbox') : tr('inbox.alreadySent'),
+              );
+            },
+          });
+        } else {
+          setToast(tr('capture.savedLabel', { label }));
+        }
+        markSaved();
+      },
+      setToast,
+    );
+  };
 
-  const currency = currencyOf(currencies ?? [], effectiveCurrencyCode ?? '');
+  const currency = currencyOf(currencies, effectiveCurrencyCode ?? '');
   const summaryParts = [merchantRawInput, categoryName].filter(Boolean);
   const detailsParts = [
     description,
@@ -411,19 +424,19 @@ export default function CaptureScreen() {
             paddingTop: t.space.sm,
           }}
         >
-          <BarIconButton icon="close" label={tr('common.close')} onPress={confirmClose} />
+          <CloseButton onPress={confirmClose} />
           <View style={{ flexDirection: 'row', flex: 1, gap: t.space.xs }}>
             {TX_TYPES.map((option) => (
               <Chip
                 key={option.type}
                 label={tr(option.labelKey)}
                 selected={type === option.type}
-                onPress={() => setType(option.type)}
+                onPress={() => set({ type: option.type })}
               />
             ))}
           </View>
           <Pressable
-            onPress={() => setCurrencySheetOpen(true)}
+            onPress={() => setSheet('currency')}
             accessibilityRole="button"
             accessibilityLabel={tr('capture.changeCurrency')}
           >
@@ -490,7 +503,7 @@ export default function CaptureScreen() {
             </Text>
             <TextField
               value={foreignAmount}
-              onChangeText={setForeignAmount}
+              onChangeText={(foreignAmount) => set({ foreignAmount })}
               keyboardType="decimal-pad"
               placeholder={`___ ${accountCurrencyCode}`}
               style={{ marginTop: t.space.xs }}
@@ -538,17 +551,13 @@ export default function CaptureScreen() {
                       ? tr('payeeSheet.payer.search')
                       : tr('payeeSheet.payee.search')
                   }
-                  onPress={() => setPayeeSheetOpen(true)}
+                  onPress={() => setSheet('payee')}
                 />
                 {/* A payee picked from search (or typed as new) isn't necessarily among the top
                     suggestions; show it, selected, so the row says what was chosen. */}
                 {!!merchantRawInput &&
                   !rankedPayees.some((h) => h.displayName === merchantRawInput) && (
-                    <Chip
-                      label={merchantRawInput}
-                      selected
-                      onPress={() => setPayeeSheetOpen(true)}
-                    />
+                    <Chip label={merchantRawInput} selected onPress={() => setSheet('payee')} />
                   )}
                 {rankedPayees.map((h) => (
                   <Chip
@@ -564,128 +573,44 @@ export default function CaptureScreen() {
 
           {type === 'transfer' ? (
             <>
-              <View>
-                <Text
-                  style={[
-                    t.type.label,
-                    { color: t.color.textFaint, paddingHorizontal: t.space.lg },
-                  ]}
-                >
-                  {tr('fields.from')}
-                </Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={rowScroll}
-                  contentContainerStyle={{
-                    paddingHorizontal: t.space.lg,
-                    gap: t.space.sm,
-                    paddingTop: t.space.xs,
-                  }}
-                >
-                  <Chip
-                    label="🔍"
-                    accessibilityLabel={tr('capture.searchSourceAccounts')}
-                    onPress={() => setAccountSheetTarget('source')}
-                  />
-                  {topChips(recentAccounts, effectiveSourceId).map((a) => (
-                    <Chip
-                      key={a.id}
-                      label={a.name}
-                      selected={effectiveSourceId === a.id}
-                      onPress={() => setSourceId(a.id)}
-                    />
-                  ))}
-                </ScrollView>
-              </View>
-              <View>
-                <Text
-                  style={[
-                    t.type.label,
-                    { color: t.color.textFaint, paddingHorizontal: t.space.lg },
-                  ]}
-                >
-                  {tr('fields.to')}
-                </Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={rowScroll}
-                  contentContainerStyle={{
-                    paddingHorizontal: t.space.lg,
-                    gap: t.space.sm,
-                    paddingTop: t.space.xs,
-                  }}
-                >
-                  <Chip
-                    label="🔍"
-                    accessibilityLabel={tr('capture.searchDestinationAccounts')}
-                    onPress={() => setAccountSheetTarget('destination')}
-                  />
-                  {topChips(
-                    recentAccounts.filter((a) => a.id !== effectiveSourceId),
-                    destinationId,
-                  ).map((a) => (
-                    <Chip
-                      key={a.id}
-                      label={a.name}
-                      selected={destinationId === a.id}
-                      onPress={() => setDestinationId(a.id)}
-                    />
-                  ))}
+              <AccountChipRow
+                label={tr('fields.from')}
+                searchLabel={tr('capture.searchSourceAccounts')}
+                accounts={recentAccounts}
+                selectedId={effectiveSourceId}
+                onSearch={() => setSheet('accountSource')}
+                onSelect={(id) => set({ sourceId: id })}
+              />
+              <AccountChipRow
+                label={tr('fields.to')}
+                searchLabel={tr('capture.searchDestinationAccounts')}
+                accounts={recentAccounts.filter((a) => a.id !== effectiveSourceId)}
+                selectedId={destinationId}
+                onSearch={() => setSheet('accountDestination')}
+                onSelect={(id) => set({ destinationId: id })}
+                trailing={
                   <Chip
                     label={detailsLabel}
                     selected={detailsParts.length > 0}
-                    onPress={() => setMoreSheetOpen(true)}
+                    onPress={() => setSheet('more')}
                   />
-                </ScrollView>
-              </View>
+                }
+              />
             </>
           ) : (
             <>
-              <View>
-                <Text
-                  style={[
-                    t.type.label,
-                    { color: t.color.textFaint, paddingHorizontal: t.space.lg },
-                  ]}
-                >
-                  {type === 'deposit' ? tr('fields.to') : tr('fields.from')}
-                </Text>
-                <ScrollView
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  style={rowScroll}
-                  contentContainerStyle={{
-                    paddingHorizontal: t.space.lg,
-                    gap: t.space.sm,
-                    paddingTop: t.space.xs,
-                  }}
-                >
-                  <Chip
-                    label="🔍"
-                    accessibilityLabel={tr('pickers.searchAccounts')}
-                    onPress={() =>
-                      setAccountSheetTarget(type === 'withdrawal' ? 'source' : 'destination')
-                    }
-                  />
-                  {topChips(
-                    recentAccounts,
-                    type === 'withdrawal' ? effectiveSourceId : destinationId,
-                  ).map((a) => (
-                    <Chip
-                      key={a.id}
-                      label={a.name}
-                      selected={
-                        (type === 'withdrawal' ? effectiveSourceId : destinationId) === a.id
-                      }
-                      onPress={() =>
-                        type === 'withdrawal' ? setSourceId(a.id) : setDestinationId(a.id)
-                      }
-                    />
-                  ))}
-                </ScrollView>
-              </View>
+              <AccountChipRow
+                label={type === 'deposit' ? tr('fields.to') : tr('fields.from')}
+                searchLabel={tr('pickers.searchAccounts')}
+                accounts={recentAccounts}
+                selectedId={type === 'withdrawal' ? effectiveSourceId : destinationId}
+                onSearch={() =>
+                  setSheet(type === 'withdrawal' ? 'accountSource' : 'accountDestination')
+                }
+                onSelect={(id) =>
+                  type === 'withdrawal' ? set({ sourceId: id }) : set({ destinationId: id })
+                }
+              />
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -696,17 +621,17 @@ export default function CaptureScreen() {
                   label={categoryName ?? tr('fields.category')}
                   selected={!!categoryName}
                   dotColor={categoryName ? categoryColor(categoryName, t.dark) : undefined}
-                  onPress={() => setCategorySheetOpen(true)}
+                  onPress={() => setSheet('category')}
                 />
                 <Chip
                   label={budget?.name ?? tr('fields.budget')}
                   selected={!!budgetId}
-                  onPress={() => setBudgetSheetOpen(true)}
+                  onPress={() => setSheet('budget')}
                 />
                 <Chip
                   label={detailsLabel}
                   selected={detailsParts.length > 0}
-                  onPress={() => setMoreSheetOpen(true)}
+                  onPress={() => setSheet('more')}
                 />
               </ScrollView>
             </>
@@ -717,7 +642,7 @@ export default function CaptureScreen() {
 
         <Keypad
           onDigit={(key: KeypadKey) =>
-            setAmount((cur) => applyDigit(cur, key, currency.decimalPlaces))
+            set({ amount: applyDigit(amount, key, currency.decimalPlaces) })
           }
           dateLabel={
             dateMode === 'today'
@@ -731,17 +656,17 @@ export default function CaptureScreen() {
                     minute: '2-digit',
                   })
           }
-          onDatePress={() => setDateSheetOpen(true)}
-          onNotePress={() => setMoreSheetOpen(true)}
+          onDatePress={() => setSheet('date')}
+          onNotePress={() => setSheet('more')}
           noteHasValue={!!notes}
           saveLabel={tr('capture.saveAndConfirm')}
           onSave={() => handleSave(true)}
           saveDisabled={!readiness.ready || foreignAmountInvalid || fxMissing}
-          saving={saving}
+          saving={act.pending(tr('common.save'))}
         />
         <Pressable
           onPress={() => handleSave(false)}
-          disabled={saving || foreignAmountInvalid || fxMissing}
+          disabled={act.pending(tr('common.save')) || foreignAmountInvalid || fxMissing}
           style={{ alignItems: 'center', paddingVertical: t.space.md }}
         >
           <Text
@@ -750,7 +675,8 @@ export default function CaptureScreen() {
               {
                 color: t.color.accent,
                 fontWeight: '600',
-                opacity: saving || foreignAmountInvalid || fxMissing ? 0.4 : 1,
+                opacity:
+                  act.pending(tr('common.save')) || foreignAmountInvalid || fxMissing ? 0.4 : 1,
               },
             ]}
           >
@@ -762,11 +688,7 @@ export default function CaptureScreen() {
         <Snackbar entry={snackbar} onDismiss={dismissSnackbar} bottom={t.space.lg} />
       </View>
 
-      <Sheet
-        visible={dateSheetOpen}
-        onClose={() => setDateSheetOpen(false)}
-        title={tr('fields.date')}
-      >
+      <Sheet visible={sheet === 'date'} onClose={() => setSheet(null)} title={tr('fields.date')}>
         <View style={{ gap: t.space.sm }}>
           <Button
             title={tr('capture.today')}
@@ -787,79 +709,82 @@ export default function CaptureScreen() {
       </Sheet>
 
       <PickerSheet
-        visible={currencySheetOpen}
-        onClose={() => setCurrencySheetOpen(false)}
+        visible={sheet === 'currency'}
+        onClose={() => setSheet(null)}
         title={tr('fields.currency')}
         options={pickableCurrencies(currencies, effectiveCurrencyCode).map((c) => ({
           key: c.code,
           label: c.code,
         }))}
         selected={effectiveCurrencyCode}
-        onSelect={(code) => code && setCurrencyCode(code)}
+        onSelect={(code) => code && set({ currencyCode: code })}
       />
 
       <PickerSheet
-        visible={categorySheetOpen}
-        onClose={() => setCategorySheetOpen(false)}
+        visible={sheet === 'category'}
+        onClose={() => setSheet(null)}
         title={tr('fields.category')}
-        options={(categories ?? []).map((c) => ({ key: c.name, label: c.name }))}
+        options={categories.map((c) => ({ key: c.name, label: c.name }))}
         selected={categoryName}
-        onSelect={setCategoryName}
+        onSelect={(categoryName) => set({ categoryName })}
         noneLabel={tr('common.none')}
       />
 
       <PickerSheet
-        visible={budgetSheetOpen}
-        onClose={() => setBudgetSheetOpen(false)}
+        visible={sheet === 'budget'}
+        onClose={() => setSheet(null)}
         title={tr('fields.budget')}
-        options={(budgets ?? []).map((b) => ({ key: b.id, label: b.name }))}
+        options={budgets.map((b) => ({ key: b.id, label: b.name }))}
         selected={budgetId}
-        onSelect={setBudgetId}
+        onSelect={(budgetId) => set({ budgetId })}
         noneLabel={tr('common.none')}
       />
 
       <PayeeSheet
-        visible={payeeSheetOpen}
-        onClose={() => setPayeeSheetOpen(false)}
+        visible={sheet === 'payee'}
+        onClose={() => setSheet(null)}
         histories={histories}
         payeeLabel={type === 'deposit' ? 'payer' : 'payee'}
         onSelect={applyPayeeHistory}
         onCreateNew={(text) => {
-          setMerchantRawInput(text);
-          setForceNewPayee(true);
+          set({ merchantRawInput: text, forceNewPayee: true });
         }}
       />
 
       <AccountPickerSheet
         visible={!!accountSheetTarget}
-        onClose={() => setAccountSheetTarget(null)}
+        onClose={() => setSheet(null)}
         title={accountSheetTarget === 'source' ? tr('fields.from') : tr('fields.to')}
         accounts={assetAccounts}
-        currencies={currencies ?? []}
+        currencies={currencies}
         excludeId={
           accountSheetTarget === 'destination' && type === 'transfer' ? effectiveSourceId : null
         }
         onSelect={(a) =>
-          accountSheetTarget === 'source' ? setSourceId(a.id) : setDestinationId(a.id)
+          accountSheetTarget === 'source' ? set({ sourceId: a.id }) : set({ destinationId: a.id })
         }
       />
 
       <Sheet
-        visible={moreSheetOpen}
-        onClose={() => setMoreSheetOpen(false)}
+        visible={sheet === 'more'}
+        onClose={() => setSheet(null)}
         title={tr('capture.more')}
-        footer={<Button title={tr('common.done')} onPress={() => setMoreSheetOpen(false)} />}
+        footer={<Button title={tr('common.done')} onPress={() => setSheet(null)} />}
       >
         <TextField
           placeholder={tr('fields.description')}
           value={description}
-          onChangeText={setDescription}
+          onChangeText={(description) => set({ description })}
         />
-        <TextField placeholder={tr('fields.notes')} value={notes} onChangeText={setNotes} />
+        <TextField
+          placeholder={tr('fields.notes')}
+          value={notes}
+          onChangeText={(notes) => set({ notes })}
+        />
         <TextField
           placeholder={tr('fields.sharedWith')}
           value={sharedWith}
-          onChangeText={setSharedWith}
+          onChangeText={(sharedWith) => set({ sharedWith })}
         />
         <Row
           first
@@ -872,7 +797,7 @@ export default function CaptureScreen() {
           <Button
             title={tr('capture.removePhoto')}
             variant="ghost"
-            onPress={() => setPhotoUri(null)}
+            onPress={() => set({ photoUri: null })}
           />
         )}
       </Sheet>

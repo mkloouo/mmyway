@@ -4,10 +4,11 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { appLocale } from '../../src/i18n';
-import { Image, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { eq, ne } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
+import { useBudgets, useCategories, useCurrencies } from '../../src/db/useReferenceData';
 import { pickDateTime } from '../../src/ui/pickDate';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
@@ -20,31 +21,25 @@ import {
   Money,
   Row,
   Sheet,
+  CloseButton,
 } from '../../src/ui/components';
 import { DetailRows, type DetailRowsValue } from '../../src/ui/DetailRows';
 import { Keypad } from '../../src/ui/Keypad';
 import { TextField } from '../../src/ui/TextField';
 import { PayeeSheet } from '../../src/ui/PayeeSheet';
 import { SplitPager } from '../../src/ui/SplitPager';
+import { SplitPage } from '../../src/ui/SplitPage';
+import { PhotoViewer } from '../../src/ui/PhotoViewer';
 import {
   AllocationSheet,
   type AllocationMode,
   type AllocationResult,
 } from '../../src/ui/AllocationSheet';
-import { currencyOf, formatMoney } from '../../src/ui/money';
-import { conflictFields } from '../../src/transactions/conflictDiff';
+import { currencyOf } from '../../src/ui/money';
 import { relativeTime } from '../../src/ui/relativeTime';
 import { applyDigit, type KeypadKey } from '../../src/capture/amountInput';
-import {
-  cachedTransactions,
-  inboxItems,
-  outboxOperations,
-  referenceCategories,
-  referenceBudgets,
-  referenceCurrencies,
-} from '../../src/db/schema';
+import { cachedTransactions, inboxItems, outboxOperations } from '../../src/db/schema';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
-import type { UpdateTransactionPayload } from '../../src/sync/outbox';
 import { queueTransactionDelete, queueTransactionEdit } from '../../src/transactions/queueEdit';
 import { confirmDestructive } from '../../src/ui/confirm';
 import { useQuery } from '@tanstack/react-query';
@@ -56,9 +51,8 @@ import {
 } from '../../src/receipt/journalAttachments';
 import type { TransactionSplit } from '../../src/api/ff3/types';
 import { pendingEdits } from '../../src/transactions/pendingEdits';
-import { payloadGroupId, readPayload } from '../../src/sync/payloadJson';
+import { payloadGroupId } from '../../src/sync/payloadJson';
 import { useAction } from '../../src/ui/useAction';
-import { keepMineOverServer, dropQueuedChange } from '../../src/sync/outbox';
 import { readSplits } from '../../src/transactions/splitsJson';
 import { refreshCachedGroup } from '../../src/transactions/refreshGroup';
 import { queueSplitEdit } from '../../src/transactions/queueSplitEdit';
@@ -72,9 +66,11 @@ import {
   toPayloadSplits,
   type EditableSplit,
 } from '../../src/splits/editSplits';
-import { absorb, leftover } from '../../src/splits/allocate';
+import { leftover } from '../../src/splits/allocate';
+import { askLeftover, placeLeftover } from '../../src/splits/placeLeftover';
 import { useMerchantHistories } from '../../src/lookup/useMerchantHistories';
 import { ReceiptThumb } from '../../src/ui/ReceiptThumb';
+import { ConflictView } from '../../src/ui/ConflictView';
 import { txTypeLabelKey } from '../../src/transactions/txTypes';
 
 const SHARED_TAG_PREFIX = 'mmyway-shared-';
@@ -102,14 +98,32 @@ function withSharedWith(tags: string[], sharedWith: string | null): string[] {
 export default function TransactionDetailScreen() {
   const { groupId } = useLocalSearchParams<{ groupId: string }>();
   const db = useDb();
-  const t = useTheme();
   const { t: tr } = useTranslation();
-  const act = useAction();
-
   const { data: rows } = useLiveQuery(
     db.select().from(cachedTransactions).where(eq(cachedTransactions.groupId, groupId)),
     [groupId],
   );
+  const row = rows?.[0];
+
+  if (!row)
+    return (
+      <Screen bottom>
+        <AppBar title={tr('transaction.title')} />
+      </Screen>
+    );
+  // Mounted once the row is known, so the editor below never has to re-narrow it.
+  return <TransactionEditor row={row} />;
+}
+
+type CachedRow = typeof cachedTransactions.$inferSelect;
+
+function TransactionEditor({ row }: { row: CachedRow }) {
+  const groupId = row.groupId;
+  const db = useDb();
+  const t = useTheme();
+  const { t: tr } = useTranslation();
+  const act = useAction();
+
   // The kinds that can touch one transaction; account edits never do.
   const { data: outbox } = useLiveQuery(
     db.select().from(outboxOperations).where(ne(outboxOperations.kind, 'update_account')),
@@ -118,10 +132,9 @@ export default function TransactionDetailScreen() {
   // every account for display, but only offer active ones when picking a new one.
   const allAssetAccounts = useAssetAccounts({ includeInactive: true }) ?? [];
   const activeAssetAccounts = useAssetAccounts() ?? [];
-  const { data: categories } = useLiveQuery(db.select().from(referenceCategories));
-  const { data: budgets } = useLiveQuery(db.select().from(referenceBudgets));
-  const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
-  const row = rows?.[0];
+  const categories = useCategories();
+  const budgets = useBudgets();
+  const currencies = useCurrencies();
   // The photo this transaction was captured from, if the phone still has it (kept a while after
   // upload, see pruneUploadedReceiptImages): the preview while FF3's own list is unavailable.
   const { data: sourceItems } = useLiveQuery(
@@ -135,22 +148,21 @@ export default function TransactionDetailScreen() {
 
   // Receipt status: uploads still queued here, and what FF3 already holds. Refetched whenever the
   // number of queued uploads changes, so a finished upload shows up without leaving the screen.
-  const queued = row ? queuedAttachments(outbox ?? [], row.journalId) : [];
+  const queued = queuedAttachments(outbox ?? [], row.journalId);
   const attachments = useQuery({
-    queryKey: ['journal-attachments', groupId, row?.journalId, queued.length],
-    enabled: !!row,
+    queryKey: ['journal-attachments', groupId, row.journalId, queued.length],
     queryFn: async () => {
       const client = await getClient(db);
-      return client ? fetchJournalAttachments(client, groupId, row!.journalId) : null;
+      return client ? fetchJournalAttachments(client, groupId, row.journalId) : null;
     },
     retry: false,
   });
 
   // A split transaction cached before every split was kept: read it again from FF3.
-  const cachedSplits = row ? readSplits(row.splitsJson) : null;
+  const cachedSplits = readSplits(row.splitsJson);
   const splitsRefresh = useQuery({
     queryKey: ['refresh-group', groupId],
-    enabled: !!row && row.splitCount > 1 && !cachedSplits,
+    enabled: row.splitCount > 1 && !cachedSplits,
     queryFn: async () => {
       const client = await getClient(db);
       return client ? refreshCachedGroup(db, client, groupId) : false;
@@ -158,13 +170,11 @@ export default function TransactionDetailScreen() {
     retry: false,
   });
 
-  const lookupType = row?.type === 'withdrawal' || row?.type === 'deposit' ? row.type : undefined;
+  const lookupType = row.type === 'withdrawal' || row.type === 'deposit' ? row.type : undefined;
   const histories = useMerchantHistories(lookupType, { enabled: !!lookupType });
 
   const [changes, setChanges] = useState<Partial<TransactionSplit>>({});
-  const [amountSheetOpen, setAmountSheetOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [saving, setSaving] = useState(false);
   /** The file:// uri of the photo open full screen. */
   const [photo, setPhoto] = useState<string | null>(null);
   // Split editing: null means "as cached / as queued".
@@ -181,13 +191,6 @@ export default function TransactionDetailScreen() {
   const [payeeFor, setPayeeFor] = useState<number | null>(null);
   const [removed, setRemoved] = useState<string[]>([]);
 
-  if (!row)
-    return (
-      <Screen bottom>
-        <AppBar title={tr('transaction.title')} />
-      </Screen>
-    );
-
   const type = row.type as TxType;
   const conflictOp = (outbox ?? []).find((op) => {
     if (op.status !== 'failed' || op.lastError !== 'conflict') return false;
@@ -201,7 +204,7 @@ export default function TransactionDetailScreen() {
     return payloadGroupId(op.kind, op.payloadJson) === groupId;
   });
 
-  const currency = currencyOf(currencies ?? [], row.currencyCode);
+  const currency = currencyOf(currencies, row.currencyCode);
   const dp = currency.decimalPlaces;
   // An edit saved earlier but not yet in FF3: shown as the current values (under this screen's
   // own unsaved `changes`), so reopening a just-saved transaction doesn't show the old ones.
@@ -256,10 +259,7 @@ export default function TransactionDetailScreen() {
     allAssetAccounts.find((a) => a.name === row.destinationName)?.id ??
     null;
   const effectiveBudgetId =
-    shown.budget_id ??
-    row.budgetId ??
-    (budgets ?? []).find((b) => b.name === row.budgetName)?.id ??
-    null;
+    shown.budget_id ?? row.budgetId ?? budgets.find((b) => b.name === row.budgetName)?.id ?? null;
   const effectiveCategoryName = shown.category_name ?? row.categoryName ?? null;
   const effectiveDate = shown.date ? new Date(shown.date) : new Date(row.date);
   const effectiveNotes = shown.notes ?? row.notes ?? null;
@@ -295,15 +295,15 @@ export default function TransactionDetailScreen() {
 
   /** The transaction as one split, with this screen's unsaved changes: where Split starts from. */
   function singleAsSplit(): EditableSplit {
-    const destinationId = shown.destination_id ?? row!.destinationId ?? null;
+    const destinationId = shown.destination_id ?? row.destinationId ?? null;
     return {
-      journalId: row!.journalId,
+      journalId: row.journalId,
       amount: effectiveAmount,
-      description: shown.description ?? row!.description,
+      description: shown.description ?? row.description,
       sourceId: effectiveSourceId,
-      sourceName: row!.sourceName,
+      sourceName: row.sourceName,
       destinationId: type === 'withdrawal' ? destinationId : effectiveDestinationId,
-      destinationName: row!.destinationName,
+      destinationName: row.destinationName,
       categoryName: effectiveCategoryName,
       budgetId: effectiveBudgetId,
       notes: effectiveNotes,
@@ -360,36 +360,18 @@ export default function TransactionDetailScreen() {
     setAllocation({ mode: { kind: 'newSplit' }, base: splitMode ? splits : [singleAsSplit()] });
   }
 
-  /**
-   * When `next` doesn't add up to `nextTotal`, split 1 takes the difference (split 2, if split 1
-   * was just typed); only when it can't are the sliders asked.
-   */
-  function placeLeftover(next: EditableSplit[], nextTotal: string, exclude?: number) {
-    const delta = leftover(
+  /** The same rule as the draft screen's, writing into this screen's split state. */
+  function place(next: EditableSplit[], nextTotal: string, exclude?: number) {
+    placeLeftover(
+      next.map((s) => s.amount),
       nextTotal,
-      next.map((s) => s.amount),
       dp,
-    );
-    if (delta === 0n || next.length < 2) return;
-    const absorbed = absorb(
-      next.map((s) => s.amount),
-      delta,
-      dp,
+      {
+        write: (amounts) => setEdited(next.map((s, i) => ({ ...s, amount: amounts[i]! }))),
+        ask: (delta) => setAllocation({ mode: { kind: 'leftover', delta, exclude }, base: next }),
+      },
       exclude,
     );
-    if (absorbed) setEdited(next.map((s, i) => ({ ...s, amount: absorbed[i]! })));
-    else setAllocation({ mode: { kind: 'leftover', delta, exclude }, base: next });
-  }
-
-  /** The Reassign button: the sliders, whatever split 1 could take. */
-  function askLeftover(next: EditableSplit[], nextTotal: string) {
-    const delta = leftover(
-      nextTotal,
-      next.map((s) => s.amount),
-      dp,
-    );
-    if (delta !== 0n && next.length > 1)
-      setAllocation({ mode: { kind: 'leftover', delta }, base: next });
   }
 
   function onAllocated(result: AllocationResult) {
@@ -419,27 +401,18 @@ export default function TransactionDetailScreen() {
     if (next.length === 1) next[0] = { ...next[0]!, amount: total };
     setEdited(next);
     setPage(Math.max(0, index - 1));
-    placeLeftover(next, total);
+    place(next, total);
   }
 
   function closeKeypad() {
     const target = keypadFor;
     setKeypadFor(null);
-    if (target === 'total') placeLeftover(splits, total);
+    if (target === 'total') place(splits, total);
     else if (typeof target === 'number') {
       if (splits.length === 1) setTotalEdit(splits[0]!.amount);
-      else placeLeftover(splits, total, target);
+      else place(splits, total, target);
     }
   }
-
-  const keepMine = act(tr('conflict.keepMine'), async () => {
-    if (!conflictOp) return;
-    await keepMineOverServer(db, conflictOp.id, row!.updatedAt);
-  });
-  const discardMine = act(tr('conflict.useServer'), async () => {
-    if (!conflictOp) return;
-    await dropQueuedChange(db, conflictOp.id);
-  });
 
   // What the screen showed before this visit's edits: the cache, under any queued edit. Save
   // compares against it by value, so touching a field without changing it queues nothing.
@@ -453,7 +426,7 @@ export default function TransactionDetailScreen() {
     source_id: row.sourceId ?? allAssetAccounts.find((a) => a.name === row.sourceName)?.id,
     destination_id:
       row.destinationId ?? allAssetAccounts.find((a) => a.name === row.destinationName)?.id,
-    budget_id: row.budgetId ?? (budgets ?? []).find((b) => b.name === row.budgetName)?.id,
+    budget_id: row.budgetId ?? budgets.find((b) => b.name === row.budgetName)?.id,
     ...pendingEdit?.changes,
   };
 
@@ -463,11 +436,11 @@ export default function TransactionDetailScreen() {
       const payloadSplits = toPayloadSplits(splits, {
         type,
         date,
-        currencyCode: row!.currencyCode,
+        currencyCode: row.currencyCode,
       });
       const baseTotal =
-        (pendingEdit?.splits ? pendingEdit.changes.amount : undefined) ?? row!.amount;
-      const baseTitle = pendingEdit?.groupTitle ?? row!.description;
+        (pendingEdit?.splits ? pendingEdit.changes.amount : undefined) ?? row.amount;
+      const baseTitle = pendingEdit?.groupTitle ?? row.description;
       const dirty =
         removed.length > 0 ||
         !sameAmount(total, baseTotal) ||
@@ -475,32 +448,27 @@ export default function TransactionDetailScreen() {
         Object.keys(changedFields({ date: changes.date }, { date: baseline.date })).length > 0 ||
         !sameSplits(
           payloadSplits,
-          toPayloadSplits(baseSplits, { type, date, currencyCode: row!.currencyCode }),
+          toPayloadSplits(baseSplits, { type, date, currencyCode: row.currencyCode }),
         );
       if (!dirty) {
         router.back();
         return;
       }
       if (rest !== 0n) return;
-      setSaving(true);
-      try {
-        await queueSplitEdit(db, {
-          groupId: row!.groupId,
-          transactionJournalId: row!.journalId,
-          expectedUpdatedAt: row!.updatedAt,
-          changes: {
-            amount: total,
-            description: groupTitle,
-            ...(changes.date ? { date: changes.date } : {}),
-          },
-          splits: payloadSplits,
-          groupTitle,
-          ...(removed.length ? { removedJournalIds: removed } : {}),
-        });
-        router.back();
-      } finally {
-        setSaving(false);
-      }
+      await queueSplitEdit(db, {
+        groupId: row.groupId,
+        transactionJournalId: row.journalId,
+        expectedUpdatedAt: row.updatedAt,
+        changes: {
+          amount: total,
+          description: groupTitle,
+          ...(changes.date ? { date: changes.date } : {}),
+        },
+        splits: payloadSplits,
+        groupTitle,
+        ...(removed.length ? { removedJournalIds: removed } : {}),
+      });
+      router.back();
       return;
     }
     const toSend = changedFields(changes, baseline);
@@ -508,110 +476,34 @@ export default function TransactionDetailScreen() {
       router.back();
       return;
     }
-    setSaving(true);
-    try {
-      await queueTransactionEdit(db, row!, toSend);
-      router.back();
-    } finally {
-      setSaving(false);
-    }
+    await queueTransactionEdit(db, row, toSend);
+    router.back();
   });
+  const saving = act.pending(tr('common.save'));
 
   const onDuplicate = act(tr('transaction.duplicate'), async () => {
     setMenuOpen(false);
-    const id = await duplicateTransaction(db, row!);
+    const id = await duplicateTransaction(db, row);
     router.push(`/draft/${id}`);
   });
 
   const onDelete = act(tr('common.delete'), async () => {
     setMenuOpen(false);
     if (!(await confirmDestructive(tr('transaction.deleteTitle'), tr('common.delete')))) return;
-    await queueTransactionDelete(db, row!);
+    await queueTransactionDelete(db, row);
     router.back();
   });
 
-  if (conflictOp) {
-    const pending = readPayload<UpdateTransactionPayload>(conflictOp.kind, conflictOp.payloadJson);
-    const isDelete = conflictOp.kind === 'delete_transaction';
-    const fields = isDelete
-      ? []
-      : conflictFields(pending.changes ?? {}, row, {
-          accountName: (accountId) => allAssetAccounts.find((a) => a.id === accountId)?.name,
-          budgetName: (budgetId) => (budgets ?? []).find((b) => b.id === budgetId)?.name,
-          money: (amount) => formatMoney(amount, currency),
-        });
+  if (conflictOp)
     return (
-      <Screen bottom>
-        <AppBar title={tr('inbox.conflict')} left={<CloseButton />} />
-        <ScrollView contentContainerStyle={{ padding: t.space.lg, gap: t.space.md }}>
-          <Text style={[t.type.body, { color: t.color.textMuted }]}>
-            {tr('conflict.changedInFf3', {
-              description: row.description,
-              time: relativeTime(row.updatedAt),
-            })}{' '}
-            {isDelete ? tr('conflict.youAskedToDelete') : tr('conflict.compareFields')}
-          </Text>
-          {!isDelete && (
-            <Card>
-              <View style={{ flexDirection: 'row', paddingBottom: t.space.sm }}>
-                <Text style={[t.type.caption, { color: t.color.textMuted, flex: 1 }]}>
-                  {tr('conflict.field')}
-                </Text>
-                <Text style={[t.type.caption, { color: t.color.textMuted, flex: 2 }]}>
-                  {tr('conflict.server')}
-                </Text>
-                <Text style={[t.type.caption, { color: t.color.textMuted, flex: 2 }]}>
-                  {tr('conflict.yours')}
-                </Text>
-              </View>
-              {fields.map((f) => (
-                <View
-                  key={f.label}
-                  style={{
-                    flexDirection: 'row',
-                    paddingVertical: t.space.sm,
-                    borderTopWidth: 1,
-                    borderTopColor: t.color.border,
-                  }}
-                >
-                  <Text style={[t.type.label, { color: t.color.textMuted, flex: 1 }]}>
-                    {f.label}
-                  </Text>
-                  <Text style={[t.type.body, { color: t.color.text, flex: 2 }]}>{f.server}</Text>
-                  <Text
-                    style={[
-                      t.type.body,
-                      {
-                        color: f.differs ? t.color.accent : t.color.text,
-                        flex: 2,
-                        fontWeight: f.differs ? '600' : '400',
-                      },
-                    ]}
-                  >
-                    {f.mine}
-                  </Text>
-                </View>
-              ))}
-              {fields.every((f) => !f.differs) && (
-                <Text style={[t.type.label, { color: t.color.textMuted, paddingTop: t.space.sm }]}>
-                  {tr('conflict.matchesServer')}
-                </Text>
-              )}
-            </Card>
-          )}
-          <Button
-            title={isDelete ? tr('conflict.deleteAnyway') : tr('conflict.keepMine')}
-            onPress={keepMine}
-          />
-          <Button
-            title={isDelete ? tr('conflict.keepTransaction') : tr('conflict.useServer')}
-            variant="danger"
-            onPress={discardMine}
-          />
-        </ScrollView>
-      </Screen>
+      <ConflictView
+        row={row}
+        operation={conflictOp}
+        accounts={allAssetAccounts}
+        budgets={budgets}
+        currency={currency}
+      />
     );
-  }
 
   const detailValue: DetailRowsValue = {
     type,
@@ -647,66 +539,57 @@ export default function TransactionDetailScreen() {
   function renderSplitPage(index: number) {
     const split = splits[index]!;
     return (
-      <>
-        <View style={{ alignItems: 'center', paddingHorizontal: t.space.xl, gap: t.space.xs }}>
-          <Pressable
-            onPress={() => setKeypadFor(index)}
-            accessibilityRole="button"
-            accessibilityLabel={tr('fields.amount')}
-          >
-            <Money amount={split.amount} currency={currency} type={type} size="heading" />
-          </Pressable>
-          <Pressable
-            onPress={() => setTextFor(index)}
-            accessibilityRole="button"
-            accessibilityLabel={tr('fields.description')}
-          >
-            <Text
-              style={[t.type.body, { color: t.color.text, textAlign: 'center' }]}
-              numberOfLines={2}
-            >
-              {split.description || '—'}
-            </Text>
-          </Pressable>
-          {type !== 'transfer' && (
-            <Pressable
-              onPress={() => setPayeeFor(index)}
-              accessibilityRole="button"
-              accessibilityLabel={type === 'deposit' ? tr('capture.payer') : tr('capture.payee')}
-            >
-              <Text style={[t.type.label, { color: t.color.accent }]}>{payeeOf(split) || '—'}</Text>
-            </Pressable>
-          )}
-        </View>
+      <SplitPage
+        amount={split.amount}
+        currency={currency}
+        type={type}
+        description={split.description}
+        payee={payeeOf(split)}
+        onAmountPress={() => setKeypadFor(index)}
+        onDescriptionPress={() => setTextFor(index)}
+        onPayeePress={() => setPayeeFor(index)}
+        onRemove={splits.length > 1 ? () => removeSplit(index) : undefined}
+      >
         <DetailRows
           value={splitDetailValue(split)}
           onChange={(change) => handleSplitDetailChange(index, change)}
           onDatePress={openDatePicker}
           accounts={allAssetAccounts}
           pickableAccounts={activeAssetAccounts}
-          currencies={currencies ?? []}
-          categories={categories ?? []}
-          budgets={budgets ?? []}
+          currencies={currencies}
+          categories={categories}
+          budgets={budgets}
         />
-        {splits.length > 1 && (
-          <View style={{ paddingHorizontal: t.space.lg }}>
-            <Button
-              title={tr('splits.remove')}
-              variant="danger"
-              onPress={() => removeSplit(index)}
-            />
-          </View>
-        )}
-      </>
+      </SplitPage>
     );
   }
 
+  // `keypadFor === 0` is the first amount, which on a plain transaction is the only one.
   const keypadValue =
     keypadFor === 'total'
       ? total
-      : typeof keypadFor === 'number'
-        ? (splits[keypadFor]?.amount ?? '0')
-        : effectiveAmount;
+      : keypadFor === 0 && !splitMode
+        ? effectiveAmount
+        : typeof keypadFor === 'number'
+          ? (splits[keypadFor]?.amount ?? '0')
+          : effectiveAmount;
+
+  function typeAmountDigit(key: KeypadKey) {
+    if (keypadFor === 'total') {
+      setTotalEdit(applyDigit(total, key, dp));
+      return;
+    }
+    if (typeof keypadFor !== 'number') return;
+    // A plain transaction has no splits to edit — writing one would turn it into a split.
+    if (keypadFor === 0 && !splitMode) {
+      setChanges((prev) => ({
+        ...prev,
+        amount: applyDigit(prev.amount ?? pendingEdit?.changes.amount ?? row.amount, key, dp),
+      }));
+      return;
+    }
+    editSplit(keypadFor, { amount: applyDigit(splits[keypadFor]!.amount, key, dp) });
+  }
 
   return (
     <Screen bottom>
@@ -720,7 +603,7 @@ export default function TransactionDetailScreen() {
                 : tr('transaction.changesNotSent')
               : tr('transaction.syncedAgo', { time: relativeTime(row.syncedAt) })
           }
-          left={<CloseButton />}
+          left={<CloseButton onPress={() => router.back()} />}
           right={
             <>
               <BarIconButton
@@ -765,7 +648,14 @@ export default function TransactionDetailScreen() {
                 type={type}
                 leftover={rest}
                 onTotalPress={() => setKeypadFor('total')}
-                onReassign={() => askLeftover(splits, total)}
+                onReassign={() =>
+                  askLeftover(
+                    splits.map((s) => s.amount),
+                    total,
+                    dp,
+                    (delta) => setAllocation({ mode: { kind: 'leftover', delta }, base: splits }),
+                  )
+                }
                 renderPage={renderSplitPage}
               />
             </>
@@ -780,7 +670,7 @@ export default function TransactionDetailScreen() {
                   paddingHorizontal: t.space.xl,
                 }}
               >
-                <Pressable onPress={() => setAmountSheetOpen(true)} disabled={splitsLoading}>
+                <Pressable onPress={() => setKeypadFor(0)} disabled={splitsLoading}>
                   <Money amount={effectiveAmount} currency={currency} type={type} size="title" />
                 </Pressable>
                 {splitsLoading && (
@@ -806,9 +696,9 @@ export default function TransactionDetailScreen() {
                 onDatePress={openDatePicker}
                 accounts={allAssetAccounts}
                 pickableAccounts={activeAssetAccounts}
-                currencies={currencies ?? []}
-                categories={categories ?? []}
-                budgets={budgets ?? []}
+                currencies={currencies}
+                categories={categories}
+                budgets={budgets}
               />
             </>
           )}
@@ -852,25 +742,6 @@ export default function TransactionDetailScreen() {
       </View>
 
       <Sheet
-        visible={amountSheetOpen}
-        onClose={() => setAmountSheetOpen(false)}
-        title={tr('fields.amount')}
-      >
-        <Money amount={effectiveAmount} currency={currency} type={type} size="display" />
-        <Keypad
-          compact
-          onDigit={(key: KeypadKey) =>
-            setChanges((prev) => ({
-              ...prev,
-              amount: applyDigit(prev.amount ?? pendingEdit?.changes.amount ?? row.amount, key, dp),
-            }))
-          }
-          saveLabel={tr('common.done')}
-          onSave={() => setAmountSheetOpen(false)}
-        />
-      </Sheet>
-
-      <Sheet
         visible={keypadFor !== null}
         onClose={closeKeypad}
         title={keypadFor === 'total' ? tr('splits.total') : tr('fields.amount')}
@@ -878,11 +749,7 @@ export default function TransactionDetailScreen() {
         <Money amount={keypadValue} currency={currency} type={type} size="display" />
         <Keypad
           compact
-          onDigit={(key: KeypadKey) => {
-            if (keypadFor === 'total') setTotalEdit(applyDigit(total, key, dp));
-            else if (typeof keypadFor === 'number')
-              editSplit(keypadFor, { amount: applyDigit(splits[keypadFor]!.amount, key, dp) });
-          }}
+          onDigit={typeAmountDigit}
           saveLabel={tr('common.done')}
           onSave={closeKeypad}
         />
@@ -937,7 +804,6 @@ export default function TransactionDetailScreen() {
 
       {!!allocation && (
         <AllocationSheet
-          visible
           mode={allocation.mode}
           amounts={allocation.base.map((s) => s.amount)}
           labels={allocation.base.map(
@@ -956,32 +822,7 @@ export default function TransactionDetailScreen() {
         <Row first label={tr('transaction.duplicate')} icon="copy-outline" onPress={onDuplicate} />
         <Row label={tr('common.delete')} icon="trash-outline" tone="danger" onPress={onDelete} />
       </Sheet>
-      {/* Same full-screen view as the draft screen's receipt photo. */}
-      <Modal
-        visible={!!photo}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setPhoto(null)}
-      >
-        <Pressable
-          style={{ flex: 1, backgroundColor: t.color.photoBackdrop, justifyContent: 'center' }}
-          onPress={() => setPhoto(null)}
-          accessibilityLabel={tr('draft.closePhoto')}
-        >
-          {!!photo && (
-            <Image
-              source={{ uri: photo }}
-              resizeMode="contain"
-              style={{ width: '100%', height: '100%' }}
-            />
-          )}
-        </Pressable>
-      </Modal>
+      <PhotoViewer uri={photo} onClose={() => setPhoto(null)} />
     </Screen>
   );
-}
-
-function CloseButton() {
-  const { t: tr } = useTranslation();
-  return <BarIconButton icon="close" label={tr('common.close')} onPress={() => router.back()} />;
 }

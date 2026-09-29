@@ -8,6 +8,7 @@ import { FlatList, RefreshControl, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useDb } from '../../src/providers/DbProvider';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
+import { useCurrencies } from '../../src/db/useReferenceData';
 import { useTheme } from '../../src/ui/theme';
 import {
   Screen,
@@ -17,11 +18,12 @@ import {
   Chip,
   EmptyState,
   Money,
+  Dot,
 } from '../../src/ui/components';
 import { PendingDot } from '../../src/ui/PendingDot';
 import { currencyOf } from '../../src/ui/money';
 import { categoryColor } from '../../src/ui/categoryColor';
-import { appSettings, referenceCurrencies } from '../../src/db/schema';
+import { appSettings } from '../../src/db/schema';
 import {
   PLANNED_MODE_KEY,
   parsePlannedMode,
@@ -50,7 +52,7 @@ export default function PlannedScreen() {
   // a push after a write, reconnecting) as if the list had been pulled.
   const pull = usePullToRefresh();
   const { objects, items, loaded } = usePlanned();
-  const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
+  const currencies = useCurrencies();
   const { data: modeRows } = useLiveQuery(
     db.select().from(appSettings).where(eq(appSettings.key, PLANNED_MODE_KEY)),
   );
@@ -149,44 +151,43 @@ export default function PlannedScreen() {
                   </Text>
                   <Money
                     amount={f.amount}
-                    currency={currencyOf(currencies ?? [], f.currencyCode)}
+                    currency={currencyOf(currencies, f.currencyCode)}
                     type={f.type}
                     size="heading"
                   />
                 </View>
-                <Text
-                  style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]}
-                  numberOfLines={1}
-                >
-                  {[scheduleLabel(f), tr('planned.next', { date: dayLabel(f.date) }), counterparty]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </Text>
-                {!!f.categoryName && (
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: t.space.xs,
-                      marginTop: t.space.xs,
-                    }}
+                {/* The payee gets the full width: sharing a line with the schedule cut it off
+                    at "Zina Mishchen…". The schedule and the category follow, muted, under it. */}
+                {!!counterparty && (
+                  <Text
+                    style={[t.type.body, { color: t.color.text, marginTop: t.space.xs }]}
+                    numberOfLines={1}
                   >
-                    <View
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: 4,
-                        backgroundColor: categoryColor(f.categoryName, t.dark),
-                      }}
-                    />
-                    <Text
-                      style={[t.type.label, { color: t.color.textMuted, flex: 1 }]}
-                      numberOfLines={1}
-                    >
-                      {f.categoryName}
-                    </Text>
-                  </View>
+                    {counterparty}
+                  </Text>
                 )}
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: t.space.xs,
+                    marginTop: t.space.xs,
+                  }}
+                >
+                  {!!f.categoryName && <Dot color={categoryColor(f.categoryName, t.dark)} />}
+                  <Text
+                    style={[t.type.label, { color: t.color.textMuted, flex: 1 }]}
+                    numberOfLines={1}
+                  >
+                    {[
+                      f.categoryName,
+                      scheduleLabel(f),
+                      tr('planned.next', { date: dayLabel(f.date) }),
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </Text>
+                </View>
               </Card>
             );
           }}

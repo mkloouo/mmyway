@@ -3,7 +3,7 @@
 // here without opening Settings.
 import { Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Sheet, Row, Button } from './components';
+import { Dot, Sheet, Row, Button } from './components';
 import { useTheme } from './theme';
 import type { SyncSummary } from '../sync/runSync';
 import type { ServerReachability } from '../sync/reachability';
@@ -38,14 +38,7 @@ function AddressRows({ label, report }: { label: string; report: ServerReachabil
             paddingVertical: t.space.xs,
           }}
         >
-          <View
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: 4,
-              backgroundColor: r.ok ? t.color.income : t.color.textFaint,
-            }}
-          />
+          <Dot color={r.ok ? t.color.income : t.color.textFaint} />
           <Text style={[t.type.label, { color: t.color.textMuted, flex: 1 }]} numberOfLines={1}>
             {r.address}
           </Text>

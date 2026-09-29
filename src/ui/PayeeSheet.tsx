@@ -1,11 +1,10 @@
-// Search + live re-rank over merchant history (design §6.2). Uses Sheet's list mode: the
+// Search + live re-rank over merchant history (design §6.2). Uses SearchListSheet's list mode: the
 // history can be ~400 rows, which a ScrollView must not try to mount at once.
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { eq } from 'drizzle-orm';
-import { FlatList, Pressable, Text } from 'react-native';
-import { Sheet } from './components';
-import { SearchField } from './SearchField';
+import { Text } from 'react-native';
+import { SearchListSheet, UseNewFooter } from './SearchListSheet';
 import { useTheme } from './theme';
 import { rankCandidates } from '../suggest/rank';
 import type { MerchantHistory } from '../lookup/merchantLookup';
@@ -14,6 +13,12 @@ import { PAYEE } from '../lookup/aliases';
 import { aliases } from '../db/schema';
 import { useLiveQuery } from '../db/useLiveQuery';
 import { useDb } from '../providers/DbProvider';
+
+interface PayeeRow {
+  history: MerchantHistory;
+  /** The alias the row was found through, if the query matched one. */
+  via: string | null;
+}
 
 export function PayeeSheet({
   visible,
@@ -33,7 +38,6 @@ export function PayeeSheet({
   const t = useTheme();
   const { t: tr } = useTranslation();
   const db = useDb();
-  const [query, setQuery] = useState('');
   const { data: payeeAliases } = useLiveQuery(
     db.select().from(aliases).where(eq(aliases.kind, PAYEE)),
     [],
@@ -41,12 +45,13 @@ export function PayeeSheet({
   );
 
   const byKey = useMemo(() => new Map(histories.map((h) => [h.merchantKey, h])), [histories]);
+
   // Typing an alias ("zab", a bank's legal name) finds the payee it maps to, listed first with
   // the alias it came through. A target with no history yet still appears, by name.
-  const aliasHits = useMemo(() => {
+  function aliasHits(query: string): PayeeRow[] {
     const key = normkey(query);
     if (!key) return [];
-    const hits = new Map<string, { history: MerchantHistory; via: string }>();
+    const hits = new Map<string, PayeeRow>();
     for (const alias of payeeAliases ?? []) {
       if (!alias.normalizedKey.includes(key)) continue;
       const targetKey = normkey(alias.targetName);
@@ -63,103 +68,56 @@ export function PayeeSheet({
       hits.set(targetKey, { history, via: alias.rawInput });
     }
     return [...hits.values()];
-  }, [payeeAliases, byKey, query]);
-  const results = useMemo(() => {
-    const ranked = rankCandidates(histories, { merchantQuery: query || undefined });
-    const viaAlias = new Set(aliasHits.map((h) => h.history.merchantKey));
+  }
+
+  function rows(query: string): PayeeRow[] {
+    const hits = aliasHits(query);
+    const viaAlias = new Set(hits.map((h) => h.history.merchantKey));
     return [
-      ...aliasHits.map((h) => ({ history: h.history, via: h.via as string | null })),
-      ...ranked
+      ...hits,
+      ...rankCandidates(histories, { merchantQuery: query || undefined })
         .map((c) => byKey.get(c.merchantKey))
         .filter((h): h is MerchantHistory => !!h && !viaAlias.has(h.merchantKey))
-        .map((history) => ({ history, via: null as string | null })),
+        .map((history) => ({ history, via: null })),
     ];
-  }, [histories, byKey, query, aliasHits]);
-
-  const trimmed = query.trim();
+  }
 
   return (
-    <Sheet
+    <SearchListSheet
       visible={visible}
-      onClose={() => {
-        setQuery('');
-        onClose();
-      }}
+      onClose={onClose}
       title={tr(`payeeSheet.${payeeLabel}.choose`)}
-      scroll={false}
-      footer={
-        !!trimmed && (
-          <Pressable
+      placeholder={tr(`payeeSheet.${payeeLabel}.search`)}
+      items={rows}
+      keyOf={(r) => r.history.merchantKey}
+      onSelect={(r) => onSelect(r.history)}
+      renderRow={({ history, via }) => (
+        <>
+          <Text style={[t.type.body, { color: t.color.text }]} numberOfLines={1}>
+            {history.displayName}
+          </Text>
+          <Text style={[t.type.label, { color: t.color.textMuted }]} numberOfLines={1}>
+            {[
+              via && tr('payeeSheet.viaAlias', { alias: via }),
+              history.topCategory,
+              history.topAccountName,
+            ]
+              .filter(Boolean)
+              .join(' · ') || `${history.occurrences}×`}
+          </Text>
+        </>
+      )}
+      footer={(trimmed, close) =>
+        trimmed ? (
+          <UseNewFooter
+            label={tr(`payeeSheet.${payeeLabel}.createNew`, { name: trimmed })}
             onPress={() => {
               onCreateNew(trimmed);
-              setQuery('');
-              onClose();
+              close();
             }}
-            accessibilityRole="button"
-            style={({ pressed }) => ({
-              paddingVertical: t.space.md,
-              opacity: pressed ? 0.6 : 1,
-            })}
-          >
-            <Text style={[t.type.body, { color: t.color.accent, fontWeight: '600' }]}>
-              {tr(`payeeSheet.${payeeLabel}.createNew`, { name: trimmed })}
-            </Text>
-          </Pressable>
-        )
+          />
+        ) : undefined
       }
-    >
-      <SearchField
-        value={query}
-        onChangeText={setQuery}
-        placeholder={tr(`payeeSheet.${payeeLabel}.search`)}
-        autoFocus
-        style={{ marginBottom: t.space.sm }}
-      />
-      <FlatList
-        data={results}
-        keyExtractor={(r) => r.history.merchantKey}
-        style={{ flex: 1 }}
-        // Keeps the right-aligned column clear of Android's scrollbar, which draws over the content.
-        contentContainerStyle={{ paddingRight: t.space.md }}
-        renderItem={({ item: { history: item, via } }) => (
-          <Pressable
-            onPress={() => {
-              onSelect(item);
-              setQuery('');
-              onClose();
-            }}
-            style={({ pressed }) => ({
-              paddingVertical: t.space.sm,
-              borderTopWidth: 1,
-              borderTopColor: t.color.border,
-              opacity: pressed ? 0.6 : 1,
-            })}
-          >
-            <Text style={[t.type.body, { color: t.color.text }]} numberOfLines={1}>
-              {item.displayName}
-            </Text>
-            <Text style={[t.type.label, { color: t.color.textMuted }]} numberOfLines={1}>
-              {[
-                via && tr('payeeSheet.viaAlias', { alias: via }),
-                item.topCategory,
-                item.topAccountName,
-              ]
-                .filter(Boolean)
-                .join(' · ') || `${item.occurrences}×`}
-            </Text>
-          </Pressable>
-        )}
-        ListEmptyComponent={
-          <Text
-            style={[
-              t.type.body,
-              { color: t.color.textFaint, paddingVertical: t.space.lg, textAlign: 'center' },
-            ]}
-          >
-            {tr('pickers.noMatches')}
-          </Text>
-        }
-      />
-    </Sheet>
+    />
   );
 }
