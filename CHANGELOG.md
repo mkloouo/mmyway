@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- A change you make is sent within seconds again while another change waits to be retried — it
+  could wait up to an hour.
+
 ## [1.4.3] - 2026-09-29
 
 ### Capture
