@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useDb } from '../../src/providers/DbProvider';
-import { useCategories, useCurrencies } from '../../src/db/useReferenceData';
+import { useCategories, useCurrencyRows } from '../../src/db/useReferenceData';
 import { useTheme } from '../../src/ui/theme';
 import {
   Screen,
@@ -100,7 +100,10 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
   const act = useAction();
   const assetAccounts = useAssetAccounts() ?? [];
   const categories = useCategories();
-  const currencies = useCurrencies();
+  // undefined until the reference currencies load: the amount would otherwise be drawn with the
+  // currency code standing in for its symbol, then redrawn a frame later at a different width.
+  const currencyRows = useCurrencyRows();
+  const currencies = currencyRows ?? [];
 
   const [fields, setFields] = useState<PlannedFields>(() => item?.fields ?? blank());
   const [tagsText, setTagsText] = useState(() => item?.fields.tags.join(', ') ?? '');
@@ -251,7 +254,7 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
           />
           <Row
             label={tr('fields.amount')}
-            value={formatMoney(fields.amount, currency)}
+            value={currencyRows ? formatMoney(fields.amount, currency) : ''}
             chevron
             onPress={() => setSheet('amount')}
           />
