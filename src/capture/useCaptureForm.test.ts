@@ -38,3 +38,15 @@ describe('captureFormReducer', () => {
     });
   });
 });
+
+describe('captureFormReducer keypad', () => {
+  it('applies each key to the amount as it is by then, so quick taps all land', () => {
+    const start = initialCaptureForm(new Date(2026, 8, 28));
+    const keys = ['1', '2', ',', '5', '⌫'] as const;
+    const end = keys.reduce(
+      (s, key) => captureFormReducer(s, { kind: 'key', key, decimalPlaces: 2 }),
+      start,
+    );
+    expect(end.amount).toBe('12.');
+  });
+});

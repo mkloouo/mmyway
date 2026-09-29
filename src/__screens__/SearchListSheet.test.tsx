@@ -31,6 +31,23 @@ function Sheet({ onSelect = jest.fn() }: { onSelect?: (name: string) => void }) 
 }
 
 describe('SearchListSheet', () => {
+  it("doesn't rank its rows while closed", async () => {
+    const items = jest.fn(() => NAMES);
+    await wrap(
+      <SearchListSheet
+        visible={false}
+        onClose={jest.fn()}
+        title="Payee"
+        placeholder="Search"
+        items={items}
+        keyOf={(n) => n}
+        renderRow={(n) => <Text>{n}</Text>}
+        onSelect={jest.fn()}
+      />,
+    );
+    expect(items).not.toHaveBeenCalled();
+  });
+
   it('filters as you type and says so when nothing matches', async () => {
     await wrap(<Sheet />);
     expect(screen.getByText('Żabka')).toBeTruthy();

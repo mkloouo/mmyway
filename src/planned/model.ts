@@ -157,6 +157,17 @@ export function scheduleChanged(before: PlannedFields | null, after: PlannedFiel
   );
 }
 
+/** Whether `after` says what `before` does: Save on a planned transaction left as it was queues nothing. */
+export function samePlannedFields(before: PlannedFields, after: PlannedFields): boolean {
+  return (Object.keys(before) as (keyof PlannedFields)[]).every((key) => {
+    const [a, b] = [before[key], after[key]];
+    if (key === 'tags') return (a as string[]).join('\n') === (b as string[]).join('\n');
+    // A notes field typed into and emptied again is '' where FF3's was null.
+    if (key === 'notes') return (a || null) === (b || null);
+    return a === b;
+  });
+}
+
 /** `base` with `from`'s schedule: what FF3 holds once a save sent `from`'s schedule and nothing else. */
 export function withScheduleOf(base: PlannedFields, from: PlannedFields): PlannedFields {
   return {
@@ -181,7 +192,8 @@ export function billBody(f: PlannedFields, before: PlannedFields | null): Record
     amount_min: f.amount,
     amount_max: f.amount,
     currency_code: f.currencyCode,
-    notes: f.notes ?? '',
+    // FF3 refuses an empty string ("notes must be at least 1 character"); null clears them.
+    notes: f.notes || null,
     active: true,
     ...(scheduleChanged(before, f)
       ? {
@@ -255,7 +267,7 @@ export function recurrenceBody(
   return {
     type: f.type,
     title: f.name,
-    notes: withPlannedTime(f.notes, f.time),
+    notes: withPlannedTime(f.notes, f.time) || null,
     active: true,
     apply_rules: true,
     ...(scheduleChanged(before, f)

@@ -19,7 +19,7 @@ import { haptics } from '../src/ui/haptics';
 
 import { askPhotoSource, pickPhoto } from '../src/receipt/pickPhoto';
 import { useAssetAccounts } from '../src/accounts/useAssetAccounts';
-import { applyDigit, type KeypadKey } from '../src/capture/amountInput';
+import type { KeypadKey } from '../src/capture/amountInput';
 import { buildEntryDate, yesterday } from '../src/capture/entryDate';
 import { buildManualEntryInput, type CaptureFormState } from '../src/capture/buildManualEntryInput';
 import { useCaptureDefaults } from '../src/capture/useCaptureDefaults';
@@ -163,6 +163,7 @@ export default function CaptureScreen() {
     foreignAmount,
     photoUri,
     set,
+    pressKey,
     markSaved,
   } = useCaptureForm();
   const attachPhoto = act(tr('capture.receiptPhoto'), async () => {
@@ -363,6 +364,36 @@ export default function CaptureScreen() {
     });
   }
 
+  const save = act(
+    tr('common.save'),
+    async (andConfirm: boolean) => {
+      const input = buildManualEntryInput(formState, assetAccounts);
+      const { inboxItemId } = await createManualEntry(db, input);
+      if (photoUri) await attachReceiptImage(db, inboxItemId, photoUri);
+      const label = merchantRawInput || description || tr(labelKeyForType(type));
+      haptics.tick();
+      fly(formatAmountInput(amount, currency));
+      if (andConfirm) {
+        const confirmed = await confirmInboxItem(db, inboxItemId);
+        // Same Undo the Inbox gives a confirm: the entry stays unsent while this is on screen.
+        setSnackbar({
+          id: inboxItemId,
+          message: tr('capture.confirmedLabel', { label }),
+          actionLabel: tr('common.undo'),
+          onAction: async () => {
+            const outcome = await undoConfirm(db, inboxItemId, confirmed);
+            setToast(
+              outcome === 'undone' ? tr('capture.undoneBackInInbox') : tr('inbox.alreadySent'),
+            );
+          },
+        });
+      } else {
+        setToast(tr('capture.savedLabel', { label }));
+      }
+      markSaved();
+    },
+    setToast,
+  );
   const handleSave = (andConfirm: boolean) => {
     if (foreignAmountInvalid || fxMissing) return;
     if (andConfirm && !readiness.ready) {
@@ -370,36 +401,7 @@ export default function CaptureScreen() {
       shake();
       return;
     }
-    void act(
-      tr('common.save'),
-      async () => {
-        const input = buildManualEntryInput(formState, assetAccounts);
-        const { inboxItemId } = await createManualEntry(db, input);
-        if (photoUri) await attachReceiptImage(db, inboxItemId, photoUri);
-        const label = merchantRawInput || description || tr(labelKeyForType(type));
-        haptics.tick();
-        fly(formatAmountInput(amount, currency));
-        if (andConfirm) {
-          const confirmed = await confirmInboxItem(db, inboxItemId);
-          // Same Undo the Inbox gives a confirm: the entry stays unsent while this is on screen.
-          setSnackbar({
-            id: inboxItemId,
-            message: tr('capture.confirmedLabel', { label }),
-            actionLabel: tr('common.undo'),
-            onAction: async () => {
-              const outcome = await undoConfirm(db, inboxItemId, confirmed);
-              setToast(
-                outcome === 'undone' ? tr('capture.undoneBackInInbox') : tr('inbox.alreadySent'),
-              );
-            },
-          });
-        } else {
-          setToast(tr('capture.savedLabel', { label }));
-        }
-        markSaved();
-      },
-      setToast,
-    );
+    void save(andConfirm);
   };
 
   const currency = currencyOf(currencies, effectiveCurrencyCode ?? '');
@@ -641,9 +643,7 @@ export default function CaptureScreen() {
         <View style={{ flex: 1 }} />
 
         <Keypad
-          onDigit={(key: KeypadKey) =>
-            set({ amount: applyDigit(amount, key, currency.decimalPlaces) })
-          }
+          onDigit={(key: KeypadKey) => pressKey(key, currency.decimalPlaces)}
           dateLabel={
             dateMode === 'today'
               ? `${tr('capture.today')} ▾`

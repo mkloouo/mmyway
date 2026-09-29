@@ -10,10 +10,13 @@ export function isUnreachable(err: unknown): boolean {
 export async function runProviderChain(
   providers: ReceiptProvider[],
   input: { imageBase64: string; hint?: string; categoryNames: string[]; currencyCodes?: string[] },
+  /** Told each reader's name as the chain tries it (the Inbox card shows which one is reading). */
+  onAttempt?: (providerName: string) => void,
 ): Promise<ReceiptChainResult> {
   const errors: string[] = [];
   let anyAnswered = false;
   for (const provider of providers) {
+    onAttempt?.(provider.name);
     try {
       const extraction = await provider.extract(input);
       return { ok: true, providerName: provider.name, extraction };

@@ -37,7 +37,12 @@ import type { MerchantHistory } from '../../src/lookup/merchantLookup';
 import { useMerchantHistories } from '../../src/lookup/useMerchantHistories';
 import { getDefaultCurrencyCode, getDefaultSourceAccountId } from '../../src/settings/appSettings';
 import { usePlanned } from '../../src/planned/usePlanned';
-import { FREQUENCIES, plannedProblems, type PlannedFields } from '../../src/planned/model';
+import {
+  FREQUENCIES,
+  plannedProblems,
+  samePlannedFields,
+  type PlannedFields,
+} from '../../src/planned/model';
 import { dayLabel, frequencyName } from '../../src/planned/labels';
 import { deletePlanned, savePlanned } from '../../src/planned/actions';
 import type { PlannedItem } from '../../src/planned/items';
@@ -198,7 +203,8 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean);
-    await savePlanned(db, item, { ...fields, name: fields.name.trim(), tags });
+    const next = { ...fields, name: fields.name.trim(), tags };
+    if (!item || !samePlannedFields(item.fields, next)) await savePlanned(db, item, next);
     router.back();
   });
   const saving = act.pending(tr('common.save'));
@@ -419,7 +425,7 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
         <Keypad
           compact
           onDigit={(k: KeypadKey) =>
-            set({ amount: applyDigit(fields.amount, k, currency.decimalPlaces) })
+            setFields((f) => ({ ...f, amount: applyDigit(f.amount, k, currency.decimalPlaces) }))
           }
           saveLabel={tr('common.done')}
           onSave={() => setSheet(null)}

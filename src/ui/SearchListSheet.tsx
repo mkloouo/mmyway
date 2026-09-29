@@ -42,7 +42,9 @@ export function SearchListSheet<T>({
   }
 
   const trimmed = query.trim();
-  const results = items(query);
+  // Only while open: a closed sheet still renders with its screen, and ranking ~400 payees on
+  // every render made each keypad digit on Capture lag behind the finger.
+  const results = visible ? items(query) : [];
 
   return (
     <Sheet

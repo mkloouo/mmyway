@@ -18,7 +18,7 @@ export function createLocalProvider(config: {
   timeoutMs?: number;
 }): ReceiptProvider {
   return {
-    name: 'local',
+    name: 'Local model',
     async extract({ imageBase64, hint, categoryNames, currencyCodes = [] }) {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), config.timeoutMs ?? 20000);

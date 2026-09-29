@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+### Receipts
+
+- While a receipt is being read, its Inbox card says which reader is reading it (your local model
+  or Gemini), and switches when one gives up and the next takes over.
+- A receipt read without a currency can now be given one: the review screen shows a **Pick a
+  currency** button, and its ⋯ menu has a Currency row to change it at any time.
+
+### Fixed
+
+- **Save & ✓** and **Save to inbox** on Capture did nothing, and closing Capture then asked to
+  discard the entry. Both save again.
+- The amount keypads keep up with fast typing: a quick second digit no longer replaces the first,
+  and typing or deleting no longer lags behind your finger.
+- Saving a planned transaction without changing anything no longer sends it to Firefly III, and a
+  planned transaction with no notes no longer fails with "notes must be at least 1 character".
+- Receipt errors name the reader as "Gemini" and "Local model" rather than "gemini" and "local".
+
 ## [1.4.0] - 2026-09-29
 
 ### Fixed

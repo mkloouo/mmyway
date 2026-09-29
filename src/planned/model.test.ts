@@ -5,6 +5,7 @@ import {
   recurrenceBody,
   repetitionFor,
   ruleBody,
+  samePlannedFields,
   type PlannedFields,
 } from './model';
 import { plannedItems } from './items';
@@ -118,6 +119,27 @@ describe('planned model', () => {
       repeat_freq: 'monthly',
       skip: 0,
     });
+  });
+
+  it('sends empty notes as null: FF3 refuses an empty string', () => {
+    const fields = { ...fieldsOf(groupPlanned([bill, rule, recurrence])[0]!, '2026-09-28') };
+    const blank: PlannedFields = { ...fields, notes: '', time: null };
+    expect(billBody(blank, fields).notes).toBeNull();
+    expect(
+      recurrenceBody({ ...blank, sourceId: '1', destinationId: '4' }, fields, {}).notes,
+    ).toBeNull();
+    expect(
+      recurrenceBody({ ...blank, time: '09:30', sourceId: '1', destinationId: '4' }, fields, {})
+        .notes,
+    ).toBe('mmyway-time: 09:30');
+  });
+
+  it('tells a planned transaction left as it was from an edited one', () => {
+    const fields = fieldsOf(groupPlanned([bill, rule, recurrence])[0]!, '2026-09-28');
+    expect(samePlannedFields(fields, { ...fields, tags: [...fields.tags] })).toBe(true);
+    expect(samePlannedFields({ ...fields, notes: null }, { ...fields, notes: '' })).toBe(true);
+    expect(samePlannedFields(fields, { ...fields, amount: '12.99' })).toBe(false);
+    expect(samePlannedFields(fields, { ...fields, tags: [] })).toBe(false);
   });
 
   it('keeps a rule’s own triggers and actions, renaming the old name', () => {

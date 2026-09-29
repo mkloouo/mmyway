@@ -19,13 +19,13 @@ describe('buildChain', () => {
     await setLocalModelName(db as any, 'llava');
 
     const chain = await buildChain(db as any);
-    expect(chain.map((p) => p.name)).toEqual(['local', 'gemini']);
+    expect(chain.map((p) => p.name)).toEqual(['Local model', 'Gemini']);
   });
 
   it('skips the local provider when its base URL is not configured', async () => {
     (readGeminiKey as jest.Mock).mockResolvedValue('key-123');
     const db = createTestDb();
     const chain = await buildChain(db as any);
-    expect(chain.map((p) => p.name)).toEqual(['gemini']);
+    expect(chain.map((p) => p.name)).toEqual(['Gemini']);
   });
 });

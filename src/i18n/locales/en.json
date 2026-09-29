@@ -217,7 +217,8 @@
     "saveAndApprove": "Save & approve",
     "chargedAs": "{{amount}} was charged as",
     "enterChargedAmount": "enter the {{currency}} amount",
-    "noneReady": "None of the selected entries is ready to confirm"
+    "noneReady": "None of the selected entries is ready to confirm",
+    "readingReceiptWith": "Reading receipt with {{provider}}…"
   },
   "pickers": {
     "searchAccounts": "Search accounts",
@@ -308,7 +309,8 @@
     "menuTitle": "Draft",
     "openInActivity": "Open in Activity",
     "deleteDraft": "Delete draft",
-    "closePhoto": "Close the photo"
+    "closePhoto": "Close the photo",
+    "pickCurrency": "Pick a currency"
   },
   "receipt": {
     "attachFailed": "Couldn’t attach the photo",

@@ -19,7 +19,7 @@ export function createGeminiProvider(config: {
 }): ReceiptProvider {
   const model = config.model ?? 'gemini-3.1-flash-lite';
   return {
-    name: 'gemini',
+    name: 'Gemini',
     async extract({ imageBase64, hint, categoryNames, currencyCodes = [] }) {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), config.timeoutMs ?? 30000);
