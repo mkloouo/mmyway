@@ -3,6 +3,7 @@
 // $STUB_STATE/release.json; `release create --verify-tag` checks the tag really
 // is on origin, like the real flag does.
 //   STUB_FAIL   comma list: gh-auth, gh-publish (the final `edit --draft=false`)
+//   STUB_GH_USER  the login `gh api user` reports (default: mkloouo)
 const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -17,6 +18,10 @@ const save = (state) => fs.writeFileSync(stateFile, JSON.stringify(state));
 
 const [cmd, sub, tag] = args;
 if (cmd === 'auth') process.exit(failing.includes('gh-auth') ? 1 : 0);
+if (cmd === 'api') {
+  console.log(process.env.STUB_GH_USER || 'mkloouo');
+  process.exit(0);
+}
 if (cmd !== 'release') {
   console.error(`gh stub: unexpected command ${cmd}`);
   process.exit(1);

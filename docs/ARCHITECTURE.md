@@ -163,4 +163,25 @@ Render the component inside `SafeAreaProvider` with fixed `initialMetrics`, impo
 
 1. `npm run check` passes.
 2. Anything a user could notice gets a line in `CHANGELOG.md` under `[Unreleased]`, written for the person installing the app.
-3. Release with `npm run release -- X.Y.Z` (see `scripts/release.mjs --help`); build locally with `npm run android:build:pro`, or `android:build:aab` for the Play Store.
+3. Release with `npm run release -- X.Y.Z`, or from GitHub with the **Release** workflow (mode `release`). See `scripts/release.mjs --help`.
+
+### Release, or build without releasing
+
+`scripts/release.mjs` is one pipeline of named steps. Each step runs on its own with `npm run release -- <step> X.Y.Z`. `npm run release -- X.Y.Z` chains them, skipping any already done, so after a failure you fix the cause and run it again:
+
+| Step             | Does                                                                                                                        |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `prepare`        | Preflight, type-check, tests, then the version into CHANGELOG, package.json, package-lock.json, app.config.js (uncommitted) |
+| `build-android`  | Local EAS production build: split APKs + universal, checked, SHA256SUMS                                                     |
+| `commit`         | The `release vX.Y.Z` commit and tag, only once the build has succeeded                                                      |
+| `publish-github` | Push main and the tag, then the GitHub release                                                                              |
+
+- **Try before committing.** `--pause` stops after the build. Run the release again to finish it, or `abort X.Y.Z` to drop it.
+- **Build without releasing.** `npm run release -- build`, or the workflow's `build` mode, makes the production split APKs of the current commit, with no version change.
+- **Who can release.** Only the owner: the workflow checks its actor, the script checks it again, and locally it checks the `gh` login before pushing. The workflow's `EXPO_TOKEN` lives in the `release` environment.
+- **Add a step** (a Play Store upload, a local iOS build, a TestFlight upload):
+  1. Write a function for it and add it to `STEPS` in `scripts/release.mjs`.
+  2. Put it in `RELEASE` where it belongs, or leave it out to run it only on request.
+  3. A build step leaves its files in the release folder and rewrites `SHA256SUMS`, and the GitHub release picks them up.
+
+  The header comment of `scripts/release.mjs` has the details.
