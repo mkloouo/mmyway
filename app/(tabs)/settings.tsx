@@ -228,12 +228,14 @@ export default function SettingsScreen() {
             }
             onPress={() => setSheet('ff3Addresses')}
           />
-          {signedIn && (
+          {/* The row is kept while the settings load, so the section is its final height on the
+              first frame — it used to appear once "signed in" was known and shift what's below. */}
+          {(signedIn || !settings) && (
             <Row
               label={tr('settings.signOut')}
               icon="log-out-outline"
               tone="danger"
-              onPress={onSignOut}
+              onPress={settings ? onSignOut : undefined}
             />
           )}
         </Card>

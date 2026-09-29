@@ -148,7 +148,7 @@ export function BarIconButton({
         borderRadius: t.radius.pill,
         alignItems: 'center',
         justifyContent: 'center',
-        opacity: pressed ? 0.6 : 1,
+        opacity: pressed ? PRESSED_OPACITY : 1,
       })}
     >
       <Ionicons name={icon} size={24} color={t.color.text} />
@@ -242,7 +242,7 @@ export function Card({
       delayLongPress={delayLongPress}
       accessibilityState={selected !== undefined ? { selected } : undefined}
       accessibilityHint={accessibilityHint}
-      style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}
+      style={({ pressed }) => pressedStyle(pressed)}
     >
       {popOnHold ? <Animated.View style={popStyle}>{body}</Animated.View> : body}
     </Pressable>
@@ -316,7 +316,7 @@ export function Row({
     </View>
   );
   return onPress ? (
-    <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.6 : 1 })}>
+    <Pressable onPress={onPress} style={({ pressed }) => pressedStyle(pressed)}>
       {content}
     </Pressable>
   ) : (
@@ -362,12 +362,10 @@ export function Chip({
         borderWidth: 1,
         borderColor: border,
         backgroundColor: fill,
-        opacity: pressed ? 0.6 : 1,
+        opacity: pressed ? PRESSED_OPACITY : 1,
       })}
     >
-      {!!dotColor && (
-        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor }} />
-      )}
+      {!!dotColor && <Dot color={dotColor} />}
       <Text style={[t.type.label, { color: text }]}>{label}</Text>
     </Pressable>
   );
@@ -424,7 +422,7 @@ export function Button({
           alignItems: 'center',
           justifyContent: 'center',
           backgroundColor: fill,
-          opacity: disabled ? 0.4 : pressed ? 0.6 : 1,
+          opacity: disabled ? 0.4 : pressed ? PRESSED_OPACITY : 1,
         },
         style,
       ]}
@@ -496,7 +494,7 @@ export function StatusPill({
       }}
     >
       <Pulse active={state === 'syncing'}>
-        <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dot }} />
+        <Dot color={dot} />
       </Pulse>
       <Text style={[t.type.label, { color: t.color.textMuted, flexShrink: 0 }]} numberOfLines={1}>
         {label.replace(/ /g, ' ')}
@@ -711,6 +709,115 @@ export function EmptyState({
       )}
       {action}
     </View>
+  );
+}
+
+/**
+ * The small round status dot: a category's colour, a sync state, a pending change. The one place
+ * `{ width, height, borderRadius }` for it is written.
+ */
+export function Dot({ color, size = 8 }: { color: string; size?: number }) {
+  return (
+    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: color }} />
+  );
+}
+
+/** How far a pressable dims under the finger. One value, so every surface agrees. */
+export const PRESSED_OPACITY = 0.6;
+
+/** `style={({ pressed }) => pressedStyle(pressed)}` on a bare Pressable. */
+export function pressedStyle(pressed: boolean, style?: ViewStyle): ViewStyle {
+  return { ...style, opacity: pressed ? PRESSED_OPACITY : 1 };
+}
+
+/** The ✕ in a screen's top bar, which every full-screen route has. */
+export function CloseButton({ onPress }: { onPress: () => void }) {
+  const { t: tr } = useTranslation();
+  return <BarIconButton icon="close" label={tr('common.close')} onPress={onPress} />;
+}
+
+/**
+ * The warning strip: the Inbox's offline banner, the count's stale and blocker banners, the draft
+ * error and the split leftover. `inset` is the rounded card version that sits inside a scroll view;
+ * without it the strip runs the full width of the screen.
+ */
+export function Banner({
+  children,
+  action,
+  inset,
+}: {
+  children: ReactNode;
+  action?: ReactNode;
+  inset?: boolean;
+}) {
+  const t = useTheme();
+  return (
+    <View
+      style={{
+        backgroundColor: t.color.warnSoft,
+        gap: action ? t.space.sm : 0,
+        ...(inset
+          ? { marginHorizontal: t.space.lg, padding: t.space.md, borderRadius: t.radius.sm }
+          : { paddingHorizontal: t.space.lg, paddingVertical: t.space.sm }),
+      }}
+    >
+      {typeof children === 'string' ? (
+        <Text style={[t.type.label, { color: t.color.warn }]}>{children}</Text>
+      ) : (
+        children
+      )}
+      {action}
+    </View>
+  );
+}
+
+/**
+ * The round floating button: the dock's two secondary actions and the aliases screen's ＋. `accent`
+ * is the filled one; the rest sit on the surface with a hairline border.
+ */
+export function Fab({
+  icon,
+  label,
+  onPress,
+  accent,
+  size = 44,
+  style,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress: () => void;
+  accent?: boolean;
+  size?: number;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const t = useTheme();
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      style={({ pressed }) => [
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: accent ? t.color.accent : t.color.surface,
+          borderWidth: accent ? 0 : 1,
+          borderColor: t.color.border,
+          opacity: pressed ? PRESSED_OPACITY : 1,
+          elevation: 3,
+        },
+        style,
+      ]}
+    >
+      <Ionicons
+        name={icon}
+        size={Math.round(size * 0.45)}
+        color={accent ? t.color.onAccent : t.color.text}
+      />
+    </Pressable>
   );
 }
 

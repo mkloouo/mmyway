@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import type { Href } from 'expo-router';
 import { useTheme } from './theme';
-import { Card, Chip, Button, Money, Pulse } from './components';
+import { Card, Chip, Button, Dot, Money, PRESSED_OPACITY, Pulse } from './components';
 import { SwipeableCard } from './SwipeableCard';
 import { haptics } from './haptics';
 import { currencyOf } from './money';
@@ -161,7 +161,7 @@ export function ConfirmCard({
           style={cardStyle}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
-            <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor }} />
+            <Dot color={dotColor} />
             <Text style={[t.type.heading, { color: t.color.text, flex: 1 }]} numberOfLines={1}>
               {payeeName}
             </Text>
@@ -206,7 +206,7 @@ export function ConfirmCard({
                     alignItems: 'center',
                     justifyContent: 'center',
                     backgroundColor: t.color.accentSoft,
-                    opacity: pressed ? 0.6 : 1,
+                    opacity: pressed ? PRESSED_OPACITY : 1,
                   })}
                 >
                   <Ionicons name="checkmark" size={20} color={t.color.accent} />

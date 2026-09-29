@@ -2,7 +2,7 @@
 // entry (Split, or a duplicated split transaction) shows its tracked total and one page per split.
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Animated, Alert, Image, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Animated, Alert, Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { useShake } from '../../src/ui/feedback';
 import { useLocalSearchParams, router } from 'expo-router';
 import { eq } from 'drizzle-orm';
@@ -22,12 +22,16 @@ import {
   StatusPill,
   Sheet,
   Row,
+  Banner,
+  CloseButton,
 } from '../../src/ui/components';
 import { DetailRows, type DetailRowsValue } from '../../src/ui/DetailRows';
 import { PayeeSheet } from '../../src/ui/PayeeSheet';
 import { Keypad } from '../../src/ui/Keypad';
 import { TextField } from '../../src/ui/TextField';
 import { SplitPager } from '../../src/ui/SplitPager';
+import { SplitPage } from '../../src/ui/SplitPage';
+import { PhotoViewer } from '../../src/ui/PhotoViewer';
 import {
   AllocationSheet,
   type AllocationMode,
@@ -59,6 +63,7 @@ import { navigateOnce } from '../../src/ui/navigateOnce';
 import { missingLabel } from '../../src/ui/readinessLabel';
 import { appLocale } from '../../src/i18n';
 import { readDraft } from '../../src/inbox/draftJson';
+import type { InboxItemRow } from '../../src/inbox/useInboxSections';
 import { useAction } from '../../src/ui/useAction';
 import {
   addSplit,
@@ -70,24 +75,41 @@ import {
   withAmounts,
 } from '../../src/inbox/draftSplits';
 import { absorb, leftover } from '../../src/splits/allocate';
+import { askLeftover, placeLeftover, type LeftoverHandlers } from '../../src/splits/placeLeftover';
 
 export default function DraftScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const db = useDb();
+  const { t: tr } = useTranslation();
+  const { data: rows } = useLiveQuery(db.select().from(inboxItems).where(eq(inboxItems.id, id)), [
+    id,
+  ]);
+  const row = rows?.[0];
+
+  if (!row) {
+    return (
+      <Screen bottom>
+        <AppBar title={tr('draft.title')} left={<CloseButton onPress={() => router.back()} />} />
+      </Screen>
+    );
+  }
+  // Mounted once the row is known, so the editor below never has to re-narrow it.
+  return <DraftEditor row={row} />;
+}
+
+function DraftEditor({ row }: { row: InboxItemRow }) {
+  const id = row.id;
   const db = useDb();
   const t = useTheme();
   const { t: tr } = useTranslation();
   const act = useAction();
   const { shake, shakeStyle } = useShake(); // the visual twin of the warn haptic
 
-  const { data: rows } = useLiveQuery(db.select().from(inboxItems).where(eq(inboxItems.id, id)), [
-    id,
-  ]);
   const assetAccounts = useAssetAccounts() ?? [];
   const categories = useCategories();
   const budgets = useBudgets();
   const currencies = useCurrencies();
 
-  const row = rows?.[0];
   // A confirmed entry whose create is still waiting in the queue can be taken back — the same
   // rule as Undo: only while it is `pending`, never once sending started.
   const { data: ops } = useLiveQuery(
@@ -111,16 +133,15 @@ export default function DraftScreen() {
     // and overwrite the reviewed draft.
     const outcome = await undoConfirm(db, id, {
       outboxOperationId: pendingCreate.id,
-      previousState: row?.kind === 'receipt' ? 'parsed' : 'captured',
+      previousState: row.kind === 'receipt' ? 'parsed' : 'captured',
     });
     if (outcome === 'already_sent')
       Alert.alert(tr('inbox.alreadySent'), tr('draft.alreadySentBody'));
   });
-  const draft: Draft | null = row ? readDraft(row.draftJson) : null;
+  const draft: Draft = readDraft(row.draftJson);
 
-  const histories = useMerchantHistories(draft?.type === 'transfer' ? undefined : draft?.type);
+  const histories = useMerchantHistories(draft.type === 'transfer' ? undefined : draft.type);
 
-  const [amountSheetOpen, setAmountSheetOpen] = useState(false);
   const [payeeSheetOpen, setPayeeSheetOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [photoOpen, setPhotoOpen] = useState(false);
@@ -133,24 +154,12 @@ export default function DraftScreen() {
   const [textFor, setTextFor] = useState<number | 'title' | null>(null);
   const [extraPayeeFor, setExtraPayeeFor] = useState<number | null>(null);
 
-  const readOnly = row ? row.state === 'confirmed' || row.state === 'synced' : false;
-  const payeeName = draft
-    ? draft.type === 'deposit'
-      ? draft.sourceName
-      : draft.destinationName
-    : undefined;
+  const readOnly = row.state === 'confirmed' || row.state === 'synced';
+  const payeeName = draft.type === 'deposit' ? draft.sourceName : draft.destinationName;
   const aliasCaption =
-    draft?.payeeReadAs && draft.payeeReadAs !== payeeName
+    draft.payeeReadAs && draft.payeeReadAs !== payeeName
       ? tr('draft.viaAlias', { alias: draft.payeeReadAs })
       : null;
-
-  if (!row || !draft) {
-    return (
-      <Screen bottom>
-        <AppBar title={tr('draft.title')} left={<CloseButton />} />
-      </Screen>
-    );
-  }
 
   const currency = currencyOf(currencies, draft.currencyCode);
   const dp = currency.decimalPlaces;
@@ -230,12 +239,12 @@ export default function DraftScreen() {
       shared.destinationId = change.destinationAccountId ?? undefined;
     patch({
       ...shared,
-      ...(Object.keys(own).length ? patchExtraSplit(draft!, index - 1, own) : {}),
+      ...(Object.keys(own).length ? patchExtraSplit(draft, index - 1, own) : {}),
     });
   }
 
   function openDatePicker() {
-    pickDateTime(new Date(draft!.date), (picked) => patch({ date: picked.toISOString() }));
+    pickDateTime(new Date(draft.date), (picked) => patch({ date: picked.toISOString() }));
   }
 
   const handleConfirm = act(tr('inbox.confirm'), async () => {
@@ -264,62 +273,50 @@ export default function DraftScreen() {
     router.back();
   });
 
-  /**
-   * When the splits don't add up to the total, split 1 takes the difference (split 2, if split 1
-   * was just typed); only when it can't are the sliders asked.
-   */
-  function placeLeftover(nextAmounts: string[], nextTotal: string, exclude?: number) {
-    const delta = leftover(nextTotal, nextAmounts, dp);
-    if (delta === 0n || nextAmounts.length < 2) return;
-    const absorbed = absorb(nextAmounts, delta, dp, exclude);
-    if (absorbed) patch(withAmounts(draft!, absorbed));
-    else setAllocation({ kind: 'leftover', delta, exclude });
-  }
-
-  /** The Reassign button: the sliders, whatever split 1 could take. */
-  function askLeftover(nextAmounts: string[], nextTotal: string) {
-    const delta = leftover(nextTotal, nextAmounts, dp);
-    if (delta !== 0n && nextAmounts.length > 1) setAllocation({ kind: 'leftover', delta });
-  }
+  const leftoverHandlers: LeftoverHandlers = {
+    write: (next) => patch(withAmounts(draft, next)),
+    ask: (delta, exclude) => setAllocation({ kind: 'leftover', delta, exclude }),
+  };
+  const place = (nextAmounts: string[], nextTotal: string, exclude?: number) =>
+    placeLeftover(nextAmounts, nextTotal, dp, leftoverHandlers, exclude);
 
   function onAllocated(result: AllocationResult) {
     if (!allocation) return;
     if (allocation.kind === 'newSplit' && result.newAmount) {
-      patch(addSplit(draft!, result.amounts, result.newAmount));
+      patch(addSplit(draft, result.amounts, result.newAmount));
       setPage(extras.length + 1);
     } else {
-      patch(withAmounts(draft!, result.amounts));
+      patch(withAmounts(draft, result.amounts));
     }
     setAllocation(null);
   }
 
   function removeSplit(index: number) {
-    const next = removeExtraSplit(draft!, index);
+    const next = removeExtraSplit(draft, index);
     const nextAmounts = amounts.filter((_, i) => i !== index);
     const delta = leftover(total, nextAmounts, dp);
     const absorbed = nextAmounts.length > 1 ? absorb(nextAmounts, delta, dp) : null;
     // Split 1 takes the removed amount, in the same write as the removal.
-    patch(absorbed ? { ...next, ...withAmounts({ ...draft!, ...next }, absorbed) } : next);
+    patch(absorbed ? { ...next, ...withAmounts({ ...draft, ...next }, absorbed) } : next);
     setPage(Math.max(0, index - 1));
-    if (nextAmounts.length > 1 && !absorbed) askLeftover(nextAmounts, total);
+    if (nextAmounts.length > 1 && !absorbed)
+      askLeftover(nextAmounts, total, dp, leftoverHandlers.ask);
   }
 
   function closeKeypad() {
     const target = keypadFor;
     setKeypadFor(null);
-    if (target === 'total') placeLeftover(amounts, total);
-    else if (typeof target === 'number') placeLeftover(amounts, total, target);
+    if (target === 'total') place(amounts, total);
+    else if (typeof target === 'number') place(amounts, total, target);
   }
 
   function typeDigit(key: KeypadKey) {
     if (keypadFor === 'total') patch({ total: applyDigit(total, key, dp) });
-    else if (keypadFor === 0) patch({ amount: applyDigit(draft!.amount, key, dp) });
+    else if (keypadFor === 0) patch({ amount: applyDigit(draft.amount, key, dp) });
     else if (typeof keypadFor === 'number') {
       const split = extras[keypadFor - 1];
       if (split)
-        patch(
-          patchExtraSplit(draft!, keypadFor - 1, { amount: applyDigit(split.amount, key, dp) }),
-        );
+        patch(patchExtraSplit(draft, keypadFor - 1, { amount: applyDigit(split.amount, key, dp) }));
     }
   }
 
@@ -357,50 +354,20 @@ export default function DraftScreen() {
 
   function renderSplitPage(index: number) {
     const split = index === 0 ? null : extras[index - 1];
-    const amount = split ? split.amount : draft!.amount;
-    const description = split ? split.description : draft!.description;
-    const payee = split ? split.payeeName : payeeName;
-    const isNew = split ? split.isNewPayee : draft!.isNewPayee;
     return (
-      <>
-        <View style={{ alignItems: 'center', paddingHorizontal: t.space.xl, gap: t.space.xs }}>
-          <Pressable
-            onPress={() => setKeypadFor(index)}
-            disabled={readOnly}
-            accessibilityRole="button"
-            accessibilityLabel={tr('fields.amount')}
-          >
-            <Money amount={amount} currency={currency} type={draft!.type} size="heading" />
-          </Pressable>
-          <Pressable
-            onPress={() => setTextFor(index)}
-            disabled={readOnly}
-            accessibilityRole="button"
-            accessibilityLabel={tr('fields.description')}
-          >
-            <Text
-              style={[t.type.body, { color: t.color.text, textAlign: 'center' }]}
-              numberOfLines={2}
-            >
-              {description || '—'}
-            </Text>
-          </Pressable>
-          {draft!.type !== 'transfer' && (
-            <Pressable
-              onPress={() => (index === 0 ? setPayeeSheetOpen(true) : setExtraPayeeFor(index))}
-              disabled={readOnly}
-              accessibilityRole="button"
-              accessibilityLabel={
-                draft!.type === 'deposit' ? tr('capture.payer') : tr('capture.payee')
-              }
-            >
-              <Text style={[t.type.label, { color: t.color.accent }]}>{payee || '—'}</Text>
-            </Pressable>
-          )}
-          {isNew && draft!.type !== 'transfer' && (
-            <Chip label={`⚑ ${tr('draft.newPayeeWillBeCreated')}`} tone="warn" />
-          )}
-        </View>
+      <SplitPage
+        amount={split ? split.amount : draft.amount}
+        currency={currency}
+        type={draft.type}
+        description={split ? split.description : draft.description}
+        payee={split ? split.payeeName : payeeName}
+        isNewPayee={split ? split.isNewPayee : draft.isNewPayee}
+        readOnly={readOnly}
+        onAmountPress={() => setKeypadFor(index)}
+        onDescriptionPress={() => setTextFor(index)}
+        onPayeePress={() => (index === 0 ? setPayeeSheetOpen(true) : setExtraPayeeFor(index))}
+        onRemove={index > 0 ? () => removeSplit(index) : undefined}
+      >
         {split ? (
           <DetailRows
             value={{
@@ -421,16 +388,7 @@ export default function DraftScreen() {
         ) : (
           detailRows
         )}
-        {index > 0 && !readOnly && (
-          <View style={{ paddingHorizontal: t.space.lg }}>
-            <Button
-              title={tr('splits.remove')}
-              variant="danger"
-              onPress={() => removeSplit(index)}
-            />
-          </View>
-        )}
-      </>
+      </SplitPage>
     );
   }
 
@@ -463,7 +421,7 @@ export default function DraftScreen() {
       <View style={{ flex: 1 }}>
         <AppBar
           title={tr('draft.title')}
-          left={<CloseButton />}
+          left={<CloseButton onPress={() => router.back()} />}
           right={
             <BarIconButton
               icon="ellipsis-horizontal"
@@ -475,7 +433,7 @@ export default function DraftScreen() {
 
         {!splitMode && (
           <View style={{ alignItems: 'center', paddingVertical: t.space.lg }}>
-            <Pressable onPress={() => setAmountSheetOpen(true)} disabled={readOnly}>
+            <Pressable onPress={() => setKeypadFor(0)} disabled={readOnly}>
               <Money amount={draft.amount} currency={currency} type={draft.type} size="title" />
             </Pressable>
             {draft.type !== 'transfer' && (
@@ -502,18 +460,7 @@ export default function DraftScreen() {
           style={{ flex: 1 }}
           contentContainerStyle={{ gap: t.space.md, paddingBottom: t.space.lg }}
         >
-          {!!row.errorMessage && !readOnly && (
-            <View
-              style={{
-                marginHorizontal: t.space.lg,
-                padding: t.space.md,
-                borderRadius: t.radius.sm,
-                backgroundColor: t.color.warnSoft,
-              }}
-            >
-              <Text style={[t.type.label, { color: t.color.warn }]}>{row.errorMessage}</Text>
-            </View>
-          )}
+          {!!row.errorMessage && !readOnly && <Banner inset>{row.errorMessage}</Banner>}
           {splitMode ? (
             <>
               <Pressable
@@ -540,7 +487,7 @@ export default function DraftScreen() {
                 leftover={rest}
                 readOnly={readOnly}
                 onTotalPress={() => setKeypadFor('total')}
-                onReassign={() => askLeftover(amounts, total)}
+                onReassign={() => askLeftover(amounts, total, dp, leftoverHandlers.ask)}
                 renderPage={renderSplitPage}
               />
             </>
@@ -634,20 +581,6 @@ export default function DraftScreen() {
       </View>
 
       <Sheet
-        visible={amountSheetOpen}
-        onClose={() => setAmountSheetOpen(false)}
-        title={tr('fields.amount')}
-      >
-        <Money amount={draft.amount} currency={currency} type={draft.type} size="display" />
-        <Keypad
-          compact
-          onDigit={(key: KeypadKey) => patch({ amount: applyDigit(draft.amount, key, dp) })}
-          saveLabel={tr('common.done')}
-          onSave={() => setAmountSheetOpen(false)}
-        />
-      </Sheet>
-
-      <Sheet
         visible={keypadFor !== null}
         onClose={closeKeypad}
         title={keypadFor === 'total' ? tr('splits.total') : tr('fields.amount')}
@@ -707,7 +640,6 @@ export default function DraftScreen() {
 
       {!!allocation && (
         <AllocationSheet
-          visible
           mode={allocation}
           amounts={amounts}
           labels={amounts.map((_, i) => {
@@ -745,31 +677,10 @@ export default function DraftScreen() {
         />
       </Sheet>
       <Snackbar entry={snackbar} onDismiss={dismissSnackbar} />
-      <Modal
-        visible={photoOpen && !!row.receiptImagePath}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setPhotoOpen(false)}
-      >
-        <Pressable
-          style={{ flex: 1, backgroundColor: t.color.photoBackdrop, justifyContent: 'center' }}
-          onPress={() => setPhotoOpen(false)}
-          accessibilityLabel={tr('draft.closePhoto')}
-        >
-          {!!row.receiptImagePath && (
-            <Image
-              source={{ uri: row.receiptImagePath }}
-              resizeMode="contain"
-              style={{ width: '100%', height: '100%' }}
-            />
-          )}
-        </Pressable>
-      </Modal>
+      <PhotoViewer
+        uri={photoOpen ? row.receiptImagePath : null}
+        onClose={() => setPhotoOpen(false)}
+      />
     </Screen>
   );
-}
-
-function CloseButton() {
-  const { t: tr } = useTranslation();
-  return <BarIconButton icon="close" label={tr('common.close')} onPress={() => router.back()} />;
 }

@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useDb } from '../../src/providers/DbProvider';
-import { useCategories, useCurrencies } from '../../src/db/useReferenceData';
+import { useCategories, useCurrencyRows } from '../../src/db/useReferenceData';
 import { useTheme } from '../../src/ui/theme';
 import {
   Screen,
@@ -18,6 +18,7 @@ import {
   Row,
   SectionHeader,
   Sheet,
+  CloseButton,
 } from '../../src/ui/components';
 import { TextField } from '../../src/ui/TextField';
 import { PickerSheet } from '../../src/ui/PickerSheet';
@@ -78,12 +79,7 @@ export default function PlannedEditScreen() {
   if (!isNew && !item) {
     return (
       <Screen bottom>
-        <AppBar
-          title={tr('planned.title')}
-          left={
-            <BarIconButton icon="close" label={tr('common.close')} onPress={() => router.back()} />
-          }
-        />
+        <AppBar title={tr('planned.title')} left={<CloseButton onPress={() => router.back()} />} />
         {loaded && (
           <Text style={[t.type.body, { color: t.color.textMuted, padding: t.space.lg }]}>
             {tr('planned.gone')}
@@ -104,7 +100,10 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
   const act = useAction();
   const assetAccounts = useAssetAccounts() ?? [];
   const categories = useCategories();
-  const currencies = useCurrencies();
+  // undefined until the reference currencies load: the amount would otherwise be drawn with the
+  // currency code standing in for its symbol, then redrawn a frame later at a different width.
+  const currencyRows = useCurrencyRows();
+  const currencies = currencyRows ?? [];
 
   const [fields, setFields] = useState<PlannedFields>(() => item?.fields ?? blank());
   const [tagsText, setTagsText] = useState(() => item?.fields.tags.join(', ') ?? '');
@@ -223,9 +222,7 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
     <Screen bottom avoidKeyboard>
       <AppBar
         title={isNew ? tr('planned.newTitle') : fields.name || tr('planned.title')}
-        left={
-          <BarIconButton icon="close" label={tr('common.close')} onPress={() => router.back()} />
-        }
+        left={<CloseButton onPress={() => router.back()} />}
         right={
           item ? (
             <BarIconButton icon="trash-outline" label={tr('common.delete')} onPress={onDelete} />
@@ -257,7 +254,7 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
           />
           <Row
             label={tr('fields.amount')}
-            value={formatMoney(fields.amount, currency)}
+            value={currencyRows ? formatMoney(fields.amount, currency) : ''}
             chevron
             onPress={() => setSheet('amount')}
           />

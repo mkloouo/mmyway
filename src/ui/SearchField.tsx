@@ -6,6 +6,7 @@ import { Pressable, TextInput, View, type StyleProp, type ViewStyle } from 'reac
 import { useTranslation } from 'react-i18next';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTheme } from './theme';
+import { PRESSED_OPACITY } from './components';
 
 export function SearchField({
   value,
@@ -63,7 +64,7 @@ export function SearchField({
           style={({ pressed }) => ({
             paddingHorizontal: t.space.md,
             paddingVertical: t.space.sm,
-            opacity: pressed ? 0.6 : 1,
+            opacity: pressed ? PRESSED_OPACITY : 1,
           })}
         >
           <Ionicons name="close-circle" size={18} color={t.color.textMuted} />

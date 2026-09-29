@@ -33,8 +33,8 @@ export interface AllocationResult {
   newAmount?: string;
 }
 
+/** Mounted only while it is open — both callers render it inside their own condition. */
 export function AllocationSheet({
-  visible,
   mode,
   amounts,
   labels,
@@ -43,7 +43,6 @@ export function AllocationSheet({
   onDone,
   onClose,
 }: {
-  visible: boolean;
   mode: AllocationMode;
   amounts: string[];
   labels: string[];
@@ -62,7 +61,10 @@ export function AllocationSheet({
   const delta = mode.kind === 'newSplit' ? -target : mode.delta;
   const caps = capsFor(amounts, delta, dp, mode.kind === 'leftover' ? mode.exclude : undefined);
   const sign: 1 | -1 = delta > 0n ? 1 : -1;
-  const fits = defaultShares(target, caps) !== null;
+  // Computed once: the sliders' starting position, whether the amount fits at all, and what Done
+  // applies all read the same shares.
+  const initialShares = defaultShares(target, caps);
+  const fits = initialShares !== null;
 
   // Mounted fresh for each use (the screens render it only while open), so the starting state
   // is set here: the amount step for a new split, default shares for a leftover.
@@ -70,22 +72,23 @@ export function AllocationSheet({
     mode.kind === 'newSplit' ? 'amount' : 'shares',
   );
   const [shares, setShares] = useState<bigint[]>(() =>
-    mode.kind === 'newSplit' ? [] : (defaultShares(target, caps) ?? caps.map(() => 0n)),
+    mode.kind === 'newSplit' ? [] : (initialShares ?? caps.map(() => 0n)),
   );
 
   /** "Choose splits": the sliders, starting from the default. */
   function chooseSplits() {
-    const initial = defaultShares(target, caps);
-    if (!initial || target === 0n) return;
-    setShares(initial);
+    if (!initialShares || target === 0n) return;
+    setShares(initialShares);
     setStep('shares');
   }
 
   /** Done on the keypad: split 1 gives the amount (the next splits only what it can't). */
   function takeDefault() {
-    const initial = defaultShares(target, caps);
-    if (!initial || target === 0n) return;
-    onDone({ amounts: applyShares(amounts, initial, sign, dp), newAmount: fromMinor(target, dp) });
+    if (!initialShares || target === 0n) return;
+    onDone({
+      amounts: applyShares(amounts, initialShares, sign, dp),
+      newAmount: fromMinor(target, dp),
+    });
   }
 
   function done() {
@@ -105,7 +108,7 @@ export function AllocationSheet({
   if (step === 'amount') {
     const tooMuch = target > 0n && !fits;
     return (
-      <Sheet visible={visible} onClose={onClose} title={title}>
+      <Sheet visible onClose={onClose} title={title}>
         <Money amount={typed} currency={currency} type={type} size="display" />
         <Text style={[t.type.label, { color: tooMuch ? t.color.danger : t.color.textMuted }]}>
           {tooMuch ? tr('splits.moreThanSplits') : tr('splits.newSplitHint')}
@@ -132,7 +135,7 @@ export function AllocationSheet({
   const sum = shares.reduce((a, s) => a + s, 0n);
   return (
     <Sheet
-      visible={visible}
+      visible
       onClose={onClose}
       title={title}
       footer={

@@ -18,6 +18,7 @@ import {
   Chip,
   EmptyState,
   Money,
+  Dot,
 } from '../../src/ui/components';
 import { PendingDot } from '../../src/ui/PendingDot';
 import { currencyOf } from '../../src/ui/money';
@@ -155,39 +156,38 @@ export default function PlannedScreen() {
                     size="heading"
                   />
                 </View>
-                <Text
-                  style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]}
-                  numberOfLines={1}
-                >
-                  {[scheduleLabel(f), tr('planned.next', { date: dayLabel(f.date) }), counterparty]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </Text>
-                {!!f.categoryName && (
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: t.space.xs,
-                      marginTop: t.space.xs,
-                    }}
+                {/* The payee gets the full width: sharing a line with the schedule cut it off
+                    at "Zina Mishchen…". The schedule and the category follow, muted, under it. */}
+                {!!counterparty && (
+                  <Text
+                    style={[t.type.body, { color: t.color.text, marginTop: t.space.xs }]}
+                    numberOfLines={1}
                   >
-                    <View
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: 4,
-                        backgroundColor: categoryColor(f.categoryName, t.dark),
-                      }}
-                    />
-                    <Text
-                      style={[t.type.label, { color: t.color.textMuted, flex: 1 }]}
-                      numberOfLines={1}
-                    >
-                      {f.categoryName}
-                    </Text>
-                  </View>
+                    {counterparty}
+                  </Text>
                 )}
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: t.space.xs,
+                    marginTop: t.space.xs,
+                  }}
+                >
+                  {!!f.categoryName && <Dot color={categoryColor(f.categoryName, t.dark)} />}
+                  <Text
+                    style={[t.type.label, { color: t.color.textMuted, flex: 1 }]}
+                    numberOfLines={1}
+                  >
+                    {[
+                      f.categoryName,
+                      scheduleLabel(f),
+                      tr('planned.next', { date: dayLabel(f.date) }),
+                    ]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </Text>
+                </View>
               </Card>
             );
           }}
