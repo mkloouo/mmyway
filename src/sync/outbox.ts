@@ -6,9 +6,14 @@
 // - An edit/delete compares `updated_at` — the cached one, then the server's own copy — before
 //   sending; a mismatch is a conflict, not an overwrite (Review Focus: conflicting edits).
 // - Each op is claimed (-> in_flight) just before it is sent; a finished op is deleted.
-// - A failure stops replay at that operation — later operations must not run out of order.
-// - A failed op backs off (retryDelayMs): until its next_attempt_at, a sync stops in front of it
-//   without sending. "Retry now" in the Inbox sets it back to `pending`, which skips the wait.
+// - A failure holds back only the later operations that depend on it: the ones sharing a subject
+//   (the same transaction, Inbox entry, account or planned transaction; src/sync/outboxSubjects.ts),
+//   and in turn the ones depending on those. Unrelated operations go ahead (#41). A failure that
+//   says FF3 can't be reached at all (no answer, 5xx, 401/403, 429) still stops the whole run, since
+//   everything after it would fail the same way; so does an operation whose payload can't be read.
+// - A failed op backs off (retryDelayMs): until its next_attempt_at it is not re-sent, and the
+//   operations depending on it wait with it. "Retry now" in the Inbox sets it back to `pending`,
+//   which skips the wait.
 import { and, asc, eq, inArray, isNotNull, lt, sql } from 'drizzle-orm';
 import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 import type { FF3Client } from '../api/ff3/client';
@@ -23,6 +28,7 @@ import { requestSync } from './syncTrigger';
 import { deletePersistedReceiptImage } from '../receipt/imageFiles';
 import { cachedRowFromGroup } from './referenceData';
 import { readPayload, writePayload } from './payloadJson';
+import { OutboxBlocker, subjectsOf } from './outboxSubjects';
 import { accountResolver, withAccountIds } from './accountIds';
 import {
   replayDeletePlanned,
@@ -309,6 +315,7 @@ export async function replayOutbox(
 ): Promise<ReplayResult> {
   const result: ReplayResult = { succeeded: [], conflicted: [], failedAt: null };
   const attempted = new Set<string>();
+  const blocker = new OutboxBlocker();
 
   // Looped: a successful create can queue its receipt upload, which should go out in the same run.
   for (;;) {
@@ -323,13 +330,22 @@ export async function replayOutbox(
 
     for (const candidate of pending) {
       attempted.add(candidate.id);
+      const subjects = subjectsOf(candidate);
+      if (blocker.waits(subjects)) {
+        blocker.block(subjects); // waits behind a failure, so whatever depends on it waits too
+        if (blocker.blocksEverything) return result;
+        continue;
+      }
       if (
         candidate.status === 'failed' &&
         candidate.nextAttemptAt &&
         candidate.nextAttemptAt > new Date().toISOString()
       ) {
-        result.failedAt = candidate.id; // still backing off; nothing after it may go first
-        return result;
+        // Still backing off: not re-sent, and what depends on it waits with it.
+        result.failedAt ??= candidate.id;
+        blocker.block(subjects);
+        if (blocker.blocksEverything) return result;
+        continue;
       }
       const [row] = await db
         .update(outboxOperations)
@@ -350,8 +366,11 @@ export async function replayOutbox(
       }
       if (outcome === 'returned') continue; // back in the Inbox for the user; not a failure
       if (outcome === 'conflict') result.conflicted.push(row.id);
-      result.failedAt = row.id;
-      return result; // never advance past a failed operation
+      result.failedAt ??= row.id;
+      // FF3 unreachable: everything after would fail the same way, and back off for nothing.
+      if (outcome === 'unreachable') return result;
+      blocker.block(subjects);
+      if (blocker.blocksEverything) return result;
     }
   }
 }
@@ -415,7 +434,7 @@ async function replayOne(
   client: FF3Client,
   row: OutboxRow,
   opts: { onConflict?: ConflictHandler },
-): Promise<'done' | 'conflict' | 'failed' | 'returned'> {
+): Promise<'done' | 'conflict' | 'failed' | 'unreachable' | 'returned'> {
   let payload: unknown;
   try {
     payload = readPayload(row.kind, row.payloadJson);
@@ -740,8 +759,21 @@ async function replayOne(
         nextAttemptAt: new Date(Date.now() + retryDelayMs(row.attempts + 1)).toISOString(),
       })
       .where(eq(outboxOperations.id, row.id));
-    return 'failed';
+    return serverUnavailable(err) ? 'unreachable' : 'failed';
   }
+}
+
+/**
+ * A failure that isn't about this operation: FF3 didn't answer, is failing itself, refuses the
+ * token, or is rate limiting. Anything else (a 4xx about this request, a conflict, bad data) is
+ * the operation's own.
+ */
+export function serverUnavailable(err: unknown): boolean {
+  if (err instanceof FF3RequestError) {
+    return err.status >= 500 || err.status === 401 || err.status === 403 || err.status === 429;
+  }
+  // fetch rejects with a TypeError when there was no answer, and an AbortError on a timeout.
+  return err instanceof TypeError || (err instanceof Error && err.name === 'AbortError');
 }
 
 /**

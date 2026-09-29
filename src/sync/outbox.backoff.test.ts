@@ -10,7 +10,7 @@ describe('retry backoff', () => {
     expect(retryDelayMs(20)).toBe(60 * 60 * 1000);
   });
 
-  it('a failed op is not re-sent until its next attempt time, and blocks the ops after it', async () => {
+  it('a failed op is not re-sent until its next attempt time, and holds back the ops that depend on it', async () => {
     const db = createTestDb();
     await enqueueOperation(db, {
       id: 'op-1',
@@ -20,7 +20,7 @@ describe('retry backoff', () => {
     await enqueueOperation(db, {
       id: 'op-2',
       kind: 'update_account',
-      payload: { accountId: 'b', active: false },
+      payload: { accountId: 'a', setEnvelopeMarker: true }, // the same account: depends on op-1
     });
     const client = {
       request: jest.fn(async () => {

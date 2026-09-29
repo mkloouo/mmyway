@@ -76,10 +76,10 @@ A confirm waits `SYNC_DELAY.afterConfirm` (6 s) so Undo in the 5 s snackbar can 
 
 `src/sync/outbox.ts` (read its header comment before changing replay order or retries):
 
-- Operations replay one at a time in `sequence` order. A failure stops the replay there, so later operations never overtake an earlier one.
+- Operations replay one at a time in `sequence` order. A failure holds back only the later operations that depend on it: those sharing a subject (the same transaction, Inbox entry, account or planned transaction, `src/sync/outboxSubjects.ts`), and in turn whatever depends on those, so a chain of changes keeps its order. Unrelated operations go ahead. When FF3 can't be reached at all (no answer, 5xx, 401/403, 429), or a payload can't be read, the run stops there instead.
 - A create carries `internal_reference: mmyway:<clientId>` and `error_if_duplicate_hash`, so a retry after a lost response is recognised as our own duplicate and recorded as success.
 - An edit or delete sends `expectedUpdatedAt`; if FF3's copy changed meanwhile, the operation fails as a `conflict` and the transaction screen shows the conflict view (keep mine / use server).
-- A failed operation backs off (`next_attempt_at`, 30 s doubling to an hour). Retry now in the Inbox skips the wait; Discard removes it (a discarded create returns to the Inbox as a draft).
+- A failed operation backs off (`next_attempt_at`, 30 s doubling to an hour), and what depends on it waits with it. Retry now in the Inbox skips the wait; Discard removes it (a discarded create returns to the Inbox as a draft).
 - `LEDGER_KINDS` are the kinds that change a balance. While any is queued, or balances haven't been re-read since one landed (`balances_stale`), the cash count refuses to book (`src/reconcile/countReadiness.ts`).
 
 ### One instance at a time

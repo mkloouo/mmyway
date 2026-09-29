@@ -142,9 +142,9 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
 
   const histories = useMerchantHistories(draft.type === 'transfer' ? undefined : draft.type);
 
-  const [payeeSheetOpen, setPayeeSheetOpen] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [photoOpen, setPhotoOpen] = useState(false);
+  // One open at a time (#21); the split sheets below carry which split they're for.
+  const [sheet, setSheet] = useState<'payee' | 'menu' | 'photo' | null>(null);
+  const closeSheet = () => setSheet(null);
   const [snackbar, setSnackbar] = useState<SnackbarEntry | null>(null);
   const dismissSnackbar = useCallback(() => setSnackbar(null), []);
   // Split editing (page 0 is the draft's own fields, 1..N its extraSplits).
@@ -260,7 +260,7 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
   const confirming = act.pending(tr('inbox.confirm'));
 
   const handleDeleteDraft = act(tr('common.delete'), async () => {
-    setMenuOpen(false);
+    closeSheet();
     if (
       !(await confirmDestructive(
         tr('draft.deleteTitle'),
@@ -365,7 +365,7 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
         readOnly={readOnly}
         onAmountPress={() => setKeypadFor(index)}
         onDescriptionPress={() => setTextFor(index)}
-        onPayeePress={() => (index === 0 ? setPayeeSheetOpen(true) : setExtraPayeeFor(index))}
+        onPayeePress={() => (index === 0 ? setSheet('payee') : setExtraPayeeFor(index))}
         onRemove={index > 0 ? () => removeSplit(index) : undefined}
       >
         {split ? (
@@ -426,7 +426,7 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
             <BarIconButton
               icon="ellipsis-horizontal"
               label={tr('capture.more')}
-              onPress={() => setMenuOpen(true)}
+              onPress={() => setSheet('menu')}
             />
           }
         />
@@ -437,7 +437,7 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
               <Money amount={draft.amount} currency={currency} type={draft.type} size="title" />
             </Pressable>
             {draft.type !== 'transfer' && (
-              <Pressable onPress={() => setPayeeSheetOpen(true)} disabled={readOnly}>
+              <Pressable onPress={() => setSheet('payee')} disabled={readOnly}>
                 <Text style={[t.type.heading, { color: t.color.text, marginTop: t.space.xs }]}>
                   {payeeName || '—'}
                 </Text>
@@ -510,7 +510,7 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
             <Card style={{ marginHorizontal: t.space.lg, gap: t.space.sm }}>
               {row.receiptImagePath ? (
                 <Pressable
-                  onPress={() => setPhotoOpen(true)}
+                  onPress={() => setSheet('photo')}
                   accessibilityRole="imagebutton"
                   accessibilityLabel={tr('draft.showPhoto')}
                 >
@@ -599,8 +599,8 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
       </Sheet>
 
       <PayeeSheet
-        visible={payeeSheetOpen}
-        onClose={() => setPayeeSheetOpen(false)}
+        visible={sheet === 'payee'}
+        onClose={closeSheet}
         histories={histories}
         payeeLabel={draft.type === 'deposit' ? 'payer' : 'payee'}
         onSelect={(h) => {
@@ -656,14 +656,14 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
         />
       )}
 
-      <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={tr('draft.menuTitle')}>
+      <Sheet visible={sheet === 'menu'} onClose={closeSheet} title={tr('draft.menuTitle')}>
         {readOnly && !!row.ff3GroupId && (
           <Row
             first
             label={tr('draft.openInActivity')}
             icon="open-outline"
             onPress={() => {
-              setMenuOpen(false);
+              closeSheet();
               navigateOnce(`/transactions/${row.ff3GroupId}`);
             }}
           />
@@ -677,10 +677,7 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
         />
       </Sheet>
       <Snackbar entry={snackbar} onDismiss={dismissSnackbar} />
-      <PhotoViewer
-        uri={photoOpen ? row.receiptImagePath : null}
-        onClose={() => setPhotoOpen(false)}
-      />
+      <PhotoViewer uri={sheet === 'photo' ? row.receiptImagePath : null} onClose={closeSheet} />
     </Screen>
   );
 }
