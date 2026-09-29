@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Inbox
+
+- A change Firefly III refuses now says which request it refused and which fields, e.g. "— PUT
+  /v1/recurrences/12 (notes)", after Firefly III's message.
+
 ## [1.5.0] - 2026-09-30
 
 ### Capture
