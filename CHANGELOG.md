@@ -17,6 +17,8 @@
   off by the schedule sharing the line with it.
 - The Connection section in Settings, and a planned transaction's amount, no longer shift a moment
   after the screen opens.
+- In Ukrainian, the planned editor's **Repeats** hint said "discount for a one-time payment", and
+  "every N periods" lost its number for 21, 31 and so on. Both now read correctly.
 
 ## [1.3.0] - 2026-09-28
 
