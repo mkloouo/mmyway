@@ -42,6 +42,8 @@ const baseEnv: NodeJS.ProcessEnv = {
   GIT_AUTHOR_EMAIL: 'test@example.com',
   GIT_COMMITTER_NAME: 'Test',
   GIT_COMMITTER_EMAIL: 'test@example.com',
+  // The tests run in GitHub Actions too, where the script would check the workflow's actor.
+  GITHUB_ACTIONS: '',
 };
 
 function gitIn(cwd: string, args: string[], env = baseEnv): string {
@@ -76,6 +78,19 @@ function buildTemplate(): string {
   fs.writeFileSync(
     path.join(repo, 'app.config.js'),
     "module.exports = { expo: { name: 'Fixture', version: '1.2.3' } };\n",
+  );
+  fs.writeFileSync(
+    path.join(repo, 'package-lock.json'),
+    JSON.stringify(
+      {
+        name: 'fixture',
+        version: '1.2.3',
+        lockfileVersion: 3,
+        packages: { '': { name: 'fixture', version: '1.2.3' } },
+      },
+      null,
+      2,
+    ) + '\n',
   );
   fs.writeFileSync(path.join(repo, 'CHANGELOG.md'), CHANGELOG);
   fs.writeFileSync(path.join(repo, '.gitignore'), '/releases/\n');
@@ -152,6 +167,7 @@ function setup() {
     },
 
     pkgVersion: () => JSON.parse(fs.readFileSync(path.join(repo, 'package.json'), 'utf8')).version,
+    easBuilds: () => t.calls('npx').filter((c) => c[0] === 'eas-cli').length,
     originTag: () => t.originGit(['tag', '--list', 'v2.0.0']),
 
     expectNothingPublished() {
@@ -186,13 +202,16 @@ describe('release.mjs', () => {
       expect(output).toContain('✔ Released v2.0.0');
       expect(code).toBe(0);
 
-      // Release commit: only the three version files, no trailer.
+      // Release commit: only the version files, no trailer.
       expect(t.git(['log', '-1', '--format=%B'])).toBe('release v2.0.0');
       expect(t.git(['show', '--name-only', '--format=', 'HEAD']).split('\n').sort()).toEqual([
         'CHANGELOG.md',
         'app.config.js',
+        'package-lock.json',
         'package.json',
       ]);
+      const lock = JSON.parse(fs.readFileSync(path.join(t.repo, 'package-lock.json'), 'utf8'));
+      expect([lock.version, lock.packages[''].version]).toEqual(['2.0.0', '2.0.0']);
       expect(fs.readFileSync(path.join(t.repo, 'CHANGELOG.md'), 'utf8')).toBe(
         CHANGELOG.replace('## [Unreleased]\n', `## [Unreleased]\n\n## [2.0.0] - ${today()}\n`),
       );
@@ -264,19 +283,25 @@ describe('release.mjs', () => {
   );
 
   it.concurrent(
-    '--pause builds everything but pushes nothing; --publish then finishes',
+    '--pause builds but commits nothing; running the release again finishes it',
     async () => {
       const t = setup();
       const paused = await t.release(['2.0.0', '--pause']);
       expect(paused.code).toBe(0);
-      expect(paused.output).toContain('Paused before tagging/publishing');
-      expect(t.git(['log', '-1', '--format=%s'])).toBe('release v2.0.0');
+      expect(paused.output).toContain('Paused before committing');
+      expect(t.git(['rev-parse', 'HEAD'])).toBe(t.initialHead);
+      expect(t.pkgVersion()).toBe('2.0.0');
       expect(fs.existsSync(path.join(t.outDir, 'SHA256SUMS'))).toBe(true);
       expect(t.git(['tag', '--list', 'v2.0.0'])).toBe('');
       t.expectNothingPublished();
 
-      const published = await t.release(['2.0.0', '--publish']);
-      expect(published.code).toBe(0);
+      const finished = await t.release(['2.0.0']);
+      expect(finished.code).toBe(0);
+      expect(finished.output).toContain('prepare: already done');
+      expect(finished.output).toContain('build-android: already done');
+      // No second round of checks or build.
+      expect(t.calls('npx')).toHaveLength(3);
+      expect(t.git(['log', '-1', '--format=%s'])).toBe('release v2.0.0');
       expect(t.originGit(['rev-parse', 'main'])).toBe(t.git(['rev-parse', 'HEAD']));
       expect(t.originTag()).toBe('v2.0.0');
       expect(fs.readFileSync(path.join(t.outDir, 'release-notes.md'), 'utf8')).toContain(
@@ -285,31 +310,128 @@ describe('release.mjs', () => {
     },
   );
 
-  it.concurrent('--publish refuses artifacts changed after they were checksummed', async () => {
+  it.concurrent(
+    'a failed build leaves no commit behind, and running the release again resumes it',
+    async () => {
+      const t = setup();
+      const failed = await t.release(['2.0.0'], { STUB_FAIL: 'eas-android' });
+      expect(failed.code).toBe(1);
+      expect(t.git(['rev-parse', 'HEAD'])).toBe(t.initialHead);
+      expect(t.git(['tag', '--list', 'v2.0.0'])).toBe('');
+      expect(t.pkgVersion()).toBe('2.0.0');
+      t.expectNothingPublished();
+
+      const resumed = await t.release(['2.0.0']);
+      expect(resumed.code).toBe(0);
+      expect(resumed.output).toContain('✔ Released v2.0.0');
+      // Checks ran once; the build ran again.
+      expect(t.calls('npx').filter(([tool]) => tool === 'jest')).toHaveLength(1);
+      expect(t.easBuilds()).toBe(2);
+      expect(t.originTag()).toBe('v2.0.0');
+    },
+  );
+
+  it.concurrent('runs each step on its own, in order', async () => {
+    const t = setup();
+    for (const stepName of ['prepare', 'build-android', 'commit', 'publish-github']) {
+      const { code, output } = await t.release([stepName, '2.0.0']);
+      expect({ stepName, code, output }).toMatchObject({ code: 0 });
+    }
+    expect(t.easBuilds()).toBe(1);
+    expect(t.originTag()).toBe('v2.0.0');
+    expect(JSON.parse(fs.readFileSync(path.join(t.tmp, 'release.json'), 'utf8'))).toEqual({
+      tag: 'v2.0.0',
+      draft: false,
+    });
+  });
+
+  it.concurrent('a step refuses to run before the one it needs', async () => {
+    const t = setup();
+    const build = await t.release(['build-android', '2.0.0']);
+    expect(build.code).toBe(1);
+    expect(build.output).toContain('run `prepare 2.0.0` first');
+    expect(t.easBuilds()).toBe(0);
+
+    await t.release(['prepare', '2.0.0']);
+    const commit = await t.release(['commit', '2.0.0']);
+    expect(commit.code).toBe(1);
+    expect(commit.output).toContain('SHA256SUMS missing');
+    expect(t.git(['rev-parse', 'HEAD'])).toBe(t.initialHead);
+  });
+
+  it.concurrent('commit refuses artifacts changed after they were checksummed', async () => {
     const t = setup();
     await t.release(['2.0.0', '--pause']);
     fs.appendFileSync(path.join(t.outDir, 'mmyway-v2.0.0-universal.apk'), 'tampered');
 
-    const { code, output } = await t.release(['2.0.0', '--publish']);
+    const { code, output } = await t.release(['commit', '2.0.0']);
     expect(code).toBe(1);
     expect(output).toContain('checksum mismatch for mmyway-v2.0.0-universal.apk');
+    expect(t.git(['rev-parse', 'HEAD'])).toBe(t.initialHead);
     t.expectNothingPublished();
   });
 
-  it.concurrent('--publish resumes a release whose publish step failed partway', async () => {
+  it.concurrent('resumes a release whose publish step failed partway', async () => {
     const t = setup();
     const first = await t.release(['2.0.0'], { STUB_FAIL: 'gh-publish' });
     expect(first.code).toBe(1);
     expect(t.originTag()).toBe('v2.0.0');
 
-    const resumed = await t.release(['2.0.0', '--publish']);
+    const resumed = await t.release(['2.0.0']);
     expect(resumed.code).toBe(0);
+    expect(t.easBuilds()).toBe(1);
     const gh = t.calls('gh');
     expect(gh.filter(([, sub]) => sub === 'create')).toHaveLength(1);
     expect(gh.find(([, sub]) => sub === 'upload')).toEqual(expect.arrayContaining(['--clobber']));
     expect(JSON.parse(fs.readFileSync(path.join(t.tmp, 'release.json'), 'utf8'))).toEqual({
       tag: 'v2.0.0',
       draft: false,
+    });
+  });
+
+  it.concurrent('build makes the split APKs of the current commit, and nothing else', async () => {
+    const t = setup();
+    const { code, output } = await t.release(['build']);
+    expect(code).toBe(0);
+    const label = `v1.2.3-${t.git(['rev-parse', '--short', 'HEAD'])}`;
+    expect(output).toContain(`✔ Built ${label}`);
+    const dir = path.join(t.repo, 'releases', label);
+    expect(fs.readdirSync(dir).sort()).toEqual(
+      [...APKS.map((f) => f.replace('v2.0.0', label)), 'SHA256SUMS'].sort(),
+    );
+    expect(t.calls('npx').map(([tool]) => tool)).toEqual(['eas-cli']);
+    expect(t.pkgVersion()).toBe('1.2.3');
+    expect(t.git(['status', '--porcelain'])).toBe('');
+    expect(t.git(['rev-parse', 'HEAD'])).toBe(t.initialHead);
+    t.expectNothingPublished();
+  });
+
+  describe('only lets its owner release', () => {
+    it.concurrent('in GitHub Actions, refuses anyone else before doing anything', async () => {
+      const t = setup();
+      await t.expectRefused(['2.0.0'], 'someone may not release mmyway', {
+        GITHUB_ACTIONS: 'true',
+        GITHUB_ACTOR: 'someone',
+      });
+      expect(t.calls('npx')).toEqual([]);
+      expect(t.pkgVersion()).toBe('1.2.3');
+    });
+
+    it.concurrent('in GitHub Actions, lets the owner through', async () => {
+      const t = setup();
+      const { code } = await t.release(['build'], {
+        GITHUB_ACTIONS: 'true',
+        GITHUB_ACTOR: 'mkloouo',
+      });
+      expect(code).toBe(0);
+    });
+
+    it.concurrent('locally, checks the gh login before pushing', async () => {
+      const t = setup();
+      const { code, output } = await t.release(['2.0.0'], { STUB_GH_USER: 'someone' });
+      expect(code).toBe(1);
+      expect(output).toContain('someone may not release mmyway');
+      t.expectNothingPublished();
     });
   });
 
@@ -327,20 +449,44 @@ describe('release.mjs', () => {
     const t = setup();
     const { code, output } = await t.release(['--help']);
     expect(code).toBe(0);
-    for (const opt of ['--pause', '--publish', '--abort']) {
-      expect(output).toContain(opt);
+    for (const word of [
+      '--pause',
+      'prepare',
+      'build-android',
+      'commit',
+      'publish-github',
+      'abort',
+      'build',
+    ]) {
+      expect(output).toContain(word);
     }
     expect(t.calls('npx')).toEqual([]);
   });
 
-  describe('--abort', () => {
-    it.concurrent('drops an unpushed release commit', async () => {
+  describe('abort', () => {
+    it.concurrent('restores the version files of a release paused before its commit', async () => {
       const t = setup();
       await t.release(['2.0.0', '--pause']);
-      const { code, output } = await t.release(['2.0.0', '--abort']);
+      const { code, output } = await t.release(['abort', '2.0.0']);
+      expect(code).toBe(0);
+      expect(output).toContain('nothing had been committed for 2.0.0');
+      expect(t.git(['rev-parse', 'HEAD'])).toBe(t.initialHead);
+      expect(t.pkgVersion()).toBe('1.2.3');
+      expect(t.git(['status', '--porcelain'])).toBe('');
+      expect(fs.existsSync(t.outDir)).toBe(false);
+    });
+
+    it.concurrent('drops an unpushed release commit and its tag', async () => {
+      const t = setup();
+      for (const stepName of ['prepare', 'build-android', 'commit'])
+        await t.release([stepName, '2.0.0']);
+      expect(t.git(['tag', '--list', 'v2.0.0'])).toBe('v2.0.0');
+
+      const { code, output } = await t.release(['abort', '2.0.0']);
       expect(code).toBe(0);
       expect(output).toContain('Dropped the unpushed "release v2.0.0" commit');
       expect(t.git(['rev-parse', 'HEAD'])).toBe(t.initialHead);
+      expect(t.git(['tag', '--list', 'v2.0.0'])).toBe('');
       expect(t.pkgVersion()).toBe('1.2.3');
       expect(t.git(['status', '--porcelain'])).toBe('');
     });
@@ -348,14 +494,14 @@ describe('release.mjs', () => {
     it.concurrent('refuses once the release is on origin', async () => {
       const t = setup();
       await t.release(['2.0.0']);
-      const { code, output } = await t.release(['2.0.0', '--abort']);
+      const { code, output } = await t.release(['abort', '2.0.0']);
       expect(code).toBe(1);
       expect(output).toContain('already on origin/main');
     });
 
-    it.concurrent("refuses when HEAD isn't the release commit", async () => {
+    it.concurrent('refuses when there is no release in progress', async () => {
       const t = setup();
-      const { code, output } = await t.release(['2.0.0', '--abort']);
+      const { code, output } = await t.release(['abort', '2.0.0']);
       expect(code).toBe(1);
       expect(output).toContain('nothing to abort');
     });
@@ -420,6 +566,21 @@ describe('release.mjs', () => {
       );
       expect(t.calls('npx')).toEqual([]);
       expect(t.calls('gh')).toEqual([]);
+    });
+
+    it.concurrent(
+      'the old --publish and --abort flags, pointing to what replaced them',
+      async () => {
+        const t = setup();
+        await t.expectRefused(['2.0.0', '--publish'], '--publish is gone');
+        await t.expectRefused(['2.0.0', '--abort'], 'abort X.Y.Z');
+      },
+    );
+
+    it.concurrent('the version it already is, once released', async () => {
+      const t = setup();
+      await t.expectRefused(['1.2.3'], '1.2.3 is not newer than the current 1.2.3');
+      expect(t.calls('npx')).toEqual([]);
     });
 
     it.concurrent('failing tests', async () => {

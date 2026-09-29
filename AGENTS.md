@@ -13,7 +13,8 @@ pipeline.
 - `npm run db:generate` — regenerate Drizzle migrations after editing `src/db/schema.ts`
 - `npm run android:build:dev` / `npm run android:build:pro` — local EAS APK build;
   `npm run android:build:aab` — Play Store bundle
-- `npm run release -- X.Y.Z` — see `scripts/release.mjs --help`
+- `npm run release -- X.Y.Z` / `npm run release -- build` — see `scripts/release.mjs --help`;
+  the **Release** workflow runs the same script from GitHub
 - `npm run i18n:push` / `npm run i18n:pull` — sync UI strings with Tolgee (needs `.env.local`,
   see `docs/LOCALIZATION.md`)
 

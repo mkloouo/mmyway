@@ -1,0 +1,91 @@
+# Builds or releases the Android app from GitHub: the same scripts/release.mjs as
+# `npm run release` on a laptop, so both stay one flow.
+#
+#   build    production split APKs of the chosen branch, attached to the run as an artifact.
+#   release  the whole release of `version`: bump, build, commit, tag, push, GitHub release.
+#
+# Only the repository owner can run it: the job's `if` refuses anyone else, the script checks the
+# actor again, and it deploys to the `release` environment, which holds EXPO_TOKEN. Set that up
+# once in Settings → Environments → release: add yourself as a required reviewer, limit its
+# deployment branches to main if builds of other branches aren't wanted, and add the secret.
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'build: split APKs only. release: the full release of the version below.'
+        type: choice
+        options: [build, release]
+        default: build
+      version:
+        description: 'X.Y.Z (release only)'
+        type: string
+        required: false
+
+permissions:
+  contents: write
+
+# One at a time: two releases racing would both bump from the same version.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.actor == github.repository_owner
+    runs-on: ubuntu-latest
+    environment: release
+    timeout-minutes: 90
+    steps:
+      # A React Native release build needs more disk than the runner leaves free.
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/share/swift
+
+      - uses: actions/checkout@v4
+        with:
+          # Tags and origin/main, for the script's preflight.
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - run: npm ci
+
+      # Same as ci.yml: the release's type-check needs expo-router's generated route types.
+      - name: Generate typed routes
+        run: CI=1 timeout 90 npx expo start --offline || true
+
+      # The same identity as a release made on the laptop; only the owner can start this run.
+      - name: Commit as the owner
+        run: |
+          git config user.name "Mykola Odnosumov"
+          git config user.email "mkloouo@gmail.com"
+
+      - name: Build
+        if: inputs.mode == 'build'
+        run: npm run release -- build
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Release
+        if: inputs.mode == 'release'
+        # Through env, not interpolated into the script: the script validates it as X.Y.Z.
+        run: npm run release -- "$VERSION"
+        env:
+          VERSION: ${{ inputs.version }}
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: apks
+          path: |
+            releases/*/*.apk
+            releases/*/SHA256SUMS
+          if-no-files-found: ignore
