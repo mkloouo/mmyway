@@ -459,6 +459,7 @@ export default function DraftScreen() {
             else if (textFor === 0) patch({ description: value });
             else if (typeof textFor === 'number') patch(patchExtraSplit(draft, textFor - 1, { description: value }));
           }}
+          buffered
           autoFocus
         />
       </Sheet>
