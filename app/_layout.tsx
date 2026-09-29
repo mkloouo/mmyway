@@ -69,7 +69,10 @@ function BackgroundSyncRegistration() {
 export function ErrorBoundary({ error, retry }: { error: Error; retry: () => void }) {
   const t = useTheme();
   const { t: tr } = useTranslation();
-  logLine('error', `render crash: ${error.message}\n${error.stack ?? ''}`);
+  // In the render body this logged the same crash again on every re-render of the error screen.
+  useEffect(() => {
+    logLine('error', `render crash: ${error.message}\n${error.stack ?? ''}`);
+  }, [error]);
   return (
     <View
       style={{

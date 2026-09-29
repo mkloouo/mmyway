@@ -5,7 +5,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { ReactElement } from 'react';
 import '../i18n';
 import { ConfirmCard } from '../ui/InboxCards';
-import { writeDraft } from '../inbox/draftJson';
+import { readDraft, writeDraft } from '../inbox/draftJson';
+import { draftReadiness } from '../inbox/readiness';
 import type { InboxItemRow } from '../inbox/useInboxSections';
 
 // Reanimated's swipe needs native worklets, which Jest doesn't have; the card is what's under test.
@@ -47,6 +48,13 @@ function item(draft: Record<string, unknown>): InboxItemRow {
   } as InboxItemRow;
 }
 
+/** The card takes its draft already parsed, as `useInboxSections` hands it over. */
+function cardProps(draft: Record<string, unknown>) {
+  const row = item(draft);
+  const parsed = readDraft(row.draftJson);
+  return { item: row, draft: parsed, readiness: draftReadiness(parsed) };
+}
+
 const currencies = [{ code: 'PLN', symbol: 'zł', decimalPlaces: 2 }];
 const selection = { active: false, selected: false, toggle: jest.fn() };
 
@@ -55,7 +63,7 @@ describe('Inbox confirm card', () => {
     const onConfirm = jest.fn();
     await wrap(
       <ConfirmCard
-        item={item({})}
+        {...cardProps({})}
         currencies={currencies}
         onOpen={jest.fn()}
         onConfirm={onConfirm}
@@ -71,7 +79,7 @@ describe('Inbox confirm card', () => {
   it('says what a draft still needs and offers no ✓ button', async () => {
     await wrap(
       <ConfirmCard
-        item={item({ destinationName: undefined })}
+        {...cardProps({ destinationName: undefined })}
         currencies={currencies}
         onOpen={jest.fn()}
         onConfirm={jest.fn()}
@@ -86,7 +94,7 @@ describe('Inbox confirm card', () => {
   it('marks a payee that will be created in Firefly III', async () => {
     await wrap(
       <ConfirmCard
-        item={item({ isNewPayee: true })}
+        {...cardProps({ isNewPayee: true })}
         currencies={currencies}
         onOpen={jest.fn()}
         onConfirm={jest.fn()}

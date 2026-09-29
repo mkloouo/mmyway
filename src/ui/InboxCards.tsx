@@ -15,7 +15,7 @@ import { currencyOf } from './money';
 import { categoryColor } from './categoryColor';
 import { needsLabel } from './readinessLabel';
 import type { AttentionItem, InboxItemRow, QueuedChange } from '../inbox/useInboxSections';
-import { draftReadiness } from '../inbox/readiness';
+import type { DraftReadiness } from '../inbox/readiness';
 import type { Draft } from '../inbox/draft';
 import { readDraft, readReviewJournal, reviewForeign } from '../inbox/draftJson';
 import { draftTotal, isSplitDraft } from '../inbox/draftSplits';
@@ -84,6 +84,8 @@ function MaybeSwipeable({
 
 export function ConfirmCard({
   item,
+  draft,
+  readiness,
   currencies,
   onOpen,
   onConfirm,
@@ -91,6 +93,9 @@ export function ConfirmCard({
   selection,
 }: {
   item: InboxItemRow;
+  /** Parsed once in `useInboxSections`; null only while a receipt is still being read. */
+  draft: Draft | null;
+  readiness: DraftReadiness | null;
   currencies: { code: string; symbol: string; decimalPlaces: number }[];
   onOpen: () => void;
   onConfirm: () => void;
@@ -105,7 +110,7 @@ export function ConfirmCard({
   const cardStyle = { marginHorizontal: t.space.lg, marginBottom: t.space.sm };
   const press = selection.active ? selection.toggle : onOpen;
 
-  if (item.kind === 'receipt' && item.state === 'captured') {
+  if (!draft || !readiness) {
     return (
       <MaybeSwipeable disabled={selection.active} onDelete={onDelete}>
         <Animated.View style={selectPop}>
@@ -126,8 +131,6 @@ export function ConfirmCard({
     );
   }
 
-  const draft: Draft = readDraft(item.draftJson);
-  const readiness = draftReadiness(draft);
   const isTransfer = draft.type === 'transfer';
   const payeeName = isTransfer
     ? `${draft.sourceName ?? '?'} → ${draft.destinationName ?? '?'}`

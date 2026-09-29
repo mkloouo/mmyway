@@ -17,10 +17,12 @@ export interface AliasTarget {
   targetName: string;
 }
 
-function useCandidates(): AliasTarget[] {
+function useCandidates(enabled: boolean): AliasTarget[] {
   const db = useDb();
   const { data: accounts } = useLiveQuery(
     db.select().from(referenceAccounts).where(eq(referenceAccounts.type, 'expense')),
+    [],
+    enabled,
   );
   return useMemo(
     () => (accounts ?? []).map((a) => ({ targetId: a.id, targetName: a.name })),
@@ -40,7 +42,7 @@ export function TargetPickerSheet({
   const t = useTheme();
   const { t: tr } = useTranslation();
   const [query, setQuery] = useState('');
-  const candidates = useCandidates();
+  const candidates = useCandidates(visible);
   const trimmed = query.trim();
   const results = trimmed
     ? candidates.filter((c) => normkey(c.targetName).includes(normkey(trimmed)))

@@ -108,6 +108,7 @@ export default function TransactionDetailScreen() {
 
   const { data: rows } = useLiveQuery(
     db.select().from(cachedTransactions).where(eq(cachedTransactions.groupId, groupId)),
+    [groupId],
   );
   // The kinds that can touch one transaction; account edits never do.
   const { data: outbox } = useLiveQuery(
@@ -128,6 +129,7 @@ export default function TransactionDetailScreen() {
       .select({ path: inboxItems.receiptImagePath })
       .from(inboxItems)
       .where(eq(inboxItems.ff3GroupId, groupId)),
+    [groupId],
   );
   const localReceiptPath = sourceItems?.find((i) => !!i.path)?.path ?? null;
 
