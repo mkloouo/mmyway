@@ -14,7 +14,7 @@
 // - A failed op backs off (retryDelayMs): until its next_attempt_at it is not re-sent, and the
 //   operations depending on it wait with it. "Retry now" in the Inbox sets it back to `pending`,
 //   which skips the wait.
-import { and, asc, eq, inArray, isNotNull, lt, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, lt, ne, sql } from 'drizzle-orm';
 import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 import type { FF3Client } from '../api/ff3/client';
 import { FF3RequestError } from '../api/ff3/client';
@@ -859,22 +859,43 @@ export async function deleteCachedTransactions(db: OutboxDb, groupIds: string[])
 }
 
 /**
- * The user's way out of an operation that can never succeed (a 422, an account deleted in FF3, a
- * receipt file that is gone): replay stops at the first failure, so without this one bad
- * operation would hold back every later write forever. Local only — nothing is sent. An inbox
- * item the operation was confirming goes back to the Inbox as a draft rather than vanishing, so
- * the entry itself is not lost.
+ * Drops a queued change before it is sent: the way out of one that can never succeed (a 422, an
+ * account deleted in FF3, a receipt file that is gone), and the Queued card's Cancel. Local only —
+ * nothing is sent. An inbox item the operation was confirming goes back to the Inbox as a draft
+ * rather than vanishing, so the entry itself is not lost. 'sending' when the change is already on
+ * its way, and left alone.
  */
-export async function discardOperation(db: OutboxDb, opId: string): Promise<void> {
-  const [op] = await db.select().from(outboxOperations).where(eq(outboxOperations.id, opId));
-  if (!op) return;
-  await db.delete(outboxOperations).where(eq(outboxOperations.id, opId));
+export async function discardOperation(
+  db: OutboxDb,
+  opId: string,
+): Promise<'discarded' | 'sending'> {
+  const [op] = await db
+    .delete(outboxOperations)
+    .where(and(eq(outboxOperations.id, opId), ne(outboxOperations.status, 'in_flight')))
+    .returning();
+  if (!op) {
+    const [still] = await db
+      .select({ id: outboxOperations.id })
+      .from(outboxOperations)
+      .where(eq(outboxOperations.id, opId));
+    return still ? 'sending' : 'discarded';
+  }
   if (op.kind === 'create_transaction' && op.inboxItemId) {
+    const [item] = await db
+      .select({ kind: inboxItems.kind })
+      .from(inboxItems)
+      .where(eq(inboxItems.id, op.inboxItemId));
     await db
       .update(inboxItems)
-      .set({ state: 'captured', updatedAt: new Date().toISOString() })
+      // A receipt goes back reviewed: as `captured` the next sync would read the photo again and
+      // overwrite the draft.
+      .set({
+        state: item?.kind === 'receipt' ? 'parsed' : 'captured',
+        updatedAt: new Date().toISOString(),
+      })
       .where(eq(inboxItems.id, op.inboxItemId));
   }
+  return 'discarded';
 }
 
 /** How long a receipt photo stays on the device after its transaction synced. */

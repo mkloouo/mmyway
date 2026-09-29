@@ -197,14 +197,19 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
     });
   }
 
-  const onSave = act(tr('common.save'), async () => {
-    if (problems.length > 0) return;
-    const tags = tagsText
+  const next: PlannedFields = {
+    ...fields,
+    name: fields.name.trim(),
+    tags: tagsText
       .split(',')
       .map((s) => s.trim())
-      .filter(Boolean);
-    const next = { ...fields, name: fields.name.trim(), tags };
-    if (!item || !samePlannedFields(item.fields, next)) await savePlanned(db, item, next);
+      .filter(Boolean),
+  };
+  // Save stays off until something differs from what Firefly III holds (or a queued save does).
+  const unchanged = !!item && samePlannedFields(item.fields, next);
+  const onSave = act(tr('common.save'), async () => {
+    if (problems.length > 0 || unchanged) return;
+    await savePlanned(db, item, next);
     router.back();
   });
   const saving = act.pending(tr('common.save'));
@@ -411,7 +416,7 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
         <Button
           title={saving ? tr('common.saving') : tr('common.save')}
           onPress={onSave}
-          disabled={saving || problems.length > 0}
+          disabled={saving || unchanged || problems.length > 0}
           size="lg"
         />
       </View>

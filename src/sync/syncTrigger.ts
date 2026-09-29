@@ -41,5 +41,30 @@ export function requestSync(delayMs: number = SYNC_DELAY.afterWrite): void {
   }, at - Date.now());
 }
 
+/**
+ * How long a queue a sync couldn't send waits before the app tries again by itself: 5 s, then
+ * longer, up to 5 minutes. Without it, a push that met a moment without network (a DNS lookup
+ * failing just after a network switch) left everything queued until the next resume, reconnect
+ * or pull-to-refresh, while Firefly III answered in the browser all along.
+ */
+const RETRY_DELAYS_MS = [5_000, 15_000, 30_000, 60_000, 120_000, 300_000];
+let retries = 0;
+
+/**
+ * After a sync: `unsent` is whether anything is still waiting to be sent now, `nextAttemptAt` the
+ * earliest time a change that failed may be retried. Asks for the sync that sends them; with
+ * nothing waiting, the backoff starts over.
+ */
+export function retryUnsent(unsent: boolean, nextAttemptAt: number | null): void {
+  if (unsent) {
+    requestSync(RETRY_DELAYS_MS[Math.min(retries, RETRY_DELAYS_MS.length - 1)]);
+    retries += 1;
+    return;
+  }
+  retries = 0;
+  if (nextAttemptAt !== null)
+    requestSync(Math.max(nextAttemptAt - Date.now(), RETRY_DELAYS_MS[0]!));
+}
+
 /** The React Query key useSync registers runSync under. */
 export const SYNC_QUERY_KEY = ['sync'] as const;

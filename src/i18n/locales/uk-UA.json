@@ -232,7 +232,8 @@
     "title": "Огляд",
     "viaAlias": "через псевдонім «{{alias}}»",
     "willBookTo": "«{{raw}}» забронює для {{name}}",
-    "pickCurrency": ""
+    "pickCurrency": "",
+    "cancelSendingHint": ""
   },
   "errorBoundary": {
     "reload": "Перезавантажити",
@@ -347,7 +348,11 @@
     "unknownError": "Невідома помилка",
     "zeroHint": "Нічого, що чекає на підтвердження.",
     "zeroTitle": "Вхідні нуль",
-    "readingReceiptWith": ""
+    "readingReceiptWith": "",
+    "cancelChange": "",
+    "cancelChangeTitle": "",
+    "alreadySending": "",
+    "alreadySendingBody": ""
   },
   "logs": {
     "clear": "Очистити",

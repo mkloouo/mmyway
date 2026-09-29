@@ -310,13 +310,16 @@ function ChangedLine({ changed }: { changed: string[] }) {
   );
 }
 
-/** A change waiting in the queue: what it is, what it changes, and a tap to open that. */
+/** A change waiting in the queue: what it is, what it changes, a tap to open that, and Cancel. */
 export function QueuedCard({
   change,
   onOpen,
+  onCancel,
 }: {
   change: QueuedChange;
   onOpen: (route: Href) => void;
+  /** Drops the change before it is sent; not offered once it is on its way. */
+  onCancel: (op: QueuedChange['op']) => void;
 }) {
   const t = useTheme();
   const { t: tr } = useTranslation();
@@ -349,11 +352,21 @@ export function QueuedCard({
         </Text>
       )}
       <ChangedLine changed={info.changed} />
-      <View style={{ flexDirection: 'row', marginTop: t.space.sm }}>
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginTop: t.space.sm,
+        }}
+      >
         <Chip
           label={sending ? tr('inbox.queueSending') : tr('inbox.queueWaiting')}
           tone={sending ? undefined : 'warn'}
         />
+        {!sending && (
+          <Button title={tr('inbox.cancelChange')} variant="ghost" onPress={() => onCancel(op)} />
+        )}
       </View>
     </Card>
   );

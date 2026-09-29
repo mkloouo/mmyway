@@ -3,7 +3,10 @@
 // for the replay conflict check) -> replay the outbox -> pull recurring -> re-read account balances
 // and re-pull recent transactions only if the replay actually landed something server-side.
 // Never throws: a sync failure is a status the caller displays, not a crash.
+import { inArray } from 'drizzle-orm';
 import { readStoredCredentials } from '../api/ff3/auth';
+import { outboxOperations } from '../db/schema';
+import { retryUnsent } from './syncTrigger';
 import { clientFor } from '../api/ff3/session';
 import { readHosts } from '../api/ff3/hosts';
 import {
@@ -259,5 +262,25 @@ async function doSync(db: OutboxDb, mode: SyncMode): Promise<SyncSummary> {
     );
   }
 
+  await retryWhatIsLeft(db);
   return summary;
+}
+
+/** Whatever this sync couldn't send is tried again later by itself (src/sync/syncTrigger.ts). */
+async function retryWhatIsLeft(db: OutboxDb): Promise<void> {
+  try {
+    const left = await db
+      .select({ status: outboxOperations.status, nextAttemptAt: outboxOperations.nextAttemptAt })
+      .from(outboxOperations)
+      .where(inArray(outboxOperations.status, ['pending', 'failed']));
+    const retryTimes = left
+      .filter((op) => op.status === 'failed' && op.nextAttemptAt)
+      .map((op) => new Date(op.nextAttemptAt!).getTime());
+    retryUnsent(
+      left.some((op) => op.status === 'pending'),
+      retryTimes.length > 0 ? Math.min(...retryTimes) : null,
+    );
+  } catch (err) {
+    logLine('warn', `scheduling a retry failed: ${errorMessage(err)}`);
+  }
 }

@@ -119,7 +119,7 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
     [id],
   );
   const pendingCreate =
-    (ops ?? []).find((op) => op.kind === 'create_transaction' && op.status === 'pending') ?? null;
+    (ops ?? []).find((op) => op.kind === 'create_transaction' && op.status !== 'in_flight') ?? null;
   // Any entry can carry a photo: it is uploaded to FF3 right after the transaction is created
   // (src/sync/outbox.ts queues the upload when the create lands).
   const attachPhoto = act(tr('capture.receiptPhoto'), async () => {
@@ -445,6 +445,30 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
                 </Text>
               </Pressable>
             )}
+            {/* A transfer has no payee, so its title is what names it; a payment's shows when it
+                says something the payee doesn't. */}
+            {(draft.type === 'transfer' || draft.description !== payeeName) && (
+              <Pressable
+                onPress={() => setTextFor(0)}
+                disabled={readOnly}
+                accessibilityRole="button"
+                accessibilityLabel={tr('fields.description')}
+              >
+                <Text
+                  style={[
+                    draft.type === 'transfer' ? t.type.heading : t.type.body,
+                    {
+                      color: draft.type === 'transfer' ? t.color.text : t.color.textMuted,
+                      marginTop: t.space.xs,
+                      textAlign: 'center',
+                    },
+                  ]}
+                  numberOfLines={2}
+                >
+                  {draft.description || '—'}
+                </Text>
+              </Pressable>
+            )}
             {!!aliasCaption && (
               <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]}>
                 {aliasCaption}
@@ -556,11 +580,16 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
               label={row.state === 'synced' ? tr('draft.synced') : tr('draft.queued')}
             />
             {!!pendingCreate && (
-              <Button
-                title={tr('draft.cancelSending')}
-                variant="secondary"
-                onPress={cancelSending}
-              />
+              <>
+                <Button
+                  title={tr('draft.cancelSending')}
+                  variant="secondary"
+                  onPress={cancelSending}
+                />
+                <Text style={[t.type.label, { color: t.color.textMuted, textAlign: 'center' }]}>
+                  {tr('draft.cancelSendingHint')}
+                </Text>
+              </>
             )}
           </View>
         ) : (

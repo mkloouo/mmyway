@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { inboxItems, outboxOperations } from '../db/schema';
 import { resolvePayeeAlias } from '../lookup/aliases';
 import { transition, type InboxState } from './state';
@@ -151,7 +151,11 @@ export async function undoConfirm(
   const removed = await db
     .delete(outboxOperations)
     .where(
-      and(eq(outboxOperations.id, undo.outboxOperationId), eq(outboxOperations.status, 'pending')),
+      and(
+        eq(outboxOperations.id, undo.outboxOperationId),
+        // Waiting, or waiting to be retried after a failed attempt: either way not on its way.
+        inArray(outboxOperations.status, ['pending', 'failed']),
+      ),
     )
     .returning({ id: outboxOperations.id });
   if (removed.length === 0) return 'already_sent';
