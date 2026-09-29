@@ -26,7 +26,11 @@ export function createFF3Client({ baseUrl, apiToken }: FF3ClientConfig): FF3Clie
       });
       if (!response.ok) {
         const body = await response.text().catch(() => '');
-        throw new FF3RequestError(response.status, body);
+        throw new FF3RequestError(
+          response.status,
+          body,
+          `${init.method ?? 'GET'} ${path.split('?')[0]}`,
+        );
       }
       if (response.status === 204) return undefined as T;
       return (await response.json()) as T;
@@ -46,6 +50,8 @@ export class FF3RequestError extends Error {
   constructor(
     public status: number,
     public body: string,
+    /** "PUT /v1/recurrences/12": which call FF3 refused, for the error a queued change shows. */
+    public request?: string,
   ) {
     super(`FF3 request failed: ${status}`);
   }

@@ -328,6 +328,22 @@ describe('error text', () => {
       'Firefly III answered 502',
     );
   });
+
+  it('says which call FF3 refused, and which fields', () => {
+    const { describeFF3Error: d } = jest.requireActual('./outbox');
+    expect(
+      d(
+        new FF3RequestError(
+          422,
+          '{"message":"The notes must be at least 1 characters.","errors":{"notes":["The notes must be at least 1 characters."]}}',
+          'PUT /v1/recurrences/12',
+        ),
+      ),
+    ).toBe('The notes must be at least 1 characters. (422) — PUT /v1/recurrences/12 (notes)');
+    expect(d(new FF3RequestError(502, '<html>Bad gateway</html>', 'GET /v1/about'))).toBe(
+      'Firefly III answered 502 — GET /v1/about',
+    );
+  });
 });
 
 describe('conflict details', () => {
