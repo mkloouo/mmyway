@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { createTestDb } from '../db/testDb';
 import { enqueueOperation, replayOutbox } from './outbox';
+import { FF3RequestError } from '../api/ff3/client';
 import { outboxOperations, cachedTransactions, inboxItems } from '../db/schema';
 
 function fakeClient(handlers: Record<string, () => Promise<unknown>>) {
@@ -14,7 +15,7 @@ function fakeClient(handlers: Record<string, () => Promise<unknown>>) {
 }
 
 describe('replayOutbox', () => {
-  it('replays operations in sequence order and stops at the first failure', async () => {
+  it('replays in sequence order; a failure holds back only what depends on it (#41)', async () => {
     const db = createTestDb();
     await enqueueOperation(db, {
       id: 'op-1',
@@ -36,19 +37,65 @@ describe('replayOutbox', () => {
     const client = fakeClient({
       '/v1/transactions': async () => {
         calls += 1;
-        if (calls === 2) throw new Error('network down');
+        if (calls === 2) throw new FF3RequestError(422, '{"message":"The amount is invalid."}');
         return {};
       },
     });
 
     const result = await replayOutbox(db as any, client as any);
 
-    expect(result.succeeded).toEqual(['op-1']);
+    // op-3 shares nothing with op-2, so op-2's own failure doesn't hold it back.
+    expect(result.succeeded).toEqual(['op-1', 'op-3']);
     expect(result.failedAt).toBe('op-2');
-
     const rows = await db.select().from(outboxOperations);
-    const op3 = rows.find((r) => r.id === 'op-3');
-    expect(op3?.status).toBe('pending'); // never attempted — ordering preserved
+    expect(rows.map((r) => [r.id, r.status])).toEqual([['op-2', 'failed']]);
+  });
+
+  it('stops the whole run when FF3 cannot be reached', async () => {
+    const db = createTestDb();
+    for (const id of ['op-1', 'op-2']) {
+      await enqueueOperation(db, {
+        id,
+        kind: 'create_transaction',
+        payload: { clientId: id, splits: [] },
+      });
+    }
+    const client = fakeClient({
+      '/v1/transactions': async () => {
+        throw new TypeError('Network request failed');
+      },
+    });
+
+    const result = await replayOutbox(db as any, client as any);
+
+    expect(client.request).toHaveBeenCalledTimes(1); // op-2 would fail the same way: not tried
+    expect(result.failedAt).toBe('op-1');
+    const op2 = (await db.select().from(outboxOperations)).find((r) => r.id === 'op-2');
+    expect(op2?.status).toBe('pending');
+  });
+
+  it('holds back a change to the same transaction, and whatever depends on that in turn', async () => {
+    const db = createTestDb();
+    const del = (id: string, groupId: string) =>
+      enqueueOperation(db, { id, kind: 'delete_transaction', payload: { groupId } });
+    await del('op-1', 'g1');
+    await del('op-2', 'g1'); // the same transaction as op-1
+    await del('op-3', 'g2'); // unrelated
+    const client = fakeClient({
+      '/v1/transactions/g1': async () => {
+        throw new FF3RequestError(422, '{"message":"Nope."}');
+      },
+      '/v1/transactions/g2': async () => ({}),
+    });
+
+    const result = await replayOutbox(db as any, client as any);
+
+    expect(result.failedAt).toBe('op-1');
+    expect(result.succeeded).toEqual(['op-3']);
+    const statuses = Object.fromEntries(
+      (await db.select().from(outboxOperations)).map((r) => [r.id, r.status]),
+    );
+    expect(statuses).toEqual({ 'op-1': 'failed', 'op-2': 'pending' });
   });
 
   it('flags a stale updated_at as a conflict instead of overwriting', async () => {

@@ -4,6 +4,9 @@
 
 ### Fixed
 
+- A change Firefly III refuses no longer holds back every change queued after it: only the
+  changes to the same transaction, account, planned transaction or Inbox entry wait for it, and the
+  rest are sent. When Firefly III can't be reached at all, everything still waits.
 - Count cash now shows the expected balance, the drift and the review rows in the phone's own
   number format, with the currency's symbol — the same as everywhere else in the app.
 - Activity, the Inbox and every other list no longer redraw themselves each time a sync touches
