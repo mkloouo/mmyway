@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.4.3] - 2026-09-29
+
 ### Capture
 
 - A transfer is named after its accounts ("PKO · Personal → Cash · Base") instead of "transfer",
