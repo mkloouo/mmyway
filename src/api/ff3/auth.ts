@@ -38,7 +38,10 @@ export async function probeAbout(
     return { ok: false, reason: 'invalid_host' };
   }
   if (!response.ok) {
-    return { ok: false, reason: classifyProbeError(response.status, response.headers.get('content-type')) };
+    return {
+      ok: false,
+      reason: classifyProbeError(response.status, response.headers.get('content-type')),
+    };
   }
   const contentType = response.headers.get('content-type');
   if (contentType?.startsWith('text/html')) {

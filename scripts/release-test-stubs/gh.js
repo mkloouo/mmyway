@@ -11,7 +11,8 @@ const args = process.argv.slice(2);
 fs.appendFileSync(process.env.STUB_LOG, JSON.stringify(['gh', ...args]) + '\n');
 const failing = (process.env.STUB_FAIL || '').split(',');
 const stateFile = path.join(process.env.STUB_STATE, 'release.json');
-const load = () => (fs.existsSync(stateFile) ? JSON.parse(fs.readFileSync(stateFile, 'utf8')) : null);
+const load = () =>
+  fs.existsSync(stateFile) ? JSON.parse(fs.readFileSync(stateFile, 'utf8')) : null;
 const save = (state) => fs.writeFileSync(stateFile, JSON.stringify(state));
 
 const [cmd, sub, tag] = args;
@@ -28,7 +29,12 @@ switch (sub) {
     if (args.includes('--json')) console.log(`https://github.com/example/app/releases/tag/${tag}`);
     break;
   case 'create':
-    if (args.includes('--verify-tag') && execFileSync('git', ['ls-remote', '--tags', 'origin', `refs/tags/${tag}`], { encoding: 'utf8' }).trim() === '') {
+    if (
+      args.includes('--verify-tag') &&
+      execFileSync('git', ['ls-remote', '--tags', 'origin', `refs/tags/${tag}`], {
+        encoding: 'utf8',
+      }).trim() === ''
+    ) {
       console.error(`gh stub: tag ${tag} doesn't exist on origin`);
       process.exit(1);
     }

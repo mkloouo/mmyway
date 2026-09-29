@@ -7,9 +7,19 @@ import { enqueueOperation, type OutboxDb, type UpdateTransactionPayload } from '
 import { readPayload } from '../sync/payloadJson';
 import { generateId } from '../utils/id';
 
-export async function queueSplitEdit(db: OutboxDb, payload: UpdateTransactionPayload & { splits: NonNullable<UpdateTransactionPayload['splits']> }): Promise<void> {
-  const queued = await db.select().from(outboxOperations)
-    .where(and(eq(outboxOperations.kind, 'update_transaction'), inArray(outboxOperations.status, ['pending', 'failed'])));
+export async function queueSplitEdit(
+  db: OutboxDb,
+  payload: UpdateTransactionPayload & { splits: NonNullable<UpdateTransactionPayload['splits']> },
+): Promise<void> {
+  const queued = await db
+    .select()
+    .from(outboxOperations)
+    .where(
+      and(
+        eq(outboxOperations.kind, 'update_transaction'),
+        inArray(outboxOperations.status, ['pending', 'failed']),
+      ),
+    );
   let expectedUpdatedAt = payload.expectedUpdatedAt;
   const removed = new Set(payload.removedJournalIds ?? []);
   for (const op of queued) {
@@ -17,13 +27,27 @@ export async function queueSplitEdit(db: OutboxDb, payload: UpdateTransactionPay
     // One whose update already landed is left to finish its split deletes.
     if (p.groupId !== payload.groupId || !p.splits || p.applied) continue;
     // Only while it hasn't started sending (the same claim rule as Undo).
-    const gone = await db.delete(outboxOperations)
-      .where(and(eq(outboxOperations.id, op.id), inArray(outboxOperations.status, ['pending', 'failed'])))
+    const gone = await db
+      .delete(outboxOperations)
+      .where(
+        and(
+          eq(outboxOperations.id, op.id),
+          inArray(outboxOperations.status, ['pending', 'failed']),
+        ),
+      )
       .returning({ id: outboxOperations.id });
     if (gone.length > 0) {
       expectedUpdatedAt = p.expectedUpdatedAt;
       for (const id of p.removedJournalIds ?? []) removed.add(id);
     }
   }
-  await enqueueOperation(db, { id: generateId(), kind: 'update_transaction', payload: { ...payload, expectedUpdatedAt, ...(removed.size ? { removedJournalIds: [...removed] } : {}) } });
+  await enqueueOperation(db, {
+    id: generateId(),
+    kind: 'update_transaction',
+    payload: {
+      ...payload,
+      expectedUpdatedAt,
+      ...(removed.size ? { removedJournalIds: [...removed] } : {}),
+    },
+  });
 }

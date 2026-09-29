@@ -24,7 +24,16 @@ export function pendingAccountIds(ops: { kind: string; payloadJson: string }[]):
 
 export function usePendingAccountIds(): Set<string> {
   const db = useDb();
-  const { data } = useLiveQuery(db.select({ kind: outboxOperations.kind, payloadJson: outboxOperations.payloadJson }).from(outboxOperations)
-    .where(and(eq(outboxOperations.kind, 'update_account'), inArray(outboxOperations.status, ['pending', 'in_flight', 'failed']))));
+  const { data } = useLiveQuery(
+    db
+      .select({ kind: outboxOperations.kind, payloadJson: outboxOperations.payloadJson })
+      .from(outboxOperations)
+      .where(
+        and(
+          eq(outboxOperations.kind, 'update_account'),
+          inArray(outboxOperations.status, ['pending', 'in_flight', 'failed']),
+        ),
+      ),
+  );
   return useMemo(() => pendingAccountIds(data ?? []), [data]);
 }

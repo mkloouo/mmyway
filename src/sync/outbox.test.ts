@@ -16,9 +16,21 @@ function fakeClient(handlers: Record<string, () => Promise<unknown>>) {
 describe('replayOutbox', () => {
   it('replays operations in sequence order and stops at the first failure', async () => {
     const db = createTestDb();
-    await enqueueOperation(db, { id: 'op-1', kind: 'create_transaction', payload: { clientId: 'c1', splits: [] } });
-    await enqueueOperation(db, { id: 'op-2', kind: 'create_transaction', payload: { clientId: 'c2', splits: [] } });
-    await enqueueOperation(db, { id: 'op-3', kind: 'create_transaction', payload: { clientId: 'c3', splits: [] } });
+    await enqueueOperation(db, {
+      id: 'op-1',
+      kind: 'create_transaction',
+      payload: { clientId: 'c1', splits: [] },
+    });
+    await enqueueOperation(db, {
+      id: 'op-2',
+      kind: 'create_transaction',
+      payload: { clientId: 'c2', splits: [] },
+    });
+    await enqueueOperation(db, {
+      id: 'op-3',
+      kind: 'create_transaction',
+      payload: { clientId: 'c3', splits: [] },
+    });
 
     let calls = 0;
     const client = fakeClient({
@@ -42,18 +54,33 @@ describe('replayOutbox', () => {
   it('flags a stale updated_at as a conflict instead of overwriting', async () => {
     const db = createTestDb();
     await db.insert(cachedTransactions).values({
-      groupId: 'g1', journalId: 'j1', type: 'withdrawal', date: '2026-09-01', amount: '10.00',
-      currencyCode: 'PLN', description: 'test', tagsJson: '[]', updatedAt: '2026-09-01T00:00:00Z',
+      groupId: 'g1',
+      journalId: 'j1',
+      type: 'withdrawal',
+      date: '2026-09-01',
+      amount: '10.00',
+      currencyCode: 'PLN',
+      description: 'test',
+      tagsJson: '[]',
+      updatedAt: '2026-09-01T00:00:00Z',
       syncedAt: '2026-09-01T00:00:00Z',
     });
     await enqueueOperation(db, {
-      id: 'op-1', kind: 'update_transaction',
-      payload: { groupId: 'g1', transactionJournalId: 'j1', expectedUpdatedAt: '2026-08-01T00:00:00Z', changes: { amount: '20.00' } },
+      id: 'op-1',
+      kind: 'update_transaction',
+      payload: {
+        groupId: 'g1',
+        transactionJournalId: 'j1',
+        expectedUpdatedAt: '2026-08-01T00:00:00Z',
+        changes: { amount: '20.00' },
+      },
     });
 
     const conflicts: unknown[] = [];
     const client = fakeClient({ '/v1/transactions': async () => ({}) });
-    const result = await replayOutbox(db as any, client as any, { onConflict: (op, serverUpdatedAt) => conflicts.push({ op, serverUpdatedAt }) });
+    const result = await replayOutbox(db as any, client as any, {
+      onConflict: (op, serverUpdatedAt) => conflicts.push({ op, serverUpdatedAt }),
+    });
 
     expect(result.conflicted).toEqual(['op-1']);
     expect(conflicts).toHaveLength(1);
@@ -63,12 +90,24 @@ describe('replayOutbox', () => {
     const db = createTestDb();
     const now = new Date().toISOString();
     await db.insert(inboxItems).values({
-      id: 'item-1', kind: 'manual_entry', state: 'confirmed', draftJson: '{}', createdAt: now, updatedAt: now,
+      id: 'item-1',
+      kind: 'manual_entry',
+      state: 'confirmed',
+      draftJson: '{}',
+      createdAt: now,
+      updatedAt: now,
     });
-    await enqueueOperation(db, { id: 'op-1', inboxItemId: 'item-1', kind: 'create_transaction', payload: { clientId: 'c1', splits: [] } });
+    await enqueueOperation(db, {
+      id: 'op-1',
+      inboxItemId: 'item-1',
+      kind: 'create_transaction',
+      payload: { clientId: 'c1', splits: [] },
+    });
 
     const client = fakeClient({
-      '/v1/transactions': async () => ({ data: { id: 'g1', attributes: { transactions: [{ transaction_journal_id: 'j1' }] } } }),
+      '/v1/transactions': async () => ({
+        data: { id: 'g1', attributes: { transactions: [{ transaction_journal_id: 'j1' }] } },
+      }),
     });
     await replayOutbox(db as any, client as any);
 
@@ -81,10 +120,20 @@ describe('replayOutbox', () => {
     const db = createTestDb();
     const now = new Date().toISOString();
     await db.insert(inboxItems).values({
-      id: 'item-1', kind: 'manual_entry', state: 'confirmed', draftJson: '{}',
-      receiptImagePath: 'file:///receipt.jpg', createdAt: now, updatedAt: now,
+      id: 'item-1',
+      kind: 'manual_entry',
+      state: 'confirmed',
+      draftJson: '{}',
+      receiptImagePath: 'file:///receipt.jpg',
+      createdAt: now,
+      updatedAt: now,
     });
-    await enqueueOperation(db, { id: 'op-1', inboxItemId: 'item-1', kind: 'create_transaction', payload: { clientId: 'c1', splits: [] } });
+    await enqueueOperation(db, {
+      id: 'op-1',
+      inboxItemId: 'item-1',
+      kind: 'create_transaction',
+      payload: { clientId: 'c1', splits: [] },
+    });
 
     let attempt = 0;
     const client = {
@@ -92,7 +141,9 @@ describe('replayOutbox', () => {
         if (path === '/v1/transactions') {
           attempt += 1;
           if (attempt === 1) throw new Error('network down');
-          return { data: { id: 'g1', attributes: { transactions: [{ transaction_journal_id: 'j1' }] } } };
+          return {
+            data: { id: 'g1', attributes: { transactions: [{ transaction_journal_id: 'j1' }] } },
+          };
         }
         throw new Error(`no handler for ${path}`);
       }),
@@ -105,20 +156,37 @@ describe('replayOutbox', () => {
     const second = await replayOutbox(db as any, client as any);
     expect(second.succeeded).toEqual(['op-1']);
 
-    const attachOps = (await db.select().from(outboxOperations)).filter((op) => op.kind === 'attach_receipt');
+    const attachOps = (await db.select().from(outboxOperations)).filter(
+      (op) => op.kind === 'attach_receipt',
+    );
     expect(attachOps).toHaveLength(1);
   });
 
-  it('update_account re-reads the account at replay and keeps the server\'s other note lines', async () => {
+  it("update_account re-reads the account at replay and keeps the server's other note lines", async () => {
     const db = createTestDb();
-    await enqueueOperation(db, { id: 'op-1', kind: 'update_account', payload: { accountId: 'acc-1', setEnvelopeMarker: true } });
+    await enqueueOperation(db, {
+      id: 'op-1',
+      kind: 'update_account',
+      payload: { accountId: 'acc-1', setEnvelopeMarker: true },
+    });
 
     let putBody: string | undefined;
     const client = {
       request: jest.fn(async (path: string, init?: RequestInit) => {
         if (path === '/v1/accounts/acc-1' && (!init || init.method === undefined)) {
           // GET: the server's notes changed since the checkbox was ticked (someone edited it in the web UI)
-          return { data: { id: 'acc-1', attributes: { name: 'Cash', type: 'asset', currency_code: 'PLN', active: true, notes: 'Edited in the web UI just now' } } };
+          return {
+            data: {
+              id: 'acc-1',
+              attributes: {
+                name: 'Cash',
+                type: 'asset',
+                currency_code: 'PLN',
+                active: true,
+                notes: 'Edited in the web UI just now',
+              },
+            },
+          };
         }
         if (path === '/v1/accounts/acc-1' && init?.method === 'PUT') {
           putBody = init.body as string;
@@ -131,36 +199,71 @@ describe('replayOutbox', () => {
     const result = await replayOutbox(db as any, client as any);
 
     expect(result.succeeded).toEqual(['op-1']);
-    expect(JSON.parse(putBody!)).toEqual({ notes: 'Edited in the web UI just now\nmmyway-envelope' });
+    expect(JSON.parse(putBody!)).toEqual({
+      notes: 'Edited in the web UI just now\nmmyway-envelope',
+    });
   });
 
   it('update_account sends only the active flag when that is all it carries', async () => {
     const db = createTestDb();
-    await enqueueOperation(db, { id: 'op-1', kind: 'update_account', payload: { accountId: 'acc-1', active: false } });
+    await enqueueOperation(db, {
+      id: 'op-1',
+      kind: 'update_account',
+      payload: { accountId: 'acc-1', active: false },
+    });
     const client = fakeClient({ '/v1/accounts/acc-1': async () => ({}) });
     await replayOutbox(db as any, client as any);
     expect(client.request).toHaveBeenCalledTimes(1);
-    expect(client.request.mock.calls[0]).toEqual(['/v1/accounts/acc-1', { method: 'PUT', body: JSON.stringify({ active: false }) }]);
+    expect(client.request.mock.calls[0]).toEqual([
+      '/v1/accounts/acc-1',
+      { method: 'PUT', body: JSON.stringify({ active: false }) },
+    ]);
   });
 
   it('update_account sends a new position (Reorder) to FF3', async () => {
     const db = createTestDb();
-    await enqueueOperation(db, { id: 'op-1', kind: 'update_account', payload: { accountId: 'acc-1', order: 3 } });
-    const client = fakeClient({ '/v1/accounts/acc-1': async () => ({}) });
-    await replayOutbox(db as any, client as any);
-    expect(JSON.parse((client.request.mock.calls[0] as unknown as [string, RequestInit])[1].body as string)).toEqual({ order: 3 });
-  });
-
-  it('update_account sends the account page\'s fields under FF3\'s names', async () => {
-    const db = createTestDb();
     await enqueueOperation(db, {
-      id: 'op-1', kind: 'update_account',
-      payload: { accountId: 'acc-1', edit: { name: 'Wallet', includeNetWorth: false, openingBalance: '-20.5', openingBalanceDate: '2026-01-01', virtualBalance: null } },
+      id: 'op-1',
+      kind: 'update_account',
+      payload: { accountId: 'acc-1', order: 3 },
     });
     const client = fakeClient({ '/v1/accounts/acc-1': async () => ({}) });
     await replayOutbox(db as any, client as any);
-    expect(JSON.parse((client.request.mock.calls[0] as unknown as [string, RequestInit])[1].body as string)).toEqual({
-      name: 'Wallet', include_net_worth: false, opening_balance: '-20.5', opening_balance_date: '2026-01-01', virtual_balance: null,
+    expect(
+      JSON.parse(
+        (client.request.mock.calls[0] as unknown as [string, RequestInit])[1].body as string,
+      ),
+    ).toEqual({ order: 3 });
+  });
+
+  it("update_account sends the account page's fields under FF3's names", async () => {
+    const db = createTestDb();
+    await enqueueOperation(db, {
+      id: 'op-1',
+      kind: 'update_account',
+      payload: {
+        accountId: 'acc-1',
+        edit: {
+          name: 'Wallet',
+          includeNetWorth: false,
+          openingBalance: '-20.5',
+          openingBalanceDate: '2026-01-01',
+          virtualBalance: null,
+        },
+      },
+    });
+    const client = fakeClient({ '/v1/accounts/acc-1': async () => ({}) });
+    await replayOutbox(db as any, client as any);
+    expect(
+      JSON.parse(
+        (client.request.mock.calls[0] as unknown as [string, RequestInit])[1].body as string,
+      ),
+    ).toEqual({
+      name: 'Wallet',
+      include_net_worth: false,
+      opening_balance: '-20.5',
+      opening_balance_date: '2026-01-01',
+      virtual_balance: null,
     });
   });
 });

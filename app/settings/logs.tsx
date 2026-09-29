@@ -21,7 +21,7 @@ export default function LogsScreen() {
   });
 
   const onClear = act(tr('logs.clear'), async () => {
-    if (!await confirmDestructive(tr('logs.clearTitle'), tr('logs.clear'))) return;
+    if (!(await confirmDestructive(tr('logs.clearTitle'), tr('logs.clear')))) return;
     clearLog();
     setLines([]);
   });
@@ -32,15 +32,44 @@ export default function LogsScreen() {
       <FlatList
         data={lines}
         keyExtractor={(_, i) => String(i)}
-        contentContainerStyle={{ paddingHorizontal: t.space.lg, paddingBottom: t.space.lg, gap: t.space.sm }}
+        contentContainerStyle={{
+          paddingHorizontal: t.space.lg,
+          paddingBottom: t.space.lg,
+          gap: t.space.sm,
+        }}
         renderItem={({ item }) => (
-          <Text selectable style={[t.type.label, { color: t.color.textMuted, fontFamily: 'monospace' }]}>{item}</Text>
+          <Text
+            selectable
+            style={[t.type.label, { color: t.color.textMuted, fontFamily: 'monospace' }]}
+          >
+            {item}
+          </Text>
         )}
-        ListEmptyComponent={<EmptyState glyph="✓" title={tr('logs.emptyTitle')} hint={tr('logs.emptyHint')} />}
+        ListEmptyComponent={
+          <EmptyState glyph="✓" title={tr('logs.emptyTitle')} hint={tr('logs.emptyHint')} />
+        }
       />
-      <View style={{ flexDirection: 'row', gap: t.space.sm, paddingHorizontal: t.space.lg, paddingVertical: t.space.sm }}>
-        <Button title={tr('logs.share')} onPress={shareLog} disabled={lines.length === 0} style={{ flex: 1 }} />
-        <Button title={tr('logs.clear')} variant="danger" onPress={onClear} disabled={lines.length === 0} style={{ flex: 1 }} />
+      <View
+        style={{
+          flexDirection: 'row',
+          gap: t.space.sm,
+          paddingHorizontal: t.space.lg,
+          paddingVertical: t.space.sm,
+        }}
+      >
+        <Button
+          title={tr('logs.share')}
+          onPress={shareLog}
+          disabled={lines.length === 0}
+          style={{ flex: 1 }}
+        />
+        <Button
+          title={tr('logs.clear')}
+          variant="danger"
+          onPress={onClear}
+          disabled={lines.length === 0}
+          style={{ flex: 1 }}
+        />
       </View>
     </Screen>
   );

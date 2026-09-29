@@ -20,7 +20,10 @@ describe('totalDenominations', () => {
   it('totals a mixed pile of PLN notes and coins exactly', () => {
     const ladder = denominationsFor('PLN')!;
     // 1×200 + 2×100 + 1×50 + 3×0,50 + 4×0,10 = 200 + 200 + 50 + 1.50 + 0.40 = 451.90
-    const total = totalDenominations({ '200.00': 1, '100.00': 2, '50.00': 1, '0.50': 3, '0.10': 4 }, ladder);
+    const total = totalDenominations(
+      { '200.00': 1, '100.00': 2, '50.00': 1, '0.50': 3, '0.10': 4 },
+      ladder,
+    );
     expect(total).toBe('451.90');
   });
 

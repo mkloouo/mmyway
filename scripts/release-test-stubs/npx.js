@@ -26,7 +26,8 @@ const platform = option('--platform');
 if (failing.includes(`eas-${platform}`)) process.exit(1);
 
 const ABIS = ['arm64-v8a', 'armeabi-v7a', 'x86', 'x86_64'];
-const splits = process.env.STUB_SPLITS !== undefined ? process.env.STUB_SPLITS.split(',').filter(Boolean) : ABIS;
+const splits =
+  process.env.STUB_SPLITS !== undefined ? process.env.STUB_SPLITS.split(',').filter(Boolean) : ABIS;
 const work = fs.mkdtempSync(path.join(os.tmpdir(), 'eas-stub-'));
 const outputs = path.join(work, 'outputs', 'apk', 'release');
 fs.mkdirSync(outputs, { recursive: true });

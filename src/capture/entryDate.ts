@@ -3,8 +3,13 @@
 // `new Date(pickedDate).toISOString()` backdates the entry by a day more than the user chose.
 export function buildEntryDate(pickedYearMonthDay: Date, clockTime: Date = new Date()): Date {
   return new Date(
-    pickedYearMonthDay.getFullYear(), pickedYearMonthDay.getMonth(), pickedYearMonthDay.getDate(),
-    clockTime.getHours(), clockTime.getMinutes(), clockTime.getSeconds(), clockTime.getMilliseconds(),
+    pickedYearMonthDay.getFullYear(),
+    pickedYearMonthDay.getMonth(),
+    pickedYearMonthDay.getDate(),
+    clockTime.getHours(),
+    clockTime.getMinutes(),
+    clockTime.getSeconds(),
+    clockTime.getMilliseconds(),
   );
 }
 

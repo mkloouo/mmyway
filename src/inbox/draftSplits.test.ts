@@ -4,8 +4,15 @@ import { addSplit, draftAmounts, draftTotal, removeExtraSplit, withAmounts } fro
 import { draftReadiness } from './readiness';
 
 const base: Draft = {
-  type: 'withdrawal', amount: '100.00', currencyCode: 'PLN', date: '2026-09-28T10:00:00.000Z',
-  description: 'Biedronka', sourceId: '1', destinationName: 'Biedronka', destinationId: '50', isNewPayee: false,
+  type: 'withdrawal',
+  amount: '100.00',
+  currencyCode: 'PLN',
+  date: '2026-09-28T10:00:00.000Z',
+  description: 'Biedronka',
+  sourceId: '1',
+  destinationName: 'Biedronka',
+  destinationId: '50',
+  isNewPayee: false,
   categoryName: 'Groceries',
 };
 
@@ -15,7 +22,11 @@ describe('draft splits', () => {
     expect(draftAmounts(next)).toEqual(['70.00', '30.00']);
     expect(next.total).toBe('100.00');
     expect(next.groupTitle).toBe('Biedronka');
-    expect(next.extraSplits?.[0]).toMatchObject({ payeeName: 'Biedronka', payeeId: '50', isNewPayee: false });
+    expect(next.extraSplits?.[0]).toMatchObject({
+      payeeName: 'Biedronka',
+      payeeId: '50',
+      isNewPayee: false,
+    });
     expect(draftReadiness(next).ready).toBe(true);
   });
 
@@ -30,7 +41,11 @@ describe('draft splits', () => {
     const payload = draftToTransactionPayload('client-1', split);
     expect(payload.groupTitle).toBe('Biedronka');
     expect(payload.splits.map((s) => s.amount)).toEqual(['70.00', '30.00']);
-    expect(payload.splits[1]).toMatchObject({ source_id: '1', destination_id: '50', date: base.date });
+    expect(payload.splits[1]).toMatchObject({
+      source_id: '1',
+      destination_id: '50',
+      date: base.date,
+    });
   });
 
   it('turns back into a plain entry holding the total when the last extra split goes', () => {

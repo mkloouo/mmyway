@@ -6,7 +6,10 @@ import { router } from 'expo-router';
 
 jest.mock('expo-router', () => ({ router: { replace: jest.fn() } }));
 // The copy into documents/ needs the native file system; the path is what matters here.
-jest.mock('./imageFiles', () => ({ persistReceiptImage: (uri: string) => uri, deletePersistedReceiptImage: () => {} }));
+jest.mock('./imageFiles', () => ({
+  persistReceiptImage: (uri: string) => uri,
+  deletePersistedReceiptImage: () => {},
+}));
 
 describe('ingestSharedImage', () => {
   beforeEach(() => {
@@ -20,7 +23,7 @@ describe('ingestSharedImage', () => {
   it('ignores a shared file that is not an image', async () => {
     const db = createTestDb();
     await ingestSharedImage(db as any, { path: 'file:///doc.pdf', mimeType: 'application/pdf' });
-    expect((await db.select().from(inboxItems))).toHaveLength(0);
+    expect(await db.select().from(inboxItems)).toHaveLength(0);
   });
 
   it('two shares of the same image produce one inbox item (content-hash guard)', async () => {
@@ -47,7 +50,9 @@ describe('ingestSharedImage', () => {
     const db = createTestDb();
     await ingestSharedImage(db as any, { path: 'file:///a.jpg', mimeType: 'image/jpeg' });
     const [first] = await db.select().from(inboxItems);
-    await db.update(inboxItems).set({ state: 'error', errorMessage: 'No receipt reader is set up' });
+    await db
+      .update(inboxItems)
+      .set({ state: 'error', errorMessage: 'No receipt reader is set up' });
 
     await ingestSharedImage(db as any, { path: 'file:///b.jpg', mimeType: 'image/jpeg' });
 

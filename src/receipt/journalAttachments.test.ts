@@ -1,4 +1,9 @@
-import { fetchJournalAttachments, queuedAttachments, receiptPreviews, type JournalAttachment } from './journalAttachments';
+import {
+  fetchJournalAttachments,
+  queuedAttachments,
+  receiptPreviews,
+  type JournalAttachment,
+} from './journalAttachments';
 
 describe('fetchJournalAttachments', () => {
   it('asks FF3 for the group and keeps only this journal', async () => {
@@ -11,21 +16,32 @@ describe('fetchJournalAttachments', () => {
     });
     const result = await fetchJournalAttachments({ request }, '5', '11');
     expect(request).toHaveBeenCalledWith('/v1/transactions/5/attachments');
-    expect(result).toEqual([{ id: '2', filename: 'Receipt', imageSource: null }, { id: '3', filename: 'c.jpg', imageSource: null }]);
+    expect(result).toEqual([
+      { id: '2', filename: 'Receipt', imageSource: null },
+      { id: '3', filename: 'c.jpg', imageSource: null },
+    ]);
   });
 
   it('gives image attachments an authenticated download source, and PDFs none', async () => {
     const request = jest.fn().mockResolvedValue({
       data: [
         { id: '1', attributes: { filename: 'r.jpg', mime: 'image/jpeg', attachable_id: '11' } },
-        { id: '2', attributes: { filename: 'r.pdf', mime: 'application/pdf', attachable_id: '11' } },
+        {
+          id: '2',
+          attributes: { filename: 'r.pdf', mime: 'application/pdf', attachable_id: '11' },
+        },
         { id: '3', attributes: { filename: 'r.png', attachable_id: '11' } },
       ],
     });
-    const imageSource = (path: string) => ({ uri: `https://ff3${path}`, headers: { Authorization: 'Bearer t' } });
+    const imageSource = (path: string) => ({
+      uri: `https://ff3${path}`,
+      headers: { Authorization: 'Bearer t' },
+    });
     const result = await fetchJournalAttachments({ request, imageSource }, '5', '11');
     expect(result.map((a) => a.imageSource?.uri ?? null)).toEqual([
-      'https://ff3/v1/attachments/1/download', null, 'https://ff3/v1/attachments/3/download',
+      'https://ff3/v1/attachments/1/download',
+      null,
+      'https://ff3/v1/attachments/3/download',
     ]);
   });
 });
@@ -33,27 +49,58 @@ describe('fetchJournalAttachments', () => {
 describe('queuedAttachments', () => {
   it('returns attach_receipt ops for the journal, ignoring others and bad JSON', () => {
     const ops = [
-      { id: 'a', kind: 'attach_receipt', status: 'pending', payloadJson: '{"transactionJournalId":"11","receiptImagePath":"file:///r.jpg"}', lastError: null },
-      { id: 'b', kind: 'attach_receipt', status: 'failed', payloadJson: '{"transactionJournalId":"12"}', lastError: 'x' },
-      { id: 'c', kind: 'update_transaction', status: 'pending', payloadJson: '{"transactionJournalId":"11"}', lastError: null },
+      {
+        id: 'a',
+        kind: 'attach_receipt',
+        status: 'pending',
+        payloadJson: '{"transactionJournalId":"11","receiptImagePath":"file:///r.jpg"}',
+        lastError: null,
+      },
+      {
+        id: 'b',
+        kind: 'attach_receipt',
+        status: 'failed',
+        payloadJson: '{"transactionJournalId":"12"}',
+        lastError: 'x',
+      },
+      {
+        id: 'c',
+        kind: 'update_transaction',
+        status: 'pending',
+        payloadJson: '{"transactionJournalId":"11"}',
+        lastError: null,
+      },
       { id: 'd', kind: 'attach_receipt', status: 'failed', payloadJson: 'nope', lastError: null },
     ];
-    expect(queuedAttachments(ops, '11')).toEqual([{ opId: 'a', status: 'pending', lastError: null, receiptImagePath: 'file:///r.jpg' }]);
+    expect(queuedAttachments(ops, '11')).toEqual([
+      { opId: 'a', status: 'pending', lastError: null, receiptImagePath: 'file:///r.jpg' },
+    ]);
   });
 });
 
 describe('receiptPreviews', () => {
-  const image = (id: string): JournalAttachment => ({ id, filename: 'receipt.jpg', imageSource: { uri: `https://ff3/att/${id}`, headers: {} } });
-  const keys = (input: Parameters<typeof receiptPreviews>[0]) => receiptPreviews(input).map((p) => p.key);
+  const image = (id: string): JournalAttachment => ({
+    id,
+    filename: 'receipt.jpg',
+    imageSource: { uri: `https://ff3/att/${id}`, headers: {} },
+  });
+  const keys = (input: Parameters<typeof receiptPreviews>[0]) =>
+    receiptPreviews(input).map((p) => p.key);
 
   it('shows the captured photo from the phone only while FF3 has not answered', () => {
-    expect(keys({ queuedPaths: [], capturedPath: 'file:///old.jpg', remote: undefined })).toEqual(['file:///old.jpg']);
-    expect(keys({ queuedPaths: [], capturedPath: 'file:///old.jpg', remote: null })).toEqual(['file:///old.jpg']);
+    expect(keys({ queuedPaths: [], capturedPath: 'file:///old.jpg', remote: undefined })).toEqual([
+      'file:///old.jpg',
+    ]);
+    expect(keys({ queuedPaths: [], capturedPath: 'file:///old.jpg', remote: null })).toEqual([
+      'file:///old.jpg',
+    ]);
   });
 
   it('shows the new upload, not the deleted captured photo, once FF3 answers', () => {
     // The captured photo's attachment was deleted in FF3; the only attachment left is a new upload.
-    expect(keys({ queuedPaths: [], capturedPath: 'file:///old.jpg', remote: [image('9')] })).toEqual(['9']);
+    expect(
+      keys({ queuedPaths: [], capturedPath: 'file:///old.jpg', remote: [image('9')] }),
+    ).toEqual(['9']);
   });
 
   it('shows nothing from the phone when FF3 has no attachments left', () => {
@@ -61,11 +108,22 @@ describe('receiptPreviews', () => {
   });
 
   it('shows queued uploads from the phone next to what FF3 holds, each once', () => {
-    expect(keys({ queuedPaths: ['file:///new.jpg', 'file:///new.jpg'], capturedPath: 'file:///new.jpg', remote: [image('1')] }))
-      .toEqual(['file:///new.jpg', '1']);
+    expect(
+      keys({
+        queuedPaths: ['file:///new.jpg', 'file:///new.jpg'],
+        capturedPath: 'file:///new.jpg',
+        remote: [image('1')],
+      }),
+    ).toEqual(['file:///new.jpg', '1']);
   });
 
   it('leaves out attachments that are not images', () => {
-    expect(keys({ queuedPaths: [], capturedPath: null, remote: [{ id: '2', filename: 'a.pdf', imageSource: null }] })).toEqual([]);
+    expect(
+      keys({
+        queuedPaths: [],
+        capturedPath: null,
+        remote: [{ id: '2', filename: 'a.pdf', imageSource: null }],
+      }),
+    ).toEqual([]);
   });
 });

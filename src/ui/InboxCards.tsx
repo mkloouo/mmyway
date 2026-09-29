@@ -8,31 +8,20 @@ import { useTranslation } from 'react-i18next';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import type { Href } from 'expo-router';
 import { useTheme } from './theme';
-import { Card, Chip, Button, Money, Pulse } from './components';
+import { Card, Chip, Button, Dot, Money, PRESSED_OPACITY, Pulse } from './components';
 import { SwipeableCard } from './SwipeableCard';
 import { haptics } from './haptics';
 import { currencyOf } from './money';
 import { categoryColor } from './categoryColor';
 import { needsLabel } from './readinessLabel';
+import { useAction } from './useAction';
 import type { AttentionItem, InboxItemRow, QueuedChange } from '../inbox/useInboxSections';
-import { draftReadiness } from '../inbox/readiness';
+import type { DraftReadiness } from '../inbox/readiness';
 import type { Draft } from '../inbox/draft';
 import { readDraft, readReviewJournal, reviewForeign } from '../inbox/draftJson';
 import { draftTotal, isSplitDraft } from '../inbox/draftSplits';
 import { payloadGroupId } from '../sync/payloadJson';
 import { appLocale } from '../i18n';
-
-/** What a failed queued change was, in words ("Saving a planned transaction failed"). */
-const OP_KIND_KEYS: Record<string, string> = {
-  create_transaction: 'inbox.opKind.create_transaction',
-  update_transaction: 'inbox.opKind.update_transaction',
-  delete_transaction: 'inbox.opKind.delete_transaction',
-  attach_receipt: 'inbox.opKind.attach_receipt',
-  recurring_review: 'inbox.opKind.recurring_review',
-  update_account: 'inbox.opKind.update_account',
-  save_planned: 'inbox.opKind.save_planned',
-  delete_planned: 'inbox.opKind.delete_planned',
-};
 
 /** An error message cut to two lines; tapping it shows the whole of it, and again folds it. */
 function ErrorText({ message }: { message: string }) {
@@ -40,11 +29,21 @@ function ErrorText({ message }: { message: string }) {
   const { t: tr } = useTranslation();
   const [open, setOpen] = useState(false);
   return (
-    <Pressable onPress={() => setOpen((v) => !v)} accessibilityRole="button" accessibilityHint={open ? tr('inbox.showLess') : tr('inbox.showMore')}>
-      <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]} numberOfLines={open ? undefined : 2} selectable={open}>
+    <Pressable
+      onPress={() => setOpen((v) => !v)}
+      accessibilityRole="button"
+      accessibilityHint={open ? tr('inbox.showLess') : tr('inbox.showMore')}
+    >
+      <Text
+        style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]}
+        numberOfLines={open ? undefined : 2}
+        selectable={open}
+      >
         {message}
       </Text>
-      <Text style={[t.type.label, { color: t.color.accent }]}>{open ? tr('inbox.showLess') : tr('inbox.showMore')}</Text>
+      <Text style={[t.type.label, { color: t.color.accent }]}>
+        {open ? tr('inbox.showLess') : tr('inbox.showMore')}
+      </Text>
     </Pressable>
   );
 }
@@ -64,14 +63,28 @@ function metaLine(parts: (string | null | undefined)[]): string {
 }
 
 // No swiping while selecting: a stray swipe mid-selection would confirm or delete one card.
-function MaybeSwipeable({ disabled, children, ...props }: { disabled: boolean } & Parameters<typeof SwipeableCard>[0]) {
+function MaybeSwipeable({
+  disabled,
+  children,
+  ...props
+}: { disabled: boolean } & Parameters<typeof SwipeableCard>[0]) {
   return disabled ? <>{children}</> : <SwipeableCard {...props}>{children}</SwipeableCard>;
 }
 
 export function ConfirmCard({
-  item, currencies, onOpen, onConfirm, onDelete, selection,
+  item,
+  draft,
+  readiness,
+  currencies,
+  onOpen,
+  onConfirm,
+  onDelete,
+  selection,
 }: {
   item: InboxItemRow;
+  /** Parsed once in `useInboxSections`; null only while a receipt is still being read. */
+  draft: Draft | null;
+  readiness: DraftReadiness | null;
   currencies: { code: string; symbol: string; decimalPlaces: number }[];
   onOpen: () => void;
   onConfirm: () => void;
@@ -86,32 +99,44 @@ export function ConfirmCard({
   const cardStyle = { marginHorizontal: t.space.lg, marginBottom: t.space.sm };
   const press = selection.active ? selection.toggle : onOpen;
 
-  if (item.kind === 'receipt' && item.state === 'captured') {
+  if (!draft || !readiness) {
     return (
       <MaybeSwipeable disabled={selection.active} onDelete={onDelete}>
         <Animated.View style={selectPop}>
-        <Card onPress={press} onLongPress={selection.toggle} selected={selection.selected} style={cardStyle}>
-          <Pulse active>
-            <Text style={[t.type.body, { color: t.color.textMuted }]}>▦ {tr('inbox.readingReceipt')}</Text>
-          </Pulse>
-        </Card>
+          <Card
+            onPress={press}
+            onLongPress={selection.toggle}
+            selected={selection.selected}
+            style={cardStyle}
+          >
+            <Pulse active>
+              <Text style={[t.type.body, { color: t.color.textMuted }]}>
+                ▦ {tr('inbox.readingReceipt')}
+              </Text>
+            </Pulse>
+          </Card>
         </Animated.View>
       </MaybeSwipeable>
     );
   }
 
-  const draft: Draft = readDraft(item.draftJson);
-  const readiness = draftReadiness(draft);
   const isTransfer = draft.type === 'transfer';
   const payeeName = isTransfer
     ? `${draft.sourceName ?? '?'} → ${draft.destinationName ?? '?'}`
     : (draft.type === 'deposit' ? draft.sourceName : draft.destinationName) || draft.description;
   const accountName = draft.type === 'deposit' ? draft.destinationName : draft.sourceName;
-  const time = new Date(draft.date).toLocaleTimeString(appLocale(), { hour: '2-digit', minute: '2-digit' });
+  const time = new Date(draft.date).toLocaleTimeString(appLocale(), {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
   const splitCount = isSplitDraft(draft) ? (draft.extraSplits?.length ?? 0) + 1 : 0;
   const splitsLabel = splitCount ? tr('splits.count', { count: splitCount }) : null;
-  const meta = isTransfer ? metaLine([splitsLabel, time]) : metaLine([splitsLabel ?? draft.categoryName, accountName, time]);
-  const dotColor = draft.categoryName ? categoryColor(draft.categoryName, t.dark) : t.color.textFaint;
+  const meta = isTransfer
+    ? metaLine([splitsLabel, time])
+    : metaLine([splitsLabel ?? draft.categoryName, accountName, time]);
+  const dotColor = draft.categoryName
+    ? categoryColor(draft.categoryName, t.dark)
+    : t.color.textFaint;
 
   const badges: { label: string; tone?: 'warn' }[] = [];
   if (draft.isNewPayee && !isTransfer) badges.push({ label: tr('inbox.newPayee'), tone: 'warn' });
@@ -121,46 +146,86 @@ export function ConfirmCard({
   if (item.errorMessage) badges.push({ label: item.errorMessage, tone: 'warn' });
 
   return (
-    <MaybeSwipeable disabled={selection.active} onConfirm={onConfirm} onDelete={onDelete} confirmEnabled={readiness.ready} onRefused={haptics.warn}>
+    <MaybeSwipeable
+      disabled={selection.active}
+      onConfirm={onConfirm}
+      onDelete={onDelete}
+      confirmEnabled={readiness.ready}
+      onRefused={haptics.warn}
+    >
       <Animated.View style={selectPop}>
-      <Card onPress={press} onLongPress={selection.toggle} selected={selection.selected} style={cardStyle}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
-          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor }} />
-          <Text style={[t.type.heading, { color: t.color.text, flex: 1 }]} numberOfLines={1}>{payeeName}</Text>
-          <Money amount={draftTotal(draft) || '0'} currency={currencyOf(currencies, draft.currencyCode)} type={draft.type} size="heading" />
-        </View>
-        {!!meta && <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]}>{meta}</Text>}
-        {/* Badges and the ✓ share one footer row: the button sits level with "New payee"
-            instead of on a line of its own under it. */}
-        {(badges.length > 0 || (readiness.ready && !selection.active)) && (
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm, marginTop: t.space.sm }}>
-            <View style={{ flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
-              {badges.map((b) => <Chip key={b.label} label={b.label} tone={b.tone} />)}
-            </View>
-            {readiness.ready && !selection.active && (
-              <Pressable
-                onPress={onConfirm}
-                accessibilityRole="button"
-                accessibilityLabel={tr('inbox.confirm')}
-                hitSlop={8}
-                style={({ pressed }) => ({
-                  width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center',
-                  backgroundColor: t.color.accentSoft, opacity: pressed ? 0.6 : 1,
-                })}
-              >
-                <Ionicons name="checkmark" size={20} color={t.color.accent} />
-              </Pressable>
-            )}
+        <Card
+          onPress={press}
+          onLongPress={selection.toggle}
+          selected={selection.selected}
+          style={cardStyle}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
+            <Dot color={dotColor} />
+            <Text style={[t.type.heading, { color: t.color.text, flex: 1 }]} numberOfLines={1}>
+              {payeeName}
+            </Text>
+            <Money
+              amount={draftTotal(draft) || '0'}
+              currency={currencyOf(currencies, draft.currencyCode)}
+              type={draft.type}
+              size="heading"
+            />
           </View>
-        )}
-      </Card>
+          {!!meta && (
+            <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]}>
+              {meta}
+            </Text>
+          )}
+          {/* Badges and the ✓ share one footer row: the button sits level with "New payee"
+            instead of on a line of its own under it. */}
+          {(badges.length > 0 || (readiness.ready && !selection.active)) && (
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: t.space.sm,
+                marginTop: t.space.sm,
+              }}
+            >
+              <View style={{ flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
+                {badges.map((b) => (
+                  <Chip key={b.label} label={b.label} tone={b.tone} />
+                ))}
+              </View>
+              {readiness.ready && !selection.active && (
+                <Pressable
+                  onPress={onConfirm}
+                  accessibilityRole="button"
+                  accessibilityLabel={tr('inbox.confirm')}
+                  hitSlop={8}
+                  style={({ pressed }) => ({
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: t.color.accentSoft,
+                    opacity: pressed ? PRESSED_OPACITY : 1,
+                  })}
+                >
+                  <Ionicons name="checkmark" size={20} color={t.color.accent} />
+                </Pressable>
+              )}
+            </View>
+          )}
+        </Card>
       </Animated.View>
     </MaybeSwipeable>
   );
 }
 
 export function ReviewCard({
-  item, currencies, onApprove, onEdit, onDelete,
+  item,
+  currencies,
+  onApprove,
+  onEdit,
+  onDelete,
 }: {
   item: InboxItemRow;
   currencies: { code: string; symbol: string; decimalPlaces: number }[];
@@ -170,42 +235,59 @@ export function ReviewCard({
 }) {
   const t = useTheme();
   const { t: tr } = useTranslation();
-  const [approving, setApproving] = useState(false);
+  const act = useAction();
+  const approving = act.pending(tr('inbox.approve'));
   const journal = readReviewJournal(item.draftJson);
-  const dateLabel = journal.date ? new Date(journal.date).toLocaleDateString(appLocale(), { day: 'numeric', month: 'short' }) : undefined;
+  const dateLabel = journal.date
+    ? new Date(journal.date).toLocaleDateString(appLocale(), { day: 'numeric', month: 'short' })
+    : undefined;
   // Planned in another currency: shown as planned, and approving first asks what was charged.
   const foreign = reviewForeign(journal);
 
-  async function approve() {
+  const runApprove = act(tr('inbox.approve'), onApprove);
+  function approve() {
     if (foreign) return onEdit();
-    if (approving) return;
-    setApproving(true);
-    try {
-      await onApprove();
-    } finally {
-      setApproving(false);
-    }
+    void runApprove();
   }
 
   return (
     <Card style={{ marginHorizontal: t.space.lg, marginBottom: t.space.sm }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
         <Ionicons name="repeat" size={16} color={t.color.textMuted} />
-        <Text style={[t.type.heading, { color: t.color.text, flex: 1 }]} numberOfLines={1}>{journal.description}</Text>
+        <Text style={[t.type.heading, { color: t.color.text, flex: 1 }]} numberOfLines={1}>
+          {journal.description}
+        </Text>
         <Money
           amount={foreign?.amount ?? journal.amount ?? '0'}
           currency={currencyOf(currencies, foreign?.currencyCode ?? journal.currency_code ?? '')}
-          type="withdrawal" size="heading"
+          type="withdrawal"
+          size="heading"
         />
       </View>
       <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]}>
-        {metaLine([journal.source_name, dateLabel, tr('inbox.recurring'), foreign ? tr('inbox.enterChargedAmount', { currency: journal.currency_code }) : undefined])}
+        {metaLine([
+          journal.source_name,
+          dateLabel,
+          tr('inbox.recurring'),
+          foreign ? tr('inbox.enterChargedAmount', { currency: journal.currency_code }) : undefined,
+        ])}
       </Text>
       {/* Only Approve stretches: three equal thirds wrapped its label mid-word on a phone. */}
       <View style={{ flexDirection: 'row', gap: t.space.sm, marginTop: t.space.sm }}>
-        <Button title={approving ? tr('inbox.approving') : tr('inbox.approve')} variant="secondary" onPress={approve} disabled={approving} style={{ flex: 1 }} />
+        <Button
+          title={approving ? tr('inbox.approving') : tr('inbox.approve')}
+          variant="secondary"
+          onPress={approve}
+          disabled={approving}
+          style={{ flex: 1 }}
+        />
         <Button title={tr('common.edit')} variant="ghost" onPress={onEdit} disabled={approving} />
-        <Button title={tr('common.delete')} variant="danger" onPress={onDelete} disabled={approving} />
+        <Button
+          title={tr('common.delete')}
+          variant="danger"
+          onPress={onDelete}
+          disabled={approving}
+        />
       </View>
     </Card>
   );
@@ -224,33 +306,62 @@ function ChangedLine({ changed }: { changed: string[] }) {
 }
 
 /** A change waiting in the queue: what it is, what it changes, and a tap to open that. */
-export function QueuedCard({ change, onOpen }: { change: QueuedChange; onOpen: (route: Href) => void }) {
+export function QueuedCard({
+  change,
+  onOpen,
+}: {
+  change: QueuedChange;
+  onOpen: (route: Href) => void;
+}) {
   const t = useTheme();
   const { t: tr } = useTranslation();
   const { op, info } = change;
   const sending = op.status === 'in_flight';
   return (
-    <Card style={{ marginHorizontal: t.space.lg, marginBottom: t.space.sm }} onPress={info.route ? () => onOpen(info.route!) : undefined}>
+    <Card
+      style={{ marginHorizontal: t.space.lg, marginBottom: t.space.sm }}
+      onPress={info.route ? () => onOpen(info.route!) : undefined}
+    >
       {/* The status sits under the subject, not beside the kind: next to a long pill ("Очікування на
           відправку") the kind was cut to its first word. */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
-        <Ionicons name={sending ? 'cloud-upload-outline' : 'time-outline'} size={16} color={t.color.textMuted} />
+        <Ionicons
+          name={sending ? 'cloud-upload-outline' : 'time-outline'}
+          size={16}
+          color={t.color.textMuted}
+        />
         <Text style={[t.type.label, { color: t.color.textMuted, flex: 1 }]} numberOfLines={2}>
-          {tr(OP_KIND_KEYS[op.kind] ?? 'inbox.opKind.other')}
+          {tr(`inbox.opKind.${op.kind}`, { defaultValue: tr('inbox.opKind.other') })}
         </Text>
         {!!info.route && <Ionicons name="chevron-forward" size={18} color={t.color.textFaint} />}
       </View>
-      {!!info.subject && <Text style={[t.type.body, { color: t.color.text, marginTop: t.space.xs }]} numberOfLines={1}>{info.subject}</Text>}
+      {!!info.subject && (
+        <Text
+          style={[t.type.body, { color: t.color.text, marginTop: t.space.xs }]}
+          numberOfLines={1}
+        >
+          {info.subject}
+        </Text>
+      )}
       <ChangedLine changed={info.changed} />
       <View style={{ flexDirection: 'row', marginTop: t.space.sm }}>
-        <Chip label={sending ? tr('inbox.queueSending') : tr('inbox.queueWaiting')} tone={sending ? undefined : 'warn'} />
+        <Chip
+          label={sending ? tr('inbox.queueSending') : tr('inbox.queueWaiting')}
+          tone={sending ? undefined : 'warn'}
+        />
       </View>
     </Card>
   );
 }
 
 export function AttentionCard({
-  entry, onRetryError, onDiscardError, onRetryOp, onDiscardOp, onResolveConflict, onOpen,
+  entry,
+  onRetryError,
+  onDiscardError,
+  onRetryOp,
+  onDiscardOp,
+  onResolveConflict,
+  onOpen,
 }: {
   entry: AttentionItem;
   onRetryError: (id: string) => void;
@@ -267,14 +378,25 @@ export function AttentionCard({
 
   if (entry.kind === 'inbox_error') {
     const draft = readDraftOrNull(entry.item.draftJson);
-    const label = draft?.description || draft?.destinationName || draft?.sourceName || tr('inbox.item');
+    const label =
+      draft?.description || draft?.destinationName || draft?.sourceName || tr('inbox.item');
     return (
       <Card style={cardStyle}>
         <Text style={[t.type.heading, { color: t.color.danger }]}>✕ {label}</Text>
         <ErrorText message={entry.item.errorMessage ?? tr('inbox.failed')} />
         <View style={{ flexDirection: 'row', gap: t.space.sm, marginTop: t.space.sm }}>
-          <Button title={tr('inbox.retry')} variant="secondary" onPress={() => onRetryError(entry.item.id)} style={{ flex: 1 }} />
-          <Button title={tr('inbox.discard')} variant="danger" onPress={() => onDiscardError(entry.item.id)} style={{ flex: 1 }} />
+          <Button
+            title={tr('inbox.retry')}
+            variant="secondary"
+            onPress={() => onRetryError(entry.item.id)}
+            style={{ flex: 1 }}
+          />
+          <Button
+            title={tr('inbox.discard')}
+            variant="danger"
+            onPress={() => onDiscardError(entry.item.id)}
+            style={{ flex: 1 }}
+          />
         </View>
       </Card>
     );
@@ -288,20 +410,47 @@ export function AttentionCard({
     <Card style={cardStyle} onPress={info.route ? () => onOpen(info.route!) : undefined}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
         <Text style={[t.type.heading, { color: t.color.danger, flex: 1 }]}>
-          ✕ {isConflict ? tr('inbox.conflict') : tr('inbox.operationFailed', { kind: tr(OP_KIND_KEYS[op.kind] ?? 'inbox.opKind.other') })}
+          ✕{' '}
+          {isConflict
+            ? tr('inbox.conflict')
+            : tr('inbox.operationFailed', {
+                kind: tr(`inbox.opKind.${op.kind}`, { defaultValue: tr('inbox.opKind.other') }),
+              })}
         </Text>
         {!!info.route && <Ionicons name="chevron-forward" size={18} color={t.color.textFaint} />}
       </View>
-      {!!info.subject && <Text style={[t.type.body, { color: t.color.text, marginTop: t.space.xs }]} numberOfLines={1}>{info.subject}</Text>}
+      {!!info.subject && (
+        <Text
+          style={[t.type.body, { color: t.color.text, marginTop: t.space.xs }]}
+          numberOfLines={1}
+        >
+          {info.subject}
+        </Text>
+      )}
       <ChangedLine changed={info.changed} />
       <ErrorText message={op.lastError ?? tr('inbox.unknownError')} />
       <View style={{ flexDirection: 'row', gap: t.space.sm, marginTop: t.space.sm }}>
         {isConflict && groupId ? (
-          <Button title={tr('inbox.resolve')} variant="secondary" onPress={() => onResolveConflict(groupId)} style={{ flex: 1 }} />
+          <Button
+            title={tr('inbox.resolve')}
+            variant="secondary"
+            onPress={() => onResolveConflict(groupId)}
+            style={{ flex: 1 }}
+          />
         ) : (
           <>
-            <Button title={tr('inbox.retryNow')} variant="secondary" onPress={() => onRetryOp(op.id)} style={{ flex: 1 }} />
-            <Button title={tr('inbox.discard')} variant="danger" onPress={() => onDiscardOp(op.id)} style={{ flex: 1 }} />
+            <Button
+              title={tr('inbox.retryNow')}
+              variant="secondary"
+              onPress={() => onRetryOp(op.id)}
+              style={{ flex: 1 }}
+            />
+            <Button
+              title={tr('inbox.discard')}
+              variant="danger"
+              onPress={() => onDiscardOp(op.id)}
+              style={{ flex: 1 }}
+            />
           </>
         )}
       </View>

@@ -15,6 +15,8 @@ describe('planned time', () => {
   it('moves the booked day to the planned time', () => {
     const iso = atPlannedTime('2026-10-05T00:00:00+02:00', '09:30')!;
     const d = new Date(iso);
-    expect([d.getFullYear(), d.getMonth() + 1, d.getDate(), d.getHours(), d.getMinutes()]).toEqual([2026, 10, 5, 9, 30]);
+    expect([d.getFullYear(), d.getMonth() + 1, d.getDate(), d.getHours(), d.getMinutes()]).toEqual([
+      2026, 10, 5, 9, 30,
+    ]);
   });
 });

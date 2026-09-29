@@ -27,7 +27,10 @@ export interface AliasImportResult {
 export async function exportAliasesJson(db: OutboxDb): Promise<string> {
   const rows = await db.select().from(aliases).where(eq(aliases.kind, PAYEE));
   const exported: AliasExport[] = rows.map((row) => ({
-    kind: row.kind, rawInput: row.rawInput, targetId: row.targetId, targetName: row.targetName,
+    kind: row.kind,
+    rawInput: row.rawInput,
+    targetId: row.targetId,
+    targetName: row.targetName,
   }));
   return JSON.stringify(exported, null, 2);
 }
@@ -47,12 +50,19 @@ export async function importAliasesJson(db: OutboxDb, json: string): Promise<Ali
     const existing = await matchAlias(db, entry.kind, entry.rawInput);
     if (existing.matched) {
       result.collisions.push({
-        kind: entry.kind, rawInput: entry.rawInput,
-        existingTargetName: existing.alias.targetName, incomingTargetName: entry.targetName,
+        kind: entry.kind,
+        rawInput: entry.rawInput,
+        existingTargetName: existing.alias.targetName,
+        incomingTargetName: entry.targetName,
       });
       continue;
     }
-    await upsertAlias(db, { kind: entry.kind, rawInput: entry.rawInput, targetId: entry.targetId, targetName: entry.targetName });
+    await upsertAlias(db, {
+      kind: entry.kind,
+      rawInput: entry.rawInput,
+      targetId: entry.targetId,
+      targetName: entry.targetName,
+    });
     result.imported += 1;
   }
 

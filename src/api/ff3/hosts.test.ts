@@ -17,7 +17,9 @@ beforeEach(() => {
 
 describe('readHosts', () => {
   it('reads the JSON array when present', async () => {
-    getItemAsync.mockResolvedValueOnce(JSON.stringify(['https://a.example.com', 'https://b.example.com']));
+    getItemAsync.mockResolvedValueOnce(
+      JSON.stringify(['https://a.example.com', 'https://b.example.com']),
+    );
     expect(await readHosts()).toEqual(['https://a.example.com', 'https://b.example.com']);
   });
 
@@ -37,15 +39,25 @@ describe('readHosts', () => {
 describe('writeHosts', () => {
   it('stores the list as JSON under the hosts key', async () => {
     await writeHosts(['https://a.example.com']);
-    expect(setItemAsync).toHaveBeenCalledWith('ff3_hosts', JSON.stringify(['https://a.example.com']));
+    expect(setItemAsync).toHaveBeenCalledWith(
+      'ff3_hosts',
+      JSON.stringify(['https://a.example.com']),
+    );
   });
 });
 
 describe('resolveAddress', () => {
   it('tries the remembered address first, even if it is not first in the list', async () => {
     const order: string[] = [];
-    const probe = async (address: string) => { order.push(address); return true; };
-    const result = await resolveAddress(['https://a', 'https://b', 'https://c'], 'https://c', probe);
+    const probe = async (address: string) => {
+      order.push(address);
+      return true;
+    };
+    const result = await resolveAddress(
+      ['https://a', 'https://b', 'https://c'],
+      'https://c',
+      probe,
+    );
     expect(order[0]).toBe('https://c');
     expect(result.winner).toBe('https://c');
   });
@@ -54,7 +66,10 @@ describe('resolveAddress', () => {
     const probe = async (address: string) => address === 'https://b';
     const result = await resolveAddress(['https://a', 'https://b'], null, probe);
     expect(result.winner).toBe('https://b');
-    expect(result.results).toEqual([{ address: 'https://a', ok: false }, { address: 'https://b', ok: true }]);
+    expect(result.results).toEqual([
+      { address: 'https://a', ok: false },
+      { address: 'https://b', ok: true },
+    ]);
   });
 
   it('running out of addresses is the only failure — no throw, winner is null', async () => {
@@ -84,7 +99,9 @@ describe('withTimeout', () => {
   });
 
   it('resolves false instead of throwing when the probe rejects', async () => {
-    const wrapped = withTimeout(async () => { throw new Error('network down'); }, 1000);
+    const wrapped = withTimeout(async () => {
+      throw new Error('network down');
+    }, 1000);
     await expect(wrapped('https://a')).resolves.toBe(false);
   });
 });

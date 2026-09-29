@@ -49,7 +49,13 @@ export function pendingEdits(outbox: readonly OutboxRow[]): PendingEdits {
   for (const op of ops) {
     const isUpdate = op.kind === 'update_transaction' || op.kind === 'recurring_review';
     if (!isUpdate && op.kind !== 'attach_receipt') continue;
-    let payload: { groupId?: string; transactionJournalId?: string; changes?: Partial<TransactionSplit>; splits?: QueuedSplit[]; groupTitle?: string };
+    let payload: {
+      groupId?: string;
+      transactionJournalId?: string;
+      changes?: Partial<TransactionSplit>;
+      splits?: QueuedSplit[];
+      groupTitle?: string;
+    };
     try {
       payload = JSON.parse(op.payloadJson);
     } catch {
@@ -74,9 +80,15 @@ export function pendingEdits(outbox: readonly OutboxRow[]): PendingEdits {
 }
 
 /** The row's status and its values with the queued changes applied, or null if nothing's queued. */
-export function applyPendingEdit<T extends {
-  groupId: string; journalId: string; description: string; amount: string; categoryName: string | null;
-}>(row: T, edits: PendingEdits): { row: T; status: PendingEditStatus } | null {
+export function applyPendingEdit<
+  T extends {
+    groupId: string;
+    journalId: string;
+    description: string;
+    amount: string;
+    categoryName: string | null;
+  },
+>(row: T, edits: PendingEdits): { row: T; status: PendingEditStatus } | null {
   const edit = edits.byGroup.get(row.groupId);
   const upload = edits.byJournal.get(row.journalId);
   if (!edit && !upload) return null;

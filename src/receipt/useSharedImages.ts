@@ -8,6 +8,7 @@ import { readReceiptImageBase64 } from './toDraft';
 import { captureReceipt } from './ingest';
 import { logLine } from '../utils/log';
 import type { OutboxDb } from '../sync/outbox';
+import { errorMessage } from '../utils/errorMessage';
 
 export interface SharedImageFile {
   path: string;
@@ -51,7 +52,7 @@ export function useSharedImages(): void {
           } catch (err) {
             // One unreadable file must not wedge the share target: `processing` used to stay
             // true forever and every later share was ignored until a restart.
-            logLine('error', `shared image ${file.path}: ${err instanceof Error ? err.message : String(err)}`);
+            logLine('error', `shared image ${file.path}: ${errorMessage(err)}`);
           }
         }
       } finally {

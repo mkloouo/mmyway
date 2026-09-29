@@ -7,15 +7,27 @@ describe('db schema', () => {
     const now = new Date().toISOString();
 
     await db.insert(schema.referenceAccounts).values({
-      id: 'acc-1', name: 'Cash', type: 'asset', currencyCode: 'PLN', syncedAt: now,
+      id: 'acc-1',
+      name: 'Cash',
+      type: 'asset',
+      currencyCode: 'PLN',
+      syncedAt: now,
     });
     await db.insert(schema.aliases).values({
-      id: 'alias-1', kind: 'payee', normalizedKey: 'zabka', rawInput: 'Żabka',
-      targetName: 'Żabka', createdAt: now,
+      id: 'alias-1',
+      kind: 'payee',
+      normalizedKey: 'zabka',
+      rawInput: 'Żabka',
+      targetName: 'Żabka',
+      createdAt: now,
     });
     await db.insert(schema.outboxOperations).values({
-      id: 'op-1', kind: 'create_transaction', payloadJson: '{}', status: 'pending',
-      createdAt: now, sequence: 1,
+      id: 'op-1',
+      kind: 'create_transaction',
+      payloadJson: '{}',
+      status: 'pending',
+      createdAt: now,
+      sequence: 1,
     });
 
     const accounts = await db.select().from(schema.referenceAccounts);

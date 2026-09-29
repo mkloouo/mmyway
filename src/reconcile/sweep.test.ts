@@ -6,22 +6,36 @@ function row(overrides: Partial<SweepRow> & Pick<SweepRow, 'accountId'>): SweepR
 
 describe('computeSweep', () => {
   it('a short envelope produces a withdrawal for the difference', () => {
-    const adjustments = computeSweep([row({ accountId: 'acc-1', expected: '340.00', counted: '328.00' })]);
-    expect(adjustments).toEqual([{ accountId: 'acc-1', currencyCode: 'PLN', type: 'withdrawal', amount: '12.00' }]);
+    const adjustments = computeSweep([
+      row({ accountId: 'acc-1', expected: '340.00', counted: '328.00' }),
+    ]);
+    expect(adjustments).toEqual([
+      { accountId: 'acc-1', currencyCode: 'PLN', type: 'withdrawal', amount: '12.00' },
+    ]);
   });
 
   it('a long envelope produces a deposit for the difference', () => {
-    const adjustments = computeSweep([row({ accountId: 'acc-1', expected: '340.00', counted: '355.50' })]);
-    expect(adjustments).toEqual([{ accountId: 'acc-1', currencyCode: 'PLN', type: 'deposit', amount: '15.50' }]);
+    const adjustments = computeSweep([
+      row({ accountId: 'acc-1', expected: '340.00', counted: '355.50' }),
+    ]);
+    expect(adjustments).toEqual([
+      { accountId: 'acc-1', currencyCode: 'PLN', type: 'deposit', amount: '15.50' },
+    ]);
   });
 
   it('an equal envelope produces nothing', () => {
-    expect(computeSweep([row({ accountId: 'acc-1', expected: '340.00', counted: '340.00' })])).toEqual([]);
+    expect(
+      computeSweep([row({ accountId: 'acc-1', expected: '340.00', counted: '340.00' })]),
+    ).toEqual([]);
   });
 
   it('a blank envelope (not counted) produces nothing', () => {
-    expect(computeSweep([row({ accountId: 'acc-1', expected: '340.00', counted: '' })])).toEqual([]);
-    expect(computeSweep([row({ accountId: 'acc-1', expected: '340.00', counted: '   ' })])).toEqual([]);
+    expect(computeSweep([row({ accountId: 'acc-1', expected: '340.00', counted: '' })])).toEqual(
+      [],
+    );
+    expect(computeSweep([row({ accountId: 'acc-1', expected: '340.00', counted: '   ' })])).toEqual(
+      [],
+    );
   });
 
   it('keeps two currencies as separate adjustments, never converting', () => {
@@ -36,8 +50,12 @@ describe('computeSweep', () => {
   });
 
   it('matches addDecimal with no float drift on a value that would drift as a float', () => {
-    const adjustments = computeSweep([row({ accountId: 'acc-1', expected: '0.10', counted: '0.30' })]);
-    expect(adjustments).toEqual([{ accountId: 'acc-1', currencyCode: 'PLN', type: 'deposit', amount: '0.20' }]);
+    const adjustments = computeSweep([
+      row({ accountId: 'acc-1', expected: '0.10', counted: '0.30' }),
+    ]);
+    expect(adjustments).toEqual([
+      { accountId: 'acc-1', currencyCode: 'PLN', type: 'deposit', amount: '0.20' },
+    ]);
   });
 
   it('skips blank rows while still producing adjustments for the rest', () => {

@@ -12,7 +12,11 @@ import type { SweepAdjustment } from './sweep';
 export async function createAndConfirmAdjustment(
   db: OutboxDb,
   adjustment: SweepAdjustment,
-  settings: { shortfallAccountId: string | null; surplusAccountId: string | null; categoryName: string | null },
+  settings: {
+    shortfallAccountId: string | null;
+    surplusAccountId: string | null;
+    categoryName: string | null;
+  },
 ): Promise<void> {
   const isWithdrawal = adjustment.type === 'withdrawal';
   const payeeAccountId = isWithdrawal ? settings.shortfallAccountId : settings.surplusAccountId;
@@ -32,6 +36,13 @@ export async function createAndConfirmAdjustment(
     extraTags: ['mmyway-reconcile'],
   };
   const id = generateId();
-  await db.insert(inboxItems).values({ id, kind: 'manual_entry', state: 'captured', draftJson: writeDraft(draft), createdAt: now, updatedAt: now });
+  await db.insert(inboxItems).values({
+    id,
+    kind: 'manual_entry',
+    state: 'captured',
+    draftJson: writeDraft(draft),
+    createdAt: now,
+    updatedAt: now,
+  });
   await confirmInboxItem(db, id);
 }

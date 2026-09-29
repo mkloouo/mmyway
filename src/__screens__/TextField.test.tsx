@@ -6,7 +6,9 @@ import { TextField } from '../ui/TextField';
 describe('TextField buffered', () => {
   it('keeps what was typed while focused, ignoring a stale value coming back', async () => {
     const onChangeText = jest.fn();
-    const { rerender } = await render(<TextField testID="f" buffered value="a" onChangeText={onChangeText} />);
+    const { rerender } = await render(
+      <TextField testID="f" buffered value="a" onChangeText={onChangeText} />,
+    );
     const field = screen.getByTestId('f');
     await fireEvent(field, 'focus');
     await fireEvent.changeText(field, 'ab');

@@ -25,11 +25,23 @@ describe('countBlocker', () => {
 describe('readCountBlocker', () => {
   it('counts queued transaction writes but not receipt uploads or account edits', async () => {
     const db = createTestDb() as any;
-    await enqueueOperation(db, { id: 'r', kind: 'attach_receipt', payload: { transactionJournalId: 'j', receiptImagePath: 'file:///x.jpg' } });
-    await enqueueOperation(db, { id: 'a', kind: 'update_account', payload: { accountId: 'a1', active: false } });
+    await enqueueOperation(db, {
+      id: 'r',
+      kind: 'attach_receipt',
+      payload: { transactionJournalId: 'j', receiptImagePath: 'file:///x.jpg' },
+    });
+    await enqueueOperation(db, {
+      id: 'a',
+      kind: 'update_account',
+      payload: { accountId: 'a1', active: false },
+    });
     expect(await readCountBlocker(db)).toBeNull();
 
-    await enqueueOperation(db, { id: 'c', kind: 'create_transaction', payload: { clientId: 'c', splits: [] } });
+    await enqueueOperation(db, {
+      id: 'c',
+      kind: 'create_transaction',
+      payload: { clientId: 'c', splits: [] },
+    });
     await enqueueOperation(db, { id: 'd', kind: 'delete_transaction', payload: { groupId: 'g' } });
     expect(await readCountBlocker(db)).toEqual({ reason: 'queued', count: 2 });
   });

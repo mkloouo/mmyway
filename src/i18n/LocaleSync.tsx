@@ -11,7 +11,9 @@ import { LOCALE_KEY, parseLocale } from '../settings/appSettings';
 // screen and the stored value once the first read lands.
 export function LocaleSync() {
   const db = useDb();
-  const { data } = useLiveQuery(db.select().from(appSettings).where(eq(appSettings.key, LOCALE_KEY)));
+  const { data } = useLiveQuery(
+    db.select().from(appSettings).where(eq(appSettings.key, LOCALE_KEY)),
+  );
   const locale = parseLocale(data?.[0]?.value);
 
   useEffect(() => {

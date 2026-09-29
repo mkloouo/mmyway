@@ -2,18 +2,34 @@ import { changedFields, sameAmount, sameSplits, sendableNotes } from './editDiff
 
 describe('changedFields', () => {
   const baseline = {
-    amount: '12.500000000000', date: '2026-09-28T12:00:00+02:00', category_name: 'Food', notes: undefined, tags: ['a', 'b'], source_id: '1',
+    amount: '12.500000000000',
+    date: '2026-09-28T12:00:00+02:00',
+    category_name: 'Food',
+    notes: undefined,
+    tags: ['a', 'b'],
+    source_id: '1',
   };
 
   it('drops what was touched but not changed', () => {
-    expect(changedFields({
-      amount: '12.5', date: '2026-09-28T10:00:00.000Z', category_name: 'Food', notes: '', tags: ['b', 'a'], source_id: '1',
-    }, baseline)).toEqual({});
+    expect(
+      changedFields(
+        {
+          amount: '12.5',
+          date: '2026-09-28T10:00:00.000Z',
+          category_name: 'Food',
+          notes: '',
+          tags: ['b', 'a'],
+          source_id: '1',
+        },
+        baseline,
+      ),
+    ).toEqual({});
   });
 
   it('keeps real changes', () => {
-    expect(changedFields({ amount: '13', category_name: 'Rent', source_id: '2' }, baseline))
-      .toEqual({ amount: '13', category_name: 'Rent', source_id: '2' });
+    expect(
+      changedFields({ amount: '13', category_name: 'Rent', source_id: '2' }, baseline),
+    ).toEqual({ amount: '13', category_name: 'Rent', source_id: '2' });
   });
 
   it('sends a cleared note as null, never an empty string', () => {
@@ -26,7 +42,13 @@ describe('changedFields', () => {
 });
 
 describe('sameSplits', () => {
-  const split = { amount: '10.00', description: 'Milk', notes: null, category_name: 'Food', tags: [] };
+  const split = {
+    amount: '10.00',
+    description: 'Milk',
+    notes: null,
+    category_name: 'Food',
+    tags: [],
+  };
 
   it('treats equal amounts, and empty and missing notes, as the same', () => {
     expect(sameSplits([split], [{ ...split, amount: '10', notes: undefined }])).toBe(true);

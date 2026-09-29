@@ -27,14 +27,14 @@ Rules that apply everywhere are in `AGENTS.md`; translations are `docs/LOCALIZAT
 
 `src/inbox/state.ts` is the whole state machine:
 
-| From | Event | To |
-| --- | --- | --- |
-| `captured` | `parsed` | `parsed` |
-| `captured` | `confirm` | `confirmed` (manual entries have no parse step) |
-| `parsed` | `confirm` | `confirmed` |
-| `confirmed` | `synced` | `synced` |
-| `captured`, `parsed`, `confirmed` | `fail` | `error` |
-| `error` | `retry` | `captured` |
+| From                              | Event     | To                                              |
+| --------------------------------- | --------- | ----------------------------------------------- |
+| `captured`                        | `parsed`  | `parsed`                                        |
+| `captured`                        | `confirm` | `confirmed` (manual entries have no parse step) |
+| `parsed`                          | `confirm` | `confirmed`                                     |
+| `confirmed`                       | `synced`  | `synced`                                        |
+| `captured`, `parsed`, `confirmed` | `fail`    | `error`                                         |
+| `error`                           | `retry`   | `captured`                                      |
 
 A create the outbox can't send (an account deleted in FF3) hands its item back to `captured`/`parsed` with an `errorMessage`, so the user fixes the draft rather than losing it.
 
@@ -55,13 +55,13 @@ Activity (`app/(tabs)/activity.tsx`) and the transaction screen (`app/transactio
 
 ### When it runs
 
-| Trigger | Mode | Where |
-| --- | --- | --- |
-| App launch, pull-to-refresh, Sync now | full | `useSync()` (React Query key `['sync']`) |
-| Resume after 30+ minutes | full | `SyncOnResume` in `app/_layout.tsx` |
-| Any queued write | push, debounced | `enqueueOperation` → `requestSync()` (`src/sync/syncTrigger.ts`) |
-| Network comes back | full | `SyncOnReconnect` (NetInfo) |
-| Background, about every 15 min | full | `src/sync/backgroundSync.ts` (WorkManager) |
+| Trigger                               | Mode            | Where                                                            |
+| ------------------------------------- | --------------- | ---------------------------------------------------------------- |
+| App launch, pull-to-refresh, Sync now | full            | `useSync()` (React Query key `['sync']`)                         |
+| Resume after 30+ minutes              | full            | `SyncOnResume` in `app/_layout.tsx`                              |
+| Any queued write                      | push, debounced | `enqueueOperation` → `requestSync()` (`src/sync/syncTrigger.ts`) |
+| Network comes back                    | full            | `SyncOnReconnect` (NetInfo)                                      |
+| Background, about every 15 min        | full            | `src/sync/backgroundSync.ts` (WorkManager)                       |
 
 A confirm waits `SYNC_DELAY.afterConfirm` (6 s) so Undo in the 5 s snackbar can still cancel it; other writes wait `afterWrite` (1 s). `runSync` is process-wide single-flight: a call during a sync joins it, except a full sync asked for during a push, which runs next.
 

@@ -7,7 +7,12 @@ import { useTheme } from './theme';
 
 const THUMB = 24;
 
-export function Slider({ value, onChange, disabled, accessibilityLabel }: {
+export function Slider({
+  value,
+  onChange,
+  disabled,
+  accessibilityLabel,
+}: {
   value: number;
   onChange: (position: number) => void;
   disabled?: boolean;
@@ -42,17 +47,40 @@ export function Slider({ value, onChange, disabled, accessibilityLabel }: {
       accessibilityLabel={accessibilityLabel}
       accessibilityValue={{ min: 0, max: 100, now: Math.round(clamped * 100) }}
       accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
-      onAccessibilityAction={(e) => onChange(Math.min(1, Math.max(0, clamped + (e.nativeEvent.actionName === 'increment' ? 0.05 : -0.05))))}
+      onAccessibilityAction={(e) =>
+        onChange(
+          Math.min(
+            1,
+            Math.max(0, clamped + (e.nativeEvent.actionName === 'increment' ? 0.05 : -0.05)),
+          ),
+        )
+      }
       style={{ height: THUMB + 12, justifyContent: 'center', opacity: disabled ? 0.4 : 1 }}
     >
-      <View pointerEvents="none" style={{ height: 4, borderRadius: 2, backgroundColor: t.color.surfaceAlt }}>
-        <View style={{ width: left + THUMB / 2, height: 4, borderRadius: 2, backgroundColor: t.color.accent }} />
+      <View
+        pointerEvents="none"
+        style={{ height: 4, borderRadius: 2, backgroundColor: t.color.surfaceAlt }}
+      >
+        <View
+          style={{
+            width: left + THUMB / 2,
+            height: 4,
+            borderRadius: 2,
+            backgroundColor: t.color.accent,
+          }}
+        />
       </View>
       <View
         pointerEvents="none"
         style={{
-          position: 'absolute', left, width: THUMB, height: THUMB, borderRadius: THUMB / 2,
-          backgroundColor: t.color.surface, borderWidth: 2, borderColor: t.color.accent,
+          position: 'absolute',
+          left,
+          width: THUMB,
+          height: THUMB,
+          borderRadius: THUMB / 2,
+          backgroundColor: t.color.surface,
+          borderWidth: 2,
+          borderColor: t.color.accent,
         }}
       />
     </View>

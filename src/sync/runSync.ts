@@ -7,20 +7,39 @@ import { readStoredCredentials } from '../api/ff3/auth';
 import { clientFor } from '../api/ff3/session';
 import { readHosts } from '../api/ff3/hosts';
 import {
-  getLocalModelBaseUrls, getLocalModelActiveUrl, setLocalModelActiveUrl,
-  getFf3ActiveHost, setFf3ActiveHost, getLastSyncedAt, setLastSyncedAt, getLocalModelName,
-  getBalancesStale, setBalancesStale,
+  getLocalModelBaseUrls,
+  getLocalModelActiveUrl,
+  setLocalModelActiveUrl,
+  getFf3ActiveHost,
+  setFf3ActiveHost,
+  getLastSyncedAt,
+  setLastSyncedAt,
+  getLocalModelName,
+  getBalancesStale,
+  setBalancesStale,
 } from '../settings/appSettings';
 import { readGeminiKey } from '../settings/secrets';
 import { probeReachability, type ServerReachability } from './reachability';
-import { pullReferenceData, pullRecentTransactions, pullAccountBalances, backfillCachedTransactions } from './referenceData';
+import {
+  pullReferenceData,
+  pullRecentTransactions,
+  pullAccountBalances,
+  backfillCachedTransactions,
+} from './referenceData';
 import { warmMerchantLookup } from '../lookup/merchantLookup';
-import { replayOutbox, recoverInFlight, pruneUploadedReceiptImages, queuedLedgerOpCount, type OutboxDb } from './outbox';
+import {
+  replayOutbox,
+  recoverInFlight,
+  pruneUploadedReceiptImages,
+  queuedLedgerOpCount,
+  type OutboxDb,
+} from './outbox';
 import { pruneReferenceData, reapplyQueuedAccountEdits } from './referenceHygiene';
 import { pullUnreviewedRecurring } from './recurringReview';
 import { retryPendingReceipts } from '../receipt/toDraft';
 import { logLine } from '../utils/log';
 import { pullPlanned } from '../planned/objects';
+import { errorMessage } from '../utils/errorMessage';
 
 export interface SyncSummary {
   signedIn: boolean;
@@ -42,8 +61,18 @@ export interface SyncSummary {
 const EMPTY_REACHABILITY: ServerReachability = { winner: null, results: [] };
 
 const NOT_SIGNED_IN: SyncSummary = {
-  signedIn: false, ff3: EMPTY_REACHABILITY, ff3Reachable: false, providers: {}, providersReachable: {}, configuredProviders: [],
-  replaySucceeded: 0, replayConflicted: 0, recurringCreated: 0, receiptsParsed: 0, failedAt: null, error: null,
+  signedIn: false,
+  ff3: EMPTY_REACHABILITY,
+  ff3Reachable: false,
+  providers: {},
+  providersReachable: {},
+  configuredProviders: [],
+  replaySucceeded: 0,
+  replayConflicted: 0,
+  recurringCreated: 0,
+  receiptsParsed: 0,
+  failedAt: null,
+  error: null,
   lastSyncedAt: null,
 };
 
@@ -70,22 +99,49 @@ let recovered = false;
 export function runSync(db: OutboxDb, mode: SyncMode = 'full'): Promise<SyncSummary> {
   if (inFlight && (inFlight.mode === 'full' || mode === 'push')) return inFlight.promise;
   const previous = inFlight?.promise;
-  const promise = (previous ? previous.catch(() => undefined).then(() => doSync(db, mode)) : doSync(db, mode))
-    .finally(() => { if (inFlight?.promise === promise) inFlight = null; });
+  const promise = (
+    previous ? previous.catch(() => undefined).then(() => doSync(db, mode)) : doSync(db, mode)
+  ).finally(() => {
+    if (inFlight?.promise === promise) inFlight = null;
+  });
   inFlight = { mode, promise };
   return promise;
 }
 
 async function doSync(db: OutboxDb, mode: SyncMode): Promise<SyncSummary> {
-  const [credentials, ff3Hosts, ff3ActiveHost, localModelBaseUrls, localModelActiveUrl, lastSyncedAt, localModelName, geminiKey] = await Promise.all([
-    readStoredCredentials(), readHosts(), getFf3ActiveHost(db), getLocalModelBaseUrls(db), getLocalModelActiveUrl(db), getLastSyncedAt(db),
-    getLocalModelName(db), readGeminiKey().catch(() => null),
+  const [
+    credentials,
+    ff3Hosts,
+    ff3ActiveHost,
+    localModelBaseUrls,
+    localModelActiveUrl,
+    lastSyncedAt,
+    localModelName,
+    geminiKey,
+  ] = await Promise.all([
+    readStoredCredentials(),
+    readHosts(),
+    getFf3ActiveHost(db),
+    getLocalModelBaseUrls(db),
+    getLocalModelActiveUrl(db),
+    getLastSyncedAt(db),
+    getLocalModelName(db),
+    readGeminiKey().catch(() => null),
   ]);
   if (!credentials) return { ...NOT_SIGNED_IN };
 
   const summary: SyncSummary = {
-    signedIn: true, ff3: EMPTY_REACHABILITY, ff3Reachable: false, providers: {}, providersReachable: {},
-    replaySucceeded: 0, replayConflicted: 0, recurringCreated: 0, receiptsParsed: 0, failedAt: null, error: null,
+    signedIn: true,
+    ff3: EMPTY_REACHABILITY,
+    ff3Reachable: false,
+    providers: {},
+    providersReachable: {},
+    replaySucceeded: 0,
+    replayConflicted: 0,
+    recurringCreated: 0,
+    receiptsParsed: 0,
+    failedAt: null,
+    error: null,
     // The last successful full sync; replaced below if this one succeeds. Starting from null
     // made a push sync (which never sets it) show "never" in the Sync sheet.
     lastSyncedAt,
@@ -105,14 +161,22 @@ async function doSync(db: OutboxDb, mode: SyncMode): Promise<SyncSummary> {
     const full = mode === 'full';
     const reachability = await probeReachability({
       ff3: { addresses: ff3Hosts, apiToken: credentials.apiToken, remembered: ff3ActiveHost },
-      providers: full && localModelBaseUrls.length > 0 ? { local: { addresses: localModelBaseUrls, remembered: localModelActiveUrl } } : {},
+      providers:
+        full && localModelBaseUrls.length > 0
+          ? { local: { addresses: localModelBaseUrls, remembered: localModelActiveUrl } }
+          : {},
     });
     summary.ff3 = reachability.ff3;
     summary.ff3Reachable = anyOk(reachability.ff3);
     summary.providers = reachability.providers;
-    summary.providersReachable = Object.fromEntries(Object.entries(reachability.providers).map(([name, r]) => [name, anyOk(r)]));
+    summary.providersReachable = Object.fromEntries(
+      Object.entries(reachability.providers).map(([name, r]) => [name, anyOk(r)]),
+    );
 
-    if (reachability.providers.local?.winner && reachability.providers.local.winner !== localModelActiveUrl) {
+    if (
+      reachability.providers.local?.winner &&
+      reachability.providers.local.winner !== localModelActiveUrl
+    ) {
       await setLocalModelActiveUrl(db, reachability.providers.local.winner);
     }
 
@@ -134,7 +198,7 @@ async function doSync(db: OutboxDb, mode: SyncMode): Promise<SyncSummary> {
 
       // Marked before sending, not after: a process killed between a write landing and the
       // balance re-read below must still leave the balances marked stale.
-      if (await queuedLedgerOpCount(db) > 0) await setBalancesStale(db, true);
+      if ((await queuedLedgerOpCount(db)) > 0) await setBalancesStale(db, true);
       const replay = await replayOutbox(db, client);
       summary.replaySucceeded = replay.succeeded.length;
       summary.replayConflicted = replay.conflicted.length;
@@ -147,20 +211,22 @@ async function doSync(db: OutboxDb, mode: SyncMode): Promise<SyncSummary> {
         try {
           await pullPlanned(db, client);
         } catch (err) {
-          logLine('warn', `planned pull failed: ${err instanceof Error ? err.message : String(err)}`);
+          logLine('warn', `planned pull failed: ${errorMessage(err)}`);
         }
         // After the planned pull: a review reads its recurrence's planned currency from that cache.
-        summary.recurringCreated = await pullUnreviewedRecurring(db, client, { since: lastSyncedAt });
+        summary.recurringCreated = await pullUnreviewedRecurring(db, client, {
+          since: lastSyncedAt,
+        });
       }
 
-      if (replay.succeeded.length > 0 && await getBalancesStale(db)) {
+      if (replay.succeeded.length > 0 && (await getBalancesStale(db))) {
         // A failure here must not turn a replay that landed into a failed sync; the flag stays
         // set, so the cash count waits for the next sync that manages the re-read.
         try {
           await pullAccountBalances(db, client);
           await setBalancesStale(db, false);
         } catch (err) {
-          logLine('warn', `balance re-read after replay failed: ${err instanceof Error ? err.message : String(err)}`);
+          logLine('warn', `balance re-read after replay failed: ${errorMessage(err)}`);
         }
       }
 
@@ -186,8 +252,11 @@ async function doSync(db: OutboxDb, mode: SyncMode): Promise<SyncSummary> {
       await setLastSyncedAt(db, summary.lastSyncedAt);
     }
   } catch (err) {
-    summary.error = err instanceof Error ? err.message : String(err);
-    logLine('error', `sync failed: ${summary.error}${err instanceof Error && err.stack ? `\n${err.stack}` : ''}`);
+    summary.error = errorMessage(err);
+    logLine(
+      'error',
+      `sync failed: ${summary.error}${err instanceof Error && err.stack ? `\n${err.stack}` : ''}`,
+    );
   }
 
   return summary;

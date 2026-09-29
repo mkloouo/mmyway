@@ -13,7 +13,15 @@ export interface SnackbarEntry {
   onAction?: () => void;
 }
 
-export function Snackbar({ entry, onDismiss, bottom = 88 }: { entry: SnackbarEntry | null; onDismiss: () => void; bottom?: number }) {
+export function Snackbar({
+  entry,
+  onDismiss,
+  bottom = 88,
+}: {
+  entry: SnackbarEntry | null;
+  onDismiss: () => void;
+  bottom?: number;
+}) {
   const t = useTheme();
   // Arrives with the tick haptic that caused it (a confirm, a delete): the pop is the visual half.
   const popStyle = usePopOnChange(entry?.id);
@@ -21,7 +29,9 @@ export function Snackbar({ entry, onDismiss, bottom = 88 }: { entry: SnackbarEnt
   // The timer runs per entry, not per render: with `onDismiss` as a dependency, a caller passing an
   // inline arrow restarted it on every re-render, and the Undo outlived the window it promises.
   const dismiss = useRef(onDismiss);
-  useEffect(() => { dismiss.current = onDismiss; });
+  useEffect(() => {
+    dismiss.current = onDismiss;
+  });
   useEffect(() => {
     if (!entry) return;
     const timer = setTimeout(() => dismiss.current(), VISIBLE_MS);
@@ -32,15 +42,28 @@ export function Snackbar({ entry, onDismiss, bottom = 88 }: { entry: SnackbarEnt
 
   return (
     <Animated.View
-      style={[popStyle, {
-        position: 'absolute', left: t.space.lg, right: t.space.lg, bottom,
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-        backgroundColor: t.dark ? t.color.surfaceAlt : t.color.text,
-        borderRadius: t.radius.md, paddingHorizontal: t.space.lg, paddingVertical: t.space.md,
-        elevation: 8,
-      }]}
+      style={[
+        popStyle,
+        {
+          position: 'absolute',
+          left: t.space.lg,
+          right: t.space.lg,
+          bottom,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          backgroundColor: t.dark ? t.color.surfaceAlt : t.color.text,
+          borderRadius: t.radius.md,
+          paddingHorizontal: t.space.lg,
+          paddingVertical: t.space.md,
+          elevation: 8,
+        },
+      ]}
     >
-      <Text style={[t.type.body, { color: t.dark ? t.color.text : t.color.surface, flex: 1 }]} numberOfLines={1}>
+      <Text
+        style={[t.type.body, { color: t.dark ? t.color.text : t.color.surface, flex: 1 }]}
+        numberOfLines={1}
+      >
         {entry.message}
       </Text>
       {!!entry.actionLabel && (
@@ -51,7 +74,12 @@ export function Snackbar({ entry, onDismiss, bottom = 88 }: { entry: SnackbarEnt
           }}
           accessibilityRole="button"
         >
-          <Text style={[t.type.label, { color: t.color.accent, fontWeight: '700', paddingLeft: t.space.lg }]}>
+          <Text
+            style={[
+              t.type.label,
+              { color: t.color.accent, fontWeight: '700', paddingLeft: t.space.lg },
+            ]}
+          >
             {entry.actionLabel}
           </Text>
         </Pressable>

@@ -2,7 +2,7 @@
 
 2026-09-28 · review of `app/` and `src/ui/` at `1ea6375`
 
-Scope: the React Native components and screens, reviewed for code smells, YAGNI, KISS, memoization and readability. Data-layer modules (`src/sync/`, `src/inbox/`, …) were read only where a screen depends on them. 
+Scope: the React Native components and screens, reviewed for code smells, YAGNI, KISS, memoization and readability. Data-layer modules (`src/sync/`, `src/inbox/`, …) were read only where a screen depends on them.
 **Open items are tracked in [GitHub Issues](https://github.com/mkloouo/mmyway/issues)**, not here (moved 2026-09-28). Each open item below links to its issue; this file stays as the review's record and its memo guidance. Don't add new items here.
 
 Line numbers point at `1ea6375` and will drift.
@@ -41,13 +41,15 @@ These change behaviour today; fix before the refactors.
   - `src/ui/InboxCards.tsx:233` (errored draft label) and `:250` (conflict `groupId`)
 
   A small `payloadGroupId(op): string | null` in `src/sync/payloadJson.ts` covers three of them. Done: `payloadGroupId`, and `readDraft` for the errored card; Activity's queued-create rows also skip an unreadable payload instead of throwing.
+
 - [x] **Table writes and outbox payloads inside screens.** `AGENTS.md`: "table writes live in `src/`, not in the screen". Remaining offenders:
   - `app/transactions/[groupId].tsx:335-339` builds an `update_transaction` operation and `:359` a `delete_transaction`. Move to `src/transactions/` next to `queueSplitEdit` (`queueTransactionEdit`, `queueTransactionDelete`).
   - `app/(tabs)/activity.tsx:222-227` upserts a remote search hit into `cached_transactions`. Move to `src/transactions/` (`cacheRemoteResult`).
   - `app/(tabs)/activity.tsx:238-259` calls `client.request('/v1/search/transactions?…')` from the screen. Move the request to `src/api/ff3/` and the state to a `useRemoteSearch(query)` hook in `src/transactions/`.
   - `app/(tabs)/settings.tsx:315-322` probes the local model with a raw `fetch`. Move beside the local provider (`src/receipt/providers/local.ts`).
 
-  Done: `src/transactions/queueEdit.ts`, `src/transactions/remoteSearch.ts` (`searchTransactions`, `cacheRemoteResult`) and `probeLocalModel`, which sync's reachability probe now shares. The remote-search *state* is still in the screen; moving it into a `useRemoteSearch` hook is left for the Activity split under Readability.
+  Done: `src/transactions/queueEdit.ts`, `src/transactions/remoteSearch.ts` (`searchTransactions`, `cacheRemoteResult`) and `probeLocalModel`, which sync's reachability probe now shares. The remote-search _state_ is still in the screen; moving it into a `useRemoteSearch` hook is left for the Activity split under Readability.
+
 - [x] **Search folds case with `toLowerCase`.** `app/settings/aliases.tsx:283-284` filters with `toLowerCase()` (and recomputes `search.trim().toLowerCase()` three times per row). Everywhere else uses `normkey`, which was the fix for "żabka"/"Żabka". Use `normkey`.
 
 ## Duplication to fold into the kit

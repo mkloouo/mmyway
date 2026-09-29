@@ -1,6 +1,10 @@
 import { createLocalProvider } from './providers/local';
 import { createGeminiProvider } from './providers/gemini';
-import { getLocalModelBaseUrls, getLocalModelActiveUrl, getLocalModelName } from '../settings/appSettings';
+import {
+  getLocalModelBaseUrls,
+  getLocalModelActiveUrl,
+  getLocalModelName,
+} from '../settings/appSettings';
 import { readGeminiKey } from '../settings/secrets';
 import type { OutboxDb } from '../sync/outbox';
 import type { ReceiptProvider } from './types';
@@ -22,7 +26,8 @@ export async function buildChain(db: OutboxDb): Promise<ReceiptProvider[]> {
 
   const providers: ReceiptProvider[] = [];
   const address = (remembered && baseUrls.includes(remembered) ? remembered : baseUrls[0]) ?? null;
-  if (address && localModelName) providers.push(createLocalProvider({ baseUrl: address, model: localModelName }));
+  if (address && localModelName)
+    providers.push(createLocalProvider({ baseUrl: address, model: localModelName }));
   if (geminiKey) providers.push(createGeminiProvider({ apiKey: geminiKey }));
   return providers;
 }

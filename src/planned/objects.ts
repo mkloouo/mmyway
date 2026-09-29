@@ -23,8 +23,21 @@ export interface BillAttributes {
   [key: string]: unknown;
 }
 
-export interface RuleTrigger { type: string; value: string; active?: boolean; stop_processing?: boolean; prohibited?: boolean; [key: string]: unknown }
-export interface RuleAction { type: string; value: string | null; active?: boolean; stop_processing?: boolean; [key: string]: unknown }
+export interface RuleTrigger {
+  type: string;
+  value: string;
+  active?: boolean;
+  stop_processing?: boolean;
+  prohibited?: boolean;
+  [key: string]: unknown;
+}
+export interface RuleAction {
+  type: string;
+  value: string | null;
+  active?: boolean;
+  stop_processing?: boolean;
+  [key: string]: unknown;
+}
 
 export interface RuleAttributes {
   title: string;
@@ -38,7 +51,15 @@ export interface RuleAttributes {
   [key: string]: unknown;
 }
 
-export interface RecurrenceRepetition { id?: string; type: string; moment: string; skip?: number; weekend?: number; occurrences?: string[]; [key: string]: unknown }
+export interface RecurrenceRepetition {
+  id?: string;
+  type: string;
+  moment: string;
+  skip?: number;
+  weekend?: number;
+  occurrences?: string[];
+  [key: string]: unknown;
+}
 export interface RecurrenceTransaction {
   id?: string;
   description?: string;
@@ -91,23 +112,51 @@ export function readPlannedRow(row: PlannedRow): PlannedObject | null {
   try {
     const attributes = JSON.parse(row.attributesJson) as Record<string, unknown>;
     if (!attributes || typeof attributes !== 'object') return null;
-    return { key: row.key, kind: row.kind, id: row.ff3Id, name: row.name, attributes } as PlannedObject;
+    return {
+      key: row.key,
+      kind: row.kind,
+      id: row.ff3Id,
+      name: row.name,
+      attributes,
+    } as PlannedObject;
   } catch {
     return null;
   }
 }
 
-export function plannedRow(kind: PlannedKind, id: string, attributes: Record<string, unknown>, syncedAt: string): PlannedRow {
-  return { key: plannedKey(kind, id), kind, ff3Id: id, name: nameOf(kind, attributes), attributesJson: JSON.stringify(attributes), syncedAt };
+export function plannedRow(
+  kind: PlannedKind,
+  id: string,
+  attributes: Record<string, unknown>,
+  syncedAt: string,
+): PlannedRow {
+  return {
+    key: plannedKey(kind, id),
+    kind,
+    ff3Id: id,
+    name: nameOf(kind, attributes),
+    attributesJson: JSON.stringify(attributes),
+    syncedAt,
+  };
 }
 
-const PATHS: Record<PlannedKind, string> = { bill: '/v1/bills', rule: '/v1/rules', recurrence: '/v1/recurrences' };
-export const plannedPath = (kind: PlannedKind, id?: string) => (id ? `${PATHS[kind]}/${id}` : PATHS[kind]);
+const PATHS: Record<PlannedKind, string> = {
+  bill: '/v1/bills',
+  rule: '/v1/rules',
+  recurrence: '/v1/recurrences',
+};
+export const plannedPath = (kind: PlannedKind, id?: string) =>
+  id ? `${PATHS[kind]}/${id}` : PATHS[kind];
 
-async function fetchAllOf(client: FF3Client, kind: PlannedKind): Promise<{ id: string; attributes: Record<string, unknown> }[]> {
+async function fetchAllOf(
+  client: FF3Client,
+  kind: PlannedKind,
+): Promise<{ id: string; attributes: Record<string, unknown> }[]> {
   const out: { id: string; attributes: Record<string, unknown> }[] = [];
   for (let page = 1; ; page++) {
-    const response = await client.request<{ data: { id: string; attributes: Record<string, unknown> }[] }>(`${PATHS[kind]}?limit=100&page=${page}`);
+    const response = await client.request<{
+      data: { id: string; attributes: Record<string, unknown> }[];
+    }>(`${PATHS[kind]}?limit=100&page=${page}`);
     out.push(...response.data);
     if (response.data.length < 100) return out;
   }
@@ -118,22 +167,41 @@ async function fetchAllOf(client: FF3Client, kind: PlannedKind): Promise<{ id: s
  * so a failed request leaves the old cache in place rather than a partial one.
  */
 export async function pullPlanned(db: OutboxDb, client: FF3Client): Promise<void> {
-  const [bills, rules, recurrences] = await Promise.all([fetchAllOf(client, 'bill'), fetchAllOf(client, 'rule'), fetchAllOf(client, 'recurrence')]);
+  const [bills, rules, recurrences] = await Promise.all([
+    fetchAllOf(client, 'bill'),
+    fetchAllOf(client, 'rule'),
+    fetchAllOf(client, 'recurrence'),
+  ]);
   const now = new Date().toISOString();
   db.transaction((tx) => {
     tx.delete(plannedObjects).run();
-    for (const [kind, list] of [['bill', bills], ['rule', rules], ['recurrence', recurrences]] as const) {
-      for (const item of list) tx.insert(plannedObjects).values(plannedRow(kind, String(item.id), item.attributes, now)).run();
+    for (const [kind, list] of [
+      ['bill', bills],
+      ['rule', rules],
+      ['recurrence', recurrences],
+    ] as const) {
+      for (const item of list)
+        tx.insert(plannedObjects)
+          .values(plannedRow(kind, String(item.id), item.attributes, now))
+          .run();
     }
   });
 }
 
 /** Stores one object as FF3 just answered it (after a save), or removes it (after a delete). */
-export async function storePlanned(db: OutboxDb, kind: PlannedKind, id: string, attributes: Record<string, unknown> | null): Promise<void> {
+export async function storePlanned(
+  db: OutboxDb,
+  kind: PlannedKind,
+  id: string,
+  attributes: Record<string, unknown> | null,
+): Promise<void> {
   if (!attributes) {
     await db.delete(plannedObjects).where(eq(plannedObjects.key, plannedKey(kind, id)));
     return;
   }
   const row = plannedRow(kind, id, attributes, new Date().toISOString());
-  await db.insert(plannedObjects).values(row).onConflictDoUpdate({ target: plannedObjects.key, set: row });
+  await db
+    .insert(plannedObjects)
+    .values(row)
+    .onConflictDoUpdate({ target: plannedObjects.key, set: row });
 }

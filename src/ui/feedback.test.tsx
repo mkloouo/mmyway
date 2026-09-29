@@ -17,7 +17,9 @@ describe('usePopOnChange', () => {
     expect(spy).not.toHaveBeenCalled();
     await rerender(<Probe value />);
     expect(spy).toHaveBeenCalledTimes(1);
-    await act(async () => { jest.runAllTimers(); });
+    await act(async () => {
+      jest.runAllTimers();
+    });
     spy.mockRestore();
   });
 });

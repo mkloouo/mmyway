@@ -5,11 +5,19 @@ import { clientFor, getClient, resetClient } from './session';
 const mockStore: Record<string, string> = {};
 jest.mock('expo-secure-store', () => ({
   getItemAsync: jest.fn(async (k: string) => mockStore[k] ?? null),
-  setItemAsync: jest.fn(async (k: string, v: string) => { mockStore[k] = v; }),
+  setItemAsync: jest.fn(async (k: string, v: string) => {
+    mockStore[k] = v;
+  }),
 }));
 
 function okResponse() {
-  return { ok: true, status: 200, headers: { get: () => 'application/json' }, json: async () => ({ data: { api_version: '6.3.2' } }), text: async () => '' };
+  return {
+    ok: true,
+    status: 200,
+    headers: { get: () => 'application/json' },
+    json: async () => ({ data: { api_version: '6.3.2' } }),
+    text: async () => '',
+  };
 }
 
 describe('session', () => {
@@ -20,7 +28,8 @@ describe('session', () => {
     mockStore.ff3_hosts = JSON.stringify(['http://lan.local', 'https://tailnet.example']);
     mockStore.ff3_api_token = 'tok';
     (global as any).fetch = jest.fn(async (url: string) => {
-      if (url.startsWith('http://lan.local') && !lanUp) throw new TypeError('Network request failed');
+      if (url.startsWith('http://lan.local') && !lanUp)
+        throw new TypeError('Network request failed');
       return okResponse();
     });
   });
@@ -36,7 +45,10 @@ describe('session', () => {
     const second = await getClient(db as any);
     expect(second).not.toBe(first);
     await expect(second!.request('/v1/about')).resolves.toBeDefined();
-    expect((global as any).fetch).toHaveBeenLastCalledWith('https://tailnet.example/api/v1/about', expect.anything());
+    expect((global as any).fetch).toHaveBeenLastCalledWith(
+      'https://tailnet.example/api/v1/about',
+      expect.anything(),
+    );
   });
 
   it('a new token for the same host gets a new client', () => {

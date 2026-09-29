@@ -27,7 +27,8 @@ export function draftReadiness(draft: Draft): DraftReadiness {
     if (isBlank(draft.sourceId) && isBlank(draft.sourceName)) missing.push('source account');
   }
   if (draft.type === 'deposit' || draft.type === 'transfer') {
-    if (isBlank(draft.destinationId) && isBlank(draft.destinationName)) missing.push('destination account');
+    if (isBlank(draft.destinationId) && isBlank(draft.destinationName))
+      missing.push('destination account');
   }
   if (draft.type === 'withdrawal') {
     if (isBlank(draft.destinationName) && isBlank(draft.destinationId)) missing.push('payee');
@@ -39,9 +40,13 @@ export function draftReadiness(draft: Draft): DraftReadiness {
   const extras = draft.extraSplits ?? [];
   if (extras.length > 0) {
     if (extras.some((s) => isZeroAmount(s.amount))) missing.push('split amount');
-    if (draft.type !== 'transfer' && extras.some((s) => isBlank(s.payeeName) && isBlank(s.payeeId))) missing.push('split payee');
+    if (draft.type !== 'transfer' && extras.some((s) => isBlank(s.payeeName) && isBlank(s.payeeId)))
+      missing.push('split payee');
     // The splits must add up to the total the user tracks (src/splits/allocate.ts's leftover).
-    if (draft.total !== undefined && leftover(draft.total, [draft.amount, ...extras.map((s) => s.amount)], 12) !== 0n) {
+    if (
+      draft.total !== undefined &&
+      leftover(draft.total, [draft.amount, ...extras.map((s) => s.amount)], 12) !== 0n
+    ) {
       missing.push('split total');
     }
   }

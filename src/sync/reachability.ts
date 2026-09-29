@@ -32,11 +32,7 @@ export async function probeReachability(config: ReachabilityConfig): Promise<Rea
   const providers: Record<string, ServerReachability> = {};
   await Promise.all(
     Object.entries(config.providers).map(async ([name, { addresses, remembered }]) => {
-      providers[name] = await resolveAddress(
-        addresses,
-        remembered,
-        withTimeout(probeLocalModel),
-      );
+      providers[name] = await resolveAddress(addresses, remembered, withTimeout(probeLocalModel));
     }),
   );
 

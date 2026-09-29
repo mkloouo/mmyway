@@ -14,7 +14,8 @@ const PAGE_SIZE = 100;
 export type ActivityTypeFilter = 'all' | 'withdrawal' | 'deposit' | 'transfer';
 // cached_transactions.type is a plain text column (no DB-level enum) — narrowed here since every
 // write path (referenceData.ts) only ever writes one of the three FF3 transaction types into it.
-export type CachedTransactionRow = Omit<typeof cachedTransactions.$inferSelect, 'type'> & DayTransaction;
+export type CachedTransactionRow = Omit<typeof cachedTransactions.$inferSelect, 'type'> &
+  DayTransaction;
 
 export interface UseTransactionPageResult {
   sections: DaySection<CachedTransactionRow>[];
@@ -25,9 +26,15 @@ export interface UseTransactionPageResult {
   atEnd: boolean;
 }
 
-export function useTransactionPage(
-  { search, type, accountId }: { search: string; type: ActivityTypeFilter; accountId?: string | null },
-): UseTransactionPageResult {
+export function useTransactionPage({
+  search,
+  type,
+  accountId,
+}: {
+  search: string;
+  type: ActivityTypeFilter;
+  accountId?: string | null;
+}): UseTransactionPageResult {
   const db = useDb();
   const [limit, setLimit] = useState(PAGE_SIZE);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -51,14 +58,20 @@ export function useTransactionPage(
   if (key) conditions.push(like(cachedTransactions.searchKey, `%${key}%`));
   // By FF3 id, not name: a renamed account, or two sharing a name, used to break the filter.
   if (accountId) {
-    conditions.push(or(
-      eq(cachedTransactions.sourceId, accountId),
-      eq(cachedTransactions.destinationId, accountId),
-    )!);
+    conditions.push(
+      or(
+        eq(cachedTransactions.sourceId, accountId),
+        eq(cachedTransactions.destinationId, accountId),
+      )!,
+    );
   }
   const where = conditions.length > 0 ? and(...conditions) : undefined;
 
-  const base = db.select().from(cachedTransactions).orderBy(desc(cachedTransactions.date)).limit(limit + 1);
+  const base = db
+    .select()
+    .from(cachedTransactions)
+    .orderBy(desc(cachedTransactions.date))
+    .limit(limit + 1);
   // useLiveQuery runs its query in an effect whose dep list defaults to `[]` — without these deps
   // it keeps re-running the query built on the first render, so changing the filter, typing in
   // search or paging past the first 100 rows all silently returned the same rows.
@@ -85,7 +98,10 @@ export function useTransactionPage(
     if (loadingMore) setLoadingMore(false);
   }
 
-  const sections = useMemo(() => groupByDay(visible as unknown as CachedTransactionRow[]), [visible]);
+  const sections = useMemo(
+    () => groupByDay(visible as unknown as CachedTransactionRow[]),
+    [visible],
+  );
 
   function loadMore() {
     if (atEnd || loadingMore) return;

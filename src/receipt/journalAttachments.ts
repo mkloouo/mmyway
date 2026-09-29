@@ -20,7 +20,12 @@ export interface QueuedAttachment {
 
 interface AttachmentRead {
   id: string;
-  attributes: { filename?: string; title?: string | null; attachable_id?: string | number; mime?: string | null };
+  attributes: {
+    filename?: string;
+    title?: string | null;
+    attachable_id?: string | number;
+    mime?: string | null;
+  };
 }
 
 function isImage(a: AttachmentRead): boolean {
@@ -29,14 +34,25 @@ function isImage(a: AttachmentRead): boolean {
 }
 
 /** FF3's attachments for a group, narrowed to one journal (a split group has several). */
-export async function fetchJournalAttachments(client: FF3Client, groupId: string, journalId: string): Promise<JournalAttachment[]> {
-  const res = await client.request<{ data: AttachmentRead[] }>(`/v1/transactions/${encodeURIComponent(groupId)}/attachments`);
+export async function fetchJournalAttachments(
+  client: FF3Client,
+  groupId: string,
+  journalId: string,
+): Promise<JournalAttachment[]> {
+  const res = await client.request<{ data: AttachmentRead[] }>(
+    `/v1/transactions/${encodeURIComponent(groupId)}/attachments`,
+  );
   return (res.data ?? [])
-    .filter((a) => a.attributes.attachable_id == null || String(a.attributes.attachable_id) === journalId)
+    .filter(
+      (a) => a.attributes.attachable_id == null || String(a.attributes.attachable_id) === journalId,
+    )
     .map((a) => ({
       id: a.id,
       filename: a.attributes.title || a.attributes.filename || `attachment ${a.id}`,
-      imageSource: isImage(a) && client.imageSource ? client.imageSource(`/v1/attachments/${encodeURIComponent(a.id)}/download`) : null,
+      imageSource:
+        isImage(a) && client.imageSource
+          ? client.imageSource(`/v1/attachments/${encodeURIComponent(a.id)}/download`)
+          : null,
     }));
 }
 
@@ -63,13 +79,21 @@ export function receiptPreviews(input: {
   if (!input.remote && input.capturedPath) local.add(input.capturedPath);
   return [
     ...[...local].map((uri) => ({ key: uri, source: { uri } })),
-    ...(input.remote ?? []).flatMap((a) => (a.imageSource ? [{ key: a.id, source: a.imageSource }] : [])),
+    ...(input.remote ?? []).flatMap((a) =>
+      a.imageSource ? [{ key: a.id, source: a.imageSource }] : [],
+    ),
   ];
 }
 
 /** attach_receipt operations still in the outbox for this journal. */
 export function queuedAttachments(
-  outbox: { id: string; kind: string; status: string; payloadJson: string; lastError: string | null }[],
+  outbox: {
+    id: string;
+    kind: string;
+    status: string;
+    payloadJson: string;
+    lastError: string | null;
+  }[],
   journalId: string,
 ): QueuedAttachment[] {
   return outbox
@@ -82,6 +106,13 @@ export function queuedAttachments(
         return [];
       }
       if (String(payload.transactionJournalId) !== journalId) return [];
-      return [{ opId: op.id, status: op.status, lastError: op.lastError, receiptImagePath: payload.receiptImagePath ?? null }];
+      return [
+        {
+          opId: op.id,
+          status: op.status,
+          lastError: op.lastError,
+          receiptImagePath: payload.receiptImagePath ?? null,
+        },
+      ];
     });
 }

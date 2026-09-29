@@ -14,23 +14,23 @@ Both branches are merged and `main` is at `0359c66`. The offline outbox bugs tha
 
 Already fixed, so not repeated below:
 
-| Area | Fixed in |
-| --- | --- |
-| Queue stalls on a lost create response; creates not idempotent | `843a3a2` |
-| Two syncs at once; Undo still sending; same sequence number twice | `843a3a2` |
-| Server-address switching worked once per app launch | `843a3a2` |
-| Edits checked only against a stale cache; two offline edits conflicting | `843a3a2` |
-| Deleted accounts/categories/budgets stuck in pickers; envelope checkbox flipping back | `843a3a2` |
-| First sync flooding the Inbox with old recurring transactions | `843a3a2` |
-| Receipt photos in the cache folder; "Reading receipt…" forever; model output unvalidated; receipt time shifted to UTC | `0bebf70` |
-| First-run "Not signed in"; pull-to-refresh on an empty list; sync freezing the UI | your commits `96a70c8`–`6624259` |
-| Timezone-dependent test failing in UTC | `d201699` |
-| Screen jump, dead search, "just" pill, inactive accounts shown; Discard button, amount validation, Approve guard, readable sign-in errors | `4b361d6` (screen work) |
-| Conflict screen for recurring reviews; Retry on an errored receipt syncs | the merge of both branches |
-| Deleted-in-FF3 transactions stay cached; full-table emptiness reads; count.tsx side effect in render | first testing pass |
-| Gemini request schema (`responseJsonSchema`, the bot's prompt, synced categories/currencies); receipt loader; swipe acts on release; multi-select delete; year in Activity; old search results open; account order saved to FF3 | `a9f772c` |
-| Capture preloads payee/account history; recency ordering; attachment status on synced transactions; keypad haptics; receipts return to the Inbox at once | `d7cfec0` |
-| One shared `SearchField` for all six searches; Reorder as an icon | `0359c66` |
+| Area                                                                                                                                                                                                                            | Fixed in                         |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------- |
+| Queue stalls on a lost create response; creates not idempotent                                                                                                                                                                  | `843a3a2`                        |
+| Two syncs at once; Undo still sending; same sequence number twice                                                                                                                                                               | `843a3a2`                        |
+| Server-address switching worked once per app launch                                                                                                                                                                             | `843a3a2`                        |
+| Edits checked only against a stale cache; two offline edits conflicting                                                                                                                                                         | `843a3a2`                        |
+| Deleted accounts/categories/budgets stuck in pickers; envelope checkbox flipping back                                                                                                                                           | `843a3a2`                        |
+| First sync flooding the Inbox with old recurring transactions                                                                                                                                                                   | `843a3a2`                        |
+| Receipt photos in the cache folder; "Reading receipt…" forever; model output unvalidated; receipt time shifted to UTC                                                                                                           | `0bebf70`                        |
+| First-run "Not signed in"; pull-to-refresh on an empty list; sync freezing the UI                                                                                                                                               | your commits `96a70c8`–`6624259` |
+| Timezone-dependent test failing in UTC                                                                                                                                                                                          | `d201699`                        |
+| Screen jump, dead search, "just" pill, inactive accounts shown; Discard button, amount validation, Approve guard, readable sign-in errors                                                                                       | `4b361d6` (screen work)          |
+| Conflict screen for recurring reviews; Retry on an errored receipt syncs                                                                                                                                                        | the merge of both branches       |
+| Deleted-in-FF3 transactions stay cached; full-table emptiness reads; count.tsx side effect in render                                                                                                                            | first testing pass               |
+| Gemini request schema (`responseJsonSchema`, the bot's prompt, synced categories/currencies); receipt loader; swipe acts on release; multi-select delete; year in Activity; old search results open; account order saved to FF3 | `a9f772c`                        |
+| Capture preloads payee/account history; recency ordering; attachment status on synced transactions; keypad haptics; receipts return to the Inbox at once                                                                        | `d7cfec0`                        |
+| One shared `SearchField` for all six searches; Reorder as an icon                                                                                                                                                               | `0359c66`                        |
 
 ## Sync and outbox
 

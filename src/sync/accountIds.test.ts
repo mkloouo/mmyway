@@ -17,7 +17,10 @@ function fakeFF3(accounts: Account[]) {
       accounts.push(account);
       return { data: account };
     }
-    if (path === '/v1/transactions') return { data: { id: 'g1', attributes: { transactions: [{ transaction_journal_id: 'j1' }] } } };
+    if (path === '/v1/transactions')
+      return {
+        data: { id: 'g1', attributes: { transactions: [{ transaction_journal_id: 'j1' }] } },
+      };
     throw new Error(`no handler for ${path}`);
   });
   return { request };
@@ -30,38 +33,78 @@ describe('account ids', () => {
       { id: '2', attributes: { name: 'Spotify Family', type: 'expense' } },
       { id: '3', attributes: { name: 'spotify', type: 'expense' } },
     ]);
-    const split = await withAccountIds(accountResolver(client as any), { type: 'withdrawal', source_id: '9', destination_name: 'Spotify' });
+    const split = await withAccountIds(accountResolver(client as any), {
+      type: 'withdrawal',
+      source_id: '9',
+      destination_name: 'Spotify',
+    });
     expect(split).toEqual({ type: 'withdrawal', source_id: '9', destination_id: '3' });
   });
 
-  it('creates a payee FF3 doesn\'t have yet, once for several splits', async () => {
+  it("creates a payee FF3 doesn't have yet, once for several splits", async () => {
     const client = fakeFF3([]);
     const resolve = accountResolver(client as any);
-    const a = await withAccountIds(resolve, { type: 'deposit', source_name: 'Employer', destination_id: '9' });
-    const b = await withAccountIds(resolve, { type: 'deposit', source_name: 'Employer', destination_id: '9' });
+    const a = await withAccountIds(resolve, {
+      type: 'deposit',
+      source_name: 'Employer',
+      destination_id: '9',
+    });
+    const b = await withAccountIds(resolve, {
+      type: 'deposit',
+      source_name: 'Employer',
+      destination_id: '9',
+    });
     expect(a.source_id).toBe('100');
     expect(b.source_id).toBe('100');
-    const creates = client.request.mock.calls.filter(([path, init]) => path === '/v1/accounts' && (init as RequestInit | undefined)?.method === 'POST');
+    const creates = client.request.mock.calls.filter(
+      ([path, init]) =>
+        path === '/v1/accounts' && (init as RequestInit | undefined)?.method === 'POST',
+    );
     expect(creates).toHaveLength(1);
-    expect(JSON.parse(String((creates[0]![1] as RequestInit).body))).toEqual({ name: 'Employer', type: 'revenue' });
+    expect(JSON.parse(String((creates[0]![1] as RequestInit).body))).toEqual({
+      name: 'Employer',
+      type: 'revenue',
+    });
   });
 
   it('never creates an own account', async () => {
     const client = fakeFF3([{ id: '4', attributes: { name: 'Savings', type: 'expense' } }]);
-    await expect(withAccountIds(accountResolver(client as any), { type: 'transfer', source_name: 'Savings', destination_id: '9' }))
-      .rejects.toThrow('no account named "Savings"');
+    await expect(
+      withAccountIds(accountResolver(client as any), {
+        type: 'transfer',
+        source_name: 'Savings',
+        destination_id: '9',
+      }),
+    ).rejects.toThrow('no account named "Savings"');
   });
 
-  it('uses the type of the transaction being edited when the change doesn\'t carry it', async () => {
+  it("uses the type of the transaction being edited when the change doesn't carry it", async () => {
     const client = fakeFF3([{ id: '5', attributes: { name: 'Lidl', type: 'expense' } }]);
-    expect(await withAccountIds(accountResolver(client as any), { destination_name: 'Lidl' }, 'withdrawal')).toEqual({ destination_id: '5' });
+    expect(
+      await withAccountIds(
+        accountResolver(client as any),
+        { destination_name: 'Lidl' },
+        'withdrawal',
+      ),
+    ).toEqual({ destination_id: '5' });
   });
 
-  it('sends a new entry\'s payee by id', async () => {
+  it("sends a new entry's payee by id", async () => {
     const db = createTestDb();
     await enqueueOperation(db, {
-      id: 'op-1', kind: 'create_transaction',
-      payload: { clientId: 'c1', splits: [{ type: 'withdrawal', source_id: '9', destination_name: 'Żabka', description: 'x' } as any] },
+      id: 'op-1',
+      kind: 'create_transaction',
+      payload: {
+        clientId: 'c1',
+        splits: [
+          {
+            type: 'withdrawal',
+            source_id: '9',
+            destination_name: 'Żabka',
+            description: 'x',
+          } as any,
+        ],
+      },
     });
     const client = fakeFF3([{ id: '6', attributes: { name: 'Żabka', type: 'expense' } }]);
     await replayOutbox(db as any, client as any);

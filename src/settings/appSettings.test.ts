@@ -1,8 +1,11 @@
 import { createTestDb } from '../db/testDb';
 import {
-  getDefaultSourceAccountId, setDefaultSourceAccountId,
-  getLocalModelBaseUrl, setLocalModelBaseUrl,
-  getUseServerTime, setUseServerTime,
+  getDefaultSourceAccountId,
+  setDefaultSourceAccountId,
+  getLocalModelBaseUrl,
+  setLocalModelBaseUrl,
+  getUseServerTime,
+  setUseServerTime,
 } from './appSettings';
 
 describe('appSettings', () => {

@@ -13,7 +13,11 @@ export function useShake() {
   const shake = useCallback(() => {
     x.stopAnimation();
     x.setValue(0);
-    Animated.sequence([-8, 8, -6, 6, -3, 0].map((toValue) => Animated.timing(x, { toValue, duration: 45, useNativeDriver: true }))).start();
+    Animated.sequence(
+      [-8, 8, -6, 6, -3, 0].map((toValue) =>
+        Animated.timing(x, { toValue, duration: 45, useNativeDriver: true }),
+      ),
+    ).start();
   }, [x]);
   return { shake, shakeStyle: { transform: [{ translateX: x }] } };
 }
@@ -36,7 +40,10 @@ export function usePopOnChange(value: unknown, scaleTo?: number) {
   const { pop, popStyle } = usePop(scaleTo);
   const first = useRef(true);
   useEffect(() => {
-    if (first.current) { first.current = false; return; }
+    if (first.current) {
+      first.current = false;
+      return;
+    }
     pop();
   }, [value, pop]);
   return popStyle;
@@ -52,24 +59,37 @@ export function useFlyAway() {
   const [ghost, setGhost] = useState<{ key: number; text: string } | null>(null);
   const [out] = useState(() => new Animated.Value(1));
   const [inField] = useState(() => new Animated.Value(1));
-  const fly = useCallback((text: string) => {
-    setGhost({ key: Date.now(), text });
-    out.stopAnimation();
-    inField.stopAnimation();
-    out.setValue(0);
-    inField.setValue(0);
-    Animated.parallel([
-      Animated.timing(out, { toValue: 1, duration: 650, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-      Animated.timing(inField, { toValue: 1, duration: 350, delay: 250, useNativeDriver: true }),
-    ]).start(({ finished }) => { if (finished) setGhost(null); });
-  }, [out, inField]);
+  const fly = useCallback(
+    (text: string) => {
+      setGhost({ key: Date.now(), text });
+      out.stopAnimation();
+      inField.stopAnimation();
+      out.setValue(0);
+      inField.setValue(0);
+      Animated.parallel([
+        Animated.timing(out, {
+          toValue: 1,
+          duration: 650,
+          easing: Easing.out(Easing.cubic),
+          useNativeDriver: true,
+        }),
+        Animated.timing(inField, { toValue: 1, duration: 350, delay: 250, useNativeDriver: true }),
+      ]).start(({ finished }) => {
+        if (finished) setGhost(null);
+      });
+    },
+    [out, inField],
+  );
   // Built once: interpolate() makes a new animated node each call, and Capture re-renders on every key.
-  const ghostStyle = useMemo(() => ({
-    opacity: out.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
-    transform: [
-      { translateY: out.interpolate({ inputRange: [0, 1], outputRange: [0, -48] }) },
-      { scale: out.interpolate({ inputRange: [0, 1], outputRange: [1, 0.85] }) },
-    ],
-  }), [out]);
+  const ghostStyle = useMemo(
+    () => ({
+      opacity: out.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
+      transform: [
+        { translateY: out.interpolate({ inputRange: [0, 1], outputRange: [0, -48] }) },
+        { scale: out.interpolate({ inputRange: [0, 1], outputRange: [1, 0.85] }) },
+      ],
+    }),
+    [out],
+  );
   return { fly, ghost, ghostStyle, fieldStyle: { opacity: inField } };
 }

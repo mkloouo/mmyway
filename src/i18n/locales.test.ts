@@ -3,12 +3,16 @@ import ukUA from './locales/uk-UA.json';
 import i18n from '.';
 
 function keysOf(obj: object, prefix = ''): string[] {
-  return Object.entries(obj).flatMap(([k, v]) => (typeof v === 'object' && v !== null ? keysOf(v, `${prefix}${k}.`) : [`${prefix}${k}`]));
+  return Object.entries(obj).flatMap(([k, v]) =>
+    typeof v === 'object' && v !== null ? keysOf(v, `${prefix}${k}.`) : [`${prefix}${k}`],
+  );
 }
 
 // Plural forms differ per language (Ukrainian adds _few and _many), so compare base keys.
 function baseKeys(obj: object): string[] {
-  return [...new Set(keysOf(obj).map((k) => k.replace(/_(zero|one|two|few|many|other)$/, '')))].sort();
+  return [
+    ...new Set(keysOf(obj).map((k) => k.replace(/_(zero|one|two|few|many|other)$/, ''))),
+  ].sort();
 }
 
 describe('locale files', () => {

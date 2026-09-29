@@ -17,7 +17,16 @@ export interface TextFieldProps extends TextInputProps {
   buffered?: boolean;
 }
 
-export function TextField({ style, invalid, buffered, value, onChangeText, onFocus, onBlur, ...props }: TextFieldProps) {
+export function TextField({
+  style,
+  invalid,
+  buffered,
+  value,
+  onChangeText,
+  onFocus,
+  onBlur,
+  ...props
+}: TextFieldProps) {
   const t = useTheme();
   const [text, setText] = useState(value ?? '');
   const focused = useRef(false);
@@ -44,8 +53,12 @@ export function TextField({ style, invalid, buffered, value, onChangeText, onFoc
       }}
       style={[
         {
-          borderWidth: 1, borderColor: invalid ? t.color.danger : t.color.border, borderRadius: t.radius.sm,
-          paddingHorizontal: t.space.md, paddingVertical: t.space.sm, color: t.color.text,
+          borderWidth: 1,
+          borderColor: invalid ? t.color.danger : t.color.border,
+          borderRadius: t.radius.sm,
+          paddingHorizontal: t.space.md,
+          paddingVertical: t.space.sm,
+          color: t.color.text,
         },
         style,
       ]}

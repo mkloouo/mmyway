@@ -29,7 +29,10 @@ export type CaptureResult =
  * parse. `parse` is returned rather than awaited (the receipt screen doesn't wait for it at
  * all — the Inbox card carries on); it never rejects.
  */
-export async function captureReceipt(db: OutboxDb, original: { uri: string; base64: string; hint?: string }): Promise<CaptureResult> {
+export async function captureReceipt(
+  db: OutboxDb,
+  original: { uri: string; base64: string; hint?: string },
+): Promise<CaptureResult> {
   const smaller = await downscaleReceipt(original.uri);
   const input = smaller ? { ...original, ...smaller } : original;
   const hash = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, input.base64);
@@ -38,31 +41,57 @@ export async function captureReceipt(db: OutboxDb, original: { uri: string; base
 
   // The same image again after it failed (no reader was set up, the model choked): retry that
   // item rather than adding a second card next to the error.
-  const [errored] = await db.select().from(inboxItems)
+  const [errored] = await db
+    .select()
+    .from(inboxItems)
     .where(and(eq(inboxItems.receiptContentHash, hash), eq(inboxItems.state, 'error')));
   if (errored) {
-    await db.update(inboxItems)
-      .set({ state: transition('error', 'retry'), errorMessage: null, updatedAt: new Date().toISOString() })
+    await db
+      .update(inboxItems)
+      .set({
+        state: transition('error', 'retry'),
+        errorMessage: null,
+        updatedAt: new Date().toISOString(),
+      })
       .where(eq(inboxItems.id, errored.id));
-    const parse = parseReceiptItem(db, errored.id, input.base64, input.hint).catch((): ParseOutcome => 'waiting');
+    const parse = parseReceiptItem(db, errored.id, input.base64, input.hint).catch(
+      (): ParseOutcome => 'waiting',
+    );
     return { kind: 'created', itemId: errored.id, parse };
   }
 
   const receiptImagePath = persistReceiptImage(input.uri);
   const id = generateId();
   const now = new Date().toISOString();
-  const stub: Draft = { type: 'withdrawal', amount: '', currencyCode: '', date: now, description: '', isNewPayee: true };
+  const stub: Draft = {
+    type: 'withdrawal',
+    amount: '',
+    currencyCode: '',
+    date: now,
+    description: '',
+    isNewPayee: true,
+  };
   await db.insert(inboxItems).values({
-    id, kind: 'receipt', state: 'captured', draftJson: writeDraft(stub),
-    receiptImagePath, receiptContentHash: hash,
-    createdAt: now, updatedAt: now,
+    id,
+    kind: 'receipt',
+    state: 'captured',
+    draftJson: writeDraft(stub),
+    receiptImagePath,
+    receiptContentHash: hash,
+    createdAt: now,
+    updatedAt: now,
   });
-  const parse = parseReceiptItem(db, id, input.base64, input.hint).catch((): ParseOutcome => 'waiting');
+  const parse = parseReceiptItem(db, id, input.base64, input.hint).catch(
+    (): ParseOutcome => 'waiting',
+  );
   return { kind: 'created', itemId: id, parse };
 }
 
 /** C2: attach a photo to an already-synced transaction — no inbox item, no parsing, just the upload. */
-export async function attachReceiptToJournal(db: OutboxDb, input: { uri: string; transactionJournalId: string }): Promise<void> {
+export async function attachReceiptToJournal(
+  db: OutboxDb,
+  input: { uri: string; transactionJournalId: string },
+): Promise<void> {
   const receiptImagePath = persistReceiptImage(input.uri);
   await enqueueOperation(db, {
     id: generateId(),

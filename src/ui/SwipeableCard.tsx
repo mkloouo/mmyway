@@ -5,11 +5,18 @@ import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Animated, Text, View } from 'react-native';
 import { useShake } from './feedback';
-import Swipeable, { SwipeDirection, type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
+import Swipeable, {
+  SwipeDirection,
+  type SwipeableMethods,
+} from 'react-native-gesture-handler/ReanimatedSwipeable';
 import { useTheme } from './theme';
 
 export function SwipeableCard({
-  children, onConfirm, onDelete, confirmEnabled = true, onRefused,
+  children,
+  onConfirm,
+  onDelete,
+  confirmEnabled = true,
+  onRefused,
 }: {
   children: React.ReactNode;
   onConfirm?: () => void;
@@ -29,16 +36,41 @@ export function SwipeableCard({
       // 96, up from 64: a short flick while scrolling confirmed or deleted a card too readily.
       leftThreshold={96}
       rightThreshold={96}
-      renderLeftActions={onConfirm ? () => (
-        <View style={{ backgroundColor: t.color.accent, justifyContent: 'center', paddingHorizontal: t.space.xl }}>
-          <Text style={{ color: t.color.onAccent, fontWeight: '700' }}>✓ {tr('inbox.confirm')}</Text>
-        </View>
-      ) : undefined}
-      renderRightActions={onDelete ? () => (
-        <View style={{ backgroundColor: t.color.danger, justifyContent: 'center', alignItems: 'flex-end', paddingHorizontal: t.space.xl }}>
-          <Text style={{ color: t.color.onDanger, fontWeight: '700' }}>✕ {tr('common.delete')}</Text>
-        </View>
-      ) : undefined}
+      renderLeftActions={
+        onConfirm
+          ? () => (
+              <View
+                style={{
+                  backgroundColor: t.color.accent,
+                  justifyContent: 'center',
+                  paddingHorizontal: t.space.xl,
+                }}
+              >
+                <Text style={{ color: t.color.onAccent, fontWeight: '700' }}>
+                  ✓ {tr('inbox.confirm')}
+                </Text>
+              </View>
+            )
+          : undefined
+      }
+      renderRightActions={
+        onDelete
+          ? () => (
+              <View
+                style={{
+                  backgroundColor: t.color.danger,
+                  justifyContent: 'center',
+                  alignItems: 'flex-end',
+                  paddingHorizontal: t.space.xl,
+                }}
+              >
+                <Text style={{ color: t.color.onDanger, fontWeight: '700' }}>
+                  ✕ {tr('common.delete')}
+                </Text>
+              </View>
+            )
+          : undefined
+      }
       // `direction` is the way the row MOVED: a swipe to the right reveals the left actions
       // (✓ Confirm) and reports RIGHT. This used to test LEFT, so a right swipe ran Delete (only
       // its confirm dialog stopped it) and a left swipe tried to confirm.

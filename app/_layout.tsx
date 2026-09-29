@@ -59,7 +59,9 @@ function SyncOnReconnect() {
 }
 
 function BackgroundSyncRegistration() {
-  useEffect(() => { void registerBackgroundSync(); }, []);
+  useEffect(() => {
+    void registerBackgroundSync();
+  }, []);
   return null;
 }
 
@@ -67,11 +69,25 @@ function BackgroundSyncRegistration() {
 export function ErrorBoundary({ error, retry }: { error: Error; retry: () => void }) {
   const t = useTheme();
   const { t: tr } = useTranslation();
-  logLine('error', `render crash: ${error.message}\n${error.stack ?? ''}`);
+  // In the render body this logged the same crash again on every re-render of the error screen.
+  useEffect(() => {
+    logLine('error', `render crash: ${error.message}\n${error.stack ?? ''}`);
+  }, [error]);
   return (
-    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: t.space.lg, padding: t.space.xxl, backgroundColor: t.color.bg }}>
+    <View
+      style={{
+        flex: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: t.space.lg,
+        padding: t.space.xxl,
+        backgroundColor: t.color.bg,
+      }}
+    >
       <Text style={[t.type.heading, { color: t.color.text }]}>{tr('errorBoundary.title')}</Text>
-      <Text style={[t.type.body, { color: t.color.textMuted, textAlign: 'center' }]}>{error.message}</Text>
+      <Text style={[t.type.body, { color: t.color.textMuted, textAlign: 'center' }]}>
+        {error.message}
+      </Text>
       <Button title={tr('errorBoundary.reload')} onPress={retry} />
     </View>
   );

@@ -28,10 +28,14 @@ export function landingItems<T extends SentItem>(
 ): T[] {
   if (!cache?.caughtUpAt) return [];
   const caughtUpAt = cache.caughtUpAt;
-  return sent.filter((i) => i.kind !== 'recurring_review'
-    && !!i.ff3GroupId && !cache.groupIds.has(i.ff3GroupId)
-    && !queuedInboxIds.has(i.id)
-    && i.updatedAt > caughtUpAt);
+  return sent.filter(
+    (i) =>
+      i.kind !== 'recurring_review' &&
+      !!i.ff3GroupId &&
+      !cache.groupIds.has(i.ff3GroupId) &&
+      !queuedInboxIds.has(i.id) &&
+      i.updatedAt > caughtUpAt,
+  );
 }
 
 export interface PinnableRow {
@@ -49,11 +53,18 @@ export function matchesActivityFilter(
   filter: { type: ActivityTypeFilter; accountId: string | null; search: string },
 ): boolean {
   if (filter.type !== 'all' && row.type !== filter.type) return false;
-  if (filter.accountId && row.sourceId !== filter.accountId && row.destinationId !== filter.accountId) return false;
+  if (
+    filter.accountId &&
+    row.sourceId !== filter.accountId &&
+    row.destinationId !== filter.accountId
+  )
+    return false;
   const key = normkey(filter.search.trim());
   if (key) {
     // What a cached row's search_key holds (searchKeyOf in src/sync/referenceData.ts).
-    const text = normkey([row.description, row.sourceName, row.destinationName].filter(Boolean).join(' '));
+    const text = normkey(
+      [row.description, row.sourceName, row.destinationName].filter(Boolean).join(' '),
+    );
     if (!text.includes(key)) return false;
   }
   return true;

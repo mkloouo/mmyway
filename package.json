@@ -12,12 +12,14 @@
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
     "test": "jest",
-    "check": "tsc --noEmit && expo lint && jest --ci",
+    "check": "prettier --check . && tsc --noEmit && expo lint && jest --ci",
     "db:generate": "drizzle-kit generate",
     "release": "node scripts/release.mjs",
     "i18n:push": "tolgee push",
     "i18n:pull": "tolgee pull",
-    "android:build:aab": "eas build -p android -e production-aab --local"
+    "android:build:aab": "eas build -p android -e production-aab --local",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",

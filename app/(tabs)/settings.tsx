@@ -1,34 +1,50 @@
 // Settings (design §6.6) — grouped Card/Row layout, every › opens a Sheet. No nested FlatLists.
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { eq } from 'drizzle-orm';
 import { Alert, ScrollView, Text } from 'react-native';
 import { router } from 'expo-router';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
+import { useCurrencies } from '../../src/db/useReferenceData';
 import Constants from 'expo-constants';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, AppBar, SectionHeader, Card, Row, Button, Sheet, Toast } from '../../src/ui/components';
+import {
+  Screen,
+  AppBar,
+  SectionHeader,
+  Card,
+  Row,
+  Button,
+  Sheet,
+  Toast,
+} from '../../src/ui/components';
 import { AddressesSheet } from '../../src/ui/AddressesSheet';
 import { relativeTime } from '../../src/ui/relativeTime';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { loadSettings, SETTINGS_QUERY_KEY } from '../../src/settings/loadSettings';
 import { signIn, signOut, readStoredCredentials, probeAbout } from '../../src/api/ff3/auth';
 import type { AuthErrorReason } from '../../src/api/ff3/types';
 import { readHosts, writeHosts } from '../../src/api/ff3/hosts';
-import { saveGeminiKey, readGeminiKey } from '../../src/settings/secrets';
-import { referenceCurrencies, aliases as aliasesTable } from '../../src/db/schema';
+import { saveGeminiKey } from '../../src/settings/secrets';
+import { aliases as aliasesTable } from '../../src/db/schema';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { hasEnvelopeMarker } from '../../src/accounts/envelopeMarker';
 import { useSync } from '../../src/sync/useSync';
 import { PAYEE } from '../../src/lookup/aliases';
-import { clearInstanceData, describeQueuedOperations, isSameInstance, queuedOperationCount } from '../../src/sync/instanceData';
 import {
-  getLocalModelBaseUrls, setLocalModelBaseUrls, getLocalModelActiveUrl,
-  getLocalModelName, setLocalModelName,
-  getDefaultSourceAccountId, setDefaultSourceAccountId,
-  getDefaultCurrencyCode, setDefaultCurrencyCode,
-  getCashAccountId, setCashAccountId,
-  getFf3ActiveHost, getLastSyncedAt,
-  getLocale, setLocale,
+  clearInstanceData,
+  describeQueuedOperations,
+  isSameInstance,
+  queuedOperationCount,
+} from '../../src/sync/instanceData';
+import {
+  setLocalModelBaseUrls,
+  setLocalModelName,
+  setDefaultSourceAccountId,
+  setDefaultCurrencyCode,
+  setCashAccountId,
+  setLocale,
 } from '../../src/settings/appSettings';
 import type { AppLocale } from '../../src/i18n';
 import { TextField } from '../../src/ui/TextField';
@@ -70,99 +86,80 @@ export default function SettingsScreen() {
 
   const allAssetAccounts = useAssetAccounts({ includeInactive: true }) ?? [];
   const assetAccounts = useAssetAccounts() ?? [];
-  const { data: currencies } = useLiveQuery(db.select().from(referenceCurrencies));
-  const { data: aliasRows } = useLiveQuery(db.select().from(aliasesTable).where(eq(aliasesTable.kind, PAYEE)));
+  const currencies = useCurrencies();
+  const { data: aliasRows } = useLiveQuery(
+    db.select().from(aliasesTable).where(eq(aliasesTable.kind, PAYEE)),
+  );
 
-  const [signedIn, setSignedIn] = useState(false);
-  const [ff3Hosts, setFf3Hosts] = useState<string[]>([]);
-  const [ff3ActiveHost, setFf3ActiveHostState] = useState<string | null>(null);
-  const [localModelUrls, setLocalModelUrls] = useState<string[]>([]);
-  const [localModelActiveUrl, setLocalModelActiveUrlState] = useState<string | null>(null);
-  const [localModelName, setLocalModelNameState] = useState('');
-  const [hasGeminiKey, setHasGeminiKey] = useState(false);
-  const [defaultAccountId, setDefaultAccountIdState] = useState<string | null>(null);
-  const [defaultCurrency, setDefaultCurrencyState] = useState<string | null>(null);
-  const [cashAccountId, setCashAccountIdState] = useState<string | null>(null);
-  const [lastSyncedAt, setLastSyncedAtState] = useState<string | null>(null);
-  const [locale, setLocaleState] = useState<AppLocale>('system');
+  const { data: settings } = useQuery({
+    queryKey: SETTINGS_QUERY_KEY,
+    queryFn: () => loadSettings(db),
+  });
+  const queryClient = useQueryClient();
+  /** Re-reads every setting. Called after a write and when a sheet that wrote one closes. */
+  const reload = () => queryClient.invalidateQueries({ queryKey: SETTINGS_QUERY_KEY });
 
-  async function reload() {
-    const [creds, hosts, active, localUrls, localActive, name, geminiKey, acc, cur, cash, synced, lang] = await Promise.all([
-      readStoredCredentials(), readHosts(), getFf3ActiveHost(db), getLocalModelBaseUrls(db), getLocalModelActiveUrl(db),
-      getLocalModelName(db), readGeminiKey(), getDefaultSourceAccountId(db), getDefaultCurrencyCode(db), getCashAccountId(db),
-      getLastSyncedAt(db), getLocale(db),
-    ]);
-    setSignedIn(!!creds);
-    setFf3Hosts(hosts);
-    setFf3ActiveHostState(active);
-    setLocalModelUrls(localUrls);
-    setLocalModelActiveUrlState(localActive);
-    setLocalModelNameState(name ?? '');
-    setHasGeminiKey(!!geminiKey);
-    setDefaultAccountIdState(acc);
-    setDefaultCurrencyState(cur);
-    setCashAccountIdState(cash);
-    setLastSyncedAtState(synced);
-    setLocaleState(lang);
-  }
-  useEffect(() => { (async () => { await reload(); })(); }, [db]); // eslint-disable-line react-hooks/exhaustive-deps
+  const signedIn = settings?.signedIn ?? false;
+  const ff3Hosts = settings?.ff3Hosts ?? [];
+  const ff3ActiveHost = settings?.ff3ActiveHost ?? null;
+  const localModelUrls = settings?.localModelUrls ?? [];
+  const localModelActiveUrl = settings?.localModelActiveUrl ?? null;
+  const hasGeminiKey = settings?.hasGeminiKey ?? false;
+  const defaultAccountId = settings?.defaultAccountId ?? null;
+  const defaultCurrency = settings?.defaultCurrency ?? null;
+  const cashAccountId = settings?.cashAccountId ?? null;
+  const lastSyncedAt = settings?.lastSyncedAt ?? null;
+  const locale: AppLocale = settings?.locale ?? 'system';
+  // The one setting that is typed before it's saved, so it needs a draft of its own.
+  const [localModelNameInput, setLocalModelNameInput] = useState<string | null>(null);
+  const localModelName = localModelNameInput ?? settings?.localModelName ?? '';
 
   const [toast, setToast] = useToast();
 
-  const [signInSheetOpen, setSignInSheetOpen] = useState(false);
-  const [ff3AddressesOpen, setFf3AddressesOpen] = useState(false);
-  const [localAddressesOpen, setLocalAddressesOpen] = useState(false);
-  const [localModelSheetOpen, setLocalModelSheetOpen] = useState(false);
-  const [geminiSheetOpen, setGeminiSheetOpen] = useState(false);
-  const [accountSheetOpen, setAccountSheetOpen] = useState(false);
-  const [currencySheetOpen, setCurrencySheetOpen] = useState(false);
-  const [cashAccountSheetOpen, setCashAccountSheetOpen] = useState(false);
-  const [languageSheetOpen, setLanguageSheetOpen] = useState(false);
+  // Only one sheet is ever open, so it is one state rather than a boolean each.
+  const [sheet, setSheet] = useState<
+    | 'signIn'
+    | 'ff3Addresses'
+    | 'localAddresses'
+    | 'localModel'
+    | 'gemini'
+    | 'account'
+    | 'currency'
+    | 'cashAccount'
+    | 'language'
+    | null
+  >(null);
 
   const [host, setHost] = useState('');
   const [token, setToken] = useState('');
-  const [signingIn, setSigningIn] = useState(false);
   const [geminiKeyInput, setGeminiKeyInput] = useState('');
-  const [saving, setSaving] = useState(false);
 
   /** Keeps a double-tap on any Save from writing the same secret or setting twice. */
-  async function saveOnce(write: () => Promise<void>) {
-    if (saving) return;
-    setSaving(true);
-    try {
-      await write();
-    } finally {
-      setSaving(false);
-    }
-  }
+  const saveOnce = act(tr('common.save'), (write: () => Promise<void>) => write());
+  const saving = act.pending(tr('common.save'));
+  const signingIn = act.pending(tr('settings.signIn'));
 
   const onSignIn = act(tr('settings.signIn'), async () => {
-    if (signingIn) return;
-    setSigningIn(true);
-    try {
-      // Signing in somewhere new while signed in is a switch of instance, same as signing out.
-      const switching = signedIn && !isSameInstance(await readHosts(), host);
-      if (switching) {
-        const queued = await queuedOperationCount(db);
-        if (queued > 0) {
-          Alert.alert(tr('settings.cantSwitchYet'), describeQueuedOperations(queued));
-          return;
-        }
+    // Signing in somewhere new while signed in is a switch of instance, same as signing out.
+    const switching = signedIn && !isSameInstance(await readHosts(), host);
+    if (switching) {
+      const queued = await queuedOperationCount(db);
+      if (queued > 0) {
+        Alert.alert(tr('settings.cantSwitchYet'), describeQueuedOperations(queued));
+        return;
       }
-      const result = await signIn(host, token);
-      if (result.ok) {
-        if (switching) await clearInstanceData(db);
-        setSignInSheetOpen(false);
-        setToast(tr('settings.connected'));
-        setHost('');
-        setToken('');
-        await reload();
-        credentialsChanged();
-      } else {
-        Alert.alert(tr('settings.signInFailed'), tr(SIGN_IN_ERROR_KEYS[result.reason]));
-      }
-    } finally {
-      setSigningIn(false);
+    }
+    const result = await signIn(host, token);
+    if (result.ok) {
+      if (switching) await clearInstanceData(db);
+      setSheet(null);
+      setToast(tr('settings.connected'));
+      setHost('');
+      setToken('');
+      await reload();
+      credentialsChanged();
+    } else {
+      Alert.alert(tr('settings.signInFailed'), tr(SIGN_IN_ERROR_KEYS[result.reason]));
     }
   });
 
@@ -172,7 +169,14 @@ export default function SettingsScreen() {
       Alert.alert(tr('settings.cantSignOutYet'), describeQueuedOperations(queued));
       return;
     }
-    if (!await confirmDestructive(tr('settings.signOutTitle'), tr('settings.signOut'), tr('settings.signOutBody'))) return;
+    if (
+      !(await confirmDestructive(
+        tr('settings.signOutTitle'),
+        tr('settings.signOut'),
+        tr('settings.signOutBody'),
+      ))
+    )
+      return;
     // Re-checked: a write can be queued while the dialog is open.
     const nowQueued = await queuedOperationCount(db);
     if (nowQueued > 0) {
@@ -194,9 +198,7 @@ export default function SettingsScreen() {
   }
 
   const noAccountsHint = (
-    <Text style={[t.type.body, { color: t.color.textMuted }]}>
-      {tr('settings.noAccountsHint')}
-    </Text>
+    <Text style={[t.type.body, { color: t.color.textMuted }]}>{tr('settings.noAccountsHint')}</Text>
   );
 
   const envelopeCount = assetAccounts.filter((a) => hasEnvelopeMarker(a.notes)).length;
@@ -209,52 +211,115 @@ export default function SettingsScreen() {
         <SectionHeader title={tr('settings.sectionConnection')} />
         <Card style={{ marginHorizontal: t.space.lg }}>
           <Row
-            first label="Firefly III" chevron
-            value={signedIn ? tr('settings.connectedValue') : tr('settings.notConnected')} tone={signedIn ? 'default' : 'warn'}
-            onPress={() => setSignInSheetOpen(true)}
+            first
+            label="Firefly III"
+            chevron
+            value={signedIn ? tr('settings.connectedValue') : tr('settings.notConnected')}
+            tone={signedIn ? 'default' : 'warn'}
+            onPress={() => setSheet('signIn')}
           />
           <Row
-            label={tr('settings.addresses')} chevron
-            value={ff3Hosts.length > 0 ? `${shortLabel(ff3ActiveHost ?? ff3Hosts[0]!)}${ff3Hosts.length > 1 ? ` +${ff3Hosts.length - 1}` : ''}` : tr('settings.none')}
-            onPress={() => setFf3AddressesOpen(true)}
+            label={tr('settings.addresses')}
+            chevron
+            value={
+              ff3Hosts.length > 0
+                ? `${shortLabel(ff3ActiveHost ?? ff3Hosts[0]!)}${ff3Hosts.length > 1 ? ` +${ff3Hosts.length - 1}` : ''}`
+                : tr('settings.none')
+            }
+            onPress={() => setSheet('ff3Addresses')}
           />
-          {signedIn && <Row label={tr('settings.signOut')} icon="log-out-outline" tone="danger" onPress={onSignOut} />}
+          {/* The row is kept while the settings load, so the section is its final height on the
+              first frame — it used to appear once "signed in" was known and shift what's below. */}
+          {(signedIn || !settings) && (
+            <Row
+              label={tr('settings.signOut')}
+              icon="log-out-outline"
+              tone="danger"
+              onPress={settings ? onSignOut : undefined}
+            />
+          )}
         </Card>
 
         <SectionHeader title={tr('settings.sectionReceipts')} />
         <Card style={{ marginHorizontal: t.space.lg }}>
-          <Row first label={tr('sync.providerLocal')} chevron value={localModelName || tr('settings.notSet')} onPress={() => setLocalModelSheetOpen(true)} />
           <Row
-            label={tr('settings.addresses')} chevron
-            value={localModelUrls.length > 0 ? `${shortLabel(localModelActiveUrl ?? localModelUrls[0]!)}${localModelUrls.length > 1 ? ` +${localModelUrls.length - 1}` : ''}` : tr('settings.none')}
-            onPress={() => setLocalAddressesOpen(true)}
+            first
+            label={tr('sync.providerLocal')}
+            chevron
+            value={localModelName || tr('settings.notSet')}
+            onPress={() => setSheet('localModel')}
           />
-          <Row label={tr('settings.geminiKey')} chevron value={hasGeminiKey ? tr('settings.set') : tr('settings.notSet')} onPress={() => setGeminiSheetOpen(true)} />
+          <Row
+            label={tr('settings.addresses')}
+            chevron
+            value={
+              localModelUrls.length > 0
+                ? `${shortLabel(localModelActiveUrl ?? localModelUrls[0]!)}${localModelUrls.length > 1 ? ` +${localModelUrls.length - 1}` : ''}`
+                : tr('settings.none')
+            }
+            onPress={() => setSheet('localAddresses')}
+          />
+          <Row
+            label={tr('settings.geminiKey')}
+            chevron
+            value={hasGeminiKey ? tr('settings.set') : tr('settings.notSet')}
+            onPress={() => setSheet('gemini')}
+          />
         </Card>
 
         <SectionHeader title={tr('settings.sectionDefaults')} />
         <Card style={{ marginHorizontal: t.space.lg }}>
-          <Row first label={tr('settings.account')} chevron value={accountLabel(defaultAccountId)} onPress={() => setAccountSheetOpen(true)} />
-          <Row label={tr('fields.currency')} chevron value={defaultCurrency ?? primaryCurrencyCode(currencies) ?? tr('settings.none')} onPress={() => setCurrencySheetOpen(true)} />
-          <Row label={tr('settings.cashPaymentsUse')} chevron value={accountLabel(cashAccountId)} onPress={() => setCashAccountSheetOpen(true)} />
+          <Row
+            first
+            label={tr('settings.account')}
+            chevron
+            value={accountLabel(defaultAccountId)}
+            onPress={() => setSheet('account')}
+          />
+          <Row
+            label={tr('fields.currency')}
+            chevron
+            value={defaultCurrency ?? primaryCurrencyCode(currencies) ?? tr('settings.none')}
+            onPress={() => setSheet('currency')}
+          />
+          <Row
+            label={tr('settings.cashPaymentsUse')}
+            chevron
+            value={accountLabel(cashAccountId)}
+            onPress={() => setSheet('cashAccount')}
+          />
         </Card>
 
         <SectionHeader title={tr('accounts.title')} />
         <Card style={{ marginHorizontal: t.space.lg }}>
-          <Row first label={tr('settings.assetAccounts')} chevron value={`${assetAccounts.length} · ${tr('settings.envelopeCount', { count: envelopeCount })}`} onPress={() => router.push('/settings/accounts')} />
+          <Row
+            first
+            label={tr('settings.assetAccounts')}
+            chevron
+            value={`${assetAccounts.length} · ${tr('settings.envelopeCount', { count: envelopeCount })}`}
+            onPress={() => router.push('/settings/accounts')}
+          />
         </Card>
 
         <SectionHeader title={tr('settings.sectionData')} />
         <Card style={{ marginHorizontal: t.space.lg }}>
-          <Row first label={tr('aliases.title')} chevron value={String((aliasRows ?? []).length)} onPress={() => router.push('/settings/aliases')} />
+          <Row
+            first
+            label={tr('aliases.title')}
+            chevron
+            value={String((aliasRows ?? []).length)}
+            onPress={() => router.push('/settings/aliases')}
+          />
         </Card>
 
         <SectionHeader title={tr('settings.sectionLanguage')} />
         <Card style={{ marginHorizontal: t.space.lg }}>
           <Row
-            first label={tr('settings.language')} chevron
+            first
+            label={tr('settings.language')}
+            chevron
             value={tr(LANGUAGE_OPTIONS.find((o) => o.value === locale)!.labelKey)}
-            onPress={() => setLanguageSheetOpen(true)}
+            onPress={() => setSheet('language')}
           />
         </Card>
 
@@ -262,34 +327,57 @@ export default function SettingsScreen() {
         <Card style={{ marginHorizontal: t.space.lg }}>
           <Row first label={tr('settings.version')} value={version} />
           <Row label={tr('settings.lastSync')} value={relativeTime(lastSyncedAt)} />
-          <Row label={tr('logs.title')} icon="document-text-outline" onPress={() => router.push('/settings/logs')} />
+          <Row
+            label={tr('logs.title')}
+            icon="document-text-outline"
+            onPress={() => router.push('/settings/logs')}
+          />
         </Card>
       </ScrollView>
 
       <Toast message={toast} />
 
       <Sheet
-        visible={signInSheetOpen}
-        onClose={() => setSignInSheetOpen(false)}
+        visible={sheet === 'signIn'}
+        onClose={() => setSheet(null)}
         title="Firefly III"
-        footer={<Button title={signingIn ? tr('settings.connecting') : tr('settings.signIn')} onPress={onSignIn} disabled={signingIn} />}
+        footer={
+          <Button
+            title={signingIn ? tr('settings.connecting') : tr('settings.signIn')}
+            onPress={onSignIn}
+            disabled={signingIn}
+          />
+        }
       >
         <TextField
-          value={host} onChangeText={setHost} placeholder="https://firefly.example.com" autoCapitalize="none"
+          value={host}
+          onChangeText={setHost}
+          placeholder="https://firefly.example.com"
+          autoCapitalize="none"
         />
         <TextField
-          value={token} onChangeText={setToken} placeholder={tr('settings.tokenPlaceholder')} secureTextEntry autoCapitalize="none"
+          value={token}
+          onChangeText={setToken}
+          placeholder={tr('settings.tokenPlaceholder')}
+          secureTextEntry
+          autoCapitalize="none"
           style={{ marginTop: t.space.sm }}
         />
       </Sheet>
 
       <AddressesSheet
-        visible={ff3AddressesOpen}
-        onClose={() => { setFf3AddressesOpen(false); reload(); }}
+        visible={sheet === 'ff3Addresses'}
+        onClose={() => {
+          setSheet(null);
+          reload();
+        }}
         title={tr('settings.ff3Addresses')}
         addresses={ff3Hosts}
         activeAddress={ff3ActiveHost}
-        onSave={async (list) => { await writeHosts(list); setFf3Hosts(list); }}
+        onSave={async (list) => {
+          await writeHosts(list);
+          await reload();
+        }}
         probe={async (address) => {
           const stored = await readStoredCredentials();
           if (!stored) return false;
@@ -298,78 +386,142 @@ export default function SettingsScreen() {
       />
 
       <AddressesSheet
-        visible={localAddressesOpen}
-        onClose={() => { setLocalAddressesOpen(false); reload(); }}
+        visible={sheet === 'localAddresses'}
+        onClose={() => {
+          setSheet(null);
+          reload();
+        }}
         title={tr('settings.localModelAddresses')}
         addresses={localModelUrls}
         activeAddress={localModelActiveUrl}
-        onSave={async (list) => { await setLocalModelBaseUrls(db, list); setLocalModelUrls(list); }}
+        onSave={async (list) => {
+          await setLocalModelBaseUrls(db, list);
+          await reload();
+        }}
         probe={probeLocalModel}
       />
 
       <Sheet
-        visible={localModelSheetOpen}
-        onClose={() => setLocalModelSheetOpen(false)}
+        visible={sheet === 'localModel'}
+        onClose={() => {
+          setSheet(null);
+          setLocalModelNameInput(null); // drop an unsaved edit, so the sheet reopens on the stored name
+        }}
         title={tr('sync.providerLocal')}
-        footer={(
+        footer={
           <Button
             title={saving ? tr('common.saving') : tr('common.save')}
             disabled={saving}
-            onPress={() => saveOnce(async () => { await setLocalModelName(db, localModelName); setLocalModelSheetOpen(false); })}
+            onPress={() =>
+              saveOnce(async () => {
+                await setLocalModelName(db, localModelName);
+                setLocalModelNameInput(null);
+                await reload();
+                setSheet(null);
+              })
+            }
           />
-        )}
+        }
       >
         <TextField
-          value={localModelName} onChangeText={setLocalModelNameState} placeholder={tr('settings.localModelPlaceholder')} autoCapitalize="none"
+          value={localModelName}
+          onChangeText={setLocalModelNameInput}
+          placeholder={tr('settings.localModelPlaceholder')}
+          autoCapitalize="none"
         />
       </Sheet>
 
       <Sheet
-        visible={geminiSheetOpen}
-        onClose={() => setGeminiSheetOpen(false)}
+        visible={sheet === 'gemini'}
+        onClose={() => setSheet(null)}
         title={tr('settings.geminiApiKey')}
-        footer={(
+        footer={
           <Button
             title={saving ? tr('common.saving') : tr('common.save')}
             disabled={saving || !geminiKeyInput.trim()}
-            onPress={() => saveOnce(async () => {
-              await saveGeminiKey(geminiKeyInput);
-              setHasGeminiKey(true);
-              setGeminiKeyInput('');
-              setGeminiSheetOpen(false);
-            })}
+            onPress={() =>
+              saveOnce(async () => {
+                await saveGeminiKey(geminiKeyInput);
+                await reload();
+                setGeminiKeyInput('');
+                setSheet(null);
+              })
+            }
           />
-        )}
+        }
       >
-        <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('settings.geminiPrivacy')}</Text>
+        <Text style={[t.type.label, { color: t.color.textMuted }]}>
+          {tr('settings.geminiPrivacy')}
+        </Text>
         <TextField
-          value={geminiKeyInput} onChangeText={setGeminiKeyInput} placeholder={tr('settings.apiKeyPlaceholder')} secureTextEntry autoCapitalize="none"
+          value={geminiKeyInput}
+          onChangeText={setGeminiKeyInput}
+          placeholder={tr('settings.apiKeyPlaceholder')}
+          secureTextEntry
+          autoCapitalize="none"
         />
       </Sheet>
 
       <PickerSheet
-        visible={accountSheetOpen} onClose={() => setAccountSheetOpen(false)} title={tr('settings.defaultAccount')}
-        options={assetAccounts.map((a) => ({ key: a.id, label: a.name }))} selected={defaultAccountId} empty={noAccountsHint}
-        onSelect={act(tr('settings.defaultAccount'), async (id: string | null) => { if (!id) return; await setDefaultSourceAccountId(db, id); setDefaultAccountIdState(id); })}
+        visible={sheet === 'account'}
+        onClose={() => setSheet(null)}
+        title={tr('settings.defaultAccount')}
+        options={assetAccounts.map((a) => ({ key: a.id, label: a.name }))}
+        selected={defaultAccountId}
+        empty={noAccountsHint}
+        onSelect={act(tr('settings.defaultAccount'), async (id: string | null) => {
+          if (!id) return;
+          await setDefaultSourceAccountId(db, id);
+          await reload();
+        })}
       />
 
       <PickerSheet
-        visible={currencySheetOpen} onClose={() => setCurrencySheetOpen(false)} title={tr('settings.defaultCurrency')}
-        options={pickableCurrencies(currencies, defaultCurrency).map((c) => ({ key: c.code, label: c.code }))} selected={defaultCurrency ?? primaryCurrencyCode(currencies)}
-        onSelect={act(tr('settings.defaultCurrency'), async (code: string | null) => { if (!code) return; await setDefaultCurrencyCode(db, code); setDefaultCurrencyState(code); })}
+        visible={sheet === 'currency'}
+        onClose={() => setSheet(null)}
+        title={tr('settings.defaultCurrency')}
+        options={pickableCurrencies(currencies, defaultCurrency).map((c) => ({
+          key: c.code,
+          label: c.code,
+        }))}
+        selected={defaultCurrency ?? primaryCurrencyCode(currencies)}
+        onSelect={act(tr('settings.defaultCurrency'), async (code: string | null) => {
+          if (!code) return;
+          await setDefaultCurrencyCode(db, code);
+          await reload();
+        })}
       />
 
       <PickerSheet
-        visible={cashAccountSheetOpen} onClose={() => setCashAccountSheetOpen(false)} title={tr('settings.cashPaymentsUse')}
-        options={assetAccounts.map((a) => ({ key: a.id, label: a.name }))} selected={cashAccountId} empty={noAccountsHint}
-        onSelect={act(tr('settings.cashPaymentsUse'), async (id: string | null) => { if (!id) return; await setCashAccountId(db, id); setCashAccountIdState(id); })}
+        visible={sheet === 'cashAccount'}
+        onClose={() => setSheet(null)}
+        title={tr('settings.cashPaymentsUse')}
+        options={assetAccounts.map((a) => ({ key: a.id, label: a.name }))}
+        selected={cashAccountId}
+        empty={noAccountsHint}
+        onSelect={act(tr('settings.cashPaymentsUse'), async (id: string | null) => {
+          if (!id) return;
+          await setCashAccountId(db, id);
+          await reload();
+        })}
       />
 
       <PickerSheet
-        visible={languageSheetOpen} onClose={() => setLanguageSheetOpen(false)} title={tr('settings.language')}
-        header={<Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('settings.languageHint')}</Text>}
-        options={LANGUAGE_OPTIONS.map((o) => ({ key: o.value, label: tr(o.labelKey) }))} selected={locale}
-        onSelect={act(tr('settings.language'), async (value: string | null) => { const next = (value ?? 'system') as AppLocale; await setLocale(db, next); setLocaleState(next); })}
+        visible={sheet === 'language'}
+        onClose={() => setSheet(null)}
+        title={tr('settings.language')}
+        header={
+          <Text style={[t.type.label, { color: t.color.textMuted }]}>
+            {tr('settings.languageHint')}
+          </Text>
+        }
+        options={LANGUAGE_OPTIONS.map((o) => ({ key: o.value, label: tr(o.labelKey) }))}
+        selected={locale}
+        onSelect={act(tr('settings.language'), async (value: string | null) => {
+          const next = (value ?? 'system') as AppLocale;
+          await setLocale(db, next);
+          await reload();
+        })}
       />
     </Screen>
   );

@@ -1,4 +1,5 @@
 import type { ReceiptProvider, ReceiptChainResult } from './types';
+import { errorMessage } from '../utils/errorMessage';
 
 // fetch rejects with a TypeError when the request never got an answer, and with an AbortError
 // when a provider's own timeout fired. Anything else means the provider answered.
@@ -18,9 +19,13 @@ export async function runProviderChain(
       return { ok: true, providerName: provider.name, extraction };
     } catch (err) {
       if (!isUnreachable(err)) anyAnswered = true;
-      errors.push(`${provider.name}: ${err instanceof Error ? err.message : String(err)}`);
+      errors.push(`${provider.name}: ${errorMessage(err)}`);
       // try the next provider in the chain
     }
   }
-  return { ok: false, reason: anyAnswered ? 'all_providers_failed' : 'all_providers_unreachable', errors };
+  return {
+    ok: false,
+    reason: anyAnswered ? 'all_providers_failed' : 'all_providers_unreachable',
+    errors,
+  };
 }

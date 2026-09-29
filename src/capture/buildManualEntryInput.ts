@@ -22,7 +22,10 @@ export interface CaptureFormState {
   foreignCurrencyCode: string | null;
 }
 
-export function buildManualEntryInput(state: CaptureFormState, accounts: { id: string; name: string }[]): ManualEntryInput {
+export function buildManualEntryInput(
+  state: CaptureFormState,
+  accounts: { id: string; name: string }[],
+): ManualEntryInput {
   const needsPayee = state.type === 'withdrawal' || state.type === 'deposit';
   const needsSource = state.type === 'withdrawal' || state.type === 'transfer';
   const needsDestination = state.type === 'deposit' || state.type === 'transfer';
@@ -37,9 +40,15 @@ export function buildManualEntryInput(state: CaptureFormState, accounts: { id: s
   // account's currency and ignores a mismatched currency_code, so sending the typed amount as
   // `amount` booked "123.12 PLN, 1000 EUR" as 123.12 EUR. The account-currency figure is the
   // amount; what was typed is the foreign side.
-  const fx = state.foreignAmount && state.foreignCurrencyCode
-    ? { amount: state.foreignAmount, currencyCode: state.foreignCurrencyCode, foreignAmount: typedAmount, foreignCurrencyCode: state.currencyCode }
-    : null;
+  const fx =
+    state.foreignAmount && state.foreignCurrencyCode
+      ? {
+          amount: state.foreignAmount,
+          currencyCode: state.foreignCurrencyCode,
+          foreignAmount: typedAmount,
+          foreignCurrencyCode: state.currencyCode,
+        }
+      : null;
 
   return {
     type: state.type,
@@ -49,9 +58,9 @@ export function buildManualEntryInput(state: CaptureFormState, accounts: { id: s
     description: state.description || state.merchantRawInput || state.type,
     merchantRawInput: needsPayee ? state.merchantRawInput : undefined,
     forceNewPayee: needsPayee ? state.forceNewPayee : undefined,
-    sourceId: needsSource ? state.sourceId ?? undefined : undefined,
+    sourceId: needsSource ? (state.sourceId ?? undefined) : undefined,
     sourceName: needsSource ? sourceAccount?.name : undefined,
-    destinationId: needsDestination ? state.destinationId ?? undefined : undefined,
+    destinationId: needsDestination ? (state.destinationId ?? undefined) : undefined,
     destinationName: needsDestination ? destinationAccount?.name : undefined,
     categoryName: state.categoryName ?? undefined,
     budgetId: state.budgetId ?? undefined,

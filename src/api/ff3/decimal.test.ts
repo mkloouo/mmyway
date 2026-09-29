@@ -1,4 +1,11 @@
-import { addDecimal, isNegative, divideDecimal, parseDecimalInput, parseSignedDecimalInput, trimDecimal } from './decimal';
+import {
+  addDecimal,
+  isNegative,
+  divideDecimal,
+  parseDecimalInput,
+  parseSignedDecimalInput,
+  trimDecimal,
+} from './decimal';
 
 describe('addDecimal', () => {
   it('adds two decimals with matching scale', () => {
@@ -40,8 +47,14 @@ describe('divideDecimal', () => {
 
 describe('parseDecimalInput', () => {
   it.each([
-    ['12,50', '12.50'], ['12.5', '12.5'], ['1 234,5', '1234.5'], ['1 234,50', '1234.50'],
-    ['12,', '12'], [',5', '0.5'], ['007', '7'], ['0', '0'],
+    ['12,50', '12.50'],
+    ['12.5', '12.5'],
+    ['1 234,5', '1234.5'],
+    ['1 234,50', '1234.50'],
+    ['12,', '12'],
+    [',5', '0.5'],
+    ['007', '7'],
+    ['0', '0'],
   ])('accepts %p as %p', (raw, value) => {
     expect(parseDecimalInput(raw)).toEqual({ ok: true, value });
   });

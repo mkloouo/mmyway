@@ -1,0 +1,12 @@
+node_modules
+android
+ios
+.expo
+dist
+releases
+src/db/migrations
+src/api/ff3/types.ts
+src/i18n/locales
+package-lock.json
+yarn.lock
+*.apk

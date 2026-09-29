@@ -52,7 +52,11 @@ export async function getClient(db: OutboxDb): Promise<FF3Client | null> {
   if (memo && memo.token === apiToken && hosts.includes(memo.address)) return memo.client;
 
   const remembered = await getFf3ActiveHost(db);
-  const { winner } = await resolveAddress(hosts, remembered, withTimeout((address) => probeAbout(address, apiToken).then((r) => r.ok)));
+  const { winner } = await resolveAddress(
+    hosts,
+    remembered,
+    withTimeout((address) => probeAbout(address, apiToken).then((r) => r.ok)),
+  );
   if (!winner) {
     memo = null;
     return null;

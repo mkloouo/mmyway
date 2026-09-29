@@ -3,7 +3,12 @@ import { createTestDb } from '../db/testDb';
 import { cachedTransactions } from '../db/schema';
 import { landingItems, matchesActivityFilter } from './pinnedRows';
 
-const sent = (id: string, groupId: string, updatedAt: string, kind = 'manual_entry') => ({ id, kind, ff3GroupId: groupId, updatedAt });
+const sent = (id: string, groupId: string, updatedAt: string, kind = 'manual_entry') => ({
+  id,
+  kind,
+  ff3GroupId: groupId,
+  updatedAt,
+});
 
 describe('landingItems', () => {
   const items = [
@@ -34,7 +39,14 @@ describe('landingItems', () => {
 });
 
 describe('matchesActivityFilter', () => {
-  const row = { type: 'withdrawal' as const, sourceId: '1', destinationId: '9', description: 'Coffee', sourceName: 'PKO', destinationName: 'Żabka' };
+  const row = {
+    type: 'withdrawal' as const,
+    sourceId: '1',
+    destinationId: '9',
+    description: 'Coffee',
+    sourceName: 'PKO',
+    destinationName: 'Żabka',
+  };
   const all = { type: 'all' as const, accountId: null, search: '' };
 
   it('passes everything with no filter', () => {
@@ -57,7 +69,14 @@ describe('matchesActivityFilter', () => {
 describe('the cache queries Activity runs for it', () => {
   it('accept an empty id list and an empty table', async () => {
     const db = createTestDb();
-    expect(await db.select({ id: cachedTransactions.groupId }).from(cachedTransactions).where(inArray(cachedTransactions.groupId, []))).toEqual([]);
-    expect(await db.select({ at: max(cachedTransactions.syncedAt) }).from(cachedTransactions)).toEqual([{ at: null }]);
+    expect(
+      await db
+        .select({ id: cachedTransactions.groupId })
+        .from(cachedTransactions)
+        .where(inArray(cachedTransactions.groupId, [])),
+    ).toEqual([]);
+    expect(
+      await db.select({ at: max(cachedTransactions.syncedAt) }).from(cachedTransactions),
+    ).toEqual([{ at: null }]);
   });
 });

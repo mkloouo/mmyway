@@ -38,7 +38,14 @@ export function DbProvider({ children }: { children: ReactNode }) {
   // corner under the status bar; fill the screen with the app background and centre a spinner.
   if (!migrated) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: t.color.bg }}>
+      <View
+        style={{
+          flex: 1,
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: t.color.bg,
+        }}
+      >
         <ActivityIndicator color={t.color.accent} accessibilityLabel={tr('common.loading')} />
       </View>
     );
@@ -48,11 +55,28 @@ export function DbProvider({ children }: { children: ReactNode }) {
   // app stops here and offers the Diagnostics log instead of running on it.
   if (migrationError) {
     return (
-      <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', gap: t.space.lg, padding: t.space.xxl }} style={{ backgroundColor: t.color.bg }}>
+      <ScrollView
+        contentContainerStyle={{
+          flexGrow: 1,
+          justifyContent: 'center',
+          gap: t.space.lg,
+          padding: t.space.xxl,
+        }}
+        style={{ backgroundColor: t.color.bg }}
+      >
         <Text style={[t.type.heading, { color: t.color.text }]}>{tr('migrationFailed.title')}</Text>
-        <Text style={[t.type.body, { color: t.color.textMuted }]}>{tr('migrationFailed.body')}</Text>
-        <Text style={[t.type.label, { color: t.color.danger }]} selectable>{migrationError.message}</Text>
-        <Button title={tr('migrationFailed.share')} onPress={() => { void Share.share({ message: shareableLog() }); }} />
+        <Text style={[t.type.body, { color: t.color.textMuted }]}>
+          {tr('migrationFailed.body')}
+        </Text>
+        <Text style={[t.type.label, { color: t.color.danger }]} selectable>
+          {migrationError.message}
+        </Text>
+        <Button
+          title={tr('migrationFailed.share')}
+          onPress={() => {
+            void Share.share({ message: shareableLog() });
+          }}
+        />
       </ScrollView>
     );
   }

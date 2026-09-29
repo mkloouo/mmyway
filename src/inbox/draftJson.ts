@@ -29,18 +29,22 @@ const DraftSchema = z.looseObject({
   sharedWith: optionalText,
   extraTags: z.array(z.string()).optional(),
   lowConfidenceFields: z.array(z.string()).optional(),
-  extraSplits: z.array(z.looseObject({
-    amount: z.string(),
-    description: z.string(),
-    payeeName: optionalText,
-    payeeId: optionalText,
-    isNewPayee: z.boolean(),
-    categoryName: optionalText,
-    budgetId: optionalText,
-    notes: optionalText,
-    sharedWith: optionalText,
-    extraTags: z.array(z.string()).optional(),
-  })).optional(),
+  extraSplits: z
+    .array(
+      z.looseObject({
+        amount: z.string(),
+        description: z.string(),
+        payeeName: optionalText,
+        payeeId: optionalText,
+        isNewPayee: z.boolean(),
+        categoryName: optionalText,
+        budgetId: optionalText,
+        notes: optionalText,
+        sharedWith: optionalText,
+        extraTags: z.array(z.string()).optional(),
+      }),
+    )
+    .optional(),
   total: optionalText,
   groupTitle: optionalText,
 });
@@ -65,9 +69,13 @@ const ReviewJournalSchema = z.looseObject({
  * The amount a recurring transaction was planned in when that isn't the currency FF3 booked it
  * in (7.99 USD booked from a PLN account): the review then asks what was actually charged.
  */
-export function reviewForeign(journal: ReviewJournal): { amount: string; currencyCode: string } | null {
+export function reviewForeign(
+  journal: ReviewJournal,
+): { amount: string; currencyCode: string } | null {
   const { foreign_amount: amount, foreign_currency_code: currencyCode } = journal;
-  return amount && currencyCode && currencyCode !== journal.currency_code ? { amount, currencyCode } : null;
+  return amount && currencyCode && currencyCode !== journal.currency_code
+    ? { amount, currencyCode }
+    : null;
 }
 
 export type ReviewJournal = z.infer<typeof ReviewJournalSchema>;

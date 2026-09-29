@@ -48,11 +48,25 @@ export function readLog(): string[] {
 
 export function logLine(level: 'info' | 'warn' | 'error', message: string): void {
   readLog();
-  lines = [...lines, `${new Date().toISOString()} ${level.toUpperCase()} ${message}`].slice(-MAX_LINES);
+  lines = [...lines, `${new Date().toISOString()} ${level.toUpperCase()} ${message}`].slice(
+    -MAX_LINES,
+  );
   persist();
 }
 
-const REDACTED_KEYS = ['description', 'notes', 'name', 'source_name', 'destination_name', 'category_name', 'budget_name', 'tags', 'group_title', 'rawInput', 'targetName'];
+const REDACTED_KEYS = [
+  'description',
+  'notes',
+  'name',
+  'source_name',
+  'destination_name',
+  'category_name',
+  'budget_name',
+  'tags',
+  'group_title',
+  'rawInput',
+  'targetName',
+];
 
 /**
  * The log as it may leave the phone (Share): amounts and the text fields that name payees,
@@ -60,8 +74,12 @@ const REDACTED_KEYS = ['description', 'notes', 'name', 'source_name', 'destinati
  */
 export function shareableLog(source: string[] = readLog()): string {
   const keys = REDACTED_KEYS.join('|');
-  return source.join('\n')
-    .replace(new RegExp(`("(?:${keys})"\\s*:\\s*)("(?:[^"\\\\]|\\\\.)*"|\\[[^\\]]*\\])`, 'g'), '$1"‹redacted›"')
+  return source
+    .join('\n')
+    .replace(
+      new RegExp(`("(?:${keys})"\\s*:\\s*)("(?:[^"\\\\]|\\\\.)*"|\\[[^\\]]*\\])`, 'g'),
+      '$1"‹redacted›"',
+    )
     .replace(/-?\d[\d\s]*[.,]\d{1,2}(?!\d)/g, '‹amount›');
 }
 
@@ -72,7 +90,15 @@ export function clearLog(): void {
 }
 
 function describe(args: unknown[]): string {
-  return args.map((a) => (a instanceof Error ? `${a.message}\n${a.stack ?? ''}` : typeof a === 'string' ? a : JSON.stringify(a))).join(' ');
+  return args
+    .map((a) =>
+      a instanceof Error
+        ? `${a.message}\n${a.stack ?? ''}`
+        : typeof a === 'string'
+          ? a
+          : JSON.stringify(a),
+    )
+    .join(' ');
 }
 
 /** Mirrors console.warn/error into the log, so a stray throw is captured without new call sites. */

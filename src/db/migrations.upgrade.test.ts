@@ -23,7 +23,13 @@ describe('migrations', () => {
     const old = fs.mkdtempSync(path.join(os.tmpdir(), 'mmyway-migrations-'));
     fs.cpSync(MIGRATIONS, old, { recursive: true });
     const full = journal();
-    fs.writeFileSync(path.join(old, 'meta', '_journal.json'), JSON.stringify({ ...full, entries: full.entries.filter((e) => e.idx <= RELEASE_1_0_0_LAST_IDX) }));
+    fs.writeFileSync(
+      path.join(old, 'meta', '_journal.json'),
+      JSON.stringify({
+        ...full,
+        entries: full.entries.filter((e) => e.idx <= RELEASE_1_0_0_LAST_IDX),
+      }),
+    );
 
     const sqlite = new Database(':memory:');
     const db = drizzle(sqlite);
@@ -38,10 +44,26 @@ describe('migrations', () => {
 
     migrate(db, { migrationsFolder: MIGRATIONS });
 
-    expect(sqlite.prepare('select include_net_worth, account_role from reference_accounts where id = ?').get('a1')).toEqual({ include_net_worth: 1, account_role: null });
-    expect(sqlite.prepare('select amount, split_count, search_key from cached_transactions where group_id = ?').get('g1')).toEqual({ amount: '12.50', split_count: 1, search_key: null });
-    expect(sqlite.prepare('select state from inbox_items where id = ?').get('i1')).toEqual({ state: 'captured' });
-    expect(sqlite.prepare('select attempts, next_attempt_at from outbox_operations where id = ?').get('o1')).toEqual({ attempts: 2, next_attempt_at: null });
+    expect(
+      sqlite
+        .prepare('select include_net_worth, account_role from reference_accounts where id = ?')
+        .get('a1'),
+    ).toEqual({ include_net_worth: 1, account_role: null });
+    expect(
+      sqlite
+        .prepare(
+          'select amount, split_count, search_key from cached_transactions where group_id = ?',
+        )
+        .get('g1'),
+    ).toEqual({ amount: '12.50', split_count: 1, search_key: null });
+    expect(sqlite.prepare('select state from inbox_items where id = ?').get('i1')).toEqual({
+      state: 'captured',
+    });
+    expect(
+      sqlite
+        .prepare('select attempts, next_attempt_at from outbox_operations where id = ?')
+        .get('o1'),
+    ).toEqual({ attempts: 2, next_attempt_at: null });
     fs.rmSync(old, { recursive: true, force: true });
   });
 

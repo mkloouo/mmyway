@@ -12,12 +12,25 @@ import type { SavePlannedPayload } from './replay';
 
 /** The queued save of a planned transaction that isn't in FF3 yet, while it can still be changed. */
 async function queuedSaveFor(db: OutboxDb, key: string) {
-  const ops = await db.select().from(outboxOperations)
-    .where(and(eq(outboxOperations.kind, 'save_planned'), inArray(outboxOperations.status, ['pending', 'failed'])));
-  return ops.find((op) => readPayload<SavePlannedPayload>(op.kind, op.payloadJson).key === key) ?? null;
+  const ops = await db
+    .select()
+    .from(outboxOperations)
+    .where(
+      and(
+        eq(outboxOperations.kind, 'save_planned'),
+        inArray(outboxOperations.status, ['pending', 'failed']),
+      ),
+    );
+  return (
+    ops.find((op) => readPayload<SavePlannedPayload>(op.kind, op.payloadJson).key === key) ?? null
+  );
 }
 
-export async function savePlanned(db: OutboxDb, item: PlannedItem | null, fields: PlannedFields): Promise<void> {
+export async function savePlanned(
+  db: OutboxDb,
+  item: PlannedItem | null,
+  fields: PlannedFields,
+): Promise<void> {
   if (item) {
     // A save of this one still waiting to be sent takes the new fields rather than queueing a
     // second change for the same planned transaction (two identical cards in the Inbox's queue).
@@ -27,11 +40,23 @@ export async function savePlanned(db: OutboxDb, item: PlannedItem | null, fields
     const op = await queuedSaveFor(db, item.key);
     if (op) {
       const payload = readPayload<SavePlannedPayload>(op.kind, op.payloadJson);
-      const merged: SavePlannedPayload = payload.recurrenceReplaced && payload.before
-        ? { ...payload, fields, before: withScheduleOf(payload.before, payload.fields), recurrenceReplaced: false }
-        : { ...payload, fields };
-      await db.update(outboxOperations)
-        .set({ payloadJson: writePayload(merged), status: 'pending', lastError: null, nextAttemptAt: null })
+      const merged: SavePlannedPayload =
+        payload.recurrenceReplaced && payload.before
+          ? {
+              ...payload,
+              fields,
+              before: withScheduleOf(payload.before, payload.fields),
+              recurrenceReplaced: false,
+            }
+          : { ...payload, fields };
+      await db
+        .update(outboxOperations)
+        .set({
+          payloadJson: writePayload(merged),
+          status: 'pending',
+          lastError: null,
+          nextAttemptAt: null,
+        })
         .where(eq(outboxOperations.id, op.id));
       requestSync();
       return;
@@ -50,16 +75,28 @@ export async function savePlanned(db: OutboxDb, item: PlannedItem | null, fields
 }
 
 export async function deletePlanned(db: OutboxDb, item: PlannedItem): Promise<void> {
-  let ids = { billId: item.group?.bill?.id ?? null, ruleId: item.group?.rule?.id ?? null, recurrenceId: item.group?.recurrence?.id ?? null };
+  let ids = {
+    billId: item.group?.bill?.id ?? null,
+    ruleId: item.group?.rule?.id ?? null,
+    recurrenceId: item.group?.recurrence?.id ?? null,
+  };
   if (!item.group) {
     const op = await queuedSaveFor(db, item.key);
     if (op) {
       const payload = readPayload<SavePlannedPayload>(op.kind, op.payloadJson);
       await db.delete(outboxOperations).where(eq(outboxOperations.id, op.id));
       // Whatever an earlier attempt already created in FF3 still has to go.
-      ids = { billId: payload.billId ?? null, ruleId: payload.ruleId ?? null, recurrenceId: payload.recurrenceId ?? null };
+      ids = {
+        billId: payload.billId ?? null,
+        ruleId: payload.ruleId ?? null,
+        recurrenceId: payload.recurrenceId ?? null,
+      };
     }
   }
   if (!ids.billId && !ids.ruleId && !ids.recurrenceId) return;
-  await enqueueOperation(db, { id: generateId(), kind: 'delete_planned', payload: { key: item.key, name: item.fields.name, ...ids } });
+  await enqueueOperation(db, {
+    id: generateId(),
+    kind: 'delete_planned',
+    payload: { key: item.key, name: item.fields.name, ...ids },
+  });
 }

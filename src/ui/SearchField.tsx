@@ -6,9 +6,15 @@ import { Pressable, TextInput, View, type StyleProp, type ViewStyle } from 'reac
 import { useTranslation } from 'react-i18next';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTheme } from './theme';
+import { PRESSED_OPACITY } from './components';
 
 export function SearchField({
-  value, onChangeText, placeholder, autoFocus, onClear, style,
+  value,
+  onChangeText,
+  placeholder,
+  autoFocus,
+  onClear,
+  style,
 }: {
   value: string;
   onChangeText: (text: string) => void;
@@ -23,11 +29,19 @@ export function SearchField({
   const showClear = value.length > 0 || !!onClear;
   return (
     <View
-      style={[{
-        flexDirection: 'row', alignItems: 'center', gap: t.space.sm,
-        backgroundColor: t.color.surface, borderWidth: 1, borderColor: t.color.border, borderRadius: t.radius.md,
-        paddingLeft: t.space.md,
-      }, style]}
+      style={[
+        {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: t.space.sm,
+          backgroundColor: t.color.surface,
+          borderWidth: 1,
+          borderColor: t.color.border,
+          borderRadius: t.radius.md,
+          paddingLeft: t.space.md,
+        },
+        style,
+      ]}
     >
       <Ionicons name="search" size={18} color={t.color.textMuted} />
       <TextInput
@@ -47,11 +61,17 @@ export function SearchField({
           accessibilityRole="button"
           accessibilityLabel={tr('pickers.clearSearch')}
           hitSlop={8}
-          style={({ pressed }) => ({ paddingHorizontal: t.space.md, paddingVertical: t.space.sm, opacity: pressed ? 0.6 : 1 })}
+          style={({ pressed }) => ({
+            paddingHorizontal: t.space.md,
+            paddingVertical: t.space.sm,
+            opacity: pressed ? PRESSED_OPACITY : 1,
+          })}
         >
           <Ionicons name="close-circle" size={18} color={t.color.textMuted} />
         </Pressable>
-      ) : <View style={{ width: t.space.md }} />}
+      ) : (
+        <View style={{ width: t.space.md }} />
+      )}
     </View>
   );
 }

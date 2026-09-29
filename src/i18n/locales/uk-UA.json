@@ -100,7 +100,8 @@
     "search": "Пошук псевдонімів",
     "title": "Псевдоніми",
     "transferPlaceholder": "Експортований JSON відображається тут — вставте JSON сюди для імпорту",
-    "transferTitle": "Експорт / імпорт"
+    "transferTitle": "Експорт / імпорт",
+    "removeAlias": ""
   },
   "capture": {
     "attach": "Прикріпити",
@@ -129,7 +130,8 @@
     "typeIncome": "Дохід",
     "typeTransfer": "Переказ",
     "undoneBackInInbox": "Скасовано — воно знову у вхідних",
-    "yesterday": "Вчора"
+    "yesterday": "Вчора",
+    "changeCurrency": ""
   },
   "common": {
     "actionFailed": "{{action}} не вдалося",
@@ -408,7 +410,7 @@
     "everyMonth_few": "кожні {{count, number}} місяці",
     "everyMonth_many": "кожні {{count, number}} місяців",
     "everyMonth_other": "кожні {{count, number}} місяців",
-    "everyN_one": "Кожен період",
+    "everyN_one": "Кожен {{count, number}} період",
     "everyN_few": "Кожні {{count, number}} періоди",
     "everyN_many": "Кожні {{count, number}} періоди",
     "everyN_other": "Кожні {{count, number}} періоди",
@@ -451,7 +453,7 @@
     "recurring": "Повторюваний",
     "recurringOne": "Повторювана транзакція",
     "repeats": "Повторення",
-    "repeatsHint": "Знижка за одноразовий платіж",
+    "repeatsHint": "Вимкніть для одноразового платежу",
     "rule": "Правило",
     "rules": "Правила",
     "sectionMore": "Більше",

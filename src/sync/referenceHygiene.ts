@@ -1,6 +1,12 @@
 // Two corrections runSync applies right after the reference pull (src/sync/referenceData.ts).
 import { and, asc, eq, gte, inArray, lt } from 'drizzle-orm';
-import { outboxOperations, referenceAccounts, referenceBudgets, referenceCategories, referenceCurrencies } from '../db/schema';
+import {
+  outboxOperations,
+  referenceAccounts,
+  referenceBudgets,
+  referenceCategories,
+  referenceCurrencies,
+} from '../db/schema';
 import { setEnvelopeMarker } from '../accounts/envelopeMarker';
 import type { AccountEdit } from '../accounts/accountEdit';
 import type { OutboxDb, UpdateAccountPayload } from './outbox';
@@ -15,8 +21,17 @@ import { readPayload } from './payloadJson';
  * server hiccup than the user deleting everything.
  */
 export async function pruneReferenceData(db: OutboxDb, pullStartedAt: string): Promise<void> {
-  for (const table of [referenceAccounts, referenceCategories, referenceBudgets, referenceCurrencies]) {
-    const fresh = await db.select({ syncedAt: table.syncedAt }).from(table).where(gte(table.syncedAt, pullStartedAt)).limit(1);
+  for (const table of [
+    referenceAccounts,
+    referenceCategories,
+    referenceBudgets,
+    referenceCurrencies,
+  ]) {
+    const fresh = await db
+      .select({ syncedAt: table.syncedAt })
+      .from(table)
+      .where(gte(table.syncedAt, pullStartedAt))
+      .limit(1);
     if (fresh.length === 0) continue;
     await db.delete(table).where(lt(table.syncedAt, pullStartedAt));
   }
@@ -29,20 +44,35 @@ export async function pruneReferenceData(db: OutboxDb, pullStartedAt: string): P
  * on top of what the pull wrote.
  */
 export async function reapplyQueuedAccountEdits(db: OutboxDb): Promise<void> {
-  const ops = await db.select().from(outboxOperations)
-    .where(and(eq(outboxOperations.kind, 'update_account'), inArray(outboxOperations.status, ['pending', 'failed', 'in_flight'])))
+  const ops = await db
+    .select()
+    .from(outboxOperations)
+    .where(
+      and(
+        eq(outboxOperations.kind, 'update_account'),
+        inArray(outboxOperations.status, ['pending', 'failed', 'in_flight']),
+      ),
+    )
     .orderBy(asc(outboxOperations.sequence));
   const order = await getAccountOrder(db);
   let orderChanged = false;
   for (const op of ops) {
     const p = readPayload<UpdateAccountPayload>('update_account', op.payloadJson);
-    if (p.order !== undefined) { order[p.accountId] = p.order; orderChanged = true; }
-    const [account] = await db.select().from(referenceAccounts).where(eq(referenceAccounts.id, p.accountId));
+    if (p.order !== undefined) {
+      order[p.accountId] = p.order;
+      orderChanged = true;
+    }
+    const [account] = await db
+      .select()
+      .from(referenceAccounts)
+      .where(eq(referenceAccounts.id, p.accountId));
     if (!account) continue;
     const patch: AccountEdit & { active?: boolean; notes?: string } = { ...p.edit };
     if (p.active !== undefined) patch.active = p.active;
-    if (p.setEnvelopeMarker !== undefined) patch.notes = setEnvelopeMarker(account.notes, p.setEnvelopeMarker);
-    if (Object.keys(patch).length > 0) await db.update(referenceAccounts).set(patch).where(eq(referenceAccounts.id, p.accountId));
+    if (p.setEnvelopeMarker !== undefined)
+      patch.notes = setEnvelopeMarker(account.notes, p.setEnvelopeMarker);
+    if (Object.keys(patch).length > 0)
+      await db.update(referenceAccounts).set(patch).where(eq(referenceAccounts.id, p.accountId));
   }
   if (orderChanged) await setAccountOrder(db, order);
 }

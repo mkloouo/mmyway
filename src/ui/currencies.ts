@@ -5,7 +5,10 @@ import type { referenceCurrencies } from '../db/schema';
 
 type CurrencyRow = typeof referenceCurrencies.$inferSelect;
 
-export function pickableCurrencies(rows: CurrencyRow[] | undefined, selected?: string | null): CurrencyRow[] {
+export function pickableCurrencies(
+  rows: CurrencyRow[] | undefined,
+  selected?: string | null,
+): CurrencyRow[] {
   return (rows ?? [])
     .filter((c) => c.enabled || c.code === selected)
     .sort((a, b) => Number(b.isDefault) - Number(a.isDefault) || a.code.localeCompare(b.code));

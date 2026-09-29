@@ -31,4 +31,3 @@ export function deletePersistedReceiptImage(uri: string | null | undefined): voi
     // Best effort: a leftover file costs some storage, never correctness.
   }
 }
-

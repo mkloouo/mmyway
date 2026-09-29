@@ -6,25 +6,36 @@ import i18n from '../i18n';
 
 export type PhotoSource = 'camera' | 'gallery';
 
-export async function pickPhoto(source: PhotoSource): Promise<{ uri: string; base64: string } | null> {
-  const permission = source === 'camera'
-    ? await ImagePicker.requestCameraPermissionsAsync()
-    : await ImagePicker.requestMediaLibraryPermissionsAsync();
+export async function pickPhoto(
+  source: PhotoSource,
+): Promise<{ uri: string; base64: string } | null> {
+  const permission =
+    source === 'camera'
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) return null;
-  const result = source === 'camera'
-    ? await ImagePicker.launchCameraAsync({ base64: true, quality: 0.7 })
-    : await ImagePicker.launchImageLibraryAsync({ base64: true, quality: 0.7 });
+  const result =
+    source === 'camera'
+      ? await ImagePicker.launchCameraAsync({ base64: true, quality: 0.7 })
+      : await ImagePicker.launchImageLibraryAsync({ base64: true, quality: 0.7 });
   const asset = result.canceled ? undefined : result.assets[0];
   return asset?.base64 ? { uri: asset.uri, base64: asset.base64 } : null;
 }
 
 /** Asks "camera or gallery?" and resolves with the choice (null on cancel). */
-export function askPhotoSource(title = i18n.t('photo.addReceiptPhoto')): Promise<PhotoSource | null> {
+export function askPhotoSource(
+  title = i18n.t('photo.addReceiptPhoto'),
+): Promise<PhotoSource | null> {
   return new Promise((resolve) => {
-    Alert.alert(title, undefined, [
-      { text: i18n.t('common.cancel'), style: 'cancel', onPress: () => resolve(null) },
-      { text: i18n.t('photo.gallery'), onPress: () => resolve('gallery') },
-      { text: i18n.t('photo.camera'), onPress: () => resolve('camera') },
-    ], { onDismiss: () => resolve(null) });
+    Alert.alert(
+      title,
+      undefined,
+      [
+        { text: i18n.t('common.cancel'), style: 'cancel', onPress: () => resolve(null) },
+        { text: i18n.t('photo.gallery'), onPress: () => resolve('gallery') },
+        { text: i18n.t('photo.camera'), onPress: () => resolve('camera') },
+      ],
+      { onDismiss: () => resolve(null) },
+    );
   });
 }

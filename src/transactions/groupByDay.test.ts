@@ -2,7 +2,9 @@ import { groupByDay, type DayTransaction } from './groupByDay';
 
 process.env.TZ = 'UTC'; // fixture times are mid-day UTC; pin the runner so day grouping is deterministic
 
-function row(overrides: Partial<DayTransaction> & Pick<DayTransaction, 'groupId' | 'date'>): DayTransaction {
+function row(
+  overrides: Partial<DayTransaction> & Pick<DayTransaction, 'groupId' | 'date'>,
+): DayTransaction {
   return { amount: '10.00', currencyCode: 'PLN', type: 'withdrawal', ...overrides };
 }
 
@@ -34,10 +36,12 @@ describe('groupByDay', () => {
       row({ groupId: 'a', date: '2026-09-27T10:00:00.000Z', currencyCode: 'PLN', amount: '20.00' }),
       row({ groupId: 'b', date: '2026-09-27T11:00:00.000Z', currencyCode: 'EUR', amount: '5.00' }),
     ]);
-    expect(sections[0]!.totals).toEqual(expect.arrayContaining([
-      { currencyCode: 'PLN', amount: '-20.00' },
-      { currencyCode: 'EUR', amount: '-5.00' },
-    ]));
+    expect(sections[0]!.totals).toEqual(
+      expect.arrayContaining([
+        { currencyCode: 'PLN', amount: '-20.00' },
+        { currencyCode: 'EUR', amount: '-5.00' },
+      ]),
+    );
     expect(sections[0]!.totals).toHaveLength(2);
   });
 

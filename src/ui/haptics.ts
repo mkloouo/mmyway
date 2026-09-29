@@ -15,9 +15,12 @@ async function safe(fn: () => Promise<void>): Promise<void> {
 
 export const haptics = {
   /** A keypad key. Android's own keyboard-tap effect: selectionAsync is barely felt on many phones. */
-  key: () => safe(() => (Platform.OS === 'android'
-    ? Haptics.performAndroidHapticsAsync(Haptics.AndroidHaptics.Keyboard_Tap)
-    : Haptics.selectionAsync())),
+  key: () =>
+    safe(() =>
+      Platform.OS === 'android'
+        ? Haptics.performAndroidHapticsAsync(Haptics.AndroidHaptics.Keyboard_Tap)
+        : Haptics.selectionAsync(),
+    ),
   /** Confirm, a completed swipe. */
   tick: () => safe(() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)),
   /** A refused action — swipe-confirming an incomplete draft, a blocked save. */

@@ -4,11 +4,22 @@
 import { normkey } from '../lookup/normkey';
 import { readPlannedTime, stripPlannedTime, withPlannedTime } from './plannedTime';
 import type {
-  BillAttributes, PlannedObject, RecurrenceRepetition, RuleAction, RuleAttributes, RuleTrigger,
+  BillAttributes,
+  PlannedObject,
+  RecurrenceRepetition,
+  RuleAction,
+  RuleAttributes,
+  RuleTrigger,
 } from './objects';
 
 export type Frequency = 'weekly' | 'monthly' | 'quarterly' | 'half-year' | 'yearly';
-export const FREQUENCIES: readonly Frequency[] = ['weekly', 'monthly', 'quarterly', 'half-year', 'yearly'];
+export const FREQUENCIES: readonly Frequency[] = [
+  'weekly',
+  'monthly',
+  'quarterly',
+  'half-year',
+  'yearly',
+];
 
 export interface PlannedFields {
   name: string;
@@ -54,14 +65,17 @@ export function groupPlanned(objects: readonly PlannedObject[]): PlannedGroup[] 
     if (object.kind === 'bill' && !group.bill) group.bill = object;
     if (object.kind === 'rule' && !group.rule) group.rule = object;
     if (object.kind === 'recurrence' && !group.recurrence) group.recurrence = object;
-    if (object.kind === 'recurrence' || (object.kind === 'bill' && !group.recurrence)) group.name = object.name;
+    if (object.kind === 'recurrence' || (object.kind === 'bill' && !group.recurrence))
+      group.name = object.name;
     groups.set(key, group);
   }
   return [...groups.values()];
 }
 
-const dateOnly = (value: string | null | undefined): string | null => (value ? value.slice(0, 10) : null);
-const text = (value: unknown): string | null => (value == null || value === '' ? null : String(value));
+const dateOnly = (value: string | null | undefined): string | null =>
+  value ? value.slice(0, 10) : null;
+const text = (value: unknown): string | null =>
+  value == null || value === '' ? null : String(value);
 
 function actionValue(rule: RuleAttributes | undefined, type: string): string | null {
   return text(rule?.actions?.find((a) => a.type === type)?.value);
@@ -72,7 +86,10 @@ function frequencyFromBill(bill: BillAttributes): { frequency: Frequency; every:
   return { frequency: freq, every: (bill.skip ?? 0) + 1 };
 }
 
-function frequencyFromRepetition(rep: RecurrenceRepetition): { frequency: Frequency; every: number } {
+function frequencyFromRepetition(rep: RecurrenceRepetition): {
+  frequency: Frequency;
+  every: number;
+} {
   const every = (rep.skip ?? 0) + 1;
   if (rep.type === 'weekly') return { frequency: 'weekly', every };
   if (rep.type === 'yearly') return { frequency: 'yearly', every };
@@ -90,16 +107,33 @@ export function fieldsOf(group: PlannedGroup, today: string): PlannedFields {
   const repeats = rec ? rec.nr_of_repetitions !== 1 : bill ? !bill.end_date : true;
   // A one-off's bill says yearly only because FF3 bills must repeat (billBody): its repetition is
   // the better guess at what "Repeats" should start from if it is switched on.
-  const schedule = bill && (repeats || !rep) ? frequencyFromBill(bill) : rep ? frequencyFromRepetition(rep) : { frequency: 'monthly' as const, every: 1 };
-  const date = dateOnly(rep?.occurrences?.[0]) ?? dateOnly(bill?.next_expected_match) ?? dateOnly(rec?.first_date) ?? dateOnly(bill?.date) ?? today;
-  const ruleTags = (rule?.actions ?? []).filter((a) => a.type === 'add_tag').map((a) => a.value).filter((v): v is string => !!v);
+  const schedule =
+    bill && (repeats || !rep)
+      ? frequencyFromBill(bill)
+      : rep
+        ? frequencyFromRepetition(rep)
+        : { frequency: 'monthly' as const, every: 1 };
+  const date =
+    dateOnly(rep?.occurrences?.[0]) ??
+    dateOnly(bill?.next_expected_match) ??
+    dateOnly(rec?.first_date) ??
+    dateOnly(bill?.date) ??
+    today;
+  const ruleTags = (rule?.actions ?? [])
+    .filter((a) => a.type === 'add_tag')
+    .map((a) => a.value)
+    .filter((v): v is string => !!v);
   return {
     name: group.name,
     type,
     sourceId: text(tx?.source_id),
-    sourceName: text(tx?.source_name) ?? (type === 'deposit' ? actionValue(rule, 'set_source_account') : null),
+    sourceName:
+      text(tx?.source_name) ??
+      (type === 'deposit' ? actionValue(rule, 'set_source_account') : null),
     destinationId: text(tx?.destination_id),
-    destinationName: text(tx?.destination_name) ?? (type === 'withdrawal' ? actionValue(rule, 'set_destination_account') : null),
+    destinationName:
+      text(tx?.destination_name) ??
+      (type === 'withdrawal' ? actionValue(rule, 'set_destination_account') : null),
     amount: text(tx?.amount) ?? text(bill?.amount_max) ?? '0',
     currencyCode: text(tx?.currency_code) ?? text(bill?.currency_code) ?? '',
     notes: stripPlannedTime(text(rec?.notes) ?? text(bill?.notes)),
@@ -114,13 +148,24 @@ export function fieldsOf(group: PlannedGroup, today: string): PlannedFields {
 
 /** Whether a change touches the schedule; unchanged, the objects' own dates are left alone. */
 export function scheduleChanged(before: PlannedFields | null, after: PlannedFields): boolean {
-  return !before || before.date !== after.date || before.repeats !== after.repeats
-    || before.frequency !== after.frequency || before.every !== after.every;
+  return (
+    !before ||
+    before.date !== after.date ||
+    before.repeats !== after.repeats ||
+    before.frequency !== after.frequency ||
+    before.every !== after.every
+  );
 }
 
 /** `base` with `from`'s schedule: what FF3 holds once a save sent `from`'s schedule and nothing else. */
 export function withScheduleOf(base: PlannedFields, from: PlannedFields): PlannedFields {
-  return { ...base, date: from.date, repeats: from.repeats, frequency: from.frequency, every: from.every };
+  return {
+    ...base,
+    date: from.date,
+    repeats: from.repeats,
+    frequency: from.frequency,
+    every: from.every,
+  };
 }
 
 function addDays(date: string, days: number): string {
@@ -138,12 +183,14 @@ export function billBody(f: PlannedFields, before: PlannedFields | null): Record
     currency_code: f.currencyCode,
     notes: f.notes ?? '',
     active: true,
-    ...(scheduleChanged(before, f) ? {
-      date: f.date,
-      repeat_freq: f.repeats ? f.frequency : 'yearly',
-      skip: f.repeats ? f.every - 1 : 0,
-      end_date: f.repeats ? null : addDays(f.date, 1),
-    } : {}),
+    ...(scheduleChanged(before, f)
+      ? {
+          date: f.date,
+          repeat_freq: f.repeats ? f.frequency : 'yearly',
+          skip: f.repeats ? f.every - 1 : 0,
+          end_date: f.repeats ? null : addDays(f.date, 1),
+        }
+      : {}),
   };
 }
 
@@ -160,11 +207,16 @@ export function repetitionFor(f: PlannedFields): Record<string, unknown> {
   if (!f.repeats) return { type: 'monthly', moment: dayOfMonth, skip: 0, weekend: 1 };
   const skip = f.every - 1;
   switch (f.frequency) {
-    case 'weekly': return { type: 'weekly', moment: String(isoWeekday(f.date)), skip, weekend: 1 };
-    case 'quarterly': return { type: 'monthly', moment: dayOfMonth, skip: 3 * f.every - 1, weekend: 1 };
-    case 'half-year': return { type: 'monthly', moment: dayOfMonth, skip: 6 * f.every - 1, weekend: 1 };
-    case 'yearly': return { type: 'yearly', moment: f.date, skip, weekend: 1 };
-    default: return { type: 'monthly', moment: dayOfMonth, skip, weekend: 1 };
+    case 'weekly':
+      return { type: 'weekly', moment: String(isoWeekday(f.date)), skip, weekend: 1 };
+    case 'quarterly':
+      return { type: 'monthly', moment: dayOfMonth, skip: 3 * f.every - 1, weekend: 1 };
+    case 'half-year':
+      return { type: 'monthly', moment: dayOfMonth, skip: 6 * f.every - 1, weekend: 1 };
+    case 'yearly':
+      return { type: 'yearly', moment: f.date, skip, weekend: 1 };
+    default:
+      return { type: 'monthly', moment: dayOfMonth, skip, weekend: 1 };
   }
 }
 
@@ -181,7 +233,12 @@ export const REPEAT_FOREVER_UNTIL = '2099-12-31';
 export function recurrenceBody(
   f: PlannedFields & { sourceId: string; destinationId: string },
   before: PlannedFields | null,
-  opts: { billId?: string | null; transactionId?: string | null; repetitionId?: string | null; categoryId?: string | null },
+  opts: {
+    billId?: string | null;
+    transactionId?: string | null;
+    repetitionId?: string | null;
+    categoryId?: string | null;
+  },
 ): Record<string, unknown> {
   const transaction: Record<string, unknown> = {
     ...(opts.transactionId ? { id: opts.transactionId } : {}),
@@ -201,43 +258,72 @@ export function recurrenceBody(
     notes: withPlannedTime(f.notes, f.time),
     active: true,
     apply_rules: true,
-    ...(scheduleChanged(before, f) ? {
-      first_date: f.date,
-      // FF3 wants exactly one of the two: a key sent as null still counts as sent ("Require
-      // either a number of repetitions, or an end date. Not both."). A one-off happens once; a
-      // repeating one runs until a date far enough away to mean "until changed".
-      ...(f.repeats ? { repeat_until: REPEAT_FOREVER_UNTIL } : { nr_of_repetitions: 1 }),
-      repetitions: [{ ...(opts.repetitionId ? { id: opts.repetitionId } : {}), ...repetitionFor(f) }],
-    } : {}),
+    ...(scheduleChanged(before, f)
+      ? {
+          first_date: f.date,
+          // FF3 wants exactly one of the two: a key sent as null still counts as sent ("Require
+          // either a number of repetitions, or an end date. Not both."). A one-off happens once; a
+          // repeating one runs until a date far enough away to mean "until changed".
+          ...(f.repeats ? { repeat_until: REPEAT_FOREVER_UNTIL } : { nr_of_repetitions: 1 }),
+          repetitions: [
+            { ...(opts.repetitionId ? { id: opts.repetitionId } : {}), ...repetitionFor(f) },
+          ],
+        }
+      : {}),
     transactions: [transaction],
   };
 }
 
 /** The rule actions the simple view owns; any other action on the rule is kept as it is. */
-const MANAGED_ACTIONS = new Set(['link_to_bill', 'set_category', 'set_destination_account', 'set_source_account', 'add_tag']);
+const MANAGED_ACTIONS = new Set([
+  'link_to_bill',
+  'set_category',
+  'set_destination_account',
+  'set_source_account',
+  'add_tag',
+]);
 
 export function managedActions(f: PlannedFields): RuleAction[] {
-  const action = (type: string, value: string): RuleAction => ({ type, value, active: true, stop_processing: false });
+  const action = (type: string, value: string): RuleAction => ({
+    type,
+    value,
+    active: true,
+    stop_processing: false,
+  });
   const out: RuleAction[] = [action('link_to_bill', f.name)];
   if (f.categoryName) out.push(action('set_category', f.categoryName));
-  if (f.type === 'withdrawal' && f.destinationName) out.push(action('set_destination_account', f.destinationName));
+  if (f.type === 'withdrawal' && f.destinationName)
+    out.push(action('set_destination_account', f.destinationName));
   if (f.type === 'deposit' && f.sourceName) out.push(action('set_source_account', f.sourceName));
   for (const tag of f.tags) out.push(action('add_tag', tag));
   return out;
 }
 
 const cleanTrigger = (t: RuleTrigger): RuleTrigger => ({
-  type: t.type, value: t.value, active: t.active ?? true, stop_processing: t.stop_processing ?? false,
+  type: t.type,
+  value: t.value,
+  active: t.active ?? true,
+  stop_processing: t.stop_processing ?? false,
   ...(t.prohibited !== undefined ? { prohibited: t.prohibited } : {}),
 });
-const cleanAction = (a: RuleAction): RuleAction => ({ type: a.type, value: a.value, active: a.active ?? true, stop_processing: a.stop_processing ?? false });
+const cleanAction = (a: RuleAction): RuleAction => ({
+  type: a.type,
+  value: a.value,
+  active: a.active ?? true,
+  stop_processing: a.stop_processing ?? false,
+});
 
 /**
  * FF3 rule body. A new rule matches descriptions containing the name. An existing rule keeps its
  * own triggers (a bank's text for the subscription), with the old name renamed; of its actions,
  * those the simple view owns are replaced and the rest kept.
  */
-export function ruleBody(f: PlannedFields, existing: RuleAttributes | null, oldName: string | null, ruleGroupId: string | null): Record<string, unknown> {
+export function ruleBody(
+  f: PlannedFields,
+  existing: RuleAttributes | null,
+  oldName: string | null,
+  ruleGroupId: string | null,
+): Record<string, unknown> {
   if (!existing) {
     return {
       title: f.name,
@@ -246,14 +332,19 @@ export function ruleBody(f: PlannedFields, existing: RuleAttributes | null, oldN
       active: true,
       strict: true,
       stop_processing: false,
-      triggers: [{ type: 'description_contains', value: f.name, active: true, stop_processing: false }],
+      triggers: [
+        { type: 'description_contains', value: f.name, active: true, stop_processing: false },
+      ],
       actions: managedActions(f),
     };
   }
-  const renamed = (value: string) => (oldName && normkey(value) === normkey(oldName) ? f.name : value);
+  const renamed = (value: string) =>
+    oldName && normkey(value) === normkey(oldName) ? f.name : value;
   return {
     title: f.name,
-    triggers: (existing.triggers ?? []).map((t) => cleanTrigger({ ...t, value: renamed(String(t.value ?? '')) })),
+    triggers: (existing.triggers ?? []).map((t) =>
+      cleanTrigger({ ...t, value: renamed(String(t.value ?? '')) }),
+    ),
     actions: [
       ...(existing.actions ?? []).filter((a) => !MANAGED_ACTIONS.has(a.type)).map(cleanAction),
       ...managedActions(f),

@@ -34,12 +34,26 @@ const opt = (value: string | null | undefined): string | undefined => value ?? u
 
 /** The row's splits: the cached ones, or the row itself for one cached before splits were kept. */
 function splitsOf(row: CachedRow): CachedSplit[] {
-  return readSplits(row.splitsJson) ?? [{
-    journalId: row.journalId, amount: row.amount, description: row.description,
-    sourceId: row.sourceId, sourceName: row.sourceName, destinationId: row.destinationId, destinationName: row.destinationName,
-    categoryName: row.categoryName, budgetId: row.budgetId, budgetName: row.budgetName, notes: row.notes,
-    tags: parseTags(row.tagsJson), foreignAmount: row.foreignAmount, foreignCurrencyCode: row.foreignCurrencyCode,
-  }];
+  return (
+    readSplits(row.splitsJson) ?? [
+      {
+        journalId: row.journalId,
+        amount: row.amount,
+        description: row.description,
+        sourceId: row.sourceId,
+        sourceName: row.sourceName,
+        destinationId: row.destinationId,
+        destinationName: row.destinationName,
+        categoryName: row.categoryName,
+        budgetId: row.budgetId,
+        budgetName: row.budgetName,
+        notes: row.notes,
+        tags: parseTags(row.tagsJson),
+        foreignAmount: row.foreignAmount,
+        foreignCurrencyCode: row.foreignCurrencyCode,
+      },
+    ]
+  );
 }
 
 export function draftFromTransaction(row: CachedRow): Draft {
@@ -84,8 +98,12 @@ export async function duplicateTransaction(db: OutboxDb, row: CachedRow): Promis
   const id = generateId();
   const now = new Date().toISOString();
   await db.insert(inboxItems).values({
-    id, kind: 'manual_entry', state: 'captured', draftJson: writeDraft(draftFromTransaction(row)),
-    createdAt: now, updatedAt: now,
+    id,
+    kind: 'manual_entry',
+    state: 'captured',
+    draftJson: writeDraft(draftFromTransaction(row)),
+    createdAt: now,
+    updatedAt: now,
   });
   return id;
 }

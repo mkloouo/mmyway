@@ -15,7 +15,11 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: t.color.accent,
         tabBarInactiveTintColor: t.color.textFaint,
-        tabBarStyle: { backgroundColor: t.color.surface, borderTopColor: t.color.border, borderTopWidth: 1 },
+        tabBarStyle: {
+          backgroundColor: t.color.surface,
+          borderTopColor: t.color.border,
+          borderTopWidth: 1,
+        },
       }}
     >
       <Tabs.Screen
@@ -23,7 +27,9 @@ export default function TabsLayout() {
         options={{
           title: tr('tabs.inbox'),
           tabBarBadge: actionableCount > 0 ? actionableCount : undefined,
-          tabBarIcon: ({ color, size }) => <Ionicons name="file-tray-full" color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="file-tray-full" color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
@@ -37,14 +43,18 @@ export default function TabsLayout() {
         name="planned"
         options={{
           title: tr('planned.title'),
-          tabBarIcon: ({ color, size }) => <Ionicons name="calendar-outline" color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="calendar-outline" color={color} size={size} />
+          ),
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: tr('settings.title'),
-          tabBarIcon: ({ color, size }) => <Ionicons name="settings-outline" color={color} size={size} />,
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="settings-outline" color={color} size={size} />
+          ),
         }}
       />
     </Tabs>
