@@ -15,6 +15,9 @@ export const SYNC_DELAY = { afterConfirm: 6000, afterWrite: 1000 } as const;
 let handler: (() => void) | null = null;
 let timer: ReturnType<typeof setTimeout> | null = null;
 let fireAt = 0;
+// The earliest a push may go out while a confirm's Undo snackbar is still showing. Only a confirm
+// raises it; retries and other writes are free to fire sooner than the timer already armed.
+let undoFloor = 0;
 
 export function registerSyncHandler(run: () => void): () => void {
   handler = run;
@@ -24,21 +27,24 @@ export function registerSyncHandler(run: () => void): () => void {
 }
 
 /**
- * Debounced: a burst (Confirm all, a cash-count sweep) becomes one push. A shorter delay never
- * pulls a pending push forward — a quick delete right after a confirm must not send the confirm
- * inside its undo window.
+ * Debounced: a burst (Confirm all, a cash-count sweep) becomes one push. A push never goes out
+ * inside a confirm's undo window — a quick delete right after a confirm must not send the confirm
+ * — but a request may pull an armed timer *earlier* (a retry armed for an hour must not hold back
+ * a change made now).
  */
 export function requestSync(delayMs: number = SYNC_DELAY.afterWrite): void {
   if (!handler) return;
-  const at = Math.max(fireAt, Date.now() + delayMs);
-  if (timer && at === fireAt) return;
+  const now = Date.now();
+  if (delayMs === SYNC_DELAY.afterConfirm) undoFloor = Math.max(undoFloor, now + delayMs);
+  const at = Math.max(now + delayMs, undoFloor);
+  if (timer && at >= fireAt) return;
   if (timer) clearTimeout(timer);
   fireAt = at;
   timer = setTimeout(() => {
     timer = null;
     fireAt = 0;
     handler?.();
-  }, at - Date.now());
+  }, at - now);
 }
 
 /**

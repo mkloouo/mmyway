@@ -3,10 +3,11 @@
 // for the replay conflict check) -> replay the outbox -> pull recurring -> re-read account balances
 // and re-pull recent transactions only if the replay actually landed something server-side.
 // Never throws: a sync failure is a status the caller displays, not a crash.
-import { inArray } from 'drizzle-orm';
+import { asc, inArray } from 'drizzle-orm';
 import { readStoredCredentials } from '../api/ff3/auth';
 import { outboxOperations } from '../db/schema';
 import { retryUnsent } from './syncTrigger';
+import { OutboxBlocker, subjectsOf } from './outboxSubjects';
 import { clientFor } from '../api/ff3/session';
 import { readHosts } from '../api/ff3/hosts';
 import {
@@ -270,16 +271,27 @@ async function doSync(db: OutboxDb, mode: SyncMode): Promise<SyncSummary> {
 async function retryWhatIsLeft(db: OutboxDb): Promise<void> {
   try {
     const left = await db
-      .select({ status: outboxOperations.status, nextAttemptAt: outboxOperations.nextAttemptAt })
+      .select()
       .from(outboxOperations)
-      .where(inArray(outboxOperations.status, ['pending', 'failed']));
+      .where(inArray(outboxOperations.status, ['pending', 'failed']))
+      .orderBy(asc(outboxOperations.sequence));
+    // "Unsent" means sendable now: a pending op behind a failed one waits for that failure's
+    // backoff, so probing FF3 every few seconds for it would only drain the battery.
+    const blocker = new OutboxBlocker();
+    let unsent = false;
+    for (const op of left) {
+      const subjects = subjectsOf(op);
+      if (blocker.waits(subjects)) {
+        blocker.block(subjects);
+        continue;
+      }
+      if (op.status === 'failed') blocker.block(subjects);
+      else unsent = true;
+    }
     const retryTimes = left
       .filter((op) => op.status === 'failed' && op.nextAttemptAt)
       .map((op) => new Date(op.nextAttemptAt!).getTime());
-    retryUnsent(
-      left.some((op) => op.status === 'pending'),
-      retryTimes.length > 0 ? Math.min(...retryTimes) : null,
-    );
+    retryUnsent(unsent, retryTimes.length > 0 ? Math.min(...retryTimes) : null);
   } catch (err) {
     logLine('warn', `scheduling a retry failed: ${errorMessage(err)}`);
   }

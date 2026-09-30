@@ -14,6 +14,8 @@
 - A planned transaction's time no longer turns into "Any time" after an edit, with
   "mmyway-time: 09:00" glued onto the end of its note. Times already caught this way are read back
   correctly.
+- A change you make is sent within seconds again while another change waits to be retried — it
+  could wait up to an hour.
 
 ## [1.4.3] - 2026-09-29
 
