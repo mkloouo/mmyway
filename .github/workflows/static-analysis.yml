@@ -1,5 +1,5 @@
 # Static analysis (docs/STATIC_ANALYSIS.md), beside ci.yml's typecheck, lint and tests. Each check
-# is its own step so a failure names the check. Only expo-doctor and gitleaks warn.
+# is its own step so a failure names the check. Only gitleaks warns.
 name: Static analysis
 
 on:
@@ -31,9 +31,8 @@ jobs:
         run: npm run analyze:deps
       - name: Unused files, exports and dependencies
         run: npm run analyze:dead
-      - name: Expo config and SDK package versions (warns only)
+      - name: Expo config and SDK package versions
         run: npm run analyze:doctor
-        continue-on-error: true # a patch behind the SDK is Dependabot's to open, not a red build
       - name: Secrets in the history (gitleaks, warns only)
         uses: gitleaks/gitleaks-action@v3
         env:

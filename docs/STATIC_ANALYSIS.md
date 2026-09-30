@@ -17,8 +17,8 @@ coverage floor on the money path; `static-analysis.yml` runs the checks below on
 
 Config: `eslint.config.js` (Expo's rules plus the strict ones), `knip.json`, `.jscpd.json`,
 `jest.config.js` (coverage floors), `.github/dependabot.yml` (grouped, weekly). In CI the cycles,
-dupes, dead-code (knip) and audit steps fail the build; expo-doctor and [gitleaks](https://github.com/gitleaks/gitleaks)
-(a scan of the history) only warn, until their findings are cleared.
+dupes, dead-code (knip), audit and expo-doctor steps fail the build; [gitleaks](https://github.com/gitleaks/gitleaks)
+(a scan of the history) only warns.
 
 **Coverage floors** (`npm run test:coverage`, run by CI): `src/sync/`, `src/inbox/`, `src/splits/`
 and `src/api/ff3/decimal.ts` each have a minimum for lines and branches, set a little under what
@@ -33,7 +33,7 @@ the suite covers. Raise them when the number rises.
 | dupes  | 0.16% (4 clones) — passes                                                                                                                                          |
 | cycles | none at runtime — passes (7 through type-only imports)                                                                                                             |
 | deps   | no high/critical — passes (16 moderate)                                                                                                                            |
-| doctor | 5 Expo packages one patch behind the SDK (`npx expo install --check`)                                                                                              |
+| doctor | clean since `npx expo install --fix` (SDK packages current); a failure means run it again                                                                          |
 
 Most floating promises are `haptics.*()` calls, which return a promise nobody needs; making
 `src/ui/haptics.ts` return `void` removes them in one go. The ones that matter are the two Undo
@@ -45,5 +45,3 @@ a failed Undo is silently dropped.
 - **GitHub settings** (no code): secret scanning with push protection; CodeQL default setup if the
   repository is public; branch protection on `main` requiring the `CI` and `Static analysis`
   checks and a pull request.
-- Make the expo-doctor step fail the build once the SDK packages are current
-  (`npx expo install --fix`, or Dependabot's grouped PR).
