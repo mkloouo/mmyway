@@ -1,0 +1,15 @@
+appId: ${APP_ID}
+name: 'R2 · Share from the gallery (2/2: duplicate)'
+tags:
+  - release
+  - host
+---
+# The same photo shared again is recognised as a duplicate: the app opens the existing draft
+# instead of adding a second item.
+- launchApp:
+    appId: ${APP_ID}
+- extendedWaitUntil:
+    visible: 'Review'
+    timeout: 20000
+- takeScreenshot: R2-duplicate-opens-draft
+- runFlow: ../../subflows/delete-draft.yaml

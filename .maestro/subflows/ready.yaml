@@ -1,0 +1,19 @@
+appId: ${APP_ID}
+---
+# Brings the app to the Inbox, signed in to the test instance and freshly synced.
+# Every flow starts here, so a flow can also run on its own (`npm run e2e -- S4`).
+- launchApp:
+    appId: ${APP_ID}
+- runFlow:
+    when:
+      visible: 'Allow|ALLOW|While using the app'
+    commands:
+      - tapOn: 'Allow|ALLOW|While using the app'
+- extendedWaitUntil:
+    visible: 'Inbox'
+    timeout: 30000
+- runFlow:
+    when:
+      visible: 'Connect Firefly III|Go to Settings'
+    file: sign-in.yaml
+- runFlow: sync.yaml

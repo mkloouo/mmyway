@@ -1,0 +1,8 @@
+# Maestro workspace. Run the flows through `npm run e2e` (scripts/e2e.mjs): it resets the test
+# Firefly III, passes APP_ID / FF3_URL / FF3_TOKEN / RUN_ID, and does the host steps between the
+# parts of the `host`-tagged flows. `maestro test .maestro` alone runs only the flows without host
+# steps, and still needs those env vars (-e).
+flows:
+  - 'flows/**'
+excludeTags:
+  - host

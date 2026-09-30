@@ -1,0 +1,11 @@
+appId: ${APP_ID}
+---
+- tapOn: 'Close'
+- runFlow:
+    when:
+      visible: "Discard this entry\\?"
+    commands:
+      - tapOn: 'Discard'
+- extendedWaitUntil:
+    visible: 'Inbox'
+    timeout: 10000

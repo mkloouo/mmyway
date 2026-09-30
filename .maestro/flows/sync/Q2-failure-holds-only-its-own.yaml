@@ -1,0 +1,51 @@
+appId: ${APP_ID}
+name: "Q2 · One failure doesn't hold the rest (#72)"
+tags:
+  - release
+---
+# An edit of a transaction deleted in Firefly III meanwhile fails for good. An unrelated entry
+# confirmed after it still reaches Firefly III within seconds, not after the failure's backoff.
+- runScript:
+    file: ../../scripts/ff3.js
+    env: { ACTION: createTx, PAYEE: 'Q2a ${RUN_ID}', DESCRIPTION: 'Q2a ${RUN_ID}', AMOUNT: '12.00' }
+- runFlow: ../../subflows/ready.yaml
+- setAirplaneMode: enabled
+- runFlow:
+    file: ../../subflows/open-transaction.yaml
+    env: { QUERY: 'Q2a ${RUN_ID}' }
+- tapOn: 'Category'
+- tapOn: 'Fuel'
+- tapOn: 'Save'
+- runFlow: ../../subflows/home.yaml
+- runScript:
+    file: ../../scripts/ff3.js
+    env: { ACTION: deleteTx, PAYEE: 'Q2a ${RUN_ID}' }
+- setAirplaneMode: disabled
+- extendedWaitUntil:
+    visible: 'NEEDS ATTENTION'
+    timeout: 90000
+- runFlow:
+    file: ../../subflows/capture.yaml
+    env:
+      {
+        TYPE_LABEL: '',
+        AMOUNT: '2',
+        PAYEE: 'Q2b ${RUN_ID}',
+        PAYEE_NEW: 'true',
+        ACCOUNT: 'Checking',
+        TO_ACCOUNT: '',
+        CATEGORY: '',
+        DESCRIPTION: '',
+        SAVE: confirm,
+      }
+- runFlow: ../../subflows/close-capture.yaml
+# 6 s Undo window + the push: well under 25 s unless something holds it back.
+- runScript:
+    file: ../../scripts/ff3.js
+    env: { ACTION: findTx, PAYEE: 'Q2b ${RUN_ID}', EXPECT_AMOUNT: '2', TIMEOUT_MS: '25000' }
+# Clean up: the failed edit can never succeed.
+- tapOn: 'Discard'
+- tapOn:
+    text: 'Discard'
+    below: "Discard this queued change\\?"
+- assertNotVisible: 'NEEDS ATTENTION'

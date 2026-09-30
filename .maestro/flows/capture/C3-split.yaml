@@ -1,0 +1,75 @@
+appId: ${APP_ID}
+name: 'C3 · Split transaction'
+tags:
+  - release
+---
+# A 50,00 draft gets a second split of 20,00 (taken from split 1), then the total is raised to
+# 60,00 and the leftover reassigned. One group lands, titled, with two splits adding up to 60.
+- runFlow: ../../subflows/ready.yaml
+- runFlow:
+    file: ../../subflows/capture.yaml
+    env:
+      TYPE_LABEL: ''
+      AMOUNT: '50'
+      PAYEE: 'C3 ${RUN_ID}'
+      PAYEE_NEW: 'true'
+      ACCOUNT: 'Checking'
+      TO_ACCOUNT: ''
+      CATEGORY: 'Groceries'
+      DESCRIPTION: ''
+      SAVE: inbox
+- runFlow: ../../subflows/close-capture.yaml
+- tapOn: 'C3 ${RUN_ID}'
+- tapOn: 'Split'
+- extendedWaitUntil:
+    visible: 'New split'
+    timeout: 5000
+- tapOn:
+    id: 'keypad-2'
+- tapOn:
+    id: 'keypad-0'
+- tapOn:
+    id: 'keypad-save'
+- extendedWaitUntil:
+    visible: 'Split 2 / 2'
+    timeout: 5000
+# The new split needs its own payee and description.
+- tapOn: 'Payee'
+- inputText: 'C3 ${RUN_ID}'
+- tapOn:
+    text: 'C3 ${RUN_ID}'
+    index: 1
+- tapOn: 'Description'
+- inputText: 'C3 second ${RUN_ID}'
+- tapOn: 'Done'
+# The group title FF3 requires once there is more than one split.
+- tapOn: 'Title'
+- inputText: 'C3 group ${RUN_ID}'
+- tapOn: 'Done'
+# Raise the total: the splits now fall 10,00 short, and Reassign hands it out.
+- tapOn: 'Change the total'
+- repeat:
+    times: 6
+    commands:
+      - tapOn:
+          id: 'keypad-backspace'
+- tapOn:
+    id: 'keypad-6'
+- tapOn:
+    id: 'keypad-0'
+- tapOn:
+    id: 'keypad-save'
+- assertVisible: ".* of the total isn't in any split"
+- tapOn: 'Reassign'
+- tapOn: 'Done'
+- assertNotVisible: ".* of the total isn't in any split"
+- tapOn: 'Confirm'
+- runFlow: ../../subflows/wait-sent.yaml
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      ACTION: findTx
+      DESCRIPTION: 'C3 group ${RUN_ID}'
+      EXPECT_SPLITS: '2'
+      EXPECT_TOTAL: '60.00'
+      EXPECT_GROUP_TITLE: 'C3 group ${RUN_ID}'

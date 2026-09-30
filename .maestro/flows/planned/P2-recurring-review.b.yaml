@@ -1,0 +1,48 @@
+appId: ${APP_ID}
+name: 'P2 · Recurring review (2/2: approve)'
+tags:
+  - release
+  - host
+---
+# Both booked transactions come in for review. The plain one is approved as it is; the EUR one is
+# approved with the PLN amount actually charged. Both get the reviewed tag and don't come back.
+- runFlow: ../../subflows/ready.yaml
+- extendedWaitUntil:
+    visible: 'TO REVIEW'
+    timeout: 30000
+- tapOn:
+    text: 'Approve'
+    below: 'P2 ${RUN_ID}'
+- tapOn:
+    text: 'Edit'
+    below: 'P2fx ${RUN_ID}'
+- extendedWaitUntil:
+    visible: 'Edit recurring transaction'
+    timeout: 10000
+- tapOn: 'Amount.*'
+- inputText: '10,50'
+- hideKeyboard
+- tapOn: 'Save & approve'
+- runFlow: ../../subflows/wait-sent.yaml
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      {
+        ACTION: findTx,
+        DESCRIPTION: 'P2 ${RUN_ID}',
+        EXPECT_TAG: 'mmyway-reviewed',
+        EXPECT_AMOUNT: '9.99',
+      }
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      {
+        ACTION: findTx,
+        DESCRIPTION: 'P2fx ${RUN_ID}',
+        EXPECT_TAG: 'mmyway-reviewed',
+        EXPECT_AMOUNT: '10.50',
+        EXPECT_FOREIGN_AMOUNT: '2.30',
+      }
+- runFlow: ../../subflows/sync.yaml
+- assertNotVisible: 'P2 ${RUN_ID}'
+- assertNotVisible: 'P2fx ${RUN_ID}'

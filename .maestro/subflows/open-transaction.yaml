@@ -1,0 +1,15 @@
+appId: ${APP_ID}
+---
+# Activity → search QUERY → opens the first hit. QUERY: description or payee text.
+- runFlow: home.yaml
+- tapOn: 'Activity'
+- tapOn: 'Search'
+- inputText: ${QUERY}
+- hideKeyboard
+# index 0 is the search field itself.
+- tapOn:
+    text: '.*${QUERY}.*'
+    index: 1
+- extendedWaitUntil:
+    visible: 'Transaction'
+    timeout: 10000

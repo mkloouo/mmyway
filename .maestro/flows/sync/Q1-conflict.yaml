@@ -1,0 +1,91 @@
+appId: ${APP_ID}
+name: "Q1 · Conflict: keep mine / use server's"
+tags:
+  - release
+---
+# Two transactions edited in the app while offline, and changed in Firefly III meanwhile. Back
+# online, both are conflicts. Q1a: "Keep mine" sends the app's category over the server copy.
+# Q1b: "Use the server's" drops the app's change.
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      {
+        ACTION: createTx,
+        PAYEE: 'Q1a ${RUN_ID}',
+        DESCRIPTION: 'Q1a ${RUN_ID}',
+        AMOUNT: '20.00',
+        CATEGORY: 'Groceries',
+      }
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      {
+        ACTION: createTx,
+        PAYEE: 'Q1b ${RUN_ID}',
+        DESCRIPTION: 'Q1b ${RUN_ID}',
+        AMOUNT: '20.00',
+        CATEGORY: 'Groceries',
+      }
+- runFlow: ../../subflows/ready.yaml
+- setAirplaneMode: enabled
+- runFlow:
+    file: ../../subflows/open-transaction.yaml
+    env: { QUERY: 'Q1a ${RUN_ID}' }
+- tapOn: 'Category'
+- tapOn: 'Fuel'
+- tapOn: 'Save'
+- runFlow:
+    file: ../../subflows/open-transaction.yaml
+    env: { QUERY: 'Q1b ${RUN_ID}' }
+- tapOn: 'Category'
+- tapOn: 'Fuel'
+- tapOn: 'Save'
+- runFlow: ../../subflows/home.yaml
+# Firefly III's web UI changes both amounts meanwhile.
+- runScript:
+    file: ../../scripts/ff3.js
+    env: { ACTION: updateTx, PAYEE: 'Q1a ${RUN_ID}', NEW_AMOUNT: '99.00' }
+- runScript:
+    file: ../../scripts/ff3.js
+    env: { ACTION: updateTx, PAYEE: 'Q1b ${RUN_ID}', NEW_AMOUNT: '88.00' }
+- setAirplaneMode: disabled
+- extendedWaitUntil:
+    visible: 'Resolve ›'
+    timeout: 90000
+- repeat:
+    times: 2
+    commands:
+      - runFlow: ../../subflows/home.yaml
+      - extendedWaitUntil:
+          visible: 'Resolve ›'
+          timeout: 30000
+      - tapOn:
+          text: 'Resolve ›'
+          index: 0
+      - extendedWaitUntil:
+          visible: '.*was changed in Firefly III.*'
+          timeout: 10000
+      - runFlow:
+          when:
+            visible: '.*Q1a ${RUN_ID} was changed in Firefly III.*'
+          commands:
+            - tapOn: "Keep mine \\(apply over the server copy\\)"
+      - runFlow:
+          when:
+            visible: '.*Q1b ${RUN_ID} was changed in Firefly III.*'
+          commands:
+            - tapOn: "Use the server's \\(drop my change\\)"
+- runFlow: ../../subflows/wait-sent.yaml
+- assertNotVisible: 'Resolve ›'
+- runScript:
+    file: ../../scripts/ff3.js
+    env: { ACTION: findTx, PAYEE: 'Q1a ${RUN_ID}', EXPECT_CATEGORY: 'Fuel', EXPECT_AMOUNT: '99.00' }
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      {
+        ACTION: findTx,
+        PAYEE: 'Q1b ${RUN_ID}',
+        EXPECT_CATEGORY: 'Groceries',
+        EXPECT_AMOUNT: '88.00',
+      }

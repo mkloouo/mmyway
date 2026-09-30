@@ -1,0 +1,52 @@
+appId: ${APP_ID}
+name: 'T1 · Account edits stick'
+tags:
+  - release
+---
+# Rename "Savings EUR", switch it inactive, tick it as a cash envelope, move it in the order.
+# Two syncs later nothing flipped back, and Firefly III matches. Then the seed is put back.
+- runFlow: ../../subflows/ready.yaml
+- tapOn: 'Settings'
+- tapOn: 'Asset accounts'
+- tapOn: 'Savings EUR'
+- tapOn:
+    text: 'Savings EUR'
+    index: 1
+- eraseText: 30
+- inputText: 'Savings EUR ${RUN_ID}'
+- hideKeyboard
+- tapOn: 'Active'
+- tapOn: 'Cash envelope'
+- tapOn: 'Save'
+- runFlow: ../../subflows/home.yaml
+- runFlow: ../../subflows/sync.yaml
+- runFlow: ../../subflows/sync.yaml
+- tapOn: 'Settings'
+- tapOn: 'Asset accounts'
+- tapOn: 'Show inactive accounts'
+- assertVisible: 'Savings EUR ${RUN_ID}'
+- tapOn: 'Reorder accounts'
+- tapOn: 'Move Savings EUR ${RUN_ID} up'
+- tapOn: 'Done'
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      {
+        ACTION: expectAccount,
+        NAME: 'Savings EUR ${RUN_ID}',
+        EXPECT_ACTIVE: 'false',
+        EXPECT_NOTES_CONTAINS: 'mmyway-envelope',
+      }
+# Put the seed back for the flows after this one.
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      {
+        ACTION: updateAccount,
+        NAME: 'Savings EUR ${RUN_ID}',
+        NEW_NAME: 'Savings EUR',
+        ACTIVE: 'true',
+        NOTES: '-',
+      }
+- runFlow: ../../subflows/home.yaml
+- runFlow: ../../subflows/sync.yaml

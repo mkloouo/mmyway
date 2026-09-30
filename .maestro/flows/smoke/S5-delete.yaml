@@ -1,0 +1,36 @@
+appId: ${APP_ID}
+name: 'S5 · Delete from Activity'
+tags:
+  - smoke
+---
+# Long-press to select, Delete, confirm: the row leaves Activity at once and the transaction is
+# gone from Firefly III after the push.
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      ACTION: createTx
+      PAYEE: 'S5 ${RUN_ID}'
+      DESCRIPTION: 'S5 ${RUN_ID}'
+      AMOUNT: '4.20'
+- runFlow: ../../subflows/ready.yaml
+- tapOn: 'Activity'
+- tapOn: 'Search'
+- inputText: 'S5 ${RUN_ID}'
+- hideKeyboard
+- longPressOn:
+    text: '.*S5 ${RUN_ID}.*'
+    index: 1
+- assertVisible: '1 selected'
+- tapOn: 'Delete'
+- tapOn:
+    text: 'Delete'
+    below: "Delete 1 transaction\\?"
+- assertNotVisible:
+    text: '.*S5 ${RUN_ID}.*'
+    index: 1
+- runFlow: ../../subflows/wait-sent.yaml
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      ACTION: expectNoTx
+      PAYEE: 'S5 ${RUN_ID}'

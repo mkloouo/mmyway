@@ -1,0 +1,56 @@
+appId: ${APP_ID}
+name: 'S2 · Capture a withdrawal'
+tags:
+  - smoke
+---
+# Amount-first capture, saved to the Inbox (not confirmed): the amount reads exactly as typed and
+# nothing reaches Firefly III.
+- runFlow: ../../subflows/ready.yaml
+- tapOn: 'Add an entry'
+- extendedWaitUntil:
+    visible:
+      id: 'keypad-1'
+    timeout: 15000
+- tapOn:
+    id: 'keypad-1'
+- tapOn:
+    id: 'keypad-2'
+- tapOn:
+    id: 'keypad-decimal'
+- tapOn:
+    id: 'keypad-3'
+- tapOn:
+    id: 'keypad-4'
+- assertVisible: '12[.,]34'
+- tapOn: 'Close'
+- runFlow:
+    when:
+      visible: "Discard this entry\\?"
+    commands:
+      - tapOn: 'Discard'
+- runFlow:
+    file: ../../subflows/capture.yaml
+    env:
+      TYPE_LABEL: ''
+      AMOUNT: '12,34'
+      PAYEE: 'S2 ${RUN_ID}'
+      PAYEE_NEW: 'true'
+      ACCOUNT: 'Checking'
+      TO_ACCOUNT: ''
+      CATEGORY: ''
+      DESCRIPTION: ''
+      SAVE: inbox
+- runFlow: ../../subflows/close-capture.yaml
+- assertVisible: 'S2 ${RUN_ID}'
+- assertVisible: 'TO CONFIRM'
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      ACTION: findTx
+      PAYEE: 'S2 ${RUN_ID}'
+      EXPECT_COUNT: '0'
+      TIMEOUT_MS: '3000'
+# Leave the Inbox clean for the next flow.
+- tapOn: 'S2 ${RUN_ID}'
+- runFlow: ../../subflows/delete-draft.yaml
+- assertNotVisible: 'S2 ${RUN_ID}'

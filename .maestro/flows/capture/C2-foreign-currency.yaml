@@ -1,0 +1,43 @@
+appId: ${APP_ID}
+name: 'C2 · Foreign currency'
+tags:
+  - release
+---
+# 10,00 EUR paid from the PLN account, with what the account was charged typed with a comma:
+# Firefly III keeps the EUR as the foreign amount and the PLN as the amount.
+- runFlow: ../../subflows/ready.yaml
+- tapOn: 'Add an entry'
+- extendedWaitUntil:
+    visible:
+      id: 'keypad-1'
+    timeout: 15000
+- tapOn: 'Change currency'
+- tapOn: 'EUR.*'
+- tapOn:
+    id: 'keypad-1'
+- tapOn:
+    id: 'keypad-0'
+- tapOn: 'Checking'
+- assertVisible: 'Enter what the PLN account paid'
+- tapOn: '___ PLN'
+- inputText: '43,20'
+- hideKeyboard
+- tapOn: 'Search payees'
+- inputText: 'C2 ${RUN_ID}'
+- tapOn: 'Create new payee "C2 ${RUN_ID}"'
+- tapOn:
+    id: 'keypad-save'
+- extendedWaitUntil:
+    visible: 'Confirmed · .*'
+    timeout: 10000
+- runFlow: ../../subflows/close-capture.yaml
+- runFlow: ../../subflows/wait-sent.yaml
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      ACTION: findTx
+      PAYEE: 'C2 ${RUN_ID}'
+      EXPECT_CURRENCY: 'PLN'
+      EXPECT_AMOUNT: '43.20'
+      EXPECT_FOREIGN_CURRENCY: 'EUR'
+      EXPECT_FOREIGN_AMOUNT: '10'

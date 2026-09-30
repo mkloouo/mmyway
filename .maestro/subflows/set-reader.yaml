@@ -1,0 +1,31 @@
+appId: ${APP_ID}
+---
+# Configures a receipt reader from the runner's env: GEMINI_KEY, or LOCAL_MODEL_URL +
+# LOCAL_MODEL_NAME (an OpenAI-compatible server the phone can reach). Pass both as "" to skip.
+- runFlow: home.yaml
+- tapOn: 'Settings'
+- runFlow:
+    when:
+      true: ${GEMINI_KEY != ''}
+    commands:
+      - tapOn: 'Gemini key'
+      - tapOn: 'API key'
+      - inputText: ${GEMINI_KEY}
+      - tapOn: 'Save'
+- runFlow:
+    when:
+      true: ${LOCAL_MODEL_URL != ''}
+    commands:
+      - tapOn: 'Local model'
+      - tapOn: 'e.g. qwen3-vl-8b'
+      - inputText: ${LOCAL_MODEL_NAME}
+      - tapOn: 'Save'
+      # The Receipts section's Addresses row (the first one is Firefly III's).
+      - tapOn:
+          text: 'Addresses'
+          index: 1
+      - tapOn: 'https://…'
+      - inputText: ${LOCAL_MODEL_URL}
+      - tapOn: "\\+ Add address"
+      - back
+- tapOn: 'Inbox'

@@ -1,0 +1,73 @@
+appId: ${APP_ID}
+name: 'C6 · Confirm all, then Undo'
+tags:
+  - release
+---
+# Three drafts, Confirm all, Undo: all three come back. Confirm all again: three transactions.
+- runFlow: ../../subflows/ready.yaml
+- runFlow:
+    file: ../../subflows/capture.yaml
+    env:
+      {
+        TYPE_LABEL: '',
+        AMOUNT: '1',
+        PAYEE: 'C6a ${RUN_ID}',
+        PAYEE_NEW: 'true',
+        ACCOUNT: 'Checking',
+        TO_ACCOUNT: '',
+        CATEGORY: '',
+        DESCRIPTION: '',
+        SAVE: inbox,
+      }
+- runFlow:
+    file: ../../subflows/capture.yaml
+    env:
+      {
+        TYPE_LABEL: '',
+        AMOUNT: '2',
+        PAYEE: 'C6b ${RUN_ID}',
+        PAYEE_NEW: 'true',
+        ACCOUNT: 'Checking',
+        TO_ACCOUNT: '',
+        CATEGORY: '',
+        DESCRIPTION: '',
+        SAVE: inbox,
+      }
+- runFlow:
+    file: ../../subflows/capture.yaml
+    env:
+      {
+        TYPE_LABEL: '',
+        AMOUNT: '3',
+        PAYEE: 'C6c ${RUN_ID}',
+        PAYEE_NEW: 'true',
+        ACCOUNT: 'Checking',
+        TO_ACCOUNT: '',
+        CATEGORY: '',
+        DESCRIPTION: '',
+        SAVE: inbox,
+      }
+- runFlow: ../../subflows/close-capture.yaml
+- tapOn: 'Confirm all.*'
+- tapOn: 'Undo'
+- assertVisible: 'C6a ${RUN_ID}'
+- assertVisible: 'C6b ${RUN_ID}'
+- assertVisible: 'C6c ${RUN_ID}'
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      ACTION: findTx
+      PAYEE: 'C6a ${RUN_ID}'
+      EXPECT_COUNT: '0'
+      TIMEOUT_MS: '8000'
+- tapOn: 'Confirm all.*'
+- runFlow: ../../subflows/wait-sent.yaml
+- runScript:
+    file: ../../scripts/ff3.js
+    env: { ACTION: findTx, PAYEE: 'C6a ${RUN_ID}', EXPECT_AMOUNT: '1' }
+- runScript:
+    file: ../../scripts/ff3.js
+    env: { ACTION: findTx, PAYEE: 'C6b ${RUN_ID}', EXPECT_AMOUNT: '2' }
+- runScript:
+    file: ../../scripts/ff3.js
+    env: { ACTION: findTx, PAYEE: 'C6c ${RUN_ID}', EXPECT_AMOUNT: '3' }

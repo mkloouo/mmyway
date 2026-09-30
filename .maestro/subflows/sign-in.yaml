@@ -1,0 +1,16 @@
+appId: ${APP_ID}
+---
+# Settings → Firefly III: the test instance's address and token (FF3_URL, FF3_TOKEN from
+# scripts/e2e.mjs; the phone reaches the laptop's localhost through `adb reverse`).
+- tapOn: 'Settings'
+- tapOn: 'Firefly III'
+- tapOn: 'https://firefly.example.com'
+- inputText: ${FF3_URL}
+- tapOn: 'Personal access token'
+- inputText: ${FF3_TOKEN}
+- hideKeyboard
+- tapOn: 'Sign in'
+- extendedWaitUntil:
+    visible: 'Connected to Firefly III'
+    timeout: 45000
+- tapOn: 'Inbox'

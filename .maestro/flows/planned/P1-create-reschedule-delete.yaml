@@ -1,0 +1,79 @@
+appId: ${APP_ID}
+name: 'P1 · Planned: create, reschedule, delete (#75)'
+tags:
+  - release
+---
+# The simple view's trio: after Save, one bill, one recurring transaction and one rule; after a
+# schedule change still exactly one recurring transaction; after Delete, none of the three.
+- runFlow: ../../subflows/ready.yaml
+- tapOn: 'Planned'
+- tapOn: 'Add a planned transaction'
+- tapOn: 'e.g. Spotify'
+- inputText: 'P1 ${RUN_ID}'
+- hideKeyboard
+- tapOn: 'Amount'
+- tapOn:
+    id: 'keypad-4'
+- tapOn:
+    id: 'keypad-9'
+- tapOn:
+    id: 'keypad-save'
+- tapOn: 'From'
+- tapOn: 'Checking'
+- tapOn: 'To'
+- runFlow:
+    when:
+      visible: 'Search (payees|accounts)'
+    commands:
+      - tapOn: 'Search (payees|accounts)'
+      - inputText: 'Orlen'
+- tapOn:
+    text: 'Orlen'
+    index: 0
+- tapOn: 'Save'
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      {
+        ACTION: expectPlanned,
+        NAME: 'P1 ${RUN_ID}',
+        EXPECT_BILLS: '1',
+        EXPECT_RECURRENCES: '1',
+        EXPECT_RULES: '1',
+        TIMEOUT_MS: '90000',
+      }
+- runFlow: ../../subflows/home.yaml
+- tapOn: 'Planned'
+- tapOn: 'P1 ${RUN_ID}'
+- tapOn: 'Frequency'
+- tapOn: 'Weekly'
+- tapOn: 'Save'
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      {
+        ACTION: expectPlanned,
+        NAME: 'P1 ${RUN_ID}',
+        EXPECT_BILLS: '1',
+        EXPECT_RECURRENCES: '1',
+        EXPECT_RULES: '1',
+        TIMEOUT_MS: '90000',
+      }
+- runFlow: ../../subflows/home.yaml
+- tapOn: 'Planned'
+- tapOn: 'P1 ${RUN_ID}'
+- tapOn: 'Delete'
+- tapOn:
+    text: 'Delete'
+    below: "Delete P1 ${RUN_ID}\\?"
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      {
+        ACTION: expectPlanned,
+        NAME: 'P1 ${RUN_ID}',
+        EXPECT_BILLS: '0',
+        EXPECT_RECURRENCES: '0',
+        EXPECT_RULES: '0',
+        TIMEOUT_MS: '90000',
+      }

@@ -1,0 +1,10 @@
+appId: ${APP_ID}
+---
+# A full sync from the status pill's sheet, waiting until it has finished.
+- tapOn: 'Inbox'
+- tapOn: 'Sync status'
+- tapOn: 'Sync now'
+- extendedWaitUntil:
+    notVisible: 'Syncing…'
+    timeout: 120000
+- back

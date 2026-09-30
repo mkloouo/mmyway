@@ -1,0 +1,34 @@
+appId: ${APP_ID}
+name: 'T3b · Switch to another Firefly III (#76)'
+tags:
+  - release
+  - host
+---
+# Needs the runner's --second-instance (a second throwaway FF3: FF3_B_URL, FF3_B_TOKEN). A draft
+# saved against instance A must not keep A's account ids after switching to B: it asks for its
+# account again. Then the app is switched back to A.
+- runFlow: ../../subflows/ready.yaml
+- runFlow:
+    file: ../../subflows/capture.yaml
+    env:
+      {
+        TYPE_LABEL: '',
+        AMOUNT: '8',
+        PAYEE: 'T3b ${RUN_ID}',
+        PAYEE_NEW: 'true',
+        ACCOUNT: 'Checking',
+        TO_ACCOUNT: '',
+        CATEGORY: '',
+        DESCRIPTION: '',
+        SAVE: inbox,
+      }
+- runFlow: ../../subflows/close-capture.yaml
+- runFlow:
+    file: ../../subflows/sign-in.yaml
+    env: { FF3_URL: '${FF3_B_URL}', FF3_TOKEN: '${FF3_B_TOKEN}' }
+- runFlow: ../../subflows/sync.yaml
+- tapOn: 'T3b ${RUN_ID}'
+- assertVisible: '.*source account.*'
+- runFlow: ../../subflows/delete-draft.yaml
+- runFlow: ../../subflows/sign-in.yaml
+- runFlow: ../../subflows/sync.yaml

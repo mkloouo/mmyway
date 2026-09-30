@@ -1,0 +1,40 @@
+# Static analysis (docs/STATIC_ANALYSIS.md). NOT ENABLED: it runs only when started by hand
+# (Actions → Static analysis → Run workflow), and reports without failing.
+#
+# To switch it on, once the baseline is fixed:
+#   1. uncomment `push` / `pull_request` below;
+#   2. change `npm run analyze` to `npm run analyze -- --strict`.
+name: Static analysis
+
+on:
+  workflow_dispatch:
+  # push:
+  #   branches: [main]
+  # pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # gitleaks scans the history
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Same as ci.yml: type-aware lint needs expo-router's generated route types.
+      - name: Generate typed routes
+        run: CI=1 timeout 90 npx expo start --offline || true
+      - run: npx prettier --check .
+      - run: npm run analyze
+      - name: Secrets in the history (gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true

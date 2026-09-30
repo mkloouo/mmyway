@@ -1,0 +1,21 @@
+appId: ${APP_ID}
+name: 'P2 · Recurring review (1/2: recurrences due today)'
+tags:
+  - release
+  - host
+---
+# Two recurrences due today, one of them planned in EUR from the PLN account. The runner then
+# runs Firefly III's cron, which books both.
+- runScript:
+    file: ../../scripts/ff3.js
+    env: { ACTION: createRecurrence, TITLE: 'P2 ${RUN_ID}', AMOUNT: '9.99' }
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      {
+        ACTION: createRecurrence,
+        TITLE: 'P2fx ${RUN_ID}',
+        AMOUNT: '9.99',
+        FOREIGN_AMOUNT: '2.30',
+        FOREIGN_CURRENCY: 'EUR',
+      }

@@ -1,0 +1,17 @@
+appId: ${APP_ID}
+name: 'T2 · Two server addresses (2/3: fall back)'
+tags:
+  - release
+  - host
+---
+# Wi-Fi off: the LAN address can't answer, so the sync falls back to the USB (adb reverse) one
+# and still succeeds.
+- launchApp:
+    appId: ${APP_ID}
+- runFlow: ../../subflows/sync.yaml
+- assertNotVisible: 'Sync error'
+- tapOn: 'Sync status'
+- assertVisible:
+    text: 'in use'
+    below: ${FF3_URL}
+- back

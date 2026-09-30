@@ -1,0 +1,15 @@
+appId: ${APP_ID}
+name: 'R1 · Read a receipt (1/2: reader)'
+tags:
+  - release
+  - host
+---
+# Part 1: configure the reader. The runner then shares fixtures/receipt-r1.jpg into the app (the
+# same path as the camera after the shutter; the camera app itself stays a manual check).
+- runFlow: ../../subflows/ready.yaml
+- runFlow:
+    file: ../../subflows/set-reader.yaml
+    env:
+      GEMINI_KEY: ${GEMINI_KEY}
+      LOCAL_MODEL_URL: ${LOCAL_MODEL_URL}
+      LOCAL_MODEL_NAME: ${LOCAL_MODEL_NAME}

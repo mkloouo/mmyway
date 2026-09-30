@@ -1,0 +1,10 @@
+{
+  "basedOn": "6.7.6",
+  "patches": [
+    {
+      "file": "BillUpdateRequest.php",
+      "target": "/var/www/html/app/Api/V1/Requests/Models/Bill/UpdateRequest.php",
+      "why": "Lets a bill update send notes: null, so the app can clear a planned transaction's note. Upstream 6.7.6 rejects it ('notes' => ['min:1', ...]). The same file is mounted on the production server."
+    }
+  ]
+}

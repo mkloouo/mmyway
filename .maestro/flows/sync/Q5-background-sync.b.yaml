@@ -1,0 +1,10 @@
+appId: ${APP_ID}
+name: 'Q5 · Background sync (2/2: sent without opening the app)'
+tags:
+  - release
+  - host
+---
+# No launchApp: the app stays closed while Firefly III is checked.
+- runScript:
+    file: ../../scripts/ff3.js
+    env: { ACTION: findTx, PAYEE: 'Q5 ${RUN_ID}', EXPECT_AMOUNT: '5', TIMEOUT_MS: '120000' }

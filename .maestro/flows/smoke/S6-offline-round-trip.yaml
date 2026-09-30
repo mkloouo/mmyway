@@ -1,0 +1,41 @@
+appId: ${APP_ID}
+name: 'S6 · Offline round trip'
+tags:
+  - smoke
+---
+# Confirm with no network: it waits as "Queued 1" and nothing is sent. Network back, hands off:
+# it goes out by itself (reconnect listener) and lands exactly once.
+- runFlow: ../../subflows/ready.yaml
+- setAirplaneMode: enabled
+- runFlow:
+    file: ../../subflows/capture.yaml
+    env:
+      TYPE_LABEL: ''
+      AMOUNT: '3,30'
+      PAYEE: 'S6 ${RUN_ID}'
+      PAYEE_NEW: 'true'
+      ACCOUNT: 'Checking'
+      TO_ACCOUNT: ''
+      CATEGORY: ''
+      DESCRIPTION: ''
+      SAVE: confirm
+- runFlow: ../../subflows/close-capture.yaml
+- extendedWaitUntil:
+    visible: 'Queued 1|Offline — 1 queued, will send later'
+    timeout: 15000
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      ACTION: findTx
+      PAYEE: 'S6 ${RUN_ID}'
+      EXPECT_COUNT: '0'
+      TIMEOUT_MS: '3000'
+- setAirplaneMode: disabled
+- runFlow: ../../subflows/wait-sent.yaml
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      ACTION: findTx
+      PAYEE: 'S6 ${RUN_ID}'
+      EXPECT_COUNT: '1'
+      EXPECT_AMOUNT: '3.30'

@@ -1,0 +1,67 @@
+appId: ${APP_ID}
+name: 'K1 · Count cash'
+tags:
+  - release
+---
+# With a cash payment still queued the count refuses to book. After it lands and the balances
+# are re-read, counting the wallet 10,00 short books one "Cash count" adjustment to the shortfall
+# payee, tagged mmyway-reconcile.
+- runFlow: ../../subflows/ready.yaml
+- setAirplaneMode: enabled
+- runFlow:
+    file: ../../subflows/capture.yaml
+    env:
+      {
+        TYPE_LABEL: '',
+        AMOUNT: '5',
+        PAYEE: 'K1 ${RUN_ID}',
+        PAYEE_NEW: 'true',
+        ACCOUNT: 'Cash wallet',
+        TO_ACCOUNT: '',
+        CATEGORY: '',
+        DESCRIPTION: '',
+        SAVE: confirm,
+      }
+- runFlow: ../../subflows/close-capture.yaml
+- tapOn: 'Activity'
+- tapOn: 'More'
+- tapOn: 'Count cash'
+- assertVisible: ".*hasn't reached Firefly III yet.*"
+- tapOn: 'Close'
+- setAirplaneMode: disabled
+- runFlow: ../../subflows/wait-sent.yaml
+- runFlow: ../../subflows/sync.yaml
+- runScript:
+    file: ../../scripts/ff3.js
+    env: { ACTION: balance, NAME: 'Cash wallet' }
+- evalScript: "${output.counted = (Number(output.balance) - 10).toFixed(2).replace('.', ',')}"
+- tapOn: 'Activity'
+- tapOn: 'More'
+- tapOn: 'Count cash'
+- assertNotVisible: ".*hasn't reached Firefly III yet.*"
+- tapOn: 'Count Cash wallet by denomination'
+- assertVisible: 'Count denominations'
+- back
+- tapOn:
+    text: '—'
+    index: 0
+- inputText: ${output.counted}
+- hideKeyboard
+- tapOn: 'Reconcile settings'
+- tapOn: 'Cash shortfall'
+- tapOn: 'Cash surplus'
+- back
+- tapOn: 'Review 1 adjustment'
+- tapOn: 'Confirm 1'
+- runFlow: ../../subflows/wait-sent.yaml
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      {
+        ACTION: findTx,
+        DESCRIPTION: 'Cash count',
+        EXPECT_TAG: 'mmyway-reconcile',
+        EXPECT_AMOUNT: '10',
+        EXPECT_SOURCE: 'Cash wallet',
+        EXPECT_DESTINATION: 'Cash shortfall',
+      }

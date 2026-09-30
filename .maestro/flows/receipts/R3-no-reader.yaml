@@ -1,0 +1,19 @@
+appId: ${APP_ID}
+name: 'R3 · No reader available'
+tags:
+  - release
+  - host
+---
+# After the runner shared fixtures/receipt-r3.jpg with no reader configured (runs before R1):
+# the item waits in the Inbox, two syncs later still without a failure or an error loop.
+- launchApp:
+    appId: ${APP_ID}
+- extendedWaitUntil:
+    visible: 'TO CONFIRM'
+    timeout: 20000
+- runFlow: ../../subflows/sync.yaml
+- runFlow: ../../subflows/sync.yaml
+- assertNotVisible: 'NEEDS ATTENTION'
+- assertNotVisible: 'Failed'
+- assertVisible: 'TO CONFIRM'
+- takeScreenshot: R3-waiting-for-a-reader

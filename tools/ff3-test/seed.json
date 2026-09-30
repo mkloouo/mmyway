@@ -1,0 +1,138 @@
+{
+  "$comment": "Seed for the throwaway Firefly III (scripts/ff3-test.mjs seed). Dates are relative to today: daysAgo, or monthsAgo + day (clamped to today). eachMonth repeats a transaction once per month from monthsAgo `from` back to `to`; {month} in a description becomes YYYY-MM. The Maestro flows (.maestro/) rely on these names; change both together.",
+  "currencies": { "enable": ["PLN", "EUR"], "primary": "PLN" },
+  "accounts": [
+    {
+      "name": "Checking",
+      "type": "asset",
+      "account_role": "defaultAsset",
+      "currency_code": "PLN",
+      "opening_balance": "5000.00"
+    },
+    {
+      "name": "Cash wallet",
+      "type": "asset",
+      "account_role": "cashWalletAsset",
+      "currency_code": "PLN",
+      "opening_balance": "300.00",
+      "notes": "mmyway-envelope"
+    },
+    {
+      "name": "Savings EUR",
+      "type": "asset",
+      "account_role": "savingAsset",
+      "currency_code": "EUR",
+      "opening_balance": "1000.00"
+    },
+    { "name": "Żabka", "type": "expense" },
+    { "name": "Biedronka", "type": "expense" },
+    { "name": "Orlen", "type": "expense" },
+    { "name": "Cash shortfall", "type": "expense" },
+    { "name": "Employer", "type": "revenue" },
+    { "name": "Cash surplus", "type": "revenue" }
+  ],
+  "categories": ["Groceries", "Household", "Fuel", "Eating out", "Salary"],
+  "budgets": ["Food"],
+  "bills": [
+    {
+      "name": "Internet",
+      "amount_min": "79.00",
+      "amount_max": "79.00",
+      "currency_code": "PLN",
+      "repeat_freq": "monthly",
+      "day": 10
+    }
+  ],
+  "transactions": [
+    {
+      "eachMonth": { "from": 0, "to": 6 },
+      "day": 5,
+      "splits": [
+        {
+          "type": "withdrawal",
+          "amount": "23.45",
+          "description": "Żabka {month}",
+          "source_name": "Checking",
+          "destination_name": "Żabka",
+          "category_name": "Groceries",
+          "budget_name": "Food"
+        }
+      ]
+    },
+    {
+      "eachMonth": { "from": 0, "to": 6 },
+      "day": 1,
+      "splits": [
+        {
+          "type": "deposit",
+          "amount": "6500.00",
+          "description": "Salary {month}",
+          "source_name": "Employer",
+          "destination_name": "Checking",
+          "category_name": "Salary"
+        }
+      ]
+    },
+    {
+      "daysAgo": 4,
+      "splits": [
+        {
+          "type": "transfer",
+          "amount": "200.00",
+          "description": "Cash withdrawal",
+          "source_name": "Checking",
+          "destination_name": "Cash wallet"
+        }
+      ]
+    },
+    {
+      "daysAgo": 3,
+      "splits": [
+        {
+          "type": "withdrawal",
+          "amount": "250.00",
+          "description": "Fuel",
+          "source_name": "Checking",
+          "destination_name": "Orlen",
+          "category_name": "Fuel"
+        }
+      ]
+    },
+    {
+      "daysAgo": 2,
+      "group_title": "Weekly shop",
+      "splits": [
+        {
+          "type": "withdrawal",
+          "amount": "40.00",
+          "description": "Food",
+          "source_name": "Checking",
+          "destination_name": "Biedronka",
+          "category_name": "Groceries",
+          "budget_name": "Food"
+        },
+        {
+          "type": "withdrawal",
+          "amount": "12.50",
+          "description": "Cleaning",
+          "source_name": "Checking",
+          "destination_name": "Biedronka",
+          "category_name": "Household"
+        }
+      ]
+    },
+    {
+      "daysAgo": 1,
+      "splits": [
+        {
+          "type": "withdrawal",
+          "amount": "15.00",
+          "description": "Snacks",
+          "source_name": "Cash wallet",
+          "destination_name": "Żabka",
+          "category_name": "Eating out"
+        }
+      ]
+    }
+  ]
+}

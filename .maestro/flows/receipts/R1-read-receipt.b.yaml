@@ -1,0 +1,35 @@
+appId: ${APP_ID}
+name: 'R1 · Read a receipt (2/2: read, confirm, attach)'
+tags:
+  - release
+  - host
+---
+# The shared TEST MARKET receipt (31,20 PLN) is read into a draft with its payee and amount;
+# once confirmed, Firefly III has the transaction with the photo attached.
+- launchApp:
+    appId: ${APP_ID}
+- runFlow: ../../subflows/sync.yaml
+- extendedWaitUntil:
+    visible: '.*31[.,]20.*'
+    timeout: 180000
+- tapOn: '.*31[.,]20.*'
+- extendedWaitUntil:
+    visible: 'Review'
+    timeout: 10000
+- assertVisible: '(?i).*test market.*'
+- runFlow:
+    when:
+      visible: '.*source account.*'
+    commands:
+      - tapOn: 'From'
+      - tapOn: 'Checking'
+- tapOn: 'Confirm'
+- runFlow: ../../subflows/wait-sent.yaml
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      ACTION: findTx
+      AMOUNT_IS: '31.20'
+      EXPECT_SOURCE: 'Checking'
+      EXPECT_ATTACHMENT: 'true'
+      TIMEOUT_MS: '90000'

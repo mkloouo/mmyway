@@ -1,0 +1,30 @@
+appId: ${APP_ID}
+name: 'A1 · Search and filters'
+tags:
+  - release
+---
+# Lower-case, no-diacritic search finds "Żabka"; an account card filters to that account; the
+# type chips filter by type; tapping again / All clears them.
+- runFlow: ../../subflows/ready.yaml
+- tapOn: 'Activity'
+- tapOn: 'Search'
+- inputText: 'zabka'
+- hideKeyboard
+- extendedWaitUntil:
+    visible: "Żabka \\d{4}-\\d{2}"
+    timeout: 10000
+- tapOn: 'Clear search'
+- back
+- tapOn:
+    text: 'Cash wallet'
+    index: 0
+- assertVisible: 'Snacks'
+- assertNotVisible: 'Fuel'
+- tapOn:
+    text: 'Cash wallet'
+    index: 0
+- tapOn: 'Income'
+- assertVisible: "Salary \\d{4}-\\d{2}"
+- assertNotVisible: 'Fuel'
+- tapOn: 'All'
+- assertVisible: 'Fuel'

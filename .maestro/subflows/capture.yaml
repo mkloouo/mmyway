@@ -1,0 +1,95 @@
+appId: ${APP_ID}
+---
+# Opens Capture, fills it and saves. Pass every parameter ("" for none):
+#   TYPE_LABEL   Expense | Income | Transfer ("" keeps the default, Expense)
+#   AMOUNT       typed on the keypad, e.g. "12,34"
+#   PAYEE        payee (or payer) name; "" for a transfer
+#   PAYEE_NEW    "true" to create it, "false" to pick an existing one
+#   ACCOUNT      the account chip to tap ("" keeps the default); a transfer's From
+#   TO_ACCOUNT   a transfer's To chip
+#   CATEGORY     a category from the seed, or ""
+#   DESCRIPTION  typed under Details, or ""
+#   SAVE         confirm (Save & ✓) | inbox (Save to inbox)
+# Capture stays open afterwards (it resets for the next entry); close it with close-capture.yaml.
+- tapOn: 'Add an entry'
+- extendedWaitUntil:
+    visible:
+      id: 'keypad-1'
+    timeout: 15000
+- runFlow:
+    when:
+      true: ${TYPE_LABEL != ''}
+    commands:
+      - tapOn: ${TYPE_LABEL}
+# No braces inside ${…} (Maestro's parser stops at the first }): "," and "." become "d".
+- evalScript: ${output.keys = AMOUNT.replace(/[,.]/g, 'd').split(''); output.k = 0}
+- repeat:
+    while:
+      true: ${output.k < output.keys.length}
+    commands:
+      - tapOn:
+          id: "${'keypad-' + (output.keys[output.k] == 'd' ? 'decimal' : output.keys[output.k])}"
+      - evalScript: ${output.k = output.k + 1}
+- runFlow:
+    when:
+      true: ${PAYEE != ''}
+    commands:
+      - tapOn: 'Search (payees|payers)'
+      - inputText: ${PAYEE}
+      - runFlow:
+          when:
+            true: ${PAYEE_NEW == 'true'}
+          commands:
+            - tapOn: 'Create new (payee|payer) "${PAYEE}"'
+      - runFlow:
+          when:
+            true: ${PAYEE_NEW != 'true'}
+          commands:
+            # index 0 is the search field holding the typed text; 1 is the matching row.
+            - tapOn:
+                text: ${PAYEE}
+                index: 1
+- runFlow:
+    when:
+      true: ${ACCOUNT != ''}
+    commands:
+      - tapOn: ${ACCOUNT}
+- runFlow:
+    when:
+      true: ${TO_ACCOUNT != ''}
+    commands:
+      # The From row lists it too; the To row is the second match.
+      - tapOn:
+          text: ${TO_ACCOUNT}
+          index: 1
+- runFlow:
+    when:
+      true: ${CATEGORY != ''}
+    commands:
+      - tapOn: 'Category'
+      - tapOn: ${CATEGORY}
+- runFlow:
+    when:
+      true: ${DESCRIPTION != ''}
+    commands:
+      - tapOn: 'Details'
+      - tapOn: 'Description'
+      - inputText: ${DESCRIPTION}
+      - tapOn: 'Done'
+- runFlow:
+    when:
+      true: ${SAVE == 'confirm'}
+    commands:
+      - tapOn:
+          id: 'keypad-save'
+      - extendedWaitUntil:
+          visible: 'Confirmed · .*'
+          timeout: 10000
+- runFlow:
+    when:
+      true: ${SAVE == 'inbox'}
+    commands:
+      - tapOn: 'Save to inbox'
+      - extendedWaitUntil:
+          visible: 'Saved · .*'
+          timeout: 10000
