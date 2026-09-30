@@ -131,9 +131,9 @@ export function toPayloadSplits(
       source_name: s.sourceId ? undefined : (s.sourceName ?? undefined),
       destination_id: s.destinationId ?? undefined,
       destination_name: s.destinationId ? undefined : (s.destinationName ?? undefined),
-      // Empty clears it in FF3; left out would keep what the split had.
-      category_name: s.categoryName ?? '',
-      budget_id: s.budgetId ?? undefined,
+      // Null clears it in FF3 (as it does a note); left out would keep what the split had.
+      category_name: s.categoryName ?? null,
+      budget_id: s.budgetId ?? null,
       // Null, never '': FF3 rejects a note of length 0, and null clears one.
       notes: sendableNotes(s.notes),
       tags: s.tags,
