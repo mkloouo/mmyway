@@ -67,6 +67,40 @@ describe('migrations', () => {
     fs.rmSync(old, { recursive: true, force: true });
   });
 
+  it('moves recurring reviews waiting for a decision from confirmed to parsed', () => {
+    /* eslint-disable @typescript-eslint/no-require-imports */
+    const Database = require('better-sqlite3');
+    const { drizzle } = require('drizzle-orm/better-sqlite3');
+    const { migrate } = require('drizzle-orm/better-sqlite3/migrator');
+    /* eslint-enable @typescript-eslint/no-require-imports */
+    const before = journal().entries.find((e) => e.tag === '0011_reviews_parsed')!.idx - 1;
+    const old = fs.mkdtempSync(path.join(os.tmpdir(), 'mmyway-migrations-'));
+    fs.cpSync(MIGRATIONS, old, { recursive: true });
+    const full = journal();
+    fs.writeFileSync(
+      path.join(old, 'meta', '_journal.json'),
+      JSON.stringify({ ...full, entries: full.entries.filter((e) => e.idx <= before) }),
+    );
+    const sqlite = new Database(':memory:');
+    const db = drizzle(sqlite);
+    migrate(db, { migrationsFolder: old });
+    sqlite.exec(`
+      insert into inbox_items (id, kind, state, draft_json, created_at, updated_at) values
+        ('review', 'recurring_review', 'confirmed', '{}', 'c', 'u'),
+        ('done', 'recurring_review', 'synced', '{}', 'c', 'u'),
+        ('queued', 'manual_entry', 'confirmed', '{}', 'c', 'u');
+    `);
+
+    migrate(db, { migrationsFolder: MIGRATIONS });
+
+    expect(sqlite.prepare('select id, state from inbox_items order by id').all()).toEqual([
+      { id: 'done', state: 'synced' },
+      { id: 'queued', state: 'confirmed' },
+      { id: 'review', state: 'parsed' },
+    ]);
+    fs.rmSync(old, { recursive: true, force: true });
+  });
+
   it('every generated migration is registered in the app bundle glue (src/db/migrations.ts)', () => {
     const glue = fs.readFileSync(path.join(__dirname, 'migrations.ts'), 'utf8');
     for (const entry of journal().entries) {

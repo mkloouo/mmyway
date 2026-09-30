@@ -3,7 +3,7 @@
 // for the replay conflict check) -> replay the outbox -> pull recurring -> re-read account balances
 // and re-pull recent transactions only if the replay actually landed something server-side.
 // Never throws: a sync failure is a status the caller displays, not a crash.
-import { asc, inArray } from 'drizzle-orm';
+import { asc } from 'drizzle-orm';
 import { readStoredCredentials } from '../api/ff3/auth';
 import { outboxOperations } from '../db/schema';
 import { requestSync, retryUnsent } from './syncTrigger';
@@ -36,6 +36,7 @@ import {
   recoverInFlight,
   pruneUploadedReceiptImages,
   queuedLedgerOpCount,
+  isUnsent,
   type OutboxDb,
 } from './outbox';
 import { pruneReferenceData, reapplyQueuedAccountEdits } from './referenceHygiene';
@@ -337,7 +338,7 @@ async function retryWhatIsLeft(db: OutboxDb): Promise<void> {
     const left = await db
       .select()
       .from(outboxOperations)
-      .where(inArray(outboxOperations.status, ['pending', 'failed']))
+      .where(isUnsent())
       .orderBy(asc(outboxOperations.sequence));
     // "Unsent" means sendable now: a pending op behind a failed one waits for that failure's
     // backoff, so probing FF3 every few seconds for it would only drain the battery.

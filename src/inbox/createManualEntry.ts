@@ -3,7 +3,7 @@ import { inboxItems, outboxOperations } from '../db/schema';
 import { resolvePayeeAlias } from '../lookup/aliases';
 import { transition, type InboxState } from './state';
 import { draftToTransactionPayload, type Draft } from './draft';
-import { enqueueOperationSync } from '../sync/outbox';
+import { enqueueOperationSync, neverSent } from '../sync/outbox';
 import { requestSync, SYNC_DELAY } from '../sync/syncTrigger';
 import type { OutboxDb } from '../sync/outbox';
 import { generateId } from '../utils/id';
@@ -151,13 +151,9 @@ export async function undoConfirm(
   const removed = await db
     .delete(outboxOperations)
     .where(
-      and(
-        eq(outboxOperations.id, undo.outboxOperationId),
-        // Only a create that never left the device: one that was attempted may already be in FF3
-        // (the answer lost), and Cancel — which asks FF3 first — is the way out of that.
-        eq(outboxOperations.status, 'pending'),
-        eq(outboxOperations.attempts, 0),
-      ),
+      // Only a create that never left the device: one that was attempted may already be in FF3
+      // (the answer lost), and Cancel — which asks FF3 first — is the way out of that.
+      and(eq(outboxOperations.id, undo.outboxOperationId), neverSent()),
     )
     .returning({ id: outboxOperations.id });
   if (removed.length === 0) return 'already_sent';
