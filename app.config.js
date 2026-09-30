@@ -12,7 +12,9 @@ module.exports = {
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'automatic',
-    scheme: 'mmyway',
+    // The Dev build has a link scheme of its own: with both apps on one phone, a `mmyway://` link
+    // would ask which to open, and the e2e sign-in link (src/e2e/signInLink.ts) is the Dev build's.
+    scheme: IS_DEV ? 'mmyway-dev' : 'mmyway',
     plugins: [
       'expo-router',
       'expo-font',

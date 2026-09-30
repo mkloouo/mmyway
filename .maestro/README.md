@@ -13,9 +13,10 @@ npm run e2e -- Q2 P1               # just these
 
 Needs: Docker, `adb` (Android platform-tools), [Maestro](https://maestro.mobile.dev)
 (`curl -Ls "https://get.maestro.mobile.dev" | bash`), the Dev build installed
-(`com.mkloouo.mmyway.dev`, `--apk` installs one), and the phone on USB with debugging on. The
-runner connects the phone to the test instance with `adb reverse`, so `http://localhost:8080` on
-the phone is the laptop's Docker.
+(`com.mkloouo.mmyway.dev`, `--apk` installs one; the flows sign in through a link only that build
+answers, so it has to be built from a checkout that has `app/e2e-sign-in.tsx`), and the phone on USB
+with debugging on. The runner connects the phone to the test instance with `adb reverse`, so
+`http://localhost:8080` on the phone is the laptop's Docker.
 
 Results go to `e2e-results/<time>-<run id>/`: `report.md` in the checklist's "Copy results" format
 (paste it into the release PR), screenshots, each flow's Maestro log and JUnit XML.
@@ -59,7 +60,8 @@ What a flow can't do from the phone, the runner does between its parts:
 
 Some flows need an option and are reported as skipped without it: R1 a receipt reader
 (`--gemini-key`, or `--local-model-url` + `--local-model-name`), T2 `--lan`, T3b `--second-instance`,
-U1 `--apk` and `--previous-apk`.
+U1 `--apk` and `--previous-apk` (both must answer the sign-in link, so the previous release has to be
+one built from a checkout that has `app/e2e-sign-in.tsx`).
 
 ## Writing and fixing flows
 
@@ -67,6 +69,14 @@ U1 `--apk` and `--previous-apk`.
   `keypad-decimal`, `keypad-backspace`, `keypad-save`, in `src/ui/Keypad.tsx`); everything else is
   tapped by its English label or accessibility label, as in `src/i18n/locales/en.json`. Renaming a
   string can break a flow — `grep -r "the old text" .maestro`.
+- **Don't type long text.** On Android `inputText` presses one key every 75 ms (plus the press
+  itself) and a single command is cut off after 120 s, so a string of a thousand-odd characters,
+  like a Firefly III token, runs into the cap. `pasteText` doesn't help: it types the text again, it
+  doesn't use the phone's clipboard. That is why signing in is a link (`subflows/sign-in.yaml` →
+  `app/e2e-sign-in.tsx`), not the token typed into Settings.
+- `hideKeyboard` on Android is the Back key (`input keyevent 4`): it closes the keyboard when it is
+  up, and otherwise goes back a screen or closes the sheet. Use it right after `inputText`, not on
+  spec.
 - `maestro studio` shows the phone's view hierarchy and lets you try a selector live.
 - `maestro check-syntax <file>` checks a flow without a phone. Inside `${…}` avoid `{`/`}` (the
   parser stops at the first `}`), and quote a value containing `: `.

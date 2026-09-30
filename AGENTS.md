@@ -59,6 +59,11 @@ pipeline.
   simple view's name-matched trio (`model.ts`), and their queued save/delete (`replay.ts`).
 - `src/inbox/` — the capture → parsed → confirmed → synced state machine shared by manual
   entries, receipts, and recurring-transaction reviews.
+- `src/e2e/` + `app/e2e-sign-in.tsx` — the Dev build's sign-in link for the Maestro flows
+  (`mmyway-dev://e2e-sign-in?host=…&token=…`), so a flow doesn't type a thousand-character token
+  key by key. It answers only when `extra.appVariant` is `development`/`preview`, and only the Dev
+  build has the `mmyway-dev` scheme. **Never widen that:** a link that signs the app in to any
+  server is a way to point a real install at someone else's Firefly III.
 - `app/` — expo-router screens: amount-first capture, an Inbox
   that behaves as an approval queue, and a shared `src/ui/` component kit every screen draws
   from — no screen inlines a literal colour, styling always goes through `useTheme()`. Text

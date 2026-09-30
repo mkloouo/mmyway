@@ -23,9 +23,9 @@ import { AddressesSheet } from '../../src/ui/AddressesSheet';
 import { relativeTime } from '../../src/ui/relativeTime';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { loadSettings, SETTINGS_QUERY_KEY } from '../../src/settings/loadSettings';
-import { signIn, signOut, readStoredCredentials, probeAbout } from '../../src/api/ff3/auth';
-import type { AuthErrorReason } from '../../src/api/ff3/types';
-import { readHosts, writeHosts } from '../../src/api/ff3/hosts';
+import { signOut, readStoredCredentials, probeAbout } from '../../src/api/ff3/auth';
+import { writeHosts } from '../../src/api/ff3/hosts';
+import { connectFailureText, connectToInstance } from '../../src/settings/connectInstance';
 import { saveGeminiKey } from '../../src/settings/secrets';
 import { aliases as aliasesTable } from '../../src/db/schema';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
@@ -36,7 +36,6 @@ import { PAYEE } from '../../src/lookup/aliases';
 import {
   clearInstanceData,
   describeQueuedOperations,
-  isSameInstance,
   queuedOperationCount,
 } from '../../src/sync/instanceData';
 import {
@@ -55,14 +54,6 @@ import { pickableCurrencies, primaryCurrencyCode } from '../../src/ui/currencies
 import { confirmDestructive } from '../../src/ui/confirm';
 import { useToast } from '../../src/ui/useToast';
 import { probeLocalModel } from '../../src/receipt/providers/local';
-
-const SIGN_IN_ERROR_KEYS: Record<AuthErrorReason, string> = {
-  invalid_host: 'settings.signInErrors.invalidHost',
-  invalid_api_key: 'settings.signInErrors.invalidApiKey',
-  unexpected_status: 'settings.signInErrors.unexpectedStatus',
-  not_a_firefly_instance: 'settings.signInErrors.notAFireflyInstance',
-  api_version_too_low: 'settings.signInErrors.apiVersionTooLow',
-};
 
 const LANGUAGE_OPTIONS: { value: AppLocale; labelKey: string }[] = [
   { value: 'system', labelKey: 'settings.languageSystem' },
@@ -143,22 +134,8 @@ export default function SettingsScreen() {
   const signingIn = act.pending(tr('settings.signIn'));
 
   const onSignIn = act(tr('settings.signIn'), async () => {
-    // Signing in somewhere new while signed in is a switch of instance, same as signing out.
-    const switching = signedIn && !isSameInstance(await readHosts(), host);
-    if (switching) {
-      const queued = await queuedOperationCount(db);
-      if (queued > 0) {
-        Alert.alert(tr('settings.cantSwitchYet'), describeQueuedOperations(queued));
-        return;
-      }
-    }
-    // The new token is stored and the old instance's rows cleared with no sync in between.
-    const result = await withSyncPaused(async () => {
-      const signedInAs = await signIn(host, token);
-      if (signedInAs.ok && switching) await clearInstanceData(db);
-      return signedInAs;
-    });
-    if (result.ok) {
+    const result = await connectToInstance(db, host, token);
+    if (result.status === 'connected') {
       setSheet(null);
       setToast(tr('settings.connected'));
       setHost('');
@@ -166,7 +143,8 @@ export default function SettingsScreen() {
       await reload();
       credentialsChanged();
     } else {
-      Alert.alert(tr('settings.signInFailed'), tr(SIGN_IN_ERROR_KEYS[result.reason]));
+      const { title, message } = connectFailureText(result);
+      Alert.alert(title, message);
     }
   });
 

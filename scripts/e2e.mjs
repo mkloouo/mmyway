@@ -437,6 +437,32 @@ function reinstallApp(appId, apk) {
   }
 }
 
+/**
+ * Whether the phone routes the sign-in link (.maestro/subflows/sign-in.yaml) to the installed app.
+ * Only a Dev build from a checkout with app/e2e-sign-in.tsx registers its scheme; on an older
+ * build the flows would wait out a 45 s timeout for "Connected to Firefly III" instead.
+ */
+function answersSignInLink() {
+  const out = adb(
+    [
+      'shell',
+      'cmd',
+      'package',
+      'resolve-activity',
+      '--brief',
+      '-a',
+      'android.intent.action.VIEW',
+      '-d',
+      'mmyway-dev://e2e-sign-in',
+    ],
+    { allowFail: true },
+  );
+  return !/no activity found/i.test(out);
+}
+
+const NO_SIGN_IN_LINK = (what) =>
+  `${what} doesn't answer the sign-in link (mmyway-dev://e2e-sign-in), so the flows can't sign in: it is older than app/e2e-sign-in.tsx, or it isn't the Dev build. Build the Dev build again (npm run android:build:dev) and pass it with --apk.`;
+
 function ff3Test(args) {
   return execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'ff3-test.mjs'), ...args], {
     encoding: 'utf8',
@@ -616,6 +642,14 @@ const HOST_STEPS = {
     const apk = step.which === 'previous' ? ctx.opts['previous-apk'] : ctx.opts.apk;
     if (step.which === 'previous') adb(['uninstall', ctx.appId], { allowFail: true });
     adb(['install', '-r', apk], { capture: false });
+    if (!answersSignInLink())
+      throw new Error(
+        NO_SIGN_IN_LINK(
+          step.which === 'previous'
+            ? `--previous-apk (${path.basename(apk)})`
+            : `--apk (${path.basename(apk)})`,
+        ),
+      );
   },
 };
 
@@ -927,6 +961,9 @@ uninstall and reinstall the app instead.`,
     }
   }
 
+  // U1 installs its own builds (and checks them); every other flow signs in through the link.
+  if (!flows.every((f) => f.id === 'U1') && !answersSignInLink()) fail(NO_SIGN_IN_LINK(appId));
+
   const outDir = path.join(
     ROOT,
     'e2e-results',
@@ -1039,7 +1076,8 @@ Firefly III (npm run ff3:test -- fresh first).
 Options
   --app-id <id>             default com.mkloouo.mmyway.dev (the Dev build; installs next to the real app)
   --apk <file>              install this build first (and U1's "new" build)
-  --previous-apk <file>     U1: the previous release, installed first and upgraded over
+  --previous-apk <file>     U1: the previous release, installed first and upgraded over (it must
+                            have the sign-in link too: built from a checkout with app/e2e-sign-in.tsx)
   --device <serial>         when several phones are connected
   --name <instance>         the ff3-test instance (default "default")
   --gemini-key <key>        R1: read receipts with Gemini ($GEMINI_KEY)

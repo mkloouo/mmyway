@@ -1,16 +1,16 @@
 appId: ${APP_ID}
 ---
-# Settings → Firefly III: the test instance's address and token (FF3_URL, FF3_TOKEN from
-# scripts/e2e.mjs; the phone reaches the laptop's localhost through `adb reverse`).
-- tapOn: 'Settings'
-- tapOn: 'Firefly III'
-- tapOn: 'https://firefly.example.com'
-- inputText: ${FF3_URL}
-- tapOn: 'Personal access token'
-- inputText: ${FF3_TOKEN}
-- hideKeyboard
-- tapOn: 'Sign in'
+# Signs the app in to the test instance (FF3_URL, FF3_TOKEN from scripts/e2e.mjs; the phone reaches
+# the laptop's localhost through `adb reverse`).
+#
+# From a link, not the keyboard: `inputText` on Android presses one key every 75 ms, the token is
+# over a thousand characters (close to two minutes), and Maestro gives up on any one command after
+# 120 s, with the keyboard still open. `pasteText` doesn't help, it types the text again.
+# The Dev build answers this link (app/e2e-sign-in.tsx, src/e2e/signInLink.ts) and no other build
+# does, so this flow needs the Dev build (`com.mkloouo.mmyway.dev`) rebuilt after that change.
+- openLink: 'mmyway-dev://e2e-sign-in?host=${encodeURIComponent(FF3_URL)}&token=${encodeURIComponent(FF3_TOKEN)}'
 - extendedWaitUntil:
     visible: 'Connected to Firefly III'
     timeout: 45000
+- tapOn: 'Done'
 - tapOn: 'Inbox'
