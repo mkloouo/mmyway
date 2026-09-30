@@ -380,6 +380,7 @@ const BOOLEAN = new Set([
   'second-instance',
   'no-reset',
   'keep-app-data',
+  'reinstall',
   'manual-share',
   'help',
   'json',
@@ -405,6 +406,35 @@ function adb(args, { allowFail = false, capture = true } = {}) {
   if (r.status !== 0 && !allowFail)
     throw new Error(`adb ${args.join(' ')} failed: ${r.stderr || r.stdout}`);
   return (r.stdout ?? '').trim();
+}
+
+/**
+ * Uninstalls and reinstalls the app — the way to start with empty app data on a phone that
+ * refuses `pm clear`. Installs `apk` when given; otherwise pulls the installed APK (and any splits)
+ * off the phone first, so it goes back exactly as it was.
+ */
+function reinstallApp(appId, apk) {
+  let files = apk ? [apk] : null;
+  if (!files) {
+    const remote = adb(['shell', 'pm', 'path', appId])
+      .split('\n')
+      .map((l) => l.trim().replace(/^package:/, ''))
+      .filter(Boolean);
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mmyway-apk-'));
+    files = remote.map((p, i) => {
+      const local = path.join(dir, `${i}-${path.basename(p)}`);
+      adb(['pull', p, local]);
+      return local;
+    });
+  }
+  adb(['uninstall', appId], { allowFail: true });
+  try {
+    adb([files.length > 1 ? 'install-multiple' : 'install', ...files]);
+  } catch (err) {
+    fail(
+      `${err.message}\n${appId} is uninstalled now — install it again with: adb install${files.length > 1 ? '-multiple' : ''} ${files.join(' ')}`,
+    );
+  }
 }
 
 function ff3Test(args) {
@@ -873,15 +903,28 @@ async function run(opts) {
     env.FF3_B_TOKEN = b.FF3_TOKEN;
   }
 
-  if (opts.apk && !flows.some((f) => f.id === 'U1')) {
+  const reinstall = opts.reinstall && !opts['keep-app-data'];
+  if (opts.apk && !flows.some((f) => f.id === 'U1') && !reinstall) {
     say(`installing ${opts.apk}`);
     adb(['install', '-r', opts.apk], { capture: false });
   }
-  if (!adb(['shell', 'pm', 'path', appId], { allowFail: true }))
+  if (!adb(['shell', 'pm', 'path', appId], { allowFail: true }) && !(reinstall && opts.apk))
     fail(`${appId} isn't installed on the phone — pass --apk, or --app-id for another variant`);
-  if (!opts['keep-app-data']) {
+  if (reinstall) {
+    say('reinstalling the app, so the run starts signed out with an empty database');
+    reinstallApp(appId, opts.apk);
+  } else if (!opts['keep-app-data']) {
     say('clearing the app, so the run starts signed out with an empty database');
-    adb(['shell', 'pm', 'clear', appId]);
+    try {
+      adb(['shell', 'pm', 'clear', appId]);
+    } catch (err) {
+      if (!/CLEAR_APP_USER_DATA|SecurityException/.test(err.message)) throw err;
+      fail(
+        `this phone doesn't let adb clear an app's data (some vendors restrict it on user builds;
+on Xiaomi, turning on "USB debugging (Security settings)" allows it). Rerun with --reinstall to
+uninstall and reinstall the app instead.`,
+      );
+    }
   }
 
   const outDir = path.join(
@@ -1007,6 +1050,9 @@ Options
   --manual-share            R1–R3: pause and let you share the photo by hand
   --no-reset                don't reset Firefly III to its seed first
   --keep-app-data           don't clear the app first
+  --reinstall               start with empty app data by uninstalling and reinstalling the app
+                            (--apk, or the APK already on the phone) — for phones that refuse
+                            \`pm clear\` (SecurityException: CLEAR_APP_USER_DATA)
   --build <label>           the build name in the report
 
 Results (report.md in the checklist's format, screenshots, Maestro logs, JUnit) go to

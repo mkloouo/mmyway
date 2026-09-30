@@ -36,7 +36,9 @@ Each flow makes its own data, named with the run's `RUN_ID` (`S3 k2x9q1`), and c
 result **in Firefly III** through `scripts/ff3.js`, not just on screen: a confirm has landed exactly
 once, with the right amount, category, accounts, tags or attachment. Every run starts from the seed
 snapshot (`tools/ff3-test/seed.json`) and a cleared app, so a flow can rely on the seed's names
-(`Checking`, `Cash wallet`, `Żabka`, `Weekly shop`, …).
+(`Checking`, `Cash wallet`, `Żabka`, `Weekly shop`, …). The app is cleared with `pm clear`; a phone
+that refuses it (`SecurityException: … CLEAR_APP_USER_DATA`, seen on some vendors' user builds)
+needs `--reinstall`, which uninstalls the app and installs `--apk` or the APK pulled off the phone.
 
 `npm run e2e -- selftest` runs every `ff3.js` action against the test instance from Node — no phone
 needed — so a Firefly III upgrade that changes the API shows up there first.
