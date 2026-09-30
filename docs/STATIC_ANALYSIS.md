@@ -1,9 +1,10 @@
 # Static analysis
 
-Free checks that catch what review would. **On:** Prettier and the strict lint (type-aware promise
-rules, AGENTS.md's rules as code, hardcoded UI text) run in `npm run check` and CI as part of
-`npm run lint`. **Off:** the rest below; run them by hand with `npm run analyze`, which reports
-and always exits 0. Tracking issue: [#77](https://github.com/mkloouo/mmyway/issues/77).
+Free checks that catch what review would. In CI, `ci.yml` runs Prettier, typecheck, the strict lint
+(type-aware promise rules, AGENTS.md's rules as code, hardcoded UI text) and the tests with a
+coverage floor on the money path; `static-analysis.yml` runs the checks below on every push to
+`main` and every pull request. Tracking issue: [#77](https://github.com/mkloouo/mmyway/issues/77).
+`npm run analyze` runs the same checks by hand and reports without failing (`-- --strict` fails).
 
 | Command                  | Tool                                         | Finds                                                                             |
 | ------------------------ | -------------------------------------------- | --------------------------------------------------------------------------------- |
@@ -14,10 +15,14 @@ and always exits 0. Tracking issue: [#77](https://github.com/mkloouo/mmyway/issu
 | `npm run analyze:doctor` | `expo-doctor`                                | Expo config problems and packages off the SDK's versions                          |
 | `npm run analyze`        | all of the above                             | One summary; `-- --strict` exits 1 on any finding; `-- lint cycles` runs a subset |
 
-Config: `eslint.config.js` (Expo's rules plus the strict ones), `knip.json`, `.jscpd.json`. The manual GitHub workflow `.github/workflows/static-analysis.yml`
-adds Prettier (which CI doesn't run today) and a [gitleaks](https://github.com/gitleaks/gitleaks)
-scan of the history. `tools/static-analysis/dependabot.yml` is the Dependabot config, parked
-outside `.github/` so it stays off.
+Config: `eslint.config.js` (Expo's rules plus the strict ones), `knip.json`, `.jscpd.json`,
+`jest.config.js` (coverage floors), `.github/dependabot.yml` (grouped, weekly). In CI the cycles,
+dupes, dead-code (knip) and audit steps fail the build; expo-doctor and [gitleaks](https://github.com/gitleaks/gitleaks)
+(a scan of the history) only warn, until their findings are cleared.
+
+**Coverage floors** (`npm run test:coverage`, run by CI): `src/sync/`, `src/inbox/`, `src/splits/`
+and `src/api/ff3/decimal.ts` each have a minimum for lines and branches, set a little under what
+the suite covers. Raise them when the number rises.
 
 ## Baseline (2026-09-30, `main` at `c59b7a7`)
 
@@ -35,17 +40,10 @@ Most floating promises are `haptics.*()` calls, which return a promise nobody ne
 snackbar handlers (`app/(tabs)/index.tsx`, `app/capture.tsx`), which run outside `useAction()`, so
 a failed Undo is silently dropped.
 
-## Switching it on
+## Still to do
 
-In this order; each step is small and keeps `main` green.
-
-1. **Fix the baseline**, or accept parts of it: lint is done (haptics → `void`, the Undo handlers
-   in `act`, and every `payload_json` read and write through `payloadJson.ts`, so that rule is an
-   error, #78); the dead exports (#80, done); `npx expo install --fix`.
-2. **CI:** in `.github/workflows/static-analysis.yml` uncomment `push`/`pull_request` and change
-   `npm run analyze` to `npm run analyze -- --strict`. Or fold the checks into `ci.yml` and
-   `npm run check`.
-3. ~~**Prettier in CI**~~ — done, in `ci.yml`.
-4. **Dependabot:** `git mv tools/static-analysis/dependabot.yml .github/dependabot.yml`.
-5. **GitHub settings** (no code): secret scanning with push protection; CodeQL default setup if the
-   repository is public; branch protection on `main` requiring the CI checks.
+- **GitHub settings** (no code): secret scanning with push protection; CodeQL default setup if the
+  repository is public; branch protection on `main` requiring the `CI` and `Static analysis`
+  checks and a pull request.
+- Make the expo-doctor step fail the build once the SDK packages are current
+  (`npx expo install --fix`, or Dependabot's grouped PR).

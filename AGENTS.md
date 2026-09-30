@@ -21,7 +21,9 @@ pipeline.
 - `npm run e2e` / `npm run e2e -- release` / `npm run e2e -- --changed` — the device checklist as
   Maestro flows on a USB phone against that instance; see `.maestro/README.md`. When a user-visible
   string or a screen changes, grep `.maestro/` for the old label — the flows tap by text.
-- `npm run analyze` — static analysis, report-only and not in CI yet (`docs/STATIC_ANALYSIS.md`)
+- `npm run analyze` — the static-analysis checks CI runs beyond `check` (dead code, copy-paste, import
+  cycles, advisories, Expo config); report-only by hand. `npm run test:coverage` is the tests with
+  the coverage floors (`docs/STATIC_ANALYSIS.md`)
 - `npm run i18n:push` / `npm run i18n:pull` — sync UI strings with Tolgee (needs `.env.local`,
   see `docs/LOCALIZATION.md`)
 

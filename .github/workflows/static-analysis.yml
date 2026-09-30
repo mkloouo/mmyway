@@ -1,16 +1,11 @@
-# Static analysis (docs/STATIC_ANALYSIS.md). NOT ENABLED: it runs only when started by hand
-# (Actions → Static analysis → Run workflow), and reports without failing.
-#
-# To switch it on, once the baseline is fixed:
-#   1. uncomment `push` / `pull_request` below;
-#   2. change `npm run analyze` to `npm run analyze -- --strict`.
+# Static analysis (docs/STATIC_ANALYSIS.md), beside ci.yml's typecheck, lint and tests. Each check
+# is its own step so a failure names the check. Only expo-doctor and gitleaks warn.
 name: Static analysis
 
 on:
-  workflow_dispatch:
-  # push:
-  #   branches: [main]
-  # pull_request:
+  push:
+    branches: [main]
+  pull_request:
 
 permissions:
   contents: read
@@ -28,12 +23,18 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      # Same as ci.yml: type-aware lint needs expo-router's generated route types.
-      - name: Generate typed routes
-        run: CI=1 timeout 90 npx expo start --offline || true
-      - run: npx prettier --check .
-      - run: npm run analyze
-      - name: Secrets in the history (gitleaks)
+      - name: Import cycles that exist at runtime
+        run: npm run analyze:cycles
+      - name: Copy-paste over 1%
+        run: npm run analyze:dupes
+      - name: High or critical advisories in the app's dependencies
+        run: npm run analyze:deps
+      - name: Unused files, exports and dependencies
+        run: npm run analyze:dead
+      - name: Expo config and SDK package versions (warns only)
+        run: npm run analyze:doctor
+        continue-on-error: true # a patch behind the SDK is Dependabot's to open, not a red build
+      - name: Secrets in the history (gitleaks, warns only)
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
