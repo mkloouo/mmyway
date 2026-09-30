@@ -4,7 +4,20 @@
 // These compare values instead, so a Save that changes nothing just closes. Pure, no db.
 import type { TransactionSplit } from '../api/ff3/types';
 
-type Changes = Partial<TransactionSplit>;
+/**
+ * An edit's fields. `null` is a value: it clears the field in FF3 (a category, a budget, a note),
+ * where `undefined` is left out of the request and keeps what was there.
+ */
+export type EditChanges = Omit<
+  Partial<TransactionSplit>,
+  'category_name' | 'budget_id' | 'notes'
+> & {
+  category_name?: string | null;
+  budget_id?: string | null;
+  notes?: string | null;
+};
+
+type Changes = EditChanges;
 
 /** "12.50", "12.500000000000" and "012.5" are one amount. */
 function amountKey(value: unknown): string {

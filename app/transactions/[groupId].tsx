@@ -49,14 +49,18 @@ import {
   queuedAttachments,
   receiptPreviews,
 } from '../../src/receipt/journalAttachments';
-import type { TransactionSplit } from '../../src/api/ff3/types';
 import { pendingEdits } from '../../src/transactions/pendingEdits';
 import { payloadGroupId } from '../../src/sync/payloadJson';
 import { useAction } from '../../src/ui/useAction';
 import { readSplits } from '../../src/transactions/splitsJson';
 import { refreshCachedGroup } from '../../src/transactions/refreshGroup';
 import { queueSplitEdit } from '../../src/transactions/queueSplitEdit';
-import { changedFields, sameAmount, sameSplits } from '../../src/transactions/editDiff';
+import {
+  changedFields,
+  sameAmount,
+  sameSplits,
+  type EditChanges,
+} from '../../src/transactions/editDiff';
 import { duplicateTransaction } from '../../src/transactions/duplicate';
 import {
   fromCached,
@@ -173,7 +177,7 @@ function TransactionEditor({ row }: { row: CachedRow }) {
   const lookupType = row.type === 'withdrawal' || row.type === 'deposit' ? row.type : undefined;
   const histories = useMerchantHistories(lookupType, { enabled: !!lookupType });
 
-  const [changes, setChanges] = useState<Partial<TransactionSplit>>({});
+  const [changes, setChanges] = useState<EditChanges>({});
   const [menuOpen, setMenuOpen] = useState(false);
   /** The file:// uri of the photo open full screen. */
   const [photo, setPhoto] = useState<string | null>(null);
@@ -210,7 +214,7 @@ function TransactionEditor({ row }: { row: CachedRow }) {
   // own unsaved `changes`), so reopening a just-saved transaction doesn't show the old ones.
   // Save still sends only this screen's `changes`; the queued edit replays first.
   const pendingEdit = pendingEdits(outbox ?? []).byGroup.get(row.groupId);
-  const shown: Partial<TransactionSplit> = { ...pendingEdit?.changes, ...changes };
+  const shown: EditChanges = { ...pendingEdit?.changes, ...changes };
 
   // Receipt thumbnails: uploads still queued, from the phone, then what FF3 holds, fetched with the
   // API token like any request (src/receipt/journalAttachments.ts).
@@ -258,9 +262,13 @@ function TransactionEditor({ row }: { row: CachedRow }) {
     row.destinationId ??
     allAssetAccounts.find((a) => a.name === row.destinationName)?.id ??
     null;
+  // A cleared budget or category is `null` (not absent): it must not fall back to the cached value.
   const effectiveBudgetId =
-    shown.budget_id ?? row.budgetId ?? budgets.find((b) => b.name === row.budgetName)?.id ?? null;
-  const effectiveCategoryName = shown.category_name ?? row.categoryName ?? null;
+    shown.budget_id !== undefined
+      ? shown.budget_id
+      : (row.budgetId ?? budgets.find((b) => b.name === row.budgetName)?.id ?? null);
+  const effectiveCategoryName =
+    shown.category_name !== undefined ? shown.category_name : (row.categoryName ?? null);
   const effectiveDate = shown.date ? new Date(shown.date) : new Date(row.date);
   const effectiveNotes = shown.notes ?? row.notes ?? null;
   const effectiveTags = shown.tags ?? parseTags(row.tagsJson);
@@ -315,11 +323,11 @@ function TransactionEditor({ row }: { row: CachedRow }) {
   function handleDetailChange(change: Partial<DetailRowsValue>) {
     setChanges((prev) => {
       const next = { ...prev };
-      if ('categoryName' in change) next.category_name = change.categoryName ?? undefined;
+      if ('categoryName' in change) next.category_name = change.categoryName ?? null;
       if ('sourceAccountId' in change) next.source_id = change.sourceAccountId ?? undefined;
       if ('destinationAccountId' in change)
         next.destination_id = change.destinationAccountId ?? undefined;
-      if ('budgetId' in change) next.budget_id = change.budgetId ?? undefined;
+      if ('budgetId' in change) next.budget_id = change.budgetId ?? null;
       if ('notes' in change) next.notes = change.notes ?? undefined;
       if ('sharedWith' in change)
         next.tags = withSharedWith(effectiveTags, change.sharedWith ?? null);
@@ -416,7 +424,7 @@ function TransactionEditor({ row }: { row: CachedRow }) {
 
   // What the screen showed before this visit's edits: the cache, under any queued edit. Save
   // compares against it by value, so touching a field without changing it queues nothing.
-  const baseline: Partial<TransactionSplit> = {
+  const baseline: EditChanges = {
     amount: row.amount,
     date: row.date,
     description: row.description,

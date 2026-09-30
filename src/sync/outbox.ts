@@ -17,6 +17,7 @@
 import { and, asc, eq, inArray, isNotNull, lt, ne, sql } from 'drizzle-orm';
 import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 import type { FF3Client } from '../api/ff3/client';
+import type { EditChanges } from '../transactions/editDiff';
 import { FF3RequestError, UPLOAD_TIMEOUT_MS } from '../api/ff3/client';
 import { searchTransactions } from '../transactions/remoteSearch';
 import { outboxOperations, cachedTransactions, inboxItems } from '../db/schema';
@@ -66,7 +67,7 @@ export interface UpdateTransactionPayload {
   groupId: string;
   transactionJournalId: string;
   expectedUpdatedAt: string; // conflict check
-  changes: Partial<TransactionSplit>;
+  changes: EditChanges;
   /**
    * A split transaction's edit: every split, in order, as it should be afterwards. FF3 updates the
    * splits that carry a transaction_journal_id and creates the ones without. `changes` then only

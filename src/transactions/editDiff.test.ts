@@ -36,6 +36,16 @@ describe('changedFields', () => {
     expect(changedFields({ notes: '' }, { notes: 'old note' })).toEqual({ notes: null });
   });
 
+  it('sends a cleared category or budget as null, and nothing when there was none', () => {
+    expect(
+      changedFields({ category_name: null, budget_id: null }, { ...baseline, budget_id: '3' }),
+    ).toEqual({
+      category_name: null,
+      budget_id: null,
+    });
+    expect(changedFields({ category_name: null, budget_id: null }, {})).toEqual({});
+  });
+
   it('ignores fields set to undefined', () => {
     expect(changedFields({ budget_id: undefined }, { budget_id: '3' })).toEqual({});
   });

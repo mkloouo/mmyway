@@ -13,6 +13,8 @@
 
 ### Fixed
 
+- Setting a transaction's category or budget to **None** now clears it in Firefly III; before,
+  the old one stayed. The same goes for a split without a category or budget.
 - Saving a planned transaction on a flaky connection no longer creates it twice or gets stuck.
 - Cancelling a new transaction whose send failed now checks Firefly III first, so it can't end up
   booked twice. If it already arrived it is kept as sent; if Firefly III can't be reached, it stays

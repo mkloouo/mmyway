@@ -3,13 +3,14 @@
 // those rows and shows the edited values, instead of the server copy that is about to change.
 // Pure, no db.
 import type { TransactionSplit } from '../api/ff3/types';
+import type { EditChanges } from './editDiff';
 
 export type PendingEditStatus = 'queued' | 'failed' | 'conflict';
 
 export interface PendingEdit {
   status: PendingEditStatus;
   /** Every queued change to the transaction, merged in replay order. */
-  changes: Partial<TransactionSplit>;
+  changes: EditChanges;
   /** The latest queued split edit's splits (every split, as they'll be), if one is queued. */
   splits?: QueuedSplit[];
   groupTitle?: string;
@@ -52,7 +53,7 @@ export function pendingEdits(outbox: readonly OutboxRow[]): PendingEdits {
     let payload: {
       groupId?: string;
       transactionJournalId?: string;
-      changes?: Partial<TransactionSplit>;
+      changes?: EditChanges;
       splits?: QueuedSplit[];
       groupTitle?: string;
     };
