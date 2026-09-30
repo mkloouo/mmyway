@@ -186,11 +186,13 @@ function addDays(date: string, days: number): string {
 }
 
 /**
- * Notes for a bill or recurrence body, or nothing. FF3 refuses empty notes there in any form: an
- * empty string becomes null on its side, and null fails "The notes must be at least 1 characters"
- * (a transaction's notes take null; these don't). Left out, the notes FF3 has stay as they are.
+ * Notes for a bill body, or nothing. FF3's API validates a bill update's notes as
+ * `['min:1', 'max:32768']` without the `nullable` its web form has, and turns an empty string into
+ * null before validating (ConvertEmptyStringsToNull), so both "" and null fail with "The notes
+ * must be at least 1 characters". Left out, the key isn't validated and the bill's notes stay as
+ * they are: a bill's notes can't be cleared through the API.
  */
-function notesField(notes: string | null | undefined): { notes?: string } {
+function billNotesField(notes: string | null | undefined): { notes?: string } {
   return notes ? { notes } : {};
 }
 
@@ -201,7 +203,7 @@ export function billBody(f: PlannedFields, before: PlannedFields | null): Record
     amount_min: f.amount,
     amount_max: f.amount,
     currency_code: f.currencyCode,
-    ...notesField(f.notes),
+    ...billNotesField(f.notes),
     active: true,
     ...(scheduleChanged(before, f)
       ? {
@@ -275,7 +277,10 @@ export function recurrenceBody(
   return {
     type: f.type,
     title: f.name,
-    ...notesField(withPlannedTime(f.notes, f.time)),
+    // Null, not left out like a bill's: FF3's recurrence update has no rule for notes and deletes
+    // them when given null. The planned time lives here, and removing it must clear the marker
+    // line rather than leave the old one in FF3.
+    notes: withPlannedTime(f.notes, f.time) || null,
     active: true,
     apply_rules: true,
     ...(scheduleChanged(before, f)

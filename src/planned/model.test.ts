@@ -121,14 +121,15 @@ describe('planned model', () => {
     });
   });
 
-  it('leaves empty notes out: FF3 refuses both an empty string and null there', () => {
+  it("leaves a bill's empty notes out: FF3 refuses both an empty string and null there", () => {
     const fields = { ...fieldsOf(groupPlanned([bill, rule, recurrence])[0]!, '2026-09-28') };
     for (const notes of ['', null]) {
       const blank: PlannedFields = { ...fields, notes, time: null };
       expect(billBody(blank, fields)).not.toHaveProperty('notes');
+      // The recurrence clears its notes instead, so a removed planned time goes too.
       expect(
-        recurrenceBody({ ...blank, sourceId: '1', destinationId: '4' }, fields, {}),
-      ).not.toHaveProperty('notes');
+        recurrenceBody({ ...blank, sourceId: '1', destinationId: '4' }, fields, {}).notes,
+      ).toBeNull();
     }
     expect(billBody({ ...fields, notes: 'Family plan' }, fields).notes).toBe('Family plan');
     expect(
