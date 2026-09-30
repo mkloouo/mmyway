@@ -14,6 +14,6 @@ module.exports = {
   },
   pull: {
     path: 'src/i18n/locales',
-    languages: ['uk-UA'],
+    languages: ['en', 'uk-UA'],
   },
 };
