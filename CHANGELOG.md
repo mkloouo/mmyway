@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.4.5] - 2026-09-30
+
 ### Fixed
 
 - If **Undo** on a just-confirmed entry fails, you now get an error message; before, the snackbar
