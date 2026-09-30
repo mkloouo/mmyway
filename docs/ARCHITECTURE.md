@@ -84,7 +84,7 @@ A confirm waits `SYNC_DELAY.afterConfirm` (6 s) so Undo in the 5 s snackbar can 
 
 ### One instance at a time
 
-Queued operations and cached rows carry one FF3 instance's ids. Signing out, or signing in at an address not already stored, is refused while anything is queued and otherwise clears that instance's reference data, cache and reviews (`src/sync/instanceData.ts`). Drafts, aliases and preferences stay.
+Queued operations and cached rows carry one FF3 instance's ids. Signing out, or signing in at an address not already stored, is refused while anything is queued and otherwise clears that instance's reference data, cache and reviews (`src/sync/instanceData.ts`). Drafts and aliases stay with their names but lose the instance's ids (they re-resolve against the next instance), the settings that name an account by id (default, cash and cash-count accounts) are reset, and the other preferences stay. The clearing runs inside `withSyncPaused` (`src/sync/runSync.ts`) so a sync still running with the old token can't refill what was just cleared.
 
 ## Features outside the main pipeline
 

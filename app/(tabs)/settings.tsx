@@ -31,6 +31,7 @@ import { aliases as aliasesTable } from '../../src/db/schema';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { hasEnvelopeMarker } from '../../src/accounts/envelopeMarker';
 import { useSync } from '../../src/sync/useSync';
+import { withSyncPaused } from '../../src/sync/runSync';
 import { PAYEE } from '../../src/lookup/aliases';
 import {
   clearInstanceData,
@@ -151,9 +152,13 @@ export default function SettingsScreen() {
         return;
       }
     }
-    const result = await signIn(host, token);
+    // The new token is stored and the old instance's rows cleared with no sync in between.
+    const result = await withSyncPaused(async () => {
+      const signedInAs = await signIn(host, token);
+      if (signedInAs.ok && switching) await clearInstanceData(db);
+      return signedInAs;
+    });
     if (result.ok) {
-      if (switching) await clearInstanceData(db);
       setSheet(null);
       setToast(tr('settings.connected'));
       setHost('');
@@ -185,8 +190,10 @@ export default function SettingsScreen() {
       Alert.alert(tr('settings.cantSignOutYet'), describeQueuedOperations(nowQueued));
       return;
     }
-    await signOut();
-    await clearInstanceData(db);
+    await withSyncPaused(async () => {
+      await signOut();
+      await clearInstanceData(db);
+    });
     await reload();
     credentialsChanged();
   });

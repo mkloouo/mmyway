@@ -6,7 +6,7 @@
 import { asc, inArray } from 'drizzle-orm';
 import { readStoredCredentials } from '../api/ff3/auth';
 import { outboxOperations } from '../db/schema';
-import { retryUnsent } from './syncTrigger';
+import { requestSync, retryUnsent } from './syncTrigger';
 import { OutboxBlocker, subjectsOf } from './outboxSubjects';
 import { clientFor } from '../api/ff3/session';
 import { readHosts } from '../api/ff3/hosts';
@@ -88,6 +88,51 @@ export type SyncMode = 'full' | 'push';
 
 let inFlight: { mode: SyncMode; promise: Promise<SyncSummary> } | null = null;
 let recovered = false;
+let paused = false;
+/** A sync was asked for while paused: one is requested again when the pause ends. */
+let missed = false;
+/**
+ * Every doSync that has started and not ended. One the watchdog gave up on (SYNC_WATCHDOG_MS)
+ * drops out too: pausing must not wait forever for a sync nobody is waiting on any more.
+ */
+const running = new Set<Promise<unknown>>();
+
+function startSync(db: OutboxDb, mode: SyncMode): Promise<SyncSummary> {
+  if (paused) {
+    missed = true;
+    return Promise.resolve({ ...NOT_SIGNED_IN });
+  }
+  const promise = doSync(db, mode);
+  running.add(promise);
+  const giveUp = setTimeout(() => running.delete(promise), SYNC_WATCHDOG_MS);
+  const done = () => {
+    clearTimeout(giveUp);
+    running.delete(promise);
+  };
+  promise.then(done, done);
+  return promise;
+}
+
+/**
+ * Runs `work` with no sync writing to the database: waits for the running one to end, and syncs
+ * asked for meanwhile do nothing. Signing out or switching instance clears the synced tables in
+ * it — a sync still pulling with the old token would refill them with the old instance's rows.
+ */
+export async function withSyncPaused<T>(work: () => Promise<T>): Promise<T> {
+  paused = true;
+  try {
+    await Promise.allSettled([...running]);
+    return await work();
+  } finally {
+    paused = false;
+    // A write queued during the pause asked for a push that got nothing. After a sign-in the
+    // caller starts a full sync anyway; after a failed one (wrong token) nothing else would.
+    if (missed) {
+      missed = false;
+      requestSync();
+    }
+  }
+}
 
 /**
  * One sync at a time, process-wide. Every trigger funnels through here, so two outbox replays can
@@ -104,7 +149,9 @@ export function runSync(db: OutboxDb, mode: SyncMode = 'full'): Promise<SyncSumm
   if (inFlight && (inFlight.mode === 'full' || mode === 'push')) return inFlight.promise;
   const previous = inFlight?.promise;
   const promise = withWatchdog(
-    previous ? previous.catch(() => undefined).then(() => doSync(db, mode)) : doSync(db, mode),
+    previous
+      ? previous.catch(() => undefined).then(() => startSync(db, mode))
+      : startSync(db, mode),
   ).finally(() => {
     if (inFlight?.promise === promise) inFlight = null;
   });
