@@ -10,9 +10,9 @@
   error) when it moves from Queued to synced.
 - Opening a transaction or a draft no longer flashes "PLN" instead of "zł" for a moment, and
   the accounts and budget show a spinner while they load instead of "—".
-- After signing in to another Firefly III, drafts and aliases ask for their accounts again instead
-  of pointing at the old ones, and a sync that was running when you signed out or switched can no
-  longer bring the old instance's data back.
+- After signing out or signing in to another Firefly III, drafts, aliases and the default, cash and
+  cash-count accounts ask for their accounts again instead of pointing at the old ones, and a sync
+  that was running at that moment can no longer bring the old instance's data back.
 
 ## [1.4.4] - 2026-09-30
 

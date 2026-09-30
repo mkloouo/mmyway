@@ -1,6 +1,7 @@
 import { createTestDb } from '../db/testDb';
 import { runSync, withSyncPaused, SYNC_WATCHDOG_MS } from './runSync';
 import { enqueueOperation } from './outbox';
+import { registerSyncHandler } from './syncTrigger';
 import { clientFor } from '../api/ff3/session';
 import { readStoredCredentials, probeAbout } from '../api/ff3/auth';
 import { readHosts } from '../api/ff3/hosts';
@@ -88,6 +89,35 @@ describe('runSync', () => {
     expect(client.request.mock.calls).toHaveLength(requestsWhenPaused);
     // After the pause syncing works again.
     await expect(runSync(db)).resolves.toMatchObject({ signedIn: true });
+  });
+
+  it('asks for a push after the pause when a sync was refused during it, even if the work failed', async () => {
+    jest.useFakeTimers();
+    const sync = jest.fn();
+    const unregister = registerSyncHandler(sync);
+    try {
+      signedInWith(['https://ff3.example.com']);
+      (clientFor as jest.Mock).mockReturnValue(buildClient());
+      const db = createTestDb() as any;
+
+      await expect(
+        withSyncPaused(async () => {
+          await runSync(db, 'push'); // a write asked for its push, and got nothing
+          throw new Error('wrong token');
+        }),
+      ).rejects.toThrow('wrong token');
+      expect(sync).not.toHaveBeenCalled();
+      jest.advanceTimersByTime(1_000);
+      expect(sync).toHaveBeenCalledTimes(1);
+
+      // A pause nobody asked a sync during leaves nothing to redo.
+      await withSyncPaused(async () => undefined);
+      jest.advanceTimersByTime(60_000);
+      expect(sync).toHaveBeenCalledTimes(1);
+    } finally {
+      unregister();
+      jest.useRealTimers();
+    }
   });
 
   it('skips the re-pull of recent transactions when replay succeeded nothing', async () => {

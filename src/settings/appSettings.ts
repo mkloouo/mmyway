@@ -46,6 +46,12 @@ export const INSTANCE_SETTING_KEYS: readonly string[] = [
   KEYS.lastSyncedAt,
   KEYS.accountOrder,
   KEYS.balancesStale,
+  // Settings that name an account by its FF3 id: an old `3` would point at whatever the next
+  // instance calls `3`, the same risk as an id in a draft.
+  KEYS.defaultSourceAccountId,
+  KEYS.cashAccountId,
+  KEYS.reconcileShortfallAccountId,
+  KEYS.reconcileSurplusAccountId,
 ];
 
 export const getDefaultSourceAccountId = (db: OutboxDb) =>

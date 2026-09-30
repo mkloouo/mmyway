@@ -14,6 +14,14 @@ import {
   referenceCurrencies,
 } from '../db/schema';
 import {
+  getCashAccountId,
+  setCashAccountId,
+  getReconcileShortfallAccountId,
+  setReconcileShortfallAccountId,
+  getReconcileSurplusAccountId,
+  setReconcileSurplusAccountId,
+  setReconcileCategoryName,
+  getReconcileCategoryName,
   getDefaultSourceAccountId,
   setDefaultSourceAccountId,
   getLastSyncedAt,
@@ -60,7 +68,7 @@ describe('queuedOperationCount', () => {
 });
 
 describe('clearInstanceData', () => {
-  it("removes what was synced from the instance and keeps the user's drafts, aliases and preferences", async () => {
+  it("removes what was synced from the instance and keeps the user's drafts, aliases and other preferences", async () => {
     const db = createTestDb() as any;
     await db
       .insert(referenceAccounts)
@@ -111,6 +119,10 @@ describe('clearInstanceData', () => {
     await setFf3ActiveHost(db, 'https://ff3.example.com');
     await setBalancesStale(db, true);
     await setDefaultSourceAccountId(db, 'a1');
+    await setCashAccountId(db, 'a1');
+    await setReconcileShortfallAccountId(db, 'a2');
+    await setReconcileSurplusAccountId(db, 'a3');
+    await setReconcileCategoryName(db, 'Cash count');
     await setLocalModelName(db, 'qwen');
 
     await clearInstanceData(db);
@@ -131,7 +143,12 @@ describe('clearInstanceData', () => {
     expect(await getLastSyncedAt(db)).toBeNull();
     expect(await getFf3ActiveHost(db)).toBeNull();
     expect(await getBalancesStale(db)).toBe(false);
-    expect(await getDefaultSourceAccountId(db)).toBe('a1');
+    // Settings that name an account by id go with the accounts; the rest are the user's.
+    expect(await getDefaultSourceAccountId(db)).toBeNull();
+    expect(await getCashAccountId(db)).toBeNull();
+    expect(await getReconcileShortfallAccountId(db)).toBeNull();
+    expect(await getReconcileSurplusAccountId(db)).toBeNull();
+    expect(await getReconcileCategoryName(db)).toBe('Cash count');
     expect(await getLocalModelName(db)).toBe('qwen');
   });
 
