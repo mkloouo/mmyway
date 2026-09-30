@@ -39,7 +39,12 @@ describe('conflictFields', () => {
       lookups,
     );
     expect(fields).toEqual([
-      { label: 'Note', server: 'set in the web UI', mine: 'Become noted (1)', differs: true },
+      {
+        label: 'Description',
+        server: 'set in the web UI',
+        mine: 'Become noted (1)',
+        differs: true,
+      },
       { label: 'Amount', server: '15.00 zł', mine: '15.00 zł', differs: false },
       { label: 'From', server: 'Cash', mine: 'Revolut', differs: true },
     ]);

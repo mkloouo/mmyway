@@ -21,11 +21,14 @@ function Key({
   tone,
   disabled,
   testID,
+  small,
 }: {
   label: string;
   onPress: () => void;
   tone?: 'default' | 'accent';
   disabled?: boolean;
+  /** A long label (a picked date and time): drawn much smaller so it fits the key instead of being cut. */
+  small?: boolean;
   /** For the Maestro flows (.maestro/): a digit's label also matches the amount it typed. */
   testID?: string;
 }) {
@@ -68,10 +71,13 @@ function Key({
       >
         <Text
           style={[
-            t.type.heading,
+            small ? t.type.label : t.type.heading,
             { color: isAccent ? t.color.onAccent : t.color.text, textAlign: 'center' },
+            small && { fontSize: 12, lineHeight: 15 },
           ]}
           numberOfLines={1}
+          adjustsFontSizeToFit={small}
+          minimumFontScale={0.75}
         >
           {label}
         </Text>
@@ -99,9 +105,12 @@ export type KeypadProps = KeypadBaseProps &
     | {
         compact?: false;
         dateLabel: string;
+        /** The date is a picked one, so its label is long: drawn small. */
+        dateCompact?: boolean;
         onDatePress: () => void;
-        onNotePress: () => void;
-        noteHasValue?: boolean;
+        /** Opens the rest of the entry's fields (description, who it is shared with, a photo). */
+        onMorePress: () => void;
+        moreHasValue?: boolean;
       }
   );
 
@@ -132,15 +141,21 @@ export function Keypad(props: KeypadProps) {
             (props.compact ? (
               <Spacer />
             ) : (
-              <Key label={props.dateLabel} onPress={props.onDatePress} />
+              <Key
+                label={props.dateLabel}
+                onPress={props.onDatePress}
+                small={props.dateCompact}
+                testID="keypad-date"
+              />
             ))}
           {rowIndex === 2 &&
             (props.compact ? (
               <Spacer />
             ) : (
               <Key
-                label={props.noteHasValue ? `${tr('fields.note')} ●` : tr('fields.note')}
-                onPress={props.onNotePress}
+                label={props.moreHasValue ? `${tr('capture.more')} ●` : tr('capture.more')}
+                onPress={props.onMorePress}
+                testID="keypad-more"
               />
             ))}
           {rowIndex === 3 && (

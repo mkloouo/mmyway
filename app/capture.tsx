@@ -1,5 +1,5 @@
 // Capture (design §6.2) — amount first, one screen, no scrolling for the common case.
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n, { appLocale } from '../src/i18n';
 import { Animated, Pressable, ScrollView, Text, View } from 'react-native';
@@ -88,7 +88,6 @@ function AccountChipRow({
   selectedId,
   onSearch,
   onSelect,
-  trailing,
 }: {
   label: string;
   searchLabel: string;
@@ -96,8 +95,6 @@ function AccountChipRow({
   selectedId: string | null | undefined;
   onSearch: () => void;
   onSelect: (id: string) => void;
-  /** Chips that share the row, such as Capture's transfer branch putting Details here. */
-  trailing?: ReactNode;
 }) {
   const t = useTheme();
   return (
@@ -124,7 +121,6 @@ function AccountChipRow({
             onPress={() => onSelect(a.id)}
           />
         ))}
-        {trailing}
       </ScrollView>
     </View>
   );
@@ -419,13 +415,9 @@ export default function CaptureScreen() {
 
   const currency = currencyOf(currencies, effectiveCurrencyCode ?? '');
   const summaryParts = [merchantRawInput, categoryName].filter(Boolean);
-  const detailsParts = [
-    description,
-    notes,
-    sharedWith && tr('inbox.sharedWith', { name: sharedWith }),
-    photoUri && tr('capture.photo'),
-  ].filter(Boolean);
-  const detailsLabel = detailsParts.length > 0 ? detailsParts.join(' · ') : tr('capture.details');
+  // What "More" holds besides the title, which has its own field: the key shows a dot when any of
+  // it is set.
+  const moreHasValue = !!(notes || sharedWith || photoUri);
 
   return (
     <Screen bottom>
@@ -541,6 +533,15 @@ export default function CaptureScreen() {
           </View>
         )}
 
+        <TextField
+          accessibilityLabel={tr('fields.description')}
+          placeholder={tr('fields.description')}
+          value={description}
+          onChangeText={(description) => set({ description })}
+          returnKeyType="done"
+          style={{ marginHorizontal: t.space.lg, marginBottom: t.space.sm }}
+        />
+
         <View style={{ gap: t.space.sm }}>
           {isPayeeType && (
             <View>
@@ -603,13 +604,6 @@ export default function CaptureScreen() {
                 selectedId={destinationId}
                 onSearch={() => setSheet('accountDestination')}
                 onSelect={(id) => set({ destinationId: id })}
-                trailing={
-                  <Chip
-                    label={detailsLabel}
-                    selected={detailsParts.length > 0}
-                    onPress={() => setSheet('more')}
-                  />
-                }
               />
             </>
           ) : (
@@ -643,11 +637,6 @@ export default function CaptureScreen() {
                   selected={!!budgetId}
                   onPress={() => setSheet('budget')}
                 />
-                <Chip
-                  label={detailsLabel}
-                  selected={detailsParts.length > 0}
-                  onPress={() => setSheet('more')}
-                />
               </ScrollView>
             </>
           )}
@@ -669,9 +658,10 @@ export default function CaptureScreen() {
                     minute: '2-digit',
                   })
           }
+          dateCompact={dateMode !== 'today' && dateMode !== 'yesterday'}
           onDatePress={() => setSheet('date')}
-          onNotePress={() => setSheet('more')}
-          noteHasValue={!!notes}
+          onMorePress={() => setSheet('more')}
+          moreHasValue={moreHasValue}
           saveLabel={tr('capture.saveAndConfirm')}
           onSave={() => handleSave(true)}
           saveDisabled={!readiness.ready || foreignAmountInvalid || fxMissing}
@@ -784,11 +774,6 @@ export default function CaptureScreen() {
         title={tr('capture.more')}
         footer={<Button title={tr('common.done')} onPress={() => setSheet(null)} />}
       >
-        <TextField
-          placeholder={tr('fields.description')}
-          value={description}
-          onChangeText={(description) => set({ description })}
-        />
         <TextField
           placeholder={tr('fields.notes')}
           value={notes}

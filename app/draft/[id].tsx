@@ -27,7 +27,7 @@ import {
 } from '../../src/ui/components';
 import { DetailRows, type DetailRowsValue } from '../../src/ui/DetailRows';
 import { PayeeSheet } from '../../src/ui/PayeeSheet';
-import { Keypad } from '../../src/ui/Keypad';
+import { AmountSheet } from '../../src/ui/AmountSheet';
 import { TextField } from '../../src/ui/TextField';
 import { SplitPager } from '../../src/ui/SplitPager';
 import { SplitPage } from '../../src/ui/SplitPage';
@@ -50,7 +50,6 @@ import { alertDiscardOutcome } from '../../src/inbox/discardAlert';
 import { askPhotoSource, pickPhoto } from '../../src/receipt/pickPhoto';
 import { updateDraft, deleteInboxItem, attachReceiptImage } from '../../src/inbox/updateDraft';
 import { draftReadiness } from '../../src/inbox/readiness';
-import { applyDigit, type KeypadKey } from '../../src/capture/amountInput';
 import { useMerchantHistories } from '../../src/lookup/useMerchantHistories';
 import { confirmDestructive } from '../../src/ui/confirm';
 import { reportErrors } from '../../src/ui/reportError';
@@ -179,8 +178,8 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
   const rest = splitMode ? leftover(total, amounts, dp) : 0n;
   const pageIndex = Math.min(page, extras.length);
 
-  // Not awaited (a digit shouldn't wait for the last one's write), but never silent: a failed
-  // write is logged and shown instead of becoming an unhandled rejection.
+  // Not awaited, but never silent: a failed write is logged and shown instead of becoming an
+  // unhandled rejection.
   function patch(fields: Partial<Draft>) {
     void reportErrors(
       tr('common.save'),
@@ -311,21 +310,27 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
       askLeftover(nextAmounts, total, dp, leftoverHandlers.ask);
   }
 
-  function closeKeypad() {
+  /**
+   * The keypad sheet closed with `typed` (null when nothing was typed): the one write of the
+   * amount, then the leftover the change made — split 1 takes it, or the sliders ask.
+   */
+  function commitKeypad(typed: string | null) {
     const target = keypadFor;
     setKeypadFor(null);
-    if (target === 'total') place(amounts, total);
-    else if (typeof target === 'number') place(amounts, total, target);
-  }
-
-  function typeDigit(key: KeypadKey) {
-    if (keypadFor === 'total') patch({ total: applyDigit(total, key, dp) });
-    else if (keypadFor === 0) patch({ amount: applyDigit(draft.amount, key, dp) });
-    else if (typeof keypadFor === 'number') {
-      const split = extras[keypadFor - 1];
-      if (split)
-        patch(patchExtraSplit(draft, keypadFor - 1, { amount: applyDigit(split.amount, key, dp) }));
+    if (target === null) return;
+    if (target === 'total') {
+      const nextTotal = typed ?? total;
+      if (typed !== null) patch({ total: typed });
+      place(amounts, nextTotal);
+      return;
     }
+    const split = target === 0 ? null : extras[target - 1];
+    if (target !== 0 && !split) return;
+    const nextAmounts =
+      typed === null ? amounts : amounts.map((a, i) => (i === target ? typed : a));
+    if (typed !== null)
+      patch(split ? patchExtraSplit(draft, target - 1, { amount: typed }) : { amount: typed });
+    place(nextAmounts, total, target);
   }
 
   const detailValue: DetailRowsValue = {
@@ -635,20 +640,15 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
         )}
       </View>
 
-      <Sheet
+      <AmountSheet
         visible={keypadFor !== null}
-        onClose={closeKeypad}
         title={keypadFor === 'total' ? tr('splits.total') : tr('fields.amount')}
-      >
-        <Money
-          amount={keypadValue}
-          currency={currency}
-          type={draft.type}
-          size="display"
-          loading={currenciesLoading}
-        />
-        <Keypad compact onDigit={typeDigit} saveLabel={tr('common.done')} onSave={closeKeypad} />
-      </Sheet>
+        initial={keypadValue}
+        currency={currency}
+        type={draft.type}
+        loading={currenciesLoading}
+        onDone={commitKeypad}
+      />
 
       <Sheet
         visible={textFor !== null}
@@ -730,13 +730,26 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
           />
         )}
         {!readOnly && (
-          <Row
-            first
-            label={tr('fields.currency')}
-            value={draft.currencyCode || '—'}
-            chevron
-            onPress={() => setSheet('currency')}
-          />
+          <>
+            {/* A receipt's title usually equals its merchant, and the screen only shows one that
+                says something else, so this is where it is entered. */}
+            <Row
+              first
+              label={tr('fields.description')}
+              value={(splitMode ? draft.groupTitle || draft.description : draft.description) || '—'}
+              chevron
+              onPress={() => {
+                closeSheet();
+                setTextFor(splitMode ? 'title' : 0);
+              }}
+            />
+            <Row
+              label={tr('fields.currency')}
+              value={draft.currencyCode || '—'}
+              chevron
+              onPress={() => setSheet('currency')}
+            />
+          </>
         )}
         <Row
           first={readOnly && !row.ff3GroupId}

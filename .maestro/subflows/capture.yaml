@@ -8,7 +8,7 @@ appId: ${APP_ID}
 #   ACCOUNT      the account chip to tap ("" keeps the default); a transfer's From
 #   TO_ACCOUNT   a transfer's To chip
 #   CATEGORY     a category from the seed, or ""
-#   DESCRIPTION  typed under Details, or ""
+#   DESCRIPTION  typed in the Title field between the amount and the payee, or ""
 #   SAVE         confirm (Save & ✓) | inbox (Save to inbox)
 # Capture stays open afterwards (it resets for the next entry); close it with close-capture.yaml.
 - tapOn: 'Add an entry'
@@ -72,10 +72,9 @@ appId: ${APP_ID}
     when:
       true: ${DESCRIPTION != ''}
     commands:
-      - tapOn: 'Details'
-      - tapOn: 'Description'
+      - tapOn: 'Title'
       - inputText: ${DESCRIPTION}
-      - tapOn: 'Done'
+      - hideKeyboard
 - runFlow:
     when:
       true: ${SAVE == 'confirm'}

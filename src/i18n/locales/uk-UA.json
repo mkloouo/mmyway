@@ -65,7 +65,7 @@
     "search": "Пошук",
     "searchFailed": "Пошук Firefly III не вдався",
     "searchOffline": "Не вдається шукати у Firefly III, коли ви офлайн",
-    "searchPlaceholder": "Пошук опису або отримувача платежу",
+    "searchPlaceholder": "Пошук назви або отримувача платежу",
     "searching": "Пошук Firefly III…",
     "title": "Активність"
   },
@@ -109,14 +109,12 @@
     "booksViaAlias": "книги до {{name}} через псевдонім",
     "confirmedLabel": "Підтверджено · {{label}}",
     "convertsTo": "+ {{amount}} {{currency}} → перетворюється на",
-    "details": "Деталі",
     "discardTitle": "Відхилити цей запис?",
     "enterAccountPaid": "Введіть суму сплати з рахунку {{currency}}",
     "keepEditing": "Продовжити редагування",
     "more": "Більше",
     "payee": "Одержувач платежу",
     "payer": "Платник",
-    "photo": "Фото",
     "pickDate": "Оберіть дату…",
     "receiptPhoto": "Фотографія чека",
     "removePhoto": "Видалити фотографію",
@@ -202,7 +200,7 @@
     "useTotal": "Використати цю суму"
   },
   "details": {
-    "noteAndSharedWith": "Примітка та спільний доступ"
+    "noteAndSharedWith": "Опис і спільний доступ"
   },
   "dock": {
     "addEntry": "Додати запис",
@@ -245,10 +243,10 @@
     "category": "Категорія",
     "currency": "Валюта",
     "date": "Дата",
-    "description": "Опис",
+    "description": "Назва",
     "from": "Від",
-    "note": "Примітка",
-    "notes": "Нотатки",
+    "note": "Опис",
+    "notes": "Опис",
     "sharedWith": "Спільно з",
     "tags": "Теги",
     "to": "До"
@@ -448,7 +446,7 @@
     "frequencyLabel": "Частота",
     "gone": "Його більше немає у Firefly III.",
     "inactive": "неактивний",
-    "name": "Ім'я",
+    "name": "Назва",
     "namePlaceholder": "наприклад, Spotify",
     "newTitle": "Нова запланована транзакція",
     "next": "далі {{date}}",
@@ -459,7 +457,7 @@
       "amount": "сума",
       "currency": "валюта",
       "destination": "до",
-      "name": "ім'я",
+      "name": "назва",
       "source": "з"
     },
     "recurring": "Повторюваний",
