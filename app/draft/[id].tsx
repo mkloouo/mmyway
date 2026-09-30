@@ -2,7 +2,7 @@
 // entry (Split, or a duplicated split transaction) shows its tracked total and one page per split.
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Animated, Alert, Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { Animated, Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { useShake } from '../../src/ui/feedback';
 import { useLocalSearchParams, router } from 'expo-router';
 import { eq } from 'drizzle-orm';
@@ -43,7 +43,10 @@ import { PickerSheet } from '../../src/ui/PickerSheet';
 import { haptics } from '../../src/ui/haptics';
 import { inboxItems, outboxOperations } from '../../src/db/schema';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
-import { confirmInboxItem, undoConfirm } from '../../src/inbox/createManualEntry';
+import { confirmInboxItem } from '../../src/inbox/createManualEntry';
+import { discardOperation } from '../../src/sync/outbox';
+import { getClient } from '../../src/api/ff3/session';
+import { alertDiscardOutcome } from '../../src/inbox/discardAlert';
 import { askPhotoSource, pickPhoto } from '../../src/receipt/pickPhoto';
 import { updateDraft, deleteInboxItem, attachReceiptImage } from '../../src/inbox/updateDraft';
 import { draftReadiness } from '../../src/inbox/readiness';
@@ -131,14 +134,9 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
   });
   const cancelSending = act(tr('draft.cancelSending'), async () => {
     if (!pendingCreate) return;
-    // A receipt goes back to `parsed`: as `captured` the next sync would re-read the photo
-    // and overwrite the reviewed draft.
-    const outcome = await undoConfirm(db, id, {
-      outboxOperationId: pendingCreate.id,
-      previousState: row.kind === 'receipt' ? 'parsed' : 'captured',
-    });
-    if (outcome === 'already_sent')
-      Alert.alert(tr('inbox.alreadySent'), tr('draft.alreadySentBody'));
+    // Back to the Inbox as a draft (a receipt as `parsed`, so the photo isn't read again); a create
+    // that was already attempted is looked up in FF3 first.
+    alertDiscardOutcome(await discardOperation(db, pendingCreate.id, () => getClient(db)));
   });
   const draft: Draft = readDraft(row.draftJson);
 

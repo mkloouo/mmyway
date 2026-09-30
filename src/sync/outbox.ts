@@ -18,6 +18,7 @@ import { and, asc, eq, inArray, isNotNull, lt, ne, sql } from 'drizzle-orm';
 import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 import type { FF3Client } from '../api/ff3/client';
 import { FF3RequestError, UPLOAD_TIMEOUT_MS } from '../api/ff3/client';
+import { searchTransactions } from '../transactions/remoteSearch';
 import { outboxOperations, cachedTransactions, inboxItems } from '../db/schema';
 import * as schema from '../db/schema';
 import type { TransactionSplit, TransactionRead, AccountRead } from '../api/ff3/types';
@@ -429,6 +430,64 @@ async function missingReferences(db: OutboxDb, splits: TransactionSplit[]): Prom
   return problems;
 }
 
+/**
+ * A create that FF3 has: cache it, mark its inbox item synced, queue the receipt upload and drop the
+ * op — one write, so a crash can't leave the item synced with the op still queued (or the reverse).
+ * Shared by a replay that got the answer and a Cancel that found the transaction already there.
+ */
+async function recordCreated(
+  db: OutboxDb,
+  row: OutboxRow,
+  created: TransactionRead,
+): Promise<void> {
+  // The create response carries the group/journal ids the confirmed -> synced transition and
+  // the receipt upload both need. Written together with the op's removal, so a crash can't
+  // leave the item synced with the op still queued (or the reverse).
+  const item = row.inboxItemId
+    ? (await db.select().from(inboxItems).where(eq(inboxItems.id, row.inboxItemId)))[0]
+    : undefined;
+  const journal = created?.attributes?.transactions?.[0];
+  // FF3's answer is the transaction as it now is: cached in the same write that removes the
+  // op, so Activity swaps the queued row for the synced one without it vanishing until the
+  // next pull. An answer missing a field the cache requires is left for that pull instead.
+  const synced = created ? cachedRowFromGroup(created, new Date().toISOString()) : null;
+  const cacheable =
+    !!synced &&
+    [synced.amount, synced.currencyCode, synced.date, synced.type, synced.journalId].every(
+      (v) => typeof v === 'string' && v !== '',
+    );
+  db.transaction((tx) => {
+    if (synced && cacheable) {
+      tx.insert(cachedTransactions)
+        .values(synced)
+        .onConflictDoUpdate({ target: cachedTransactions.groupId, set: synced })
+        .run();
+    }
+    if (row.inboxItemId) {
+      tx.update(inboxItems)
+        .set({
+          ff3GroupId: created?.id ?? null,
+          state: 'synced',
+          updatedAt: new Date().toISOString(),
+        })
+        .where(eq(inboxItems.id, row.inboxItemId))
+        .run();
+      if (item?.receiptImagePath && journal) {
+        insertOperation(tx, {
+          id: generateId(),
+          inboxItemId: row.inboxItemId,
+          kind: 'attach_receipt',
+          payload: {
+            transactionJournalId: journal.transaction_journal_id,
+            receiptImagePath: item.receiptImagePath,
+          },
+        });
+      }
+    }
+    tx.delete(outboxOperations).where(eq(outboxOperations.id, row.id)).run();
+  });
+}
+
 async function replayOne(
   db: OutboxDb,
   client: FF3Client,
@@ -490,52 +549,7 @@ async function replayOne(
         created = recovered;
       }
 
-      // The create response carries the group/journal ids the confirmed -> synced transition and
-      // the receipt upload both need. Written together with the op's removal, so a crash can't
-      // leave the item synced with the op still queued (or the reverse).
-      const item = row.inboxItemId
-        ? (await db.select().from(inboxItems).where(eq(inboxItems.id, row.inboxItemId)))[0]
-        : undefined;
-      const journal = created?.attributes?.transactions?.[0];
-      // FF3's answer is the transaction as it now is: cached in the same write that removes the
-      // op, so Activity swaps the queued row for the synced one without it vanishing until the
-      // next pull. An answer missing a field the cache requires is left for that pull instead.
-      const synced = created ? cachedRowFromGroup(created, new Date().toISOString()) : null;
-      const cacheable =
-        !!synced &&
-        [synced.amount, synced.currencyCode, synced.date, synced.type, synced.journalId].every(
-          (v) => typeof v === 'string' && v !== '',
-        );
-      db.transaction((tx) => {
-        if (synced && cacheable) {
-          tx.insert(cachedTransactions)
-            .values(synced)
-            .onConflictDoUpdate({ target: cachedTransactions.groupId, set: synced })
-            .run();
-        }
-        if (row.inboxItemId) {
-          tx.update(inboxItems)
-            .set({
-              ff3GroupId: created?.id ?? null,
-              state: 'synced',
-              updatedAt: new Date().toISOString(),
-            })
-            .where(eq(inboxItems.id, row.inboxItemId))
-            .run();
-          if (item?.receiptImagePath && journal) {
-            insertOperation(tx, {
-              id: generateId(),
-              inboxItemId: row.inboxItemId,
-              kind: 'attach_receipt',
-              payload: {
-                transactionJournalId: journal.transaction_journal_id,
-                receiptImagePath: item.receiptImagePath,
-              },
-            });
-          }
-        }
-        tx.delete(outboxOperations).where(eq(outboxOperations.id, row.id)).run();
-      });
+      await recordCreated(db, row, created);
       return 'done';
     }
 
@@ -860,16 +874,51 @@ export async function deleteCachedTransactions(db: OutboxDb, groupIds: string[])
 }
 
 /**
+ * Whether FF3 already has the transaction a queued create was sending. A create that has been
+ * attempted may have reached FF3 with only the answer lost, so removing it blindly leaves the
+ * transaction there (and re-confirming an edited copy books it twice).
+ */
+async function findLandedCreate(
+  client: FF3Client,
+  clientId: string,
+): Promise<TransactionRead | null> {
+  const reference = internalReferenceFor(clientId);
+  const found = await searchTransactions(client, `internal_reference_is:"${reference}"`);
+  return found.find((group) => splitReference(group) === reference) ?? null;
+}
+
+/**
  * Drops a queued change before it is sent: the way out of one that can never succeed (a 422, an
- * account deleted in FF3, a receipt file that is gone), and the Queued card's Cancel. Local only —
- * nothing is sent. An inbox item the operation was confirming goes back to the Inbox as a draft
- * rather than vanishing, so the entry itself is not lost. 'sending' when the change is already on
- * its way, and left alone.
+ * account deleted in FF3, a receipt file that is gone), and the Queued card's Cancel. Nothing is
+ * sent. An inbox item the operation was confirming goes back to the Inbox as a draft rather than
+ * vanishing, so the entry itself is not lost.
+ *
+ * - 'sending': the change is already on its way, and left alone.
+ * - A create that was already attempted is looked up in FF3 first: 'landed' when it is there (it
+ *   is recorded as synced instead), 'unreachable' when FF3 can't say, so it stays queued.
  */
 export async function discardOperation(
   db: OutboxDb,
   opId: string,
-): Promise<'discarded' | 'sending'> {
+  resolveClient: () => Promise<FF3Client | null> = async () => null,
+): Promise<'discarded' | 'sending' | 'landed' | 'unreachable'> {
+  const [queued] = await db.select().from(outboxOperations).where(eq(outboxOperations.id, opId));
+  if (queued && queued.status !== 'in_flight' && mayHaveLanded(queued)) {
+    const clientId = (readPayload(queued.kind, queued.payloadJson) as CreateTransactionPayload)
+      .clientId;
+    let landed: TransactionRead | null;
+    try {
+      const client = await resolveClient();
+      if (!client) return 'unreachable';
+      landed = await findLandedCreate(client, clientId);
+    } catch {
+      return 'unreachable';
+    }
+    if (landed) {
+      await recordCreated(db, queued, landed);
+      return 'landed';
+    }
+  }
   const [op] = await db
     .delete(outboxOperations)
     .where(and(eq(outboxOperations.id, opId), ne(outboxOperations.status, 'in_flight')))
@@ -897,6 +946,11 @@ export async function discardOperation(
       .where(eq(inboxItems.id, op.inboxItemId));
   }
   return 'discarded';
+}
+
+/** A create that has been attempted at least once: FF3 may hold it even though the app doesn't know. */
+export function mayHaveLanded(op: { kind: string; attempts: number }): boolean {
+  return op.kind === 'create_transaction' && op.attempts > 0;
 }
 
 /** How long a receipt photo stays on the device after its transaction synced. */

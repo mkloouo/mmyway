@@ -352,7 +352,12 @@
     "cancelChange": "",
     "cancelChangeTitle": "",
     "alreadySending": "",
-    "alreadySendingBody": ""
+    "alreadySendingBody": "",
+    "cancelAttemptedBody": "",
+    "alreadyLanded": "",
+    "alreadyLandedBody": "",
+    "cantCheck": "",
+    "cantCheckBody": ""
   },
   "logs": {
     "clear": "Очистити",

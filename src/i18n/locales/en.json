@@ -222,7 +222,12 @@
     "cancelChange": "Cancel",
     "cancelChangeTitle": "Cancel this change?",
     "alreadySending": "Already sending",
-    "alreadySendingBody": "It was on its way to Firefly III before it could be cancelled."
+    "alreadySendingBody": "It was on its way to Firefly III before it could be cancelled.",
+    "cancelAttemptedBody": "A send was already attempted, so Firefly III is checked first in case it arrived.",
+    "alreadyLanded": "Already in Firefly III",
+    "alreadyLandedBody": "It reached Firefly III, so it is kept as sent.",
+    "cantCheck": "Can't check yet",
+    "cantCheckBody": "Can't check whether this was already sent — try again when Firefly III is reachable."
   },
   "pickers": {
     "searchAccounts": "Search accounts",
