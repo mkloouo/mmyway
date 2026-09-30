@@ -20,13 +20,15 @@ tags:
       SAVE: inbox
 - runFlow: ../../subflows/close-capture.yaml
 - tapOn: 'C5 ${RUN_ID}'
-- tapOn: 'Description'
+# A title equal to the payee isn't shown on the screen, so it is entered from the menu.
+- tapOn: 'More'
+- tapOn: 'Title'
 - inputText: 'The quick brown fox jumps over the lazy dog 1234567890'
 - eraseText: 10
 - inputText: 'done'
 - tapOn: 'Done'
 - assertVisible: 'The quick brown fox jumps over the lazy dog done'
-- tapOn: 'Description'
+- tapOn: 'Title'
 - inputText: ' again'
 - tapOn: 'Done'
 - assertVisible: 'The quick brown fox jumps over the lazy dog done again'

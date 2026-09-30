@@ -38,10 +38,9 @@ tags:
 - tapOn:
     text: 'Żabka'
     index: 1
-- tapOn: 'Details'
-- tapOn: 'Description'
+- tapOn: 'Title'
 - inputText: 'c4 second ${RUN_ID}'
-- tapOn: 'Done'
+- hideKeyboard
 - tapOn:
     id: 'keypad-save'
 - runFlow: ../../subflows/close-capture.yaml

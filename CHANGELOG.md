@@ -2,6 +2,30 @@
 
 ## [Unreleased]
 
+### Capture
+
+- A **title** field sits between the amount and the payee, so a transaction is named without
+  opening anything. The **Details** chip is gone; the keypad's Note key is now **More**, and shows a
+  dot when its description, who it is shared with or its photo is set.
+- Once a date is picked, the keypad's date key uses a much smaller font so the whole date fits.
+
+### Inbox
+
+- A draft's menu (⋯) has a **Title** row, so a receipt's title can be entered even when it is the
+  same as the payee, which the screen doesn't show.
+
+### Changed
+
+- What Firefly III calls a transaction's description is now called **Title** everywhere in the app,
+  and its notes are called **Description**, in Capture, drafts, transactions, Planned, Activity's
+  search and the change lists. Nothing changes in Firefly III.
+
+### Fixed
+
+- Changing the amount on a receipt draft no longer goes through the database for every digit: it
+  shows at once, a fast second digit no longer replaces the first, and a receipt with many items no
+  longer redraws every item's page for each digit.
+
 ## [1.4.5] - 2026-09-30
 
 ### Fixed

@@ -94,8 +94,8 @@
   },
   "fields": {
     "amount": "Amount",
-    "description": "Description",
-    "note": "Note",
+    "description": "Title",
+    "note": "Description",
     "category": "Category",
     "date": "Date",
     "from": "From",
@@ -104,7 +104,7 @@
     "tags": "Tags",
     "currency": "Currency",
     "sharedWith": "Shared with",
-    "notes": "Notes"
+    "notes": "Description"
   },
   "readiness": {
     "needs": "Needs {{fields}}",
@@ -253,7 +253,7 @@
     "addEntry": "Add an entry"
   },
   "details": {
-    "noteAndSharedWith": "Note & shared with"
+    "noteAndSharedWith": "Description & shared with"
   },
   "payeeSheet": {
     "payee": {
@@ -278,8 +278,6 @@
     "confirmedLabel": "Confirmed · {{label}}",
     "undoneBackInInbox": "Undone — it is back in the Inbox",
     "savedLabel": "Saved · {{label}}",
-    "photo": "Photo",
-    "details": "Details",
     "convertsTo": "+ {{amount}} {{currency}} → converts to",
     "enterAccountPaid": "Enter what the {{currency}} account paid",
     "payer": "Payer",
@@ -454,7 +452,7 @@
     "sectionWhat": "What",
     "sectionWhen": "When",
     "sectionMore": "More",
-    "name": "Name",
+    "name": "Title",
     "namePlaceholder": "e.g. Spotify",
     "amountHint": "The exact amount and currency. When the recurring transaction arrives in the Inbox, correct it to what the account really paid.",
     "time": "Time",
@@ -469,7 +467,7 @@
     "deleteTitle": "Delete {{name}}?",
     "deleteBody": "Its subscription, rule and recurring transaction are deleted in Firefly III. Transactions already booked stay.",
     "problem": {
-      "name": "name",
+      "name": "title",
       "amount": "amount",
       "currency": "currency",
       "source": "from",
@@ -498,7 +496,7 @@
     "deleteTitle_one": "Delete {{count}} transaction?",
     "deleteTitle_other": "Delete {{count}} transactions?",
     "deleteBody": "They are deleted in Firefly III too.",
-    "searchPlaceholder": "Search description or payee",
+    "searchPlaceholder": "Search title or payee",
     "title": "Activity",
     "search": "Search",
     "nothingCachedTitle": "Nothing cached yet",
