@@ -33,6 +33,8 @@ export interface DetailRowsProps {
   currencies: { code: string; symbol: string; decimalPlaces: number }[];
   categories: { id: string; name: string }[];
   budgets: { id: string; name: string }[];
+  /** The accounts and budgets are still loading: their rows show a spinner, not "—". */
+  loading?: boolean;
 }
 
 export function DetailRows({
@@ -45,6 +47,7 @@ export function DetailRows({
   currencies,
   categories,
   budgets,
+  loading,
 }: DetailRowsProps) {
   const t = useTheme();
   const { t: tr } = useTranslation();
@@ -83,6 +86,7 @@ export function DetailRows({
             first={value.type === 'transfer'}
             label={tr('fields.from')}
             value={sourceAccount?.name ?? '—'}
+            loading={loading && !sourceAccount && !!value.sourceAccountId}
             {...edit(() => setAccountSheetTarget('source'))}
           />
         )}
@@ -90,6 +94,7 @@ export function DetailRows({
           <Row
             label={tr('fields.to')}
             value={destinationAccount?.name ?? '—'}
+            loading={loading && !destinationAccount && !!value.destinationAccountId}
             {...edit(() => setAccountSheetTarget('destination'))}
           />
         )}
@@ -97,6 +102,7 @@ export function DetailRows({
           <Row
             label={tr('fields.budget')}
             value={budget?.name ?? '—'}
+            loading={loading && !budget && !!value.budgetId}
             {...edit(() => setBudgetSheetOpen(true))}
           />
         )}

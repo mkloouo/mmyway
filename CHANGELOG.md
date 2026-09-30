@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Activity no longer shows a just-sent transaction twice for a moment (and logs a duplicate-key
+  error) when it moves from Queued to synced.
+- Opening a transaction or a draft no longer flashes "PLN" instead of "zł" for a moment, and
+  the accounts and budget show a spinner while they load instead of "—".
+
 ## [1.4.4] - 2026-09-30
 
 ### Planned

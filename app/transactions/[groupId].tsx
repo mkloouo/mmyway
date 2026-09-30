@@ -8,7 +8,7 @@ import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
 import { eq, ne } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
-import { useBudgets, useCategories, useCurrencies } from '../../src/db/useReferenceData';
+import { useBudgetRows, useCategories, useCurrencyRows } from '../../src/db/useReferenceData';
 import { pickDateTime } from '../../src/ui/pickDate';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
@@ -134,11 +134,19 @@ function TransactionEditor({ row }: { row: CachedRow }) {
   );
   // An old transaction can point at an account since made inactive — look its name up across
   // every account for display, but only offer active ones when picking a new one.
-  const allAssetAccounts = useAssetAccounts({ includeInactive: true }) ?? [];
+  const allAccountRows = useAssetAccounts({ includeInactive: true });
+  const allAssetAccounts = allAccountRows ?? [];
   const activeAssetAccounts = useAssetAccounts() ?? [];
   const categories = useCategories();
-  const budgets = useBudgets();
-  const currencies = useCurrencies();
+  // undefined until each table's first read lands: the screen shows a spinner for what it
+  // can't resolve yet, not "—" or a currency code standing in for its symbol.
+  const budgetRows = useBudgetRows();
+  const budgets = budgetRows ?? [];
+  const currencyRows = useCurrencyRows();
+  const currencies = currencyRows ?? [];
+  const currenciesLoading = currencyRows === undefined;
+  const referenceLoading =
+    currenciesLoading || allAccountRows === undefined || budgetRows === undefined;
   // The photo this transaction was captured from, if the phone still has it (kept a while after
   // upload, see pruneUploadedReceiptImages): the preview while FF3's own list is unavailable.
   const { data: sourceItems } = useLiveQuery(
@@ -569,6 +577,7 @@ function TransactionEditor({ row }: { row: CachedRow }) {
           currencies={currencies}
           categories={categories}
           budgets={budgets}
+          loading={referenceLoading}
         />
       </SplitPage>
     );
@@ -681,7 +690,13 @@ function TransactionEditor({ row }: { row: CachedRow }) {
                 }}
               >
                 <Pressable onPress={() => setKeypadFor(0)} disabled={splitsLoading}>
-                  <Money amount={effectiveAmount} currency={currency} type={type} size="title" />
+                  <Money
+                    amount={effectiveAmount}
+                    currency={currency}
+                    type={type}
+                    size="title"
+                    loading={currenciesLoading}
+                  />
                 </Pressable>
                 {splitsLoading && (
                   <Text style={[t.type.label, { color: t.color.textMuted }]}>
@@ -715,6 +730,7 @@ function TransactionEditor({ row }: { row: CachedRow }) {
                 currencies={currencies}
                 categories={categories}
                 budgets={budgets}
+                loading={referenceLoading}
               />
             </>
           )}
@@ -762,7 +778,13 @@ function TransactionEditor({ row }: { row: CachedRow }) {
         onClose={closeKeypad}
         title={keypadFor === 'total' ? tr('splits.total') : tr('fields.amount')}
       >
-        <Money amount={keypadValue} currency={currency} type={type} size="display" />
+        <Money
+          amount={keypadValue}
+          currency={currency}
+          type={type}
+          size="display"
+          loading={currenciesLoading}
+        />
         <Keypad
           compact
           onDigit={typeAmountDigit}
