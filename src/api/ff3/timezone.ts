@@ -23,7 +23,7 @@ function offsetMinutesAt(timeZone: string, at: Date): number {
 
 /** Mirrors Waterfly's getLocalTimeAsServerTime: shift a device-local instant by the
  * server/device offset difference so it reads correctly once the server applies its own tz. */
-export function toServerEquivalent(
+function toServerEquivalent(
   serverTz: string,
   deviceLocal: Date,
   deviceTz: string = Intl.DateTimeFormat().resolvedOptions().timeZone,

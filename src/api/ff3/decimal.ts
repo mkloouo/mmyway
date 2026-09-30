@@ -52,7 +52,7 @@ export function divideDecimal(a: string, b: string, precision: number): string {
   return fromMinorUnits(scaledNumerator / scaledDenominator, precision);
 }
 
-export type DecimalInputResult =
+type DecimalInputResult =
   { ok: true; value: string } | { ok: false; reason: 'empty' | 'invalid' | 'too_many_decimals' };
 
 /**

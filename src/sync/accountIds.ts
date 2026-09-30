@@ -56,7 +56,7 @@ export function accountResolver(client: FF3Client) {
   };
 }
 
-export type AccountResolver = ReturnType<typeof accountResolver>;
+type AccountResolver = ReturnType<typeof accountResolver>;
 
 type AccountEnds = {
   type?: string;

@@ -90,7 +90,7 @@ function confidenceOf(value: unknown): number {
 }
 
 /** confidence "none": the model says the picture isn't a receipt at all. */
-export function isNotAReceipt(raw: unknown): boolean {
+function isNotAReceipt(raw: unknown): boolean {
   return (
     !!raw && typeof raw === 'object' && (raw as { confidence?: unknown }).confidence === 'none'
   );

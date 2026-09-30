@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { TextInput, type TextInputProps } from 'react-native';
 import { useTheme } from './theme';
 
-export interface TextFieldProps extends TextInputProps {
+interface TextFieldProps extends TextInputProps {
   invalid?: boolean;
   /**
    * For a `value` that is stored rather than held in component state (a draft saved to SQLite and

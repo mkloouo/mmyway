@@ -56,7 +56,7 @@ function splitsOf(row: CachedRow): CachedSplit[] {
   );
 }
 
-export function draftFromTransaction(row: CachedRow): Draft {
+function draftFromTransaction(row: CachedRow): Draft {
   const type = row.type as Draft['type'];
   const [first, ...rest] = splitsOf(row);
   const draft: Draft = {

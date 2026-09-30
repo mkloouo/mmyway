@@ -8,7 +8,7 @@ import { runSync } from './runSync';
 import { logLine } from '../utils/log';
 import { errorMessage } from '../utils/errorMessage';
 
-export const BACKGROUND_SYNC_TASK = 'mmyway-background-sync';
+const BACKGROUND_SYNC_TASK = 'mmyway-background-sync';
 
 TaskManager.defineTask(BACKGROUND_SYNC_TASK, async () => {
   try {

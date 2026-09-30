@@ -2,7 +2,7 @@
 // (design §6.9). An unknown currency simply has no 🧮; the field stays typed as usual.
 import { addDecimal } from '../api/ff3/decimal';
 
-export interface Denomination {
+interface Denomination {
   value: string; // decimal string, one unit of this note/coin
   label: string; // display label
 }

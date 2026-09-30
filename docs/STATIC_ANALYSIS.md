@@ -24,7 +24,7 @@ outside `.github/` so it stays off.
 | Check  | Result                                                                                                                                                             |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | lint   | 36 at the time: 28 floating promises, 3 misused promises, 5 `payload_json` reads/writes outside `payloadJson.ts`; no hardcoded UI text. All fixed since (#92, #78) |
-| dead   | 21 unused exports, 32 unused exported types ([#80](https://github.com/mkloouo/mmyway/issues/80))                                                                   |
+| dead   | clean since #80 (the dead exports and types are un-exported; `expo-system-ui` installed)                                                                           |
 | dupes  | 0.16% (4 clones) — passes                                                                                                                                          |
 | cycles | none at runtime — passes (7 through type-only imports)                                                                                                             |
 | deps   | no high/critical — passes (16 moderate)                                                                                                                            |
@@ -41,7 +41,7 @@ In this order; each step is small and keeps `main` green.
 
 1. **Fix the baseline**, or accept parts of it: lint is done (haptics → `void`, the Undo handlers
    in `act`, and every `payload_json` read and write through `payloadJson.ts`, so that rule is an
-   error, #78); #80 for the dead exports; `npx expo install --fix`.
+   error, #78); the dead exports (#80, done); `npx expo install --fix`.
 2. **CI:** in `.github/workflows/static-analysis.yml` uncomment `push`/`pull_request` and change
    `npm run analyze` to `npm run analyze -- --strict`. Or fold the checks into `ci.yml` and
    `npm run check`.

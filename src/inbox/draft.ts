@@ -117,7 +117,7 @@ export function draftToTransactionPayload(
 }
 
 /** Split 2..N as a whole draft: the group's shared fields from split 1, the rest its own. */
-export function extraSplitAsDraft(draft: Draft, split: DraftSplit): Draft {
+function extraSplitAsDraft(draft: Draft, split: DraftSplit): Draft {
   const payee =
     draft.type === 'withdrawal'
       ? { destinationName: split.payeeName, destinationId: split.payeeId }
