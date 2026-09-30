@@ -49,3 +49,7 @@ yarn-error.*
 # release build output
 /releases/
 build-*.apk
+
+# throwaway Firefly III instances (scripts/ff3-test.mjs) and e2e run output
+/.ff3-test/
+/e2e-results/

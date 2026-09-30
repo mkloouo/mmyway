@@ -1,0 +1,17 @@
+appId: ${APP_ID}
+name: 'A2 · Older history'
+tags:
+  - release
+---
+# Scrolling past the cached window loads older months from Firefly III: the seed's salary from
+# six months ago appears.
+- runFlow: ../../subflows/ready.yaml
+- evalScript: "${output.d = new Date(); output.d.setDate(1); output.d.setMonth(output.d.getMonth() - 6); output.old = 'Salary ' + output.d.getFullYear() + '-' + ('0' + (output.d.getMonth() + 1)).slice(-2)}"
+- tapOn: 'Activity'
+- scrollUntilVisible:
+    element:
+      text: ${output.old}
+    direction: DOWN
+    timeout: 90000
+- assertVisible: ${output.old}
+- takeScreenshot: A2-six-months-back

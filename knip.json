@@ -1,0 +1,28 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "app/**/*.{ts,tsx}",
+    "scripts/*.mjs",
+    "plugins/*.js",
+    "src/db/migrations.ts",
+    "tolgee.config.js",
+    "eslint.strict.config.js"
+  ],
+  "project": ["app/**/*.{ts,tsx}", "src/**/*.{ts,tsx}", "scripts/**/*.{mjs,ts}", "plugins/*.js"],
+  "ignore": [
+    "src/api/ff3/types.ts",
+    "src/db/migrations/**",
+    "scripts/release-test-stubs/**",
+    ".maestro/**"
+  ],
+  "ignoreDependencies": [
+    "babel-plugin-inline-import",
+    "babel-preset-expo",
+    "react-native-worklets",
+    "expo-dev-client",
+    "@tolgee/cli",
+    "expo-system-ui",
+    "expo-updates"
+  ],
+  "ignoreBinaries": ["eas"]
+}

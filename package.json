@@ -19,7 +19,16 @@
     "i18n:pull": "tolgee pull",
     "android:build:aab": "eas build -p android -e production-aab --local",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "ff3:test": "node scripts/ff3-test.mjs",
+    "e2e": "node scripts/e2e.mjs",
+    "analyze": "node scripts/analyze.mjs",
+    "analyze:lint": "eslint -c eslint.strict.config.js app src",
+    "analyze:dead": "knip",
+    "analyze:dupes": "jscpd --config .jscpd.json",
+    "analyze:cycles": "dpdm --no-warning --no-tree -T --exit-code circular:1 \"app/**/*.tsx\" \"src/**/*.ts\" \"src/**/*.tsx\"",
+    "analyze:deps": "npm audit --omit=dev --audit-level=high",
+    "analyze:doctor": "npx -y expo-doctor"
   },
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",
@@ -69,14 +78,19 @@
     "babel-preset-expo": "~57.0.13",
     "better-sqlite3": "^13.0.3",
     "dotenv": "^18.0.4",
+    "dpdm": "3.15.1",
     "drizzle-kit": "^0.31.11",
     "eslint": "^9.0.0",
     "eslint-config-expo": "^57.0.2",
+    "eslint-plugin-i18next": "6.1.5",
     "jest": "^29.7.0",
     "jest-expo": "57.0.5",
+    "jscpd": "4.3.0",
+    "knip": "5.88.1",
     "prettier": "^3.9.9",
     "react-dom": "19.2.3",
-    "typescript": "~6.0.3"
+    "typescript": "~6.0.3",
+    "typescript-eslint": "8.71.0"
   },
   "private": true
 }

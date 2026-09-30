@@ -1,0 +1,22 @@
+appId: ${APP_ID}
+name: 'U1 · Install over the previous release (2/2: new APK)'
+tags:
+  - release
+  - host
+---
+# The new build opens on the old data (its migrations ran): the draft is there, and the queued
+# change sends once the network is back.
+- launchApp:
+    appId: ${APP_ID}
+- extendedWaitUntil:
+    visible: 'Inbox'
+    timeout: 60000
+- assertNotVisible: '.*[Mm]igration.*'
+- assertVisible: 'U1 draft ${RUN_ID}'
+- setAirplaneMode: disabled
+- runFlow: ../../subflows/wait-sent.yaml
+- runScript:
+    file: ../../scripts/ff3.js
+    env: { ACTION: findTx, PAYEE: 'U1 queued ${RUN_ID}', EXPECT_AMOUNT: '12' }
+- tapOn: 'U1 draft ${RUN_ID}'
+- runFlow: ../../subflows/delete-draft.yaml

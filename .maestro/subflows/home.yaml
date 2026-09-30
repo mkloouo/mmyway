@@ -1,0 +1,11 @@
+appId: ${APP_ID}
+---
+# Back to the Inbox from wherever the flow is: stack screens (a transaction, an account, the
+# conflict view) hide the tab bar, so press Back until it shows.
+- repeat:
+    times: 5
+    while:
+      notVisible: 'Inbox'
+    commands:
+      - back
+- tapOn: 'Inbox'

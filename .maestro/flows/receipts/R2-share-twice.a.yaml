@@ -1,0 +1,16 @@
+appId: ${APP_ID}
+name: 'R2 · Share from the gallery (1/2)'
+tags:
+  - release
+  - host
+---
+# After the runner shared fixtures/receipt-r2.jpg: the app lands on the Inbox with one new receipt.
+- launchApp:
+    appId: ${APP_ID}
+- extendedWaitUntil:
+    visible: 'Inbox'
+    timeout: 20000
+- extendedWaitUntil:
+    visible: 'TO CONFIRM'
+    timeout: 20000
+- takeScreenshot: R2-after-first-share

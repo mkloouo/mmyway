@@ -1,0 +1,31 @@
+appId: ${APP_ID}
+name: 'S4 · Edit a synced transaction'
+tags:
+  - smoke
+---
+# A transaction that already exists in Firefly III: change its category in the app and Save. It
+# shows as queued, goes out on its own, and Firefly III has the new category.
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      ACTION: createTx
+      PAYEE: 'S4 ${RUN_ID}'
+      DESCRIPTION: 'S4 ${RUN_ID}'
+      AMOUNT: '31.00'
+      CATEGORY: 'Groceries'
+- runFlow: ../../subflows/ready.yaml
+- runFlow:
+    file: ../../subflows/open-transaction.yaml
+    env:
+      QUERY: 'S4 ${RUN_ID}'
+- tapOn: 'Category'
+- tapOn: 'Fuel'
+- tapOn: 'Save'
+- runFlow: ../../subflows/wait-sent.yaml
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      ACTION: findTx
+      PAYEE: 'S4 ${RUN_ID}'
+      EXPECT_CATEGORY: 'Fuel'
+      EXPECT_AMOUNT: '31.00'

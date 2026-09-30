@@ -1,0 +1,73 @@
+appId: ${APP_ID}
+name: 'Q3 · Retry now, Discard, Cancel (#74)'
+tags:
+  - release
+---
+# A failed change: Retry now sends it again (it fails again), Discard drops it. A queued new
+# entry: Cancel returns it to the Inbox as a draft, and nothing reaches Firefly III.
+- runScript:
+    file: ../../scripts/ff3.js
+    env: { ACTION: createTx, PAYEE: 'Q3a ${RUN_ID}', DESCRIPTION: 'Q3a ${RUN_ID}', AMOUNT: '13.00' }
+- runFlow: ../../subflows/ready.yaml
+- setAirplaneMode: enabled
+- runFlow:
+    file: ../../subflows/open-transaction.yaml
+    env: { QUERY: 'Q3a ${RUN_ID}' }
+- tapOn: 'Category'
+- tapOn: 'Fuel'
+- tapOn: 'Save'
+- runFlow: ../../subflows/home.yaml
+- runScript:
+    file: ../../scripts/ff3.js
+    env: { ACTION: deleteTx, PAYEE: 'Q3a ${RUN_ID}' }
+- setAirplaneMode: disabled
+- extendedWaitUntil:
+    visible: 'NEEDS ATTENTION'
+    timeout: 90000
+- tapOn: 'Retry now'
+- extendedWaitUntil:
+    notVisible: 'Sending…'
+    timeout: 30000
+- assertVisible: 'NEEDS ATTENTION'
+- tapOn: 'Discard'
+- tapOn:
+    text: 'Discard'
+    below: "Discard this queued change\\?"
+- assertNotVisible: 'NEEDS ATTENTION'
+# Cancel a queued new entry (offline, so it stays queued).
+- setAirplaneMode: enabled
+- runFlow:
+    file: ../../subflows/capture.yaml
+    env:
+      {
+        TYPE_LABEL: '',
+        AMOUNT: '3',
+        PAYEE: 'Q3b ${RUN_ID}',
+        PAYEE_NEW: 'true',
+        ACCOUNT: 'Checking',
+        TO_ACCOUNT: '',
+        CATEGORY: '',
+        DESCRIPTION: '',
+        SAVE: confirm,
+      }
+- runFlow: ../../subflows/close-capture.yaml
+- extendedWaitUntil:
+    visible: 'QUEUED'
+    timeout: 15000
+- tapOn: 'Cancel'
+- runFlow:
+    when:
+      visible: "Cancel this change\\?"
+    commands:
+      - tapOn:
+          text: 'Cancel'
+          below: "Cancel this change\\?"
+- assertVisible: 'TO CONFIRM'
+- assertVisible: 'Q3b ${RUN_ID}'
+- setAirplaneMode: disabled
+- runFlow: ../../subflows/sync.yaml
+- runScript:
+    file: ../../scripts/ff3.js
+    env: { ACTION: findTx, PAYEE: 'Q3b ${RUN_ID}', EXPECT_COUNT: '0', TIMEOUT_MS: '5000' }
+- tapOn: 'Q3b ${RUN_ID}'
+- runFlow: ../../subflows/delete-draft.yaml

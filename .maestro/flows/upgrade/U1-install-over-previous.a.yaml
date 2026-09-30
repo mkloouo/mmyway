@@ -1,0 +1,40 @@
+appId: ${APP_ID}
+name: 'U1 · Install over the previous release (1/2: previous APK)'
+tags:
+  - release
+  - host
+---
+# On the previous release (the runner installed --previous-apk): a draft, and a change queued
+# offline. The runner then installs the new APK over it, keeping the data.
+- runFlow: ../../subflows/ready.yaml
+- runFlow:
+    file: ../../subflows/capture.yaml
+    env:
+      {
+        TYPE_LABEL: '',
+        AMOUNT: '11',
+        PAYEE: 'U1 draft ${RUN_ID}',
+        PAYEE_NEW: 'true',
+        ACCOUNT: 'Checking',
+        TO_ACCOUNT: '',
+        CATEGORY: '',
+        DESCRIPTION: '',
+        SAVE: inbox,
+      }
+- setAirplaneMode: enabled
+- runFlow:
+    file: ../../subflows/capture.yaml
+    env:
+      {
+        TYPE_LABEL: '',
+        AMOUNT: '12',
+        PAYEE: 'U1 queued ${RUN_ID}',
+        PAYEE_NEW: 'true',
+        ACCOUNT: 'Checking',
+        TO_ACCOUNT: '',
+        CATEGORY: '',
+        DESCRIPTION: '',
+        SAVE: confirm,
+      }
+- runFlow: ../../subflows/close-capture.yaml
+- pressKey: Home

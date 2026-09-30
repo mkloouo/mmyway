@@ -1,0 +1,24 @@
+appId: ${APP_ID}
+name: 'T2 · Two server addresses (1/3: LAN first)'
+tags:
+  - release
+  - host
+---
+# Adds the laptop's Wi-Fi address (FF3_LAN_URL) as the primary address; on Wi-Fi a sync uses it.
+# The runner then switches the phone's Wi-Fi off.
+- runFlow: ../../subflows/ready.yaml
+- tapOn: 'Settings'
+- tapOn:
+    text: 'Addresses'
+    index: 0
+- tapOn: 'https://…'
+- inputText: ${FF3_LAN_URL}
+- tapOn: "\\+ Add address"
+- tapOn: 'Make ${FF3_LAN_URL} primary'
+- back
+- runFlow: ../../subflows/sync.yaml
+- tapOn: 'Sync status'
+- assertVisible:
+    text: 'in use'
+    below: ${FF3_LAN_URL}
+- back

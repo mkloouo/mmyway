@@ -1,0 +1,52 @@
+appId: ${APP_ID}
+name: 'C1 · Deposit and transfer'
+tags:
+  - release
+---
+# One of each type: each lands with the right account on each end; the transfer has no payee.
+- runFlow: ../../subflows/ready.yaml
+- runFlow:
+    file: ../../subflows/capture.yaml
+    env:
+      TYPE_LABEL: 'Income'
+      AMOUNT: '100'
+      PAYEE: 'C1 in ${RUN_ID}'
+      PAYEE_NEW: 'true'
+      ACCOUNT: 'Checking'
+      TO_ACCOUNT: ''
+      CATEGORY: 'Salary'
+      DESCRIPTION: ''
+      SAVE: confirm
+- runFlow:
+    file: ../../subflows/capture.yaml
+    env:
+      TYPE_LABEL: 'Transfer'
+      AMOUNT: '50'
+      PAYEE: ''
+      PAYEE_NEW: 'false'
+      ACCOUNT: 'Checking'
+      TO_ACCOUNT: 'Cash wallet'
+      CATEGORY: ''
+      DESCRIPTION: 'C1 transfer ${RUN_ID}'
+      SAVE: confirm
+- runFlow: ../../subflows/close-capture.yaml
+- runFlow: ../../subflows/wait-sent.yaml
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      ACTION: findTx
+      PAYEE: 'C1 in ${RUN_ID}'
+      EXPECT_TYPE: 'deposit'
+      EXPECT_AMOUNT: '100'
+      EXPECT_SOURCE: 'C1 in ${RUN_ID}'
+      EXPECT_DESTINATION: 'Checking'
+      EXPECT_CATEGORY: 'Salary'
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      ACTION: findTx
+      DESCRIPTION: 'C1 transfer ${RUN_ID}'
+      EXPECT_TYPE: 'transfer'
+      EXPECT_AMOUNT: '50'
+      EXPECT_SOURCE: 'Checking'
+      EXPECT_DESTINATION: 'Cash wallet'

@@ -1,0 +1,11 @@
+appId: ${APP_ID}
+---
+# On the draft (Review) screen: More → Delete draft → confirm. Leaves the Inbox clean.
+- tapOn: 'More'
+- tapOn: 'Delete draft'
+- tapOn:
+    text: 'Delete'
+    below: "Delete this draft\\?"
+- extendedWaitUntil:
+    visible: 'Inbox'
+    timeout: 10000

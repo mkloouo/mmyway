@@ -1,0 +1,48 @@
+appId: ${APP_ID}
+name: 'S3 · Confirm, then Undo'
+tags:
+  - smoke
+---
+# Save & ✓, Undo inside the 5 s window (back in the Inbox, nothing sent), then confirm from the
+# draft: it goes out by itself and lands in Firefly III exactly once.
+- runFlow: ../../subflows/ready.yaml
+- runFlow:
+    file: ../../subflows/capture.yaml
+    env:
+      TYPE_LABEL: ''
+      AMOUNT: '7,50'
+      PAYEE: 'S3 ${RUN_ID}'
+      PAYEE_NEW: 'true'
+      ACCOUNT: 'Checking'
+      TO_ACCOUNT: ''
+      CATEGORY: 'Groceries'
+      DESCRIPTION: ''
+      SAVE: confirm
+- tapOn: 'Undo'
+- extendedWaitUntil:
+    visible: 'Undone — it is back in the Inbox'
+    timeout: 5000
+- runFlow: ../../subflows/close-capture.yaml
+- assertVisible: 'S3 ${RUN_ID}'
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      ACTION: findTx
+      PAYEE: 'S3 ${RUN_ID}'
+      EXPECT_COUNT: '0'
+      TIMEOUT_MS: '8000'
+- tapOn: 'S3 ${RUN_ID}'
+- tapOn: 'Confirm'
+- runFlow: ../../subflows/wait-sent.yaml
+- assertNotVisible: 'S3 ${RUN_ID}'
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      ACTION: findTx
+      PAYEE: 'S3 ${RUN_ID}'
+      EXPECT_COUNT: '1'
+      EXPECT_AMOUNT: '7.50'
+      EXPECT_CATEGORY: 'Groceries'
+      EXPECT_SOURCE: 'Checking'
+- tapOn: 'Activity'
+- assertVisible: '.*S3 ${RUN_ID}.*'

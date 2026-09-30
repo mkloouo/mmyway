@@ -1,0 +1,15 @@
+{
+  "threshold": 1,
+  "minLines": 8,
+  "minTokens": 70,
+  "path": ["app", "src"],
+  "ignore": [
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/migrations/**",
+    "src/api/ff3/types.ts",
+    "**/locales/**"
+  ],
+  "reporters": ["console"],
+  "gitignore": true
+}

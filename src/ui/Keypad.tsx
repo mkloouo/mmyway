@@ -20,11 +20,14 @@ function Key({
   onPress,
   tone,
   disabled,
+  testID,
 }: {
   label: string;
   onPress: () => void;
   tone?: 'default' | 'accent';
   disabled?: boolean;
+  /** For the Maestro flows (.maestro/): a digit's label also matches the amount it typed. */
+  testID?: string;
 }) {
   const t = useTheme();
   const isAccent = tone === 'accent';
@@ -51,6 +54,7 @@ function Key({
         onPressOut={() => press(1)}
         onPress={onPress}
         disabled={disabled}
+        testID={testID}
         accessibilityRole="button"
         accessibilityLabel={label}
         style={({ pressed }) => ({
@@ -114,9 +118,16 @@ export function Keypad(props: KeypadProps) {
       {DIGIT_ROWS.map((row, rowIndex) => (
         <View key={rowIndex} style={{ flexDirection: 'row' }}>
           {row.map((key) => (
-            <Key key={key} label={key} onPress={() => onDigit(key)} />
+            <Key
+              key={key}
+              label={key}
+              onPress={() => onDigit(key)}
+              testID={`keypad-${key === ',' ? 'decimal' : key}`}
+            />
           ))}
-          {rowIndex === 0 && <Key label="⌫" onPress={() => onDigit('⌫')} />}
+          {rowIndex === 0 && (
+            <Key label="⌫" onPress={() => onDigit('⌫')} testID="keypad-backspace" />
+          )}
           {rowIndex === 1 &&
             (props.compact ? (
               <Spacer />
@@ -136,6 +147,7 @@ export function Keypad(props: KeypadProps) {
             <Key
               label={saveLabel}
               tone="accent"
+              testID="keypad-save"
               onPress={onSave}
               disabled={saveDisabled || saving}
             />

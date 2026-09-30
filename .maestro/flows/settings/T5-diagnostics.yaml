@@ -1,0 +1,23 @@
+appId: ${APP_ID}
+name: 'T5 · Diagnostics log'
+tags:
+  - release
+  - host
+---
+# Settings → Diagnostics → Share opens the share sheet. The runner then reads the log file over
+# adb and fails the run if it contains the API token or a key.
+- runFlow: ../../subflows/ready.yaml
+- tapOn: 'Settings'
+- scrollUntilVisible:
+    element:
+      text: 'Diagnostics'
+    direction: DOWN
+- tapOn: 'Diagnostics'
+- runFlow:
+    when:
+      visible: 'Share'
+    commands:
+      - tapOn: 'Share'
+      - takeScreenshot: T5-share-sheet
+      - back
+- runFlow: ../../subflows/home.yaml

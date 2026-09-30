@@ -1,0 +1,7 @@
+appId: ${APP_ID}
+---
+# Waits, hands off, until nothing is queued: the push after a confirm or an edit went out.
+- tapOn: 'Inbox'
+- extendedWaitUntil:
+    notVisible: "Queued \\d+"
+    timeout: 90000

@@ -1,0 +1,21 @@
+appId: ${APP_ID}
+name: 'T4 · Language and theme (2/2: dark mode)'
+tags:
+  - release
+  - host
+---
+# The phone is in dark mode: a screenshot of every tab and of Capture, for a look at contrast.
+- launchApp:
+    appId: ${APP_ID}
+- runFlow: ../../subflows/home.yaml
+- takeScreenshot: T4-dark-inbox
+- tapOn: 'Activity'
+- takeScreenshot: T4-dark-activity
+- tapOn: 'Planned'
+- takeScreenshot: T4-dark-planned
+- tapOn: 'Settings'
+- takeScreenshot: T4-dark-settings
+- tapOn: 'Inbox'
+- tapOn: 'Add an entry'
+- takeScreenshot: T4-dark-capture
+- runFlow: ../../subflows/close-capture.yaml

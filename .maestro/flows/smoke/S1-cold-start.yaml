@@ -1,0 +1,25 @@
+appId: ${APP_ID}
+name: 'S1 · Cold start'
+tags:
+  - smoke
+---
+# Swipe the app away and open it: migrations run, the first sync finishes without an error, and
+# Inbox and Activity load with the seed's data.
+- runFlow: ../../subflows/ready.yaml
+- stopApp
+- launchApp:
+    appId: ${APP_ID}
+- extendedWaitUntil:
+    visible: 'Inbox'
+    timeout: 30000
+- extendedWaitUntil:
+    notVisible: 'Syncing…'
+    timeout: 90000
+- assertNotVisible: 'Sync error'
+- assertNotVisible: 'Not signed in'
+- tapOn: 'Activity'
+- extendedWaitUntil:
+    visible: 'Fuel'
+    timeout: 15000
+- takeScreenshot: S1-activity
+- tapOn: 'Inbox'

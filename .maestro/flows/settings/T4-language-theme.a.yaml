@@ -1,0 +1,27 @@
+appId: ${APP_ID}
+name: 'T4 · Language and theme (1/2: Ukrainian)'
+tags:
+  - release
+  - host
+---
+# Ukrainian everywhere (screenshots for a look at leftovers), then back to English. The runner
+# then turns the phone's dark mode on.
+- runFlow: ../../subflows/ready.yaml
+- tapOn: 'Settings'
+- tapOn: 'Language'
+- tapOn: 'Українська'
+- extendedWaitUntil:
+    visible: 'Вхідні'
+    timeout: 10000
+- assertVisible: 'Налаштування'
+- takeScreenshot: T4-uk-settings
+- tapOn: 'Вхідні'
+- takeScreenshot: T4-uk-inbox
+- tapOn: 'Активність'
+- takeScreenshot: T4-uk-activity
+- tapOn: 'Налаштування'
+- tapOn: 'Мова'
+- tapOn: 'English|Англійська'
+- extendedWaitUntil:
+    visible: 'Inbox'
+    timeout: 10000

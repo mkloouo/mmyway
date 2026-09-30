@@ -1,0 +1,24 @@
+appId: ${APP_ID}
+name: 'A3 · Split detail and duplicate'
+tags:
+  - release
+---
+# The seed's two-split "Weekly shop" shows both splits; duplicating "Fuel" makes a new draft with
+# the same payee.
+- runFlow: ../../subflows/ready.yaml
+- runFlow:
+    file: ../../subflows/open-transaction.yaml
+    env: { QUERY: 'Weekly shop' }
+- assertVisible: 'Food'
+- tapOn: 'Split 2 / 2'
+- assertVisible: 'Cleaning'
+- runFlow:
+    file: ../../subflows/open-transaction.yaml
+    env: { QUERY: 'Fuel' }
+- tapOn: 'More'
+- tapOn: 'Duplicate'
+- extendedWaitUntil:
+    visible: 'Review'
+    timeout: 10000
+- assertVisible: 'Orlen'
+- runFlow: ../../subflows/delete-draft.yaml

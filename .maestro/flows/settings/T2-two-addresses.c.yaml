@@ -1,0 +1,19 @@
+appId: ${APP_ID}
+name: 'T2 · Two server addresses (3/3: clean up)'
+tags:
+  - release
+  - host
+---
+- launchApp:
+    appId: ${APP_ID}
+- runFlow: ../../subflows/home.yaml
+- tapOn: 'Settings'
+- tapOn:
+    text: 'Addresses'
+    index: 0
+- tapOn: 'Remove ${FF3_LAN_URL}'
+- tapOn:
+    text: 'Remove'
+    below: "Remove this address\\?"
+- back
+- runFlow: ../../subflows/sync.yaml

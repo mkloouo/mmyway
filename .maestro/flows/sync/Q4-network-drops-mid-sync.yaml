@@ -1,0 +1,37 @@
+appId: ${APP_ID}
+name: 'Q4 · Network drops mid-sync (#73)'
+tags:
+  - release
+---
+# Sync now, then the network goes away at once. The sync ends by itself (requests time out)
+# instead of hanging, and the next sync and the next write work without restarting the app.
+- runFlow: ../../subflows/ready.yaml
+- tapOn: 'Sync status'
+- tapOn: 'Sync now'
+- setAirplaneMode: enabled
+- extendedWaitUntil:
+    notVisible: 'Syncing…'
+    timeout: 60000
+- back
+- setAirplaneMode: disabled
+- runFlow: ../../subflows/sync.yaml
+- assertNotVisible: 'Sync error'
+- runFlow:
+    file: ../../subflows/capture.yaml
+    env:
+      {
+        TYPE_LABEL: '',
+        AMOUNT: '4',
+        PAYEE: 'Q4 ${RUN_ID}',
+        PAYEE_NEW: 'true',
+        ACCOUNT: 'Checking',
+        TO_ACCOUNT: '',
+        CATEGORY: '',
+        DESCRIPTION: '',
+        SAVE: confirm,
+      }
+- runFlow: ../../subflows/close-capture.yaml
+- runFlow: ../../subflows/wait-sent.yaml
+- runScript:
+    file: ../../scripts/ff3.js
+    env: { ACTION: findTx, PAYEE: 'Q4 ${RUN_ID}', EXPECT_AMOUNT: '4' }

@@ -1,0 +1,29 @@
+appId: ${APP_ID}
+name: 'Q5 · Background sync (1/2: queue and leave)'
+tags:
+  - release
+  - host
+---
+# Confirm offline, then leave the app. The runner then kills the process, turns the network back
+# on and runs the WorkManager job, so only the background task can send it.
+- runFlow: ../../subflows/ready.yaml
+- setAirplaneMode: enabled
+- runFlow:
+    file: ../../subflows/capture.yaml
+    env:
+      {
+        TYPE_LABEL: '',
+        AMOUNT: '5',
+        PAYEE: 'Q5 ${RUN_ID}',
+        PAYEE_NEW: 'true',
+        ACCOUNT: 'Checking',
+        TO_ACCOUNT: '',
+        CATEGORY: '',
+        DESCRIPTION: '',
+        SAVE: confirm,
+      }
+- runFlow: ../../subflows/close-capture.yaml
+- extendedWaitUntil:
+    visible: 'Queued 1|Offline — 1 queued, will send later'
+    timeout: 15000
+- pressKey: Home

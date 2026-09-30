@@ -1,0 +1,44 @@
+appId: ${APP_ID}
+name: 'T3 · Sign out and back in'
+tags:
+  - release
+---
+# Refused while a change is queued. With an empty queue it signs out and clears the synced data;
+# signing in again brings everything back.
+- runFlow: ../../subflows/ready.yaml
+- setAirplaneMode: enabled
+- runFlow:
+    file: ../../subflows/capture.yaml
+    env:
+      {
+        TYPE_LABEL: '',
+        AMOUNT: '1',
+        PAYEE: 'T3 ${RUN_ID}',
+        PAYEE_NEW: 'true',
+        ACCOUNT: 'Checking',
+        TO_ACCOUNT: '',
+        CATEGORY: '',
+        DESCRIPTION: '',
+        SAVE: confirm,
+      }
+- runFlow: ../../subflows/close-capture.yaml
+- tapOn: 'Settings'
+- tapOn: 'Sign out'
+- assertVisible: "Can't sign out yet"
+- tapOn: 'OK'
+- setAirplaneMode: disabled
+- runFlow: ../../subflows/wait-sent.yaml
+- tapOn: 'Settings'
+- tapOn: 'Sign out'
+- tapOn:
+    text: 'Sign out'
+    below: "Sign out\\?"
+- assertVisible: 'not connected'
+- tapOn: 'Activity'
+- assertVisible: 'Nothing cached yet'
+- tapOn: 'Inbox'
+- assertVisible: 'Connect Firefly III'
+- runFlow: ../../subflows/sign-in.yaml
+- runFlow: ../../subflows/sync.yaml
+- tapOn: 'Activity'
+- assertVisible: 'Fuel'

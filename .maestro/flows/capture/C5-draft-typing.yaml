@@ -1,0 +1,33 @@
+appId: ${APP_ID}
+name: 'C5 · Typing in a draft'
+tags:
+  - release
+---
+# Fast typing, deleting and typing again in a draft's description keeps exactly what was typed
+# (regression: fields used to lose keystrokes to their own saved value).
+- runFlow: ../../subflows/ready.yaml
+- runFlow:
+    file: ../../subflows/capture.yaml
+    env:
+      TYPE_LABEL: ''
+      AMOUNT: '1'
+      PAYEE: 'C5 ${RUN_ID}'
+      PAYEE_NEW: 'true'
+      ACCOUNT: 'Checking'
+      TO_ACCOUNT: ''
+      CATEGORY: ''
+      DESCRIPTION: ''
+      SAVE: inbox
+- runFlow: ../../subflows/close-capture.yaml
+- tapOn: 'C5 ${RUN_ID}'
+- tapOn: 'Description'
+- inputText: 'The quick brown fox jumps over the lazy dog 1234567890'
+- eraseText: 10
+- inputText: 'done'
+- tapOn: 'Done'
+- assertVisible: 'The quick brown fox jumps over the lazy dog done'
+- tapOn: 'Description'
+- inputText: ' again'
+- tapOn: 'Done'
+- assertVisible: 'The quick brown fox jumps over the lazy dog done again'
+- runFlow: ../../subflows/delete-draft.yaml

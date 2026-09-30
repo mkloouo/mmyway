@@ -111,6 +111,7 @@ Queued operations and cached rows carry one FF3 instance's ids. Signing out, or 
 - Database tests use `createTestDb()` from `src/db/testDb.ts` (better-sqlite3, in memory). Never import it from anything the app bundles.
 - Network is always mocked: no test talks to a real FF3, Gemini or local model.
 - Screen and component tests use React Native Testing Library and live in `src/__screens__/`, never under `app/`.
+- On a device: `.maestro/` automates the device-run checklist with Maestro, run by `scripts/e2e.mjs` against a throwaway Firefly III from `scripts/ff3-test.mjs` (Docker, SQLite, the production patches, seeded from `tools/ff3-test/seed.json`). Each flow checks its result in Firefly III, not only on screen. See `.maestro/README.md`.
 
 ## How to
 

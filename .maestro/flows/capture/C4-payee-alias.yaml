@@ -1,0 +1,60 @@
+appId: ${APP_ID}
+name: 'C4 · Payee alias is learned'
+tags:
+  - release
+---
+# A draft's raw payee text is corrected to an existing payee (Żabka); the next capture typed with
+# the same raw text books to Żabka by itself, and Settings → Aliases lists the alias.
+- runFlow: ../../subflows/ready.yaml
+- runFlow:
+    file: ../../subflows/capture.yaml
+    env:
+      TYPE_LABEL: ''
+      AMOUNT: '5'
+      PAYEE: 'c4 shop ${RUN_ID}'
+      PAYEE_NEW: 'true'
+      ACCOUNT: 'Checking'
+      TO_ACCOUNT: ''
+      CATEGORY: ''
+      DESCRIPTION: 'c4 first ${RUN_ID}'
+      SAVE: inbox
+- runFlow: ../../subflows/close-capture.yaml
+- tapOn: 'c4 shop ${RUN_ID}'
+- tapOn: 'Payee'
+- inputText: 'Żabka'
+- tapOn:
+    text: 'Żabka'
+    index: 1
+- assertVisible: '.*will book to Żabka.*|.*Żabka.*'
+- tapOn: 'Confirm'
+- runFlow: ../../subflows/wait-sent.yaml
+# The second capture: the same raw text resolves through the alias.
+- tapOn: 'Add an entry'
+- tapOn:
+    id: 'keypad-6'
+- tapOn: 'Search payees'
+- inputText: 'c4 shop ${RUN_ID}'
+- assertVisible: '.*alias “c4 shop ${RUN_ID}”.*'
+- tapOn:
+    text: 'Żabka'
+    index: 1
+- tapOn: 'Details'
+- tapOn: 'Description'
+- inputText: 'c4 second ${RUN_ID}'
+- tapOn: 'Done'
+- tapOn:
+    id: 'keypad-save'
+- runFlow: ../../subflows/close-capture.yaml
+- runFlow: ../../subflows/wait-sent.yaml
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      ACTION: findTx
+      DESCRIPTION: 'c4 second ${RUN_ID}'
+      EXPECT_DESTINATION: 'Żabka'
+      EXPECT_AMOUNT: '6'
+- tapOn: 'Settings'
+- tapOn: 'Aliases'
+- assertVisible: '.*c4 shop ${RUN_ID}.*'
+- back
+- tapOn: 'Inbox'
