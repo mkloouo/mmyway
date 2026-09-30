@@ -48,6 +48,8 @@ export interface RuleAttributes {
   strict?: boolean;
   triggers?: RuleTrigger[];
   actions?: RuleAction[];
+  /** Where the Planned tab keeps its time (src/planned/plannedTime.ts), after any text of the user's. */
+  description?: string | null;
   [key: string]: unknown;
 }
 

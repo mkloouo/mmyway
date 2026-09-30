@@ -6,7 +6,7 @@ import { enqueueOperation } from './outbox';
 import type { NewOutboxOperation, OutboxDb } from './outbox';
 import { generateId } from '../utils/id';
 import { readReviewJournal, writeDraft, type ReviewJournal } from '../inbox/draftJson';
-import { plannedKey, readPlannedRow } from '../planned/objects';
+import { plannedKey, readPlannedRow, type PlannedObject } from '../planned/objects';
 import { atPlannedTime, readPlannedTime } from '../planned/plannedTime';
 import { normkey } from '../lookup/normkey';
 import { fetchAll } from './referenceData';
@@ -153,12 +153,20 @@ export async function editRecurringReview(
 
 /**
  * FF3 books a recurring transaction at whatever time its daily job ran. When the Planned tab gave
- * its recurrence a time (the `[mmyway time=…]` marker in its notes), approving moves it to that time
- * on the day it was booked. Found by the journal's recurrence id, else by the recurrence's title.
+ * it a time (the `[mmyway time=…]` marker in its rule's description, src/planned/plannedTime.ts),
+ * approving moves it to that time on the day it was booked. The rule is the one the Planned tab
+ * pairs with the recurrence: the same name. A recurrence's own notes held the time before.
  */
 async function plannedDateFor(db: OutboxDb, journal: ReviewJournal): Promise<string | null> {
   if (!journal.date) return null;
-  const time = readPlannedTime((await recurrenceFor(db, journal))?.notes);
+  const recurrence = await recurrenceRowFor(db, journal);
+  if (!recurrence) return null;
+  const rules = await db.select().from(plannedObjects).where(eq(plannedObjects.kind, 'rule'));
+  const ruleRow = rules.find((r) => normkey(r.name) === normkey(recurrence.name));
+  const rule = ruleRow ? readPlannedRow(ruleRow) : null;
+  const time =
+    readPlannedTime(rule?.attributes.description as string | null | undefined) ??
+    readPlannedTime((recurrence.attributes as RecurrenceAttributes).notes);
   return time ? atPlannedTime(journal.date, time) : null;
 }
 
@@ -168,24 +176,29 @@ type RecurrenceAttributes = {
 };
 
 /** The cached recurrence that booked a journal: by the journal's recurrence id, else by title. */
-async function recurrenceFor(
+async function recurrenceRowFor(
   db: OutboxDb,
   journal: ReviewJournal,
-): Promise<RecurrenceAttributes | undefined> {
+): Promise<PlannedObject | null> {
   const recurrenceId = (journal as { recurrence_id?: string | number | null }).recurrence_id;
   if (recurrenceId != null) {
     const [row] = await db
       .select()
       .from(plannedObjects)
       .where(eq(plannedObjects.key, plannedKey('recurrence', String(recurrenceId))));
-    if (row) return readPlannedRow(row)?.attributes as RecurrenceAttributes | undefined;
+    if (row) return readPlannedRow(row);
   }
-  if (!journal.description) return undefined;
+  if (!journal.description) return null;
   const rows = await db.select().from(plannedObjects).where(eq(plannedObjects.kind, 'recurrence'));
   const match = rows.find((r) => normkey(r.name) === normkey(journal.description!));
-  return match
-    ? (readPlannedRow(match)?.attributes as RecurrenceAttributes | undefined)
-    : undefined;
+  return match ? readPlannedRow(match) : null;
+}
+
+async function recurrenceFor(
+  db: OutboxDb,
+  journal: ReviewJournal,
+): Promise<RecurrenceAttributes | undefined> {
+  return (await recurrenceRowFor(db, journal))?.attributes as RecurrenceAttributes | undefined;
 }
 
 /**

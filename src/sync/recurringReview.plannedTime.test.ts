@@ -36,6 +36,52 @@ describe('planned time on approval', () => {
   });
 });
 
+describe('planned time kept in the rule', () => {
+  it("moves an approved recurring transaction to the time in its rule's description", async () => {
+    const db = createTestDb();
+    await db.insert(plannedObjects).values([
+      {
+        key: 'recurrence:7',
+        kind: 'recurrence',
+        ff3Id: '7',
+        name: 'Ableton Live License',
+        attributesJson: JSON.stringify({ title: 'Ableton Live License', notes: 'Rent till own' }),
+        syncedAt: 's',
+      },
+      {
+        key: 'rule:5',
+        kind: 'rule',
+        ff3Id: '5',
+        name: 'Ableton Live License',
+        attributesJson: JSON.stringify({
+          title: 'Ableton Live License',
+          description: '[mmyway time=06:00]',
+        }),
+        syncedAt: 's',
+      },
+    ]);
+    await db.insert(inboxItems).values({
+      id: 'i1',
+      kind: 'recurring_review',
+      state: 'confirmed',
+      ff3GroupId: 'g1',
+      createdAt: 'c',
+      updatedAt: 'u',
+      draftJson: writeDraft({
+        transaction_journal_id: 'j1',
+        updated_at: 'v1',
+        date: '2026-10-05T00:00:00+02:00',
+        recurrence_id: '7',
+        tags: [],
+      }),
+    });
+    await approveRecurringReview(db as never, 'i1');
+    const [op] = await db.select().from(outboxOperations);
+    const date = new Date(JSON.parse(op!.payloadJson).changes.date);
+    expect([date.getDate(), date.getHours(), date.getMinutes()]).toEqual([5, 6, 0]);
+  });
+});
+
 describe('planned currency on pull', () => {
   it('records a recurrence planned in another currency as the review journal foreign amount', async () => {
     const db = createTestDb();

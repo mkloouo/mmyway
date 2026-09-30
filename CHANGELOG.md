@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Planned
+
+- A planned transaction's time is now kept in its rule's description in Firefly III (Automation →
+  Rules), not in its notes, so the note holds only what you wrote. Times kept the old way are read
+  as before and move to the rule the next time you save.
+
 ### Inbox
 
 - A change Firefly III refuses now says which request it refused and which fields, e.g. "— PUT

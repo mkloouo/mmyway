@@ -1,13 +1,16 @@
 // A planned transaction's time of day. FF3's recurring transactions have dates only, so the app
-// keeps the time as a marker in the recurrence's notes and applies it when the booked transaction
-// is approved in the Inbox. FF3 offers a recurrence no hidden field for it (no internal reference,
-// and its meta table isn't writable through the API). Pure.
-
-// The marker is `[mmyway time=09:30]`: brackets rather than a line of its own, because FF3's
-// recurrence *update* strips newlines from the notes (its UpdateRequest reads them with
-// convertString, which deletes \r and \n; create keeps them). The old line form was glued onto
-// the user's text by the first update ("Rent till ownmmyway-time: 09:00"), so it is still read,
-// anywhere in the notes, and replaced by the bracketed form on the next save.
+// keeps the time as a marker, `[mmyway time=09:30]`, in the description of the planned
+// transaction's rule, and applies it when the booked transaction is approved in the Inbox. Pure.
+//
+// Why the rule: FF3 offers a recurrence no hidden field for it (no internal reference, and its meta
+// table isn't writable through the API), and its notes were no good either. They hold the user's
+// note, and the recurrence *update* strips their newlines (its UpdateRequest reads them with
+// convertString, which deletes \r and \n), which glued the old marker line onto the user's text
+// ("Rent till ownmmyway-time: 09:00"). A rule's description keeps newlines, can be cleared, and
+// shows in the rule's edit form, where the user can see what the app keeps there.
+//
+// The marker's brackets make it findable anywhere in a text. Times kept in a recurrence's notes by
+// earlier versions, as the old line or in brackets, are still read, and the next save moves them.
 const MARKER = /\[mmyway\s+time=(\d{1,2}):(\d{2})\]/;
 const LEGACY_MARKER = /mmyway-time:\s*(\d{1,2}):(\d{2})/;
 const ANY_MARKER = new RegExp(`${MARKER.source}|${LEGACY_MARKER.source}`, 'g');
@@ -22,7 +25,7 @@ export function readPlannedTime(notes: string | null | undefined): string | null
   return `${String(hours).padStart(2, '0')}:${match[2]}`;
 }
 
-/** The notes without the marker: what the user wrote. */
+/** A text without any marker, old or new: what the user wrote. */
 export function stripPlannedTime(notes: string | null | undefined): string | null {
   const rest = (notes ?? '')
     .replace(ANY_MARKER, '')
@@ -34,7 +37,7 @@ export function stripPlannedTime(notes: string | null | undefined): string | nul
   return rest || null;
 }
 
-/** The user's notes with the marker for `time` after them (or without one, for no time). */
+/** The user's text with the marker for `time` after it (or without one, for no time). */
 export function withPlannedTime(notes: string | null | undefined, time: string | null): string {
   const own = stripPlannedTime(notes);
   const marker = time ? `[mmyway time=${time}]` : null;

@@ -137,7 +137,8 @@ export function fieldsOf(group: PlannedGroup, today: string): PlannedFields {
     amount: text(tx?.amount) ?? text(bill?.amount_max) ?? '0',
     currencyCode: text(tx?.currency_code) ?? text(bill?.currency_code) ?? '',
     notes: stripPlannedTime(text(rec?.notes) ?? text(bill?.notes)),
-    time: readPlannedTime(rec?.notes),
+    // The rule's description; a recurrence's notes held it before, and are read until the next save.
+    time: readPlannedTime(text(rule?.description)) ?? readPlannedTime(rec?.notes),
     repeats,
     ...schedule,
     date,
@@ -277,10 +278,10 @@ export function recurrenceBody(
   return {
     type: f.type,
     title: f.name,
-    // Null, not left out like a bill's: FF3's recurrence update has no rule for notes and deletes
-    // them when given null. The planned time lives here, and removing it must clear the marker
-    // rather than leave the old one in FF3.
-    notes: withPlannedTime(f.notes, f.time) || null,
+    // Only the user's note: the planned time is kept in the rule (ruleBody). Null, not left out like
+    // a bill's: FF3's recurrence update has no rule for notes and deletes them when given null,
+    // which also clears a time an earlier version kept here.
+    notes: f.notes || null,
     active: true,
     apply_rules: true,
     ...(scheduleChanged(before, f)
@@ -361,6 +362,7 @@ export function ruleBody(
         { type: 'description_contains', value: f.name, active: true, stop_processing: false },
       ],
       actions: managedActions(f),
+      ...(f.time ? { description: withPlannedTime(null, f.time) } : {}),
     };
   }
   const renamed = (value: string) =>
@@ -374,6 +376,9 @@ export function ruleBody(
       ...(existing.actions ?? []).filter((a) => !MANAGED_ACTIONS.has(a.type)).map(cleanAction),
       ...managedActions(f),
     ],
+    // Whatever the user wrote there stays; only the marker is replaced. Null clears it (FF3's rule
+    // update allows that, unlike a bill's notes).
+    description: withPlannedTime(existing.description, f.time) || null,
   };
 }
 

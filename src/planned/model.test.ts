@@ -9,7 +9,7 @@ import {
   type PlannedFields,
 } from './model';
 import { plannedItems } from './items';
-import type { PlannedObject } from './objects';
+import type { PlannedObject, RuleAttributes } from './objects';
 
 const bill: PlannedObject = {
   key: 'bill:1',
@@ -126,19 +126,57 @@ describe('planned model', () => {
     for (const notes of ['', null]) {
       const blank: PlannedFields = { ...fields, notes, time: null };
       expect(billBody(blank, fields)).not.toHaveProperty('notes');
-      // The recurrence clears its notes instead, so a removed planned time goes too.
+      // The recurrence clears its notes instead.
       expect(
         recurrenceBody({ ...blank, sourceId: '1', destinationId: '4' }, fields, {}).notes,
       ).toBeNull();
     }
     expect(billBody({ ...fields, notes: 'Family plan' }, fields).notes).toBe('Family plan');
-    expect(
-      recurrenceBody(
-        { ...fields, notes: '', time: '09:30', sourceId: '1', destinationId: '4' },
-        fields,
-        {},
-      ).notes,
-    ).toBe('[mmyway time=09:30]');
+  });
+
+  it("keeps the planned time in the rule's description, and only the note in the notes", () => {
+    const fields = fieldsOf(groupPlanned([bill, rule, recurrence])[0]!, '2026-09-28');
+    const timed: PlannedFields = { ...fields, notes: 'Family plan', time: '09:30' };
+    expect(recurrenceBody({ ...timed, sourceId: '1', destinationId: '4' }, fields, {}).notes).toBe(
+      'Family plan',
+    );
+    expect(billBody(timed, fields).notes).toBe('Family plan');
+
+    // A new rule gets the marker; an existing one keeps what the user wrote there.
+    expect(ruleBody(timed, null, null, 'g1').description).toBe('[mmyway time=09:30]');
+    expect(ruleBody({ ...timed, time: null }, null, null, 'g1')).not.toHaveProperty('description');
+    const existing = { ...(rule.attributes as RuleAttributes), description: 'Mine' };
+    expect(ruleBody(timed, existing, 'Spotify', null).description).toBe('Mine [mmyway time=09:30]');
+    const withTime = { ...existing, description: 'Mine [mmyway time=09:30]' };
+    expect(ruleBody({ ...timed, time: '18:00' }, withTime, 'Spotify', null).description).toBe(
+      'Mine [mmyway time=18:00]',
+    );
+    expect(ruleBody({ ...timed, time: null }, withTime, 'Spotify', null).description).toBe('Mine');
+    const onlyTime = { ...existing, description: '[mmyway time=09:30]' };
+    expect(ruleBody({ ...timed, time: null }, onlyTime, 'Spotify', null).description).toBeNull();
+  });
+
+  it('reads the time from the rule, else from where an earlier version kept it', () => {
+    const patched = (object: PlannedObject, patch: Record<string, unknown>) =>
+      ({ ...object, attributes: { ...object.attributes, ...patch } }) as PlannedObject;
+    const fromRule = fieldsOf(
+      groupPlanned([
+        bill,
+        patched(rule, { description: '[mmyway time=06:00]' }),
+        patched(recurrence, { notes: 'Rent till own' }),
+      ])[0]!,
+      '2026-09-28',
+    );
+    expect([fromRule.time, fromRule.notes]).toEqual(['06:00', 'Rent till own']);
+    const legacy = fieldsOf(
+      groupPlanned([
+        bill,
+        rule,
+        patched(recurrence, { notes: 'Rent till ownmmyway-time: 09:00' }),
+      ])[0]!,
+      '2026-09-28',
+    );
+    expect([legacy.time, legacy.notes]).toEqual(['09:00', 'Rent till own']);
   });
 
   it('tells a planned transaction left as it was from an edited one', () => {
