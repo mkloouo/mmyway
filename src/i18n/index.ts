@@ -12,7 +12,7 @@ const resources = {
   ['uk-UA']: { translation: ukUA },
 } as const;
 
-export const SUPPORTED_LANGUAGES = Object.keys(resources);
+const SUPPORTED_LANGUAGES = Object.keys(resources);
 
 /** What Settings → Language stores: a supported language, or "system" to follow the device. */
 export type AppLocale = 'system' | 'en' | 'uk-UA';

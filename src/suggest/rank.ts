@@ -1,7 +1,7 @@
 import { normkey } from '../lookup/normkey';
 import type { MerchantHistory } from '../lookup/merchantLookup';
 
-export interface RankedCandidate {
+interface RankedCandidate {
   merchantKey: string;
   displayName: string;
   score: number;

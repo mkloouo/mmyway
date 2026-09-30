@@ -6,14 +6,14 @@ import i18n, { appLocale } from '../i18n';
 
 type CachedRow = typeof cachedTransactions.$inferSelect;
 
-export interface ConflictField {
+interface ConflictField {
   label: string;
   server: string;
   mine: string;
   differs: boolean;
 }
 
-export interface ConflictLookups {
+interface ConflictLookups {
   accountName: (id: string) => string | undefined;
   budgetName: (id: string) => string | undefined;
   money: (amount: string) => string;

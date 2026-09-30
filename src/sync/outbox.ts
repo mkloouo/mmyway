@@ -118,7 +118,7 @@ export interface NewOutboxOperation {
     | Record<string, unknown>;
 }
 
-export interface ReplayResult {
+interface ReplayResult {
   succeeded: string[];
   conflicted: string[];
   failedAt: string | null; // operation id where replay stopped, if any
@@ -132,7 +132,7 @@ export function retryDelayMs(attempts: number): number {
   return Math.min(RETRY_BASE_MS * 2 ** Math.max(0, attempts - 1), RETRY_MAX_MS);
 }
 
-export type ConflictHandler = (
+type ConflictHandler = (
   op: { id: string; payload: UpdateTransactionPayload | DeleteTransactionPayload },
   serverUpdatedAt: string,
 ) => void;
@@ -795,6 +795,8 @@ export function serverUnavailable(err: unknown): boolean {
 /**
  * What the Inbox's failed-operation card shows: FF3's own message and first field error instead of
  * the raw JSON body (`401: {"message":"Unauthenticated.","exception":…}`).
+ *
+ * @public Exported for outbox.regressions.test.ts, which loads it with `requireActual`.
  */
 export function describeFF3Error(err: FF3RequestError): string {
   try {

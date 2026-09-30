@@ -18,9 +18,7 @@ import { persistReceiptImage } from './imageFiles';
 import { downscaleReceipt } from './downscale';
 import { writeDraft } from '../inbox/draftJson';
 
-export { persistReceiptImage, deletePersistedReceiptImage } from './imageFiles';
-
-export type CaptureResult =
+type CaptureResult =
   | { kind: 'duplicate'; itemId: string }
   | { kind: 'created'; itemId: string; parse: Promise<ParseOutcome> };
 

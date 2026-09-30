@@ -6,7 +6,7 @@ import i18n from '../i18n';
 import { getBalancesStale } from '../settings/appSettings';
 import { queuedLedgerOpCount, type OutboxDb } from '../sync/outbox';
 
-export type CountBlocker = { reason: 'queued'; count: number } | { reason: 'stale_balances' };
+type CountBlocker = { reason: 'queued'; count: number } | { reason: 'stale_balances' };
 
 export function countBlocker(queuedLedgerOps: number, balancesStale: boolean): CountBlocker | null {
   if (queuedLedgerOps > 0) return { reason: 'queued', count: queuedLedgerOps };

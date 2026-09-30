@@ -4,7 +4,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Animated, Easing } from 'react-native';
 
-export const COLLAPSE_MS = 260;
+const COLLAPSE_MS = 260;
 
 export function Collapsible({ collapsed, children }: { collapsed: boolean; children: ReactNode }) {
   const [anim] = useState(() => new Animated.Value(1));
