@@ -50,6 +50,7 @@ import { alertDiscardOutcome } from '../../src/inbox/discardAlert';
 import { askPhotoSource, pickPhoto } from '../../src/receipt/pickPhoto';
 import { updateDraft, deleteInboxItem, attachReceiptImage } from '../../src/inbox/updateDraft';
 import { draftReadiness } from '../../src/inbox/readiness';
+import { unsureFields } from '../../src/inbox/unsure';
 import { useMerchantHistories } from '../../src/lookup/useMerchantHistories';
 import { confirmDestructive } from '../../src/ui/confirm';
 import { reportErrors } from '../../src/ui/reportError';
@@ -171,6 +172,9 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
   const currency = currencyOf(currencies, draft.currencyCode);
   const dp = currency.decimalPlaces;
   const readiness = draftReadiness(draft);
+  // What the receipt reader wasn't sure about: marked amber until the user sets it (#120).
+  const unsure = readOnly ? [] : unsureFields(draft);
+  const unsureRows = new Set(unsure.filter((f) => f !== 'amount'));
   const splitMode = isSplitDraft(draft);
   const extras = draft.extraSplits ?? [];
   const amounts = draftAmounts(draft);
@@ -352,11 +356,14 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
   const itemCount =
     row.kind === 'receipt' && draft.notes ? draft.notes.split('\n').filter(Boolean).length : 0;
 
-  const detailRows = (
+  // The payee is a row of its own, except on a split page, which shows each split's payee itself.
+  const detailRows = (withPayee: boolean) => (
     <DetailRows
       value={detailValue}
       onChange={handleDetailChange}
       onDatePress={openDatePicker}
+      payee={withPayee ? { name: payeeName, onPress: () => setSheet('payee') } : undefined}
+      unsure={unsureRows}
       readOnly={readOnly}
       accounts={assetAccounts}
       currencies={currencies}
@@ -401,7 +408,7 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
             loading={referenceLoading}
           />
         ) : (
-          detailRows
+          detailRows(false)
         )}
       </SplitPage>
     );
@@ -447,7 +454,13 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
         />
 
         {!splitMode && (
-          <View style={{ alignItems: 'center', paddingVertical: t.space.lg }}>
+          <View
+            style={{
+              alignItems: 'center',
+              paddingVertical: t.space.lg,
+              paddingHorizontal: t.space.xl,
+            }}
+          >
             <Pressable onPress={() => setKeypadFor(0)} disabled={readOnly}>
               <Money
                 amount={draft.amount}
@@ -457,16 +470,8 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
                 loading={currenciesLoading}
               />
             </Pressable>
-            {draft.type !== 'transfer' && (
-              <Pressable onPress={() => setSheet('payee')} disabled={readOnly}>
-                <Text style={[t.type.heading, { color: t.color.text, marginTop: t.space.xs }]}>
-                  {payeeName || '—'}
-                </Text>
-              </Pressable>
-            )}
-            {/* The title is always here, as on Capture, even when it is the payee's name: it is
-                what the transaction is called in Firefly III. A transfer has no payee, so it
-                is the heading. */}
+            {/* The title is what the transaction is called in Firefly III, as on the transaction
+                screen; the payee is the first row of the details below. */}
             <Pressable
               onPress={() => setTextFor(0)}
               disabled={readOnly}
@@ -475,13 +480,9 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
             >
               <Text
                 style={[
-                  draft.type === 'transfer' ? t.type.heading : t.type.body,
+                  t.type.heading,
                   {
-                    color: !draft.description
-                      ? t.color.textFaint
-                      : draft.type === 'transfer'
-                        ? t.color.text
-                        : t.color.textMuted,
+                    color: draft.description ? t.color.text : t.color.textFaint,
                     marginTop: t.space.xs,
                     textAlign: 'center',
                   },
@@ -509,6 +510,23 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
           contentContainerStyle={{ gap: t.space.md, paddingBottom: t.space.lg }}
         >
           {!!row.errorMessage && !readOnly && <Banner inset>{row.errorMessage}</Banner>}
+          {unsure.length > 0 && (
+            <Banner inset>
+              {tr('draft.checkUnsure', {
+                fields: unsure
+                  .map((f) =>
+                    f === 'amount'
+                      ? tr('fields.amount')
+                      : f === 'date'
+                        ? tr('fields.date')
+                        : draft.type === 'deposit'
+                          ? tr('capture.payer')
+                          : tr('capture.payee'),
+                  )
+                  .join(', '),
+              })}
+            </Banner>
+          )}
           {/* A receipt the model couldn't read a currency from can't be confirmed without one. */}
           {!readOnly && !draft.currencyCode && (
             <View style={{ alignItems: 'center' }}>
@@ -550,7 +568,7 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
               />
             </>
           ) : (
-            detailRows
+            detailRows(true)
           )}
 
           {row.kind !== 'receipt' && !row.receiptImagePath && row.state !== 'synced' && (

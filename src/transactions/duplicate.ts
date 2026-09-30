@@ -7,16 +7,15 @@ import { writeDraft } from '../inbox/draftJson';
 import type { OutboxDb } from '../sync/outbox';
 import { generateId } from '../utils/id';
 import { readSplits, type CachedSplit } from './splitsJson';
+import { SHARED_TAG_PREFIX, sharedWithFromTags } from './sharedWith';
 
 type CachedRow = typeof cachedTransactions.$inferSelect;
 
-const SHARED_TAG_PREFIX = 'mmyway-shared-';
-
 function tagsOf(tags: string[]): { sharedWith?: string; extraTags?: string[] } {
-  const shared = tags.find((t) => t.startsWith(SHARED_TAG_PREFIX));
-  const rest = tags.filter((t) => t !== shared);
+  const shared = sharedWithFromTags(tags);
+  const rest = tags.filter((t) => !t.startsWith(SHARED_TAG_PREFIX));
   return {
-    ...(shared ? { sharedWith: shared.slice(SHARED_TAG_PREFIX.length) } : {}),
+    ...(shared ? { sharedWith: shared } : {}),
     ...(rest.length ? { extraTags: rest } : {}),
   };
 }

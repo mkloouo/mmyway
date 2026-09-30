@@ -49,6 +49,16 @@ describe('conflictFields', () => {
       { label: 'From', server: 'Cash', mine: 'Revolut', differs: true },
     ]);
   });
+  it("labels a queued payee by the transaction's type", () => {
+    expect(conflictFields({ destination_name: 'Lidl' }, row, lookups)).toEqual([
+      { label: 'Payee', server: 'Żabka', mine: 'Lidl', differs: true },
+    ]);
+    const income = { ...row, type: 'deposit', sourceName: 'Employer' };
+    expect(conflictFields({ source_name: 'New job' }, income, lookups)[0]).toMatchObject({
+      label: 'Payer',
+      server: 'Employer',
+    });
+  });
   it('shows an empty server value as a dash', () => {
     expect(conflictFields({ notes: 'x' }, { ...row, notes: null }, lookups)[0]).toMatchObject({
       server: '—',

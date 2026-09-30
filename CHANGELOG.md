@@ -2,6 +2,44 @@
 
 ## [Unreleased]
 
+### Capture
+
+- Capture fits a pop-up or split-screen window, landscape and large text. The fields under the
+  amount scroll when there isn't room, and the keypad and **Save to inbox** always stay on screen.
+- The 🔍 at the start of each chip row stays put while you scroll the chips beside it.
+- Chips are easier to hit: they react to a touch a little above and below where they're drawn.
+- **Shared with** takes several people, separated by commas. Each one becomes its own tag in
+  Firefly III.
+
+### Receipts
+
+- A receipt with no printed date is dated when the photo was taken (read from the photo), or else
+  when you added it. Before, it got the time it was read, which could be hours later. A printed
+  date without a time takes the photo's time if the photo was taken that day.
+
+### Inbox
+
+- A draft's payee (or payer) is now the first row of its details, labelled and tappable like the
+  other rows. The title is the heading under the amount.
+- On a receipt draft, a banner names what the reader wasn't sure about (amount, payee, date), and
+  those rows stay amber until you set them. Its card says **Check the reading**.
+- A draft card from another day shows its date ("yesterday at 14:05", "3 Sep at 14:05"), not just
+  the time.
+- A receipt that no reader could reach says it's **waiting for a receipt reader** instead of
+  "Reading receipt…", and has **Retry now**.
+
+### Activity
+
+- An expense or income now has a **Payee** (or **Payer**) row, so you can see and change who it
+  was paid to or received from. Before, only a split transaction showed it.
+
+### Fixed
+
+- A recurring income or transfer waiting for review is shown as income or a transfer with your own
+  account. Before, it was drawn as spending. Its **Edit** now changes the account the money went
+  to (both accounts for a transfer); before, it replaced the payer with one of your accounts.
+- Editing **Shared with** on a transaction shared with two people no longer drops one of them.
+
 ## [1.4.6] - 2026-09-30
 
 ### Capture

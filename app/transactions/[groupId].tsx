@@ -76,8 +76,8 @@ import { useMerchantHistories } from '../../src/lookup/useMerchantHistories';
 import { ReceiptThumb } from '../../src/ui/ReceiptThumb';
 import { ConflictView } from '../../src/ui/ConflictView';
 import { txTypeLabelKey } from '../../src/transactions/txTypes';
+import { sharedWithFromTags, withSharedWith } from '../../src/transactions/sharedWith';
 
-const SHARED_TAG_PREFIX = 'mmyway-shared-';
 type TxType = 'withdrawal' | 'deposit' | 'transfer';
 
 function parseTags(tagsJson: string): string[] {
@@ -87,16 +87,6 @@ function parseTags(tagsJson: string): string[] {
   } catch {
     return [];
   }
-}
-
-function sharedWithOf(tags: string[]): string | null {
-  const match = tags.find((tag) => tag.startsWith(SHARED_TAG_PREFIX));
-  return match ? match.slice(SHARED_TAG_PREFIX.length) : null;
-}
-
-function withSharedWith(tags: string[], sharedWith: string | null): string[] {
-  const withoutShared = tags.filter((tag) => !tag.startsWith(SHARED_TAG_PREFIX));
-  return sharedWith ? [...withoutShared, `${SHARED_TAG_PREFIX}${sharedWith}`] : withoutShared;
 }
 
 export default function TransactionDetailScreen() {
@@ -280,7 +270,15 @@ function TransactionEditor({ row }: { row: CachedRow }) {
   const effectiveDate = shown.date ? new Date(shown.date) : new Date(row.date);
   const effectiveNotes = shown.notes ?? row.notes ?? null;
   const effectiveTags = shown.tags ?? parseTags(row.tagsJson);
-  const effectiveSharedWith = sharedWithOf(effectiveTags);
+  // The payee of an expense is its destination, the payer of an income its source; a transfer has
+  // neither. A new one is queued by name and turned into an id when it's sent (src/sync/accountIds.ts).
+  const effectivePayee =
+    type === 'withdrawal'
+      ? (shown.destination_name ?? row.destinationName)
+      : type === 'deposit'
+        ? (shown.source_name ?? row.sourceName)
+        : null;
+  const effectiveSharedWith = sharedWithFromTags(effectiveTags);
   const dateLabel = effectiveDate.toLocaleString(appLocale(), {
     day: 'numeric',
     month: 'short',
@@ -312,14 +310,19 @@ function TransactionEditor({ row }: { row: CachedRow }) {
   /** The transaction as one split, with this screen's unsaved changes: where Split starts from. */
   function singleAsSplit(): EditableSplit {
     const destinationId = shown.destination_id ?? row.destinationId ?? null;
+    // A payee picked on this screen has only a name: the old payee's id must not come along.
+    const payeeRenamed =
+      (type === 'withdrawal' && shown.destination_name !== undefined) ||
+      (type === 'deposit' && shown.source_name !== undefined);
     return {
       journalId: row.journalId,
       amount: effectiveAmount,
       description: shown.description ?? row.description,
-      sourceId: effectiveSourceId,
-      sourceName: row.sourceName,
-      destinationId: type === 'withdrawal' ? destinationId : effectiveDestinationId,
-      destinationName: row.destinationName,
+      sourceId: type === 'deposit' && payeeRenamed ? null : effectiveSourceId,
+      sourceName: shown.source_name ?? row.sourceName,
+      destinationId:
+        type === 'withdrawal' ? (payeeRenamed ? null : destinationId) : effectiveDestinationId,
+      destinationName: shown.destination_name ?? row.destinationName,
       categoryName: effectiveCategoryName,
       budgetId: effectiveBudgetId,
       notes: effectiveNotes,
@@ -341,6 +344,14 @@ function TransactionEditor({ row }: { row: CachedRow }) {
         next.tags = withSharedWith(effectiveTags, change.sharedWith ?? null);
       return next;
     });
+  }
+
+  function setPayee(name: string) {
+    setChanges((prev) =>
+      type === 'deposit'
+        ? { ...prev, source_name: name, source_id: undefined }
+        : { ...prev, destination_name: name, destination_id: undefined },
+    );
   }
 
   function editSplit(index: number, patch: Partial<EditableSplit>) {
@@ -440,6 +451,8 @@ function TransactionEditor({ row }: { row: CachedRow }) {
     notes: row.notes ?? undefined,
     tags: parseTags(row.tagsJson),
     source_id: row.sourceId ?? allAssetAccounts.find((a) => a.name === row.sourceName)?.id,
+    source_name: row.sourceName ?? undefined,
+    destination_name: row.destinationName ?? undefined,
     destination_id:
       row.destinationId ?? allAssetAccounts.find((a) => a.name === row.destinationName)?.id,
     budget_id: row.budgetId ?? budgets.find((b) => b.name === row.budgetName)?.id,
@@ -547,7 +560,7 @@ function TransactionEditor({ row }: { row: CachedRow }) {
       budgetId: split.budgetId,
       dateLabel,
       notes: split.notes,
-      sharedWith: sharedWithOf(split.tags),
+      sharedWith: sharedWithFromTags(split.tags),
     };
   }
 
@@ -725,6 +738,7 @@ function TransactionEditor({ row }: { row: CachedRow }) {
                 value={detailValue}
                 onChange={handleDetailChange}
                 onDatePress={openDatePicker}
+                payee={{ name: effectivePayee, onPress: () => setPayeeFor(0) }}
                 accounts={allAssetAccounts}
                 pickableAccounts={activeAssetAccounts}
                 currencies={currencies}
@@ -826,6 +840,10 @@ function TransactionEditor({ row }: { row: CachedRow }) {
         payeeLabel={type === 'deposit' ? 'payer' : 'payee'}
         onSelect={(h) => {
           if (payeeFor === null) return;
+          if (!splitMode) {
+            setPayee(h.displayName);
+            return;
+          }
           editSplit(
             payeeFor,
             type === 'deposit'
@@ -835,6 +853,10 @@ function TransactionEditor({ row }: { row: CachedRow }) {
         }}
         onCreateNew={(text) => {
           if (payeeFor === null) return;
+          if (!splitMode) {
+            setPayee(text);
+            return;
+          }
           editSplit(
             payeeFor,
             type === 'deposit'

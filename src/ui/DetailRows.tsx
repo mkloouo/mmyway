@@ -21,10 +21,19 @@ export interface DetailRowsValue {
   sharedWith: string | null;
 }
 
+/** Rows the receipt reader wasn't sure about (src/inbox/unsure.ts): drawn amber, to be checked. */
+type UnsureRow = 'payee' | 'category' | 'date';
+
 interface DetailRowsProps {
   value: DetailRowsValue;
   onChange: (patch: Partial<DetailRowsValue>) => void;
   onDatePress: () => void;
+  /**
+   * The payee (an expense) or payer (an income) as the first row, when the screen has one to edit.
+   * Left out on a split page, which shows each split's payee itself; never shown on a transfer.
+   */
+  payee?: { name: string | null | undefined; onPress: () => void };
+  unsure?: ReadonlySet<UnsureRow>;
   readOnly?: boolean;
   /** For display — an old transaction can name an account since made inactive. */
   accounts: AccountPickerAccount[];
@@ -59,6 +68,8 @@ export function DetailRows({
   categories,
   budgets,
   loading,
+  payee,
+  unsure,
 }: DetailRowsProps) {
   const t = useTheme();
   const { t: tr } = useTranslation();
@@ -79,13 +90,24 @@ export function DetailRows({
   const destinationAccount = accounts.find((a) => a.id === value.destinationAccountId);
   const budget = budgets.find((b) => b.id === value.budgetId);
   const accountChoices = pickableAccounts ?? accounts;
+  const showPayee = !!payee && value.type !== 'transfer';
+  const check = (row: UnsureRow) => (unsure?.has(row) ? { tone: 'warn' as const } : {});
 
   return (
     <>
       <Card style={{ marginHorizontal: t.space.lg }}>
-        {value.type !== 'transfer' && (
+        {showPayee && payee && (
           <Row
             first
+            label={value.type === 'deposit' ? tr('capture.payer') : tr('capture.payee')}
+            value={payee.name || '—'}
+            {...check('payee')}
+            {...edit(payee.onPress)}
+          />
+        )}
+        {value.type !== 'transfer' && (
+          <Row
+            first={!showPayee}
             label={tr('fields.category')}
             value={value.categoryName ?? '—'}
             leading={
@@ -93,6 +115,7 @@ export function DetailRows({
                 <Dot color={categoryColor(value.categoryName, t.dark)} />
               ) : undefined
             }
+            {...check('category')}
             {...edit(() => setCategorySheetOpen(true))}
           />
         )}
@@ -121,7 +144,12 @@ export function DetailRows({
             {...edit(() => setBudgetSheetOpen(true))}
           />
         )}
-        <Row label={tr('fields.date')} value={value.dateLabel} {...edit(onDatePress)} />
+        <Row
+          label={tr('fields.date')}
+          value={value.dateLabel}
+          {...check('date')}
+          {...edit(onDatePress)}
+        />
         <Row
           label={tr('fields.note')}
           value={value.notes || '—'}
@@ -197,7 +225,11 @@ export function DetailRows({
           <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.sm }]}>
             {tr('fields.sharedWith')}
           </Text>
-          <TextField value={value.sharedWith ?? ''} onCommit={(v) => onChange({ sharedWith: v })} />
+          <TextField
+            value={value.sharedWith ?? ''}
+            onCommit={(v) => onChange({ sharedWith: v })}
+            placeholder={tr('details.sharedWithPlaceholder')}
+          />
         </Sheet>
       )}
     </>

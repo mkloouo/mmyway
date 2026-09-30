@@ -94,7 +94,12 @@ export default function ReceiptScreen() {
       return;
     }
 
-    captureReceipt(db, { uri: photo.uri, base64: photo.base64, hint: hint || undefined })
+    captureReceipt(db, {
+      uri: photo.uri,
+      base64: photo.base64,
+      hint: hint || undefined,
+      takenAt: photo.takenAt,
+    })
       .then((result) => {
         if (result.kind === 'duplicate') {
           Alert.alert(tr('receipt.duplicateTitle'), tr('receipt.duplicateBody'), [

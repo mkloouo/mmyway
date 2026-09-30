@@ -88,6 +88,21 @@ export function conflictFields(
           text(lookups.accountName(String(value)) ?? value),
         );
         break;
+      // A payee or payer picked on the transaction screen, queued by name.
+      case 'source_name':
+        add(
+          row.type === 'deposit' ? i18n.t('capture.payer') : i18n.t('fields.from'),
+          text(row.sourceName),
+          text(value),
+        );
+        break;
+      case 'destination_name':
+        add(
+          row.type === 'withdrawal' ? i18n.t('capture.payee') : i18n.t('fields.to'),
+          text(row.destinationName),
+          text(value),
+        );
+        break;
       case 'budget_id':
         add(
           i18n.t('fields.budget'),

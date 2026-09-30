@@ -5,6 +5,7 @@ import type { OutboxDb } from '../sync/outbox';
 import { deletePersistedReceiptImage, persistReceiptImage } from '../receipt/imageFiles';
 import { readDraft, writeDraft } from './draftJson';
 import { transition } from './state';
+import { unsureAfter } from './unsure';
 
 const NOT_EDITABLE = new Set(['confirmed', 'synced']);
 
@@ -45,6 +46,8 @@ export async function updateDraft(
 
   const draft = readDraft(item.draftJson);
   const merged: Draft = { ...draft, ...patch };
+  // A field the reader wasn't sure about stops being marked once the user sets it.
+  if (!('lowConfidenceFields' in patch)) merged.lowConfidenceFields = unsureAfter(draft, patch);
   await db
     .update(inboxItems)
     .set({ draftJson: writeDraft(merged), updatedAt: new Date().toISOString() })

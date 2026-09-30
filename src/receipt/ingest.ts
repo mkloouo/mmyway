@@ -25,11 +25,12 @@ type CaptureResult =
 /**
  * Dedupes by content hash, persists the image, inserts the `captured` inbox item and starts the
  * parse. `parse` is returned rather than awaited (the receipt screen doesn't wait for it at
- * all — the Inbox card carries on); it never rejects.
+ * all — the Inbox card carries on); it never rejects. `takenAt` (the photo's EXIF time) dates the
+ * stub, else the moment of capture: a receipt with no printed date keeps that (toDraft.ts).
  */
 export async function captureReceipt(
   db: OutboxDb,
-  original: { uri: string; base64: string; hint?: string },
+  original: { uri: string; base64: string; hint?: string; takenAt?: string },
 ): Promise<CaptureResult> {
   const smaller = await downscaleReceipt(original.uri);
   const input = smaller ? { ...original, ...smaller } : original;
@@ -65,7 +66,7 @@ export async function captureReceipt(
     type: 'withdrawal',
     amount: '',
     currencyCode: '',
-    date: now,
+    date: original.takenAt ?? now,
     description: '',
     isNewPayee: true,
   };

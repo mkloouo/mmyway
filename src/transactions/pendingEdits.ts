@@ -85,6 +85,8 @@ export function applyPendingEdit<
     description: string;
     amount: string;
     categoryName: string | null;
+    sourceName?: string | null;
+    destinationName?: string | null;
   },
 >(row: T, edits: PendingEdits): { row: T; status: PendingEditStatus } | null {
   const edit = edits.byGroup.get(row.groupId);
@@ -100,6 +102,9 @@ export function applyPendingEdit<
       description: c.description ?? row.description,
       amount: c.amount ?? row.amount,
       categoryName: 'category_name' in c ? (c.category_name ?? null) : row.categoryName,
+      // A new payee (or payer) is queued by name.
+      sourceName: c.source_name ?? row.sourceName,
+      destinationName: c.destination_name ?? row.destinationName,
     },
   };
 }

@@ -126,6 +126,7 @@
     "savedLabel": "Збережено · {{label}}",
     "searchDestinationAccounts": "Пошук цільових облікових записів",
     "searchSourceAccounts": "Пошук вихідних облікових записів",
+    "sharedWithPlaceholder": "",
     "today": "Сьогодні",
     "typeExpense": "Витрати",
     "typeIncome": "Дохід",
@@ -202,7 +203,8 @@
     "useTotal": "Використати цю суму"
   },
   "details": {
-    "noteAndSharedWith": "Примітка та спільний доступ"
+    "noteAndSharedWith": "Примітка та спільний доступ",
+    "sharedWithPlaceholder": ""
   },
   "dock": {
     "addEntry": "Додати запис",
@@ -213,6 +215,7 @@
     "alreadySentBody": "Він досяг Firefly III, перш ніж його вдавалося скасувати.",
     "cancelSending": "Скасувати надсилання",
     "cancelSendingHint": "Вона повернеться до папки \"Вхідні\", де ви можете її відредагувати та підтвердити ще раз.",
+    "checkUnsure": "",
     "closePhoto": "Закрити фото",
     "confirming": "Підтвердження…",
     "deleteBody": "Цього не можна скасувати.",
@@ -270,6 +273,7 @@
     "changedOrder": "Порядок",
     "changes": "Зміни: {{fields}}",
     "chargedAs": "{{amount}} було стягнуто плату як",
+    "checkReading": "",
     "confirm": "Підтвердити",
     "confirmAll": "Підтвердити все",
     "confirmAllCount_one": "Підтвердити все ({{count, number}})",
@@ -356,6 +360,7 @@
     "toReviewCount_other": "{{count, number}} для перегляду",
     "undone": "Скасовано",
     "unknownError": "Невідома помилка",
+    "waitingForReader": "",
     "zeroHint": "Нічого, що чекає на підтвердження.",
     "zeroTitle": "Немає вхідних"
   },

@@ -18,11 +18,13 @@ import { useAction } from './useAction';
 import type { AttentionItem, InboxItemRow, QueuedChange } from '../inbox/useInboxSections';
 import type { DraftReadiness } from '../inbox/readiness';
 import type { Draft } from '../inbox/draft';
-import { readDraft, readReviewJournal, reviewForeign } from '../inbox/draftJson';
+import { readDraft, readReviewJournal, reviewForeign, reviewType } from '../inbox/draftJson';
 import { draftTotal, isSplitDraft } from '../inbox/draftSplits';
 import { payloadGroupId } from '../sync/payloadJson';
 import { appLocale } from '../i18n';
-import { useReadingProvider } from '../receipt/readingProgress';
+import { useReadingProvider, useWaitingForReader } from '../receipt/readingProgress';
+import { unsureFields } from '../inbox/unsure';
+import { entryTime } from './relativeTime';
 
 /** An error message cut to two lines; tapping it shows the whole of it, and again folds it. */
 function ErrorText({ message }: { message: string }) {
@@ -80,6 +82,7 @@ export function ConfirmCard({
   onOpen,
   onConfirm,
   onDelete,
+  onRetryReading,
   selection,
 }: {
   item: InboxItemRow;
@@ -90,6 +93,8 @@ export function ConfirmCard({
   onOpen: () => void;
   onConfirm: () => void;
   onDelete: () => void;
+  /** A receipt no reader could be reached for: try the readers again now. */
+  onRetryReading: () => void;
   /** Multi-select: `active` while any card is selected; a tap toggles instead of opening. */
   selection: { active: boolean; selected: boolean; toggle: () => void };
 }) {
@@ -100,6 +105,7 @@ export function ConfirmCard({
   const cardStyle = { marginHorizontal: t.space.lg, marginBottom: t.space.sm };
   const press = selection.active ? selection.toggle : onOpen;
   const readingWith = useReadingProvider(item.id);
+  const waitingForReader = useWaitingForReader(item.id) && !readingWith;
 
   if (!draft || !readiness) {
     return (
@@ -111,14 +117,22 @@ export function ConfirmCard({
             selected={selection.selected}
             style={cardStyle}
           >
-            <Pulse active>
+            {/* Waiting isn't reading: no reader answered, and the next sync tries again. */}
+            <Pulse active={!waitingForReader}>
               <Text style={[t.type.body, { color: t.color.textMuted }]}>
                 ▦{' '}
                 {readingWith
                   ? tr('inbox.readingReceiptWith', { provider: readingWith })
-                  : tr('inbox.readingReceipt')}
+                  : waitingForReader
+                    ? tr('inbox.waitingForReader')
+                    : tr('inbox.readingReceipt')}
               </Text>
             </Pulse>
+            {waitingForReader && !selection.active && (
+              <View style={{ flexDirection: 'row', marginTop: t.space.sm }}>
+                <Button title={tr('inbox.retryNow')} variant="secondary" onPress={onRetryReading} />
+              </View>
+            )}
           </Card>
         </Animated.View>
       </MaybeSwipeable>
@@ -130,10 +144,7 @@ export function ConfirmCard({
     ? `${draft.sourceName ?? '?'} → ${draft.destinationName ?? '?'}`
     : (draft.type === 'deposit' ? draft.sourceName : draft.destinationName) || draft.description;
   const accountName = draft.type === 'deposit' ? draft.destinationName : draft.sourceName;
-  const time = new Date(draft.date).toLocaleTimeString(appLocale(), {
-    hour: '2-digit',
-    minute: '2-digit',
-  });
+  const time = entryTime(draft.date);
   const splitCount = isSplitDraft(draft) ? (draft.extraSplits?.length ?? 0) + 1 : 0;
   const splitsLabel = splitCount ? tr('splits.count', { count: splitCount }) : null;
   const meta = isTransfer
@@ -146,6 +157,9 @@ export function ConfirmCard({
   const badges: { label: string; tone?: 'warn' }[] = [];
   if (draft.isNewPayee && !isTransfer) badges.push({ label: tr('inbox.newPayee'), tone: 'warn' });
   if (!readiness.ready) badges.push({ label: needsLabel(readiness.missing), tone: 'warn' });
+  // The receipt reader wasn't sure of some of what it filled in (the draft marks which).
+  if (unsureFields(draft).length > 0)
+    badges.push({ label: tr('inbox.checkReading'), tone: 'warn' });
   if (draft.sharedWith) badges.push({ label: tr('inbox.sharedWith', { name: draft.sharedWith }) });
   // Handed back by the outbox: something it points at was deleted in FF3 (src/sync/outbox.ts).
   if (item.errorMessage) badges.push({ label: item.errorMessage, tone: 'warn' });
@@ -248,6 +262,14 @@ export function ReviewCard({
     : undefined;
   // Planned in another currency: shown as planned, and approving first asks what was charged.
   const foreign = reviewForeign(journal);
+  // A recurrence can book an income or a transfer too: drawn as one, with the user's own account.
+  const type = reviewType(journal);
+  const ownAccount =
+    type === 'transfer'
+      ? `${journal.source_name ?? '?'} → ${journal.destination_name ?? '?'}`
+      : type === 'deposit'
+        ? journal.destination_name
+        : journal.source_name;
 
   const runApprove = act(tr('inbox.approve'), onApprove);
   function approve() {
@@ -265,13 +287,13 @@ export function ReviewCard({
         <Money
           amount={foreign?.amount ?? journal.amount ?? '0'}
           currency={currencyOf(currencies, foreign?.currencyCode ?? journal.currency_code ?? '')}
-          type="withdrawal"
+          type={type}
           size="heading"
         />
       </View>
       <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]}>
         {metaLine([
-          journal.source_name,
+          ownAccount,
           dateLabel,
           tr('inbox.recurring'),
           foreign ? tr('inbox.enterChargedAmount', { currency: journal.currency_code }) : undefined,

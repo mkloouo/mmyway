@@ -4,13 +4,13 @@ import { getDefaultSourceAccountId, getCashAccountId } from '../settings/appSett
 import { transition } from '../inbox/state';
 import { buildChain } from './buildChain';
 import { runProviderChain } from './chain';
-import { setReadingProvider } from './readingProgress';
+import { setReadingProvider, setWaitingForReader } from './readingProgress';
 import type { OutboxDb } from '../sync/outbox';
 import type { Draft } from '../inbox/draft';
 import type { ReceiptExtraction } from './types';
 import { logLine } from '../utils/log';
 import { resolvePayeeAlias } from '../lookup/aliases';
-import { writeDraft } from '../inbox/draftJson';
+import { readDraft, writeDraft } from '../inbox/draftJson';
 import { errorMessage } from '../utils/errorMessage';
 
 // Below this confidence, guessing a field the model wasn't sure about does more harm than
@@ -62,12 +62,33 @@ export function receiptLocalDate(date: string, time: string | null): Date {
   return new Date(y!, m! - 1, d!, hh!, mm!);
 }
 
+/**
+ * When the receipt was paid: its printed date and time; else, for a printed date without a time,
+ * the photo's time when it was taken that day (noon otherwise); else when the photo was taken.
+ * `takenAt` is the photo's own time, or when it was captured — never the time it was read, which
+ * can be hours later after an offline stretch.
+ */
+export function receiptDate(
+  extraction: Pick<ReceiptExtraction, 'date' | 'time'>,
+  takenAt: Date,
+): Date {
+  if (!extraction.date) return takenAt;
+  const printed = receiptLocalDate(extraction.date, extraction.time);
+  if (extraction.time) return printed;
+  const sameDay =
+    printed.getFullYear() === takenAt.getFullYear() &&
+    printed.getMonth() === takenAt.getMonth() &&
+    printed.getDate() === takenAt.getDate();
+  return sameDay ? takenAt : printed;
+}
+
 // Maps a receipt extraction onto a draft. Never throws on a field it doesn't recognize —
 // normalizeExtraction (src/receipt/providers/local.ts) already dropped anything unexpected;
 // this only has to cope with values it can't trust (unsynced currency, low confidence).
 export function receiptToDraft(
   extraction: ReceiptExtraction,
   reference: ReceiptDraftReference,
+  takenAt: Date,
 ): Draft {
   const category =
     extraction.category && reference.categoryNames.includes(extraction.category)
@@ -87,9 +108,7 @@ export function receiptToDraft(
     extraction.items.length > 0
       ? extraction.items.map((item) => `${item.count}x ${item.title} (${item.price})`).join('\n')
       : undefined;
-  const date = extraction.date
-    ? receiptLocalDate(extraction.date, extraction.time).toISOString()
-    : new Date().toISOString();
+  const date = receiptDate(extraction, takenAt).toISOString();
 
   return {
     type: 'withdrawal',
@@ -107,6 +126,17 @@ export function receiptToDraft(
 }
 
 export type ParseOutcome = 'parsed' | 'waiting' | 'failed';
+
+/** The stub's date: when the photo was taken, else when it was captured (src/receipt/ingest.ts). */
+function capturedDate(item: { draftJson: string; createdAt: string }): Date {
+  try {
+    const date = new Date(readDraft(item.draftJson).date);
+    if (!Number.isNaN(date.getTime())) return date;
+  } catch {
+    // An unreadable stub still has the time it was captured.
+  }
+  return new Date(item.createdAt);
+}
 
 function markReceiptError(db: OutboxDb, itemId: string, message: string): Promise<unknown> {
   return db
@@ -160,7 +190,10 @@ export async function parseReceiptItem(
   ).finally(() => setReadingProvider(itemId, null));
   if (!result.ok) {
     logLine('warn', `receipt ${itemId}: ${result.reason} — ${result.errors.join('; ')}`);
-    if (result.reason === 'all_providers_unreachable') return 'waiting';
+    if (result.reason === 'all_providers_unreachable') {
+      setWaitingForReader(itemId, true);
+      return 'waiting';
+    }
     await markReceiptError(db, itemId, `Could not read this receipt (${result.errors.join('; ')})`);
     return 'failed';
   }
@@ -175,7 +208,10 @@ export async function parseReceiptItem(
   }
 
   // A merchant read before and corrected since books to the corrected payee (src/lookup/aliases.ts).
-  const draft = await resolvePayeeAlias(db, receiptToDraft(result.extraction, reference));
+  const draft = await resolvePayeeAlias(
+    db,
+    receiptToDraft(result.extraction, reference, capturedDate(before)),
+  );
   // Only if nothing touched the item while the provider was working (a parse takes seconds; the
   // user may already have opened the card and typed an amount) — their edits win.
   const updated = await db

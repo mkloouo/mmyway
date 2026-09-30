@@ -63,3 +63,41 @@ describe('DetailRows sheets', () => {
     expect(onChange).toHaveBeenCalledWith({ notes: 'Bought milk' });
   });
 });
+
+describe('DetailRows payee row', () => {
+  function withPayee(type: DetailRowsValue['type'], onPress = jest.fn()) {
+    return (
+      <SafeAreaProvider initialMetrics={metrics}>
+        <DetailRows
+          value={{ ...value, type }}
+          onChange={jest.fn()}
+          onDatePress={jest.fn()}
+          payee={{ name: 'Żabka', onPress }}
+          accounts={[]}
+          currencies={[]}
+          categories={[]}
+          budgets={[]}
+        />
+      </SafeAreaProvider>
+    );
+  }
+
+  it('shows the payee of an expense as a row that opens the picker', async () => {
+    const onPress = jest.fn();
+    await render(withPayee('withdrawal', onPress));
+    expect(screen.getByText('Żabka')).toBeTruthy();
+    await fireEvent.press(screen.getByText('Payee'));
+    expect(onPress).toHaveBeenCalled();
+  });
+
+  it('calls it the payer on an income', async () => {
+    await render(withPayee('deposit'));
+    expect(screen.getByText('Payer')).toBeTruthy();
+  });
+
+  it('leaves it off a transfer', async () => {
+    await render(withPayee('transfer'));
+    expect(screen.queryByText('Payee')).toBeNull();
+    expect(screen.queryByText('Żabka')).toBeNull();
+  });
+});

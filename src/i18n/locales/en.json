@@ -122,6 +122,7 @@
     "savedLabel": "Saved · {{label}}",
     "searchDestinationAccounts": "Search destination accounts",
     "searchSourceAccounts": "Search source accounts",
+    "sharedWithPlaceholder": "Shared with (names, separated by commas)",
     "today": "Today",
     "typeExpense": "Expense",
     "typeIncome": "Income",
@@ -192,7 +193,8 @@
     "useTotal": "Use this total"
   },
   "details": {
-    "noteAndSharedWith": "Description & shared with"
+    "noteAndSharedWith": "Description & shared with",
+    "sharedWithPlaceholder": "Names, separated by commas"
   },
   "dock": {
     "addEntry": "Add an entry",
@@ -203,6 +205,7 @@
     "alreadySentBody": "It reached Firefly III before it could be cancelled.",
     "cancelSending": "Cancel sending",
     "cancelSendingHint": "It goes back to the Inbox, where you can edit it and confirm it again.",
+    "checkUnsure": "The receipt reader wasn't sure about: {{fields}}. Check them.",
     "closePhoto": "Close the photo",
     "confirming": "Confirming…",
     "deleteBody": "This cannot be undone.",
@@ -258,6 +261,7 @@
     "changedOrder": "Order",
     "changes": "Changes: {{fields}}",
     "chargedAs": "{{amount}} was charged as",
+    "checkReading": "Check the reading",
     "confirm": "Confirm",
     "confirmAll": "Confirm all",
     "confirmAllCount_one": "Confirm all ({{count, number}})",
@@ -328,6 +332,7 @@
     "toReviewCount_other": "{{count, number}} to review",
     "undone": "Undone",
     "unknownError": "Unknown error",
+    "waitingForReader": "Waiting for a receipt reader · tries again on the next sync",
     "zeroHint": "Nothing waiting to confirm.",
     "zeroTitle": "Inbox zero"
   },

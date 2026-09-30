@@ -337,6 +337,9 @@ export function Row({
   );
 }
 
+const CHIP_HEIGHT = 36;
+const CHIP_SLOP = (hitSize - CHIP_HEIGHT) / 2;
+
 export function Chip({
   label,
   selected,
@@ -361,6 +364,8 @@ export function Chip({
   return (
     <Pressable
       onPress={onPress}
+      // A chip is drawn 36 dp tall; the touch area reaches the kit's 44 above and below it.
+      hitSlop={{ top: CHIP_SLOP, bottom: CHIP_SLOP }}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ selected: !!selected }}
@@ -368,7 +373,7 @@ export function Chip({
         flexDirection: 'row',
         alignItems: 'center',
         gap: t.space.sm,
-        minHeight: 36,
+        minHeight: CHIP_HEIGHT,
         paddingHorizontal: t.space.md,
         paddingVertical: t.space.sm,
         borderRadius: t.radius.pill,

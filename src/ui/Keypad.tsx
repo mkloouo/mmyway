@@ -22,6 +22,7 @@ function Key({
   disabled,
   testID,
   small,
+  height,
 }: {
   label: string;
   onPress: () => void;
@@ -31,6 +32,8 @@ function Key({
   small?: boolean;
   /** For the Maestro flows (.maestro/): a digit's label also matches the amount it typed. */
   testID?: string;
+  /** A fixed height instead of the width-based 1.4 ratio (Capture sizes its keys to the window). */
+  height?: number;
 }) {
   const t = useTheme();
   const isAccent = tone === 'accent';
@@ -61,7 +64,7 @@ function Key({
         accessibilityRole="button"
         accessibilityLabel={label}
         style={({ pressed }) => ({
-          aspectRatio: 1.4,
+          ...(height ? { height } : { aspectRatio: 1.4 }),
           borderRadius: t.radius.sm,
           alignItems: 'center',
           justifyContent: 'center',
@@ -92,6 +95,8 @@ interface KeypadBaseProps {
   onSave: () => void;
   saveDisabled?: boolean;
   saving?: boolean;
+  /** Every key's height; without it a key is 1/1.4 of its width. */
+  keyHeight?: number;
 }
 
 /**
@@ -120,7 +125,7 @@ function Spacer() {
 }
 
 export function Keypad(props: KeypadProps) {
-  const { onDigit, saveLabel, onSave, saveDisabled, saving } = props;
+  const { onDigit, saveLabel, onSave, saveDisabled, saving, keyHeight } = props;
   const { t: tr } = useTranslation();
   return (
     <View>
@@ -132,10 +137,16 @@ export function Keypad(props: KeypadProps) {
               label={key}
               onPress={() => onDigit(key)}
               testID={`keypad-${key === ',' ? 'decimal' : key}`}
+              height={keyHeight}
             />
           ))}
           {rowIndex === 0 && (
-            <Key label="⌫" onPress={() => onDigit('⌫')} testID="keypad-backspace" />
+            <Key
+              label="⌫"
+              onPress={() => onDigit('⌫')}
+              testID="keypad-backspace"
+              height={keyHeight}
+            />
           )}
           {rowIndex === 1 &&
             (props.compact ? (
@@ -146,6 +157,7 @@ export function Keypad(props: KeypadProps) {
                 onPress={props.onDatePress}
                 small={props.dateCompact}
                 testID="keypad-date"
+                height={keyHeight}
               />
             ))}
           {rowIndex === 2 &&
@@ -156,6 +168,7 @@ export function Keypad(props: KeypadProps) {
                 label={props.moreHasValue ? `${tr('capture.more')} ●` : tr('capture.more')}
                 onPress={props.onMorePress}
                 testID="keypad-more"
+                height={keyHeight}
               />
             ))}
           {rowIndex === 3 && (
@@ -165,6 +178,7 @@ export function Keypad(props: KeypadProps) {
               testID="keypad-save"
               onPress={onSave}
               disabled={saveDisabled || saving}
+              height={keyHeight}
             />
           )}
         </View>
