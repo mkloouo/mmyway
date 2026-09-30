@@ -92,6 +92,17 @@ module.exports = defineConfig([
     },
   },
   {
+    files: ['eslint.config.js', 'scripts/**/*.{js,mjs}'],
+    languageOptions: {
+      globals: {
+        __dirname: 'readonly',
+        module: 'readonly',
+        require: 'readonly',
+        process: 'readonly',
+      },
+    },
+  },
+  {
     // No user-visible string hardcoded in a screen or component (docs/LOCALIZATION.md).
     files: ['app/**/*.tsx', 'src/ui/**/*.tsx'],
     ignores: TESTS,

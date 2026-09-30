@@ -14,25 +14,22 @@ import {
   Button,
   Card,
   Chip,
-  Money,
   Row,
   SectionHeader,
-  Sheet,
   CloseButton,
 } from '../../src/ui/components';
 import { TextField } from '../../src/ui/TextField';
 import { PickerSheet } from '../../src/ui/PickerSheet';
 import { AccountPickerSheet } from '../../src/ui/AccountPickerSheet';
 import { PayeeSheet } from '../../src/ui/PayeeSheet';
+import { AmountSheet } from '../../src/ui/AmountSheet';
 import { Checkbox } from '../../src/ui/Checkbox';
-import { Keypad } from '../../src/ui/Keypad';
 import { pickDate, pickTime } from '../../src/ui/pickDate';
 import { currencyOf, formatMoney } from '../../src/ui/money';
 import { pickableCurrencies, primaryCurrencyCode } from '../../src/ui/currencies';
 import { useAction } from '../../src/ui/useAction';
 import { referenceCurrencies } from '../../src/db/schema';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
-import { applyDigit, type KeypadKey } from '../../src/capture/amountInput';
 import type { MerchantHistory } from '../../src/lookup/merchantLookup';
 import { useMerchantHistories } from '../../src/lookup/useMerchantHistories';
 import { getDefaultCurrencyCode, getDefaultSourceAccountId } from '../../src/settings/appSettings';
@@ -424,21 +421,17 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
         />
       </View>
 
-      <Sheet
+      <AmountSheet
         visible={sheet === 'amount'}
-        onClose={() => setSheet(null)}
         title={tr('fields.amount')}
-      >
-        <Money amount={fields.amount} currency={currency} type={fields.type} size="display" />
-        <Keypad
-          compact
-          onDigit={(k: KeypadKey) =>
-            setFields((f) => ({ ...f, amount: applyDigit(f.amount, k, currency.decimalPlaces) }))
-          }
-          saveLabel={tr('common.done')}
-          onSave={() => setSheet(null)}
-        />
-      </Sheet>
+        initial={fields.amount}
+        currency={currency}
+        type={fields.type}
+        onDone={(typed) => {
+          if (typed !== null) setFields((f) => ({ ...f, amount: typed }));
+          setSheet(null);
+        }}
+      />
       <PickerSheet
         visible={sheet === 'currency'}
         onClose={() => setSheet(null)}

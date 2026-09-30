@@ -24,7 +24,7 @@ export interface CaptureFormState {
 
 export function buildManualEntryInput(
   state: CaptureFormState,
-  accounts: { id: string; name: string }[],
+  accounts: { id: string; name: string; currencyCode?: string }[],
 ): ManualEntryInput {
   const needsPayee = state.type === 'withdrawal' || state.type === 'deposit';
   const needsSource = state.type === 'withdrawal' || state.type === 'transfer';
@@ -38,16 +38,29 @@ export function buildManualEntryInput(
   // FX: the screen's `foreignAmount` is what the account's own currency moved (the "converts to
   // ___ EUR" field), `foreignCurrencyCode` that account's currency. FF3 books `amount` in the
   // account's currency and ignores a mismatched currency_code, so sending the typed amount as
-  // `amount` booked "123.12 PLN, 1000 EUR" as 123.12 EUR. The account-currency figure is the
-  // amount; what was typed is the foreign side.
+  // `amount` booked "123.12 PLN, 1000 EUR" as 123.12 EUR. For an expense/income the account-currency
+  // figure is the amount; for a transfer already typed in the source account's currency, the
+  // arriving destination figure is the foreign side.
+  const isTransferToForeign =
+    state.type === 'transfer' &&
+    !!sourceAccount?.currencyCode &&
+    sourceAccount.currencyCode === state.currencyCode;
+
   const fx =
     state.foreignAmount && state.foreignCurrencyCode
-      ? {
-          amount: state.foreignAmount,
-          currencyCode: state.foreignCurrencyCode,
-          foreignAmount: typedAmount,
-          foreignCurrencyCode: state.currencyCode,
-        }
+      ? isTransferToForeign
+        ? {
+            amount: typedAmount,
+            currencyCode: state.currencyCode,
+            foreignAmount: state.foreignAmount,
+            foreignCurrencyCode: state.foreignCurrencyCode,
+          }
+        : {
+            amount: state.foreignAmount,
+            currencyCode: state.foreignCurrencyCode,
+            foreignAmount: typedAmount,
+            foreignCurrencyCode: state.currencyCode,
+          }
       : null;
 
   return {

@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+### Capture
+
+- A transfer between accounts with different currencies typed in the source account's currency preserves the destination foreign amount without swapping currencies.
+- Saving an entry with the date left as "Today" after midnight records today's current date instead of yesterday's.
+
+### Inbox
+
+- On a receipt review, an unsure amount highlights the main amount at the top in amber alongside the warning banner.
+
+### Activity
+
+- Removing splits from an uncommitted split transaction down to one returns to the regular single-transaction edit view instead of locking the split pager in place.
+
 ## [1.5.0] - 2026-09-30
 
 ### Capture

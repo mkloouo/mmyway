@@ -7,6 +7,7 @@ import { writeDraft } from '../inbox/draftJson';
 import { confirmInboxItem } from '../inbox/createManualEntry';
 import type { OutboxDb } from '../sync/outbox';
 import { generateId } from '../utils/id';
+import i18n from '../i18n';
 import type { SweepAdjustment } from './sweep';
 
 export async function createAndConfirmAdjustment(
@@ -28,7 +29,7 @@ export async function createAndConfirmAdjustment(
     amount: adjustment.amount,
     currencyCode: adjustment.currencyCode,
     date: now,
-    description: 'Cash count',
+    description: i18n.t('count.title'),
     isNewPayee: false,
     sourceId: isWithdrawal ? adjustment.accountId : payeeAccountId,
     destinationId: isWithdrawal ? payeeAccountId : adjustment.accountId,
