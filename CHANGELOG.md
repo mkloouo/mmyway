@@ -11,6 +11,8 @@
 
 ### Fixed
 
+- Syncing no longer stops for good after a request that never gets an answer (for example when
+  the phone switches networks mid-sync).
 - A planned transaction's time no longer turns into "Any time" after an edit, with
   "mmyway-time: 09:00" glued onto the end of its note. Times already caught this way are read back
   correctly.

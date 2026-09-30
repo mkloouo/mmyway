@@ -17,7 +17,7 @@
 import { and, asc, eq, inArray, isNotNull, lt, ne, sql } from 'drizzle-orm';
 import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 import type { FF3Client } from '../api/ff3/client';
-import { FF3RequestError } from '../api/ff3/client';
+import { FF3RequestError, UPLOAD_TIMEOUT_MS } from '../api/ff3/client';
 import { outboxOperations, cachedTransactions, inboxItems } from '../db/schema';
 import * as schema from '../db/schema';
 import type { TransactionSplit, TransactionRead, AccountRead } from '../api/ff3/types';
@@ -570,6 +570,7 @@ async function replayOne(
         method: 'POST',
         body: bytes,
         headers: { 'Content-Type': 'application/octet-stream' },
+        timeoutMs: UPLOAD_TIMEOUT_MS,
       });
       await db.delete(outboxOperations).where(eq(outboxOperations.id, row.id));
       // The device copy stays for a while after upload so the draft can still show it;

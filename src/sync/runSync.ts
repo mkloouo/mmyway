@@ -103,13 +103,30 @@ let recovered = false;
 export function runSync(db: OutboxDb, mode: SyncMode = 'full'): Promise<SyncSummary> {
   if (inFlight && (inFlight.mode === 'full' || mode === 'push')) return inFlight.promise;
   const previous = inFlight?.promise;
-  const promise = (
-    previous ? previous.catch(() => undefined).then(() => doSync(db, mode)) : doSync(db, mode)
+  const promise = withWatchdog(
+    previous ? previous.catch(() => undefined).then(() => doSync(db, mode)) : doSync(db, mode),
   ).finally(() => {
     if (inFlight?.promise === promise) inFlight = null;
   });
   inFlight = { mode, promise };
   return promise;
+}
+
+/**
+ * Belt and braces behind the per-request timeouts (src/api/ff3/client.ts): whatever else hangs, a
+ * sync that hasn't ended by now is given up on, so the next trigger starts a fresh one instead of
+ * joining a promise that never settles.
+ */
+export const SYNC_WATCHDOG_MS = 3 * 60 * 1000;
+
+function withWatchdog(sync: Promise<SyncSummary>): Promise<SyncSummary> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      logLine('error', 'sync timed out');
+      resolve({ ...NOT_SIGNED_IN, signedIn: true, error: 'timed out' });
+    }, SYNC_WATCHDOG_MS);
+    sync.then(resolve, reject).finally(() => clearTimeout(timer));
+  });
 }
 
 async function doSync(db: OutboxDb, mode: SyncMode): Promise<SyncSummary> {
