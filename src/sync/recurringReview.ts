@@ -153,7 +153,7 @@ export async function editRecurringReview(
 
 /**
  * FF3 books a recurring transaction at whatever time its daily job ran. When the Planned tab gave
- * its recurrence a time (the `mmyway-time` line in its notes), approving moves it to that time
+ * its recurrence a time (the `[mmyway time=…]` marker in its notes), approving moves it to that time
  * on the day it was booked. Found by the journal's recurrence id, else by the recurrence's title.
  */
 async function plannedDateFor(db: OutboxDb, journal: ReviewJournal): Promise<string | null> {

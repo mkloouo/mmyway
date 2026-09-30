@@ -279,7 +279,7 @@ export function recurrenceBody(
     title: f.name,
     // Null, not left out like a bill's: FF3's recurrence update has no rule for notes and deletes
     // them when given null. The planned time lives here, and removing it must clear the marker
-    // line rather than leave the old one in FF3.
+    // rather than leave the old one in FF3.
     notes: withPlannedTime(f.notes, f.time) || null,
     active: true,
     apply_rules: true,

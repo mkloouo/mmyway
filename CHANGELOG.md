@@ -11,6 +11,9 @@
 
 - Saving a planned transaction that has no notes no longer fails with "The notes must be at least
   1 characters". A save that already failed this way goes through with **Retry now**.
+- A planned transaction's time no longer turns into "Any time" after an edit, with
+  "mmyway-time: 09:00" glued onto the end of its note. Times already caught this way are read back
+  correctly, and the note is shown without it.
 
 ## [1.4.3] - 2026-09-29
 

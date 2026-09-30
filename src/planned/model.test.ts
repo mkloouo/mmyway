@@ -138,7 +138,7 @@ describe('planned model', () => {
         fields,
         {},
       ).notes,
-    ).toBe('mmyway-time: 09:30');
+    ).toBe('[mmyway time=09:30]');
   });
 
   it('tells a planned transaction left as it was from an edited one', () => {
