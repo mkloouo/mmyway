@@ -4,6 +4,7 @@ import { enqueueOperation } from '../sync/outbox';
 import { readPayload } from '../sync/payloadJson';
 import type { PlannedFields } from './model';
 import { replaySavePlanned, type SavePlannedPayload } from './replay';
+import { FF3RequestError } from '../api/ff3/client';
 
 const fields: PlannedFields = {
   name: 'TEST Spotify',
@@ -34,6 +35,7 @@ function fakeFF3() {
         return { data: [{ id: '8', attributes: { name: 'Spotify', type: 'expense' } }] };
       if (path.startsWith('/v1/rule-groups'))
         return init?.method === 'POST' ? read('5') : { data: [] };
+      if (path.includes('?limit=')) return { data: [] };
       if (path === '/v1/bills') return read('2', { name: fields.name });
       if (path === '/v1/recurrences') return read('3', { title: fields.name });
       if (path === '/v1/rules') return read('4', { title: fields.name });
@@ -83,6 +85,7 @@ describe('replaySavePlanned on a planned transaction already in FF3', () => {
       if (path.startsWith('/v1/search/accounts'))
         return { data: [{ id: '8', attributes: { name: 'Spotify', type: 'expense' } }] };
       if (method === 'DELETE') return {};
+      if (path.includes('?limit=')) return { data: [] };
       if (path === '/v1/categories') return read('12', { name: 'Music' });
       if (path === '/v1/recurrences' && method === 'POST')
         return read('30', { title: fields.name });
@@ -125,7 +128,11 @@ describe('replaySavePlanned on a planned transaction already in FF3', () => {
     const recurrenceCalls = calls
       .filter((c) => c.path.startsWith('/v1/recurrences'))
       .map((c) => `${c.method} ${c.path}`);
-    expect(recurrenceCalls).toEqual(['DELETE /v1/recurrences/3', 'POST /v1/recurrences']);
+    expect(recurrenceCalls).toEqual([
+      'DELETE /v1/recurrences/3',
+      'GET /v1/recurrences?limit=100&page=1',
+      'POST /v1/recurrences',
+    ]);
     const created = calls.find((c) => c.method === 'POST' && c.path === '/v1/recurrences')!.body!;
     expect(created).toMatchObject({
       first_date: '2026-10-12',
@@ -174,7 +181,11 @@ describe('replaySavePlanned on a planned transaction already in FF3', () => {
     await replaySavePlanned(db as any, client as any, 'op-1', payload);
     expect(
       calls.filter((c) => c.path.startsWith('/v1/recurrences')).map((c) => `${c.method} ${c.path}`),
-    ).toEqual(['DELETE /v1/recurrences/3', 'POST /v1/recurrences']);
+    ).toEqual([
+      'DELETE /v1/recurrences/3',
+      'GET /v1/recurrences?limit=100&page=1',
+      'POST /v1/recurrences',
+    ]);
   });
 
   it('updates in place when the schedule did not change', async () => {
@@ -193,5 +204,107 @@ describe('replaySavePlanned on a planned transaction already in FF3', () => {
     expect(
       calls.find((c) => c.method === 'PUT' && c.path === '/v1/recurrences/3')!.body,
     ).not.toHaveProperty('repetitions');
+  });
+});
+
+describe('replaySavePlanned after an answer was lost', () => {
+  /** A Firefly III that keeps what it is sent, and can lose the answer to one POST. */
+  function statefulFF3(loseAnswerOf?: string) {
+    const stored: Record<'bills' | 'recurrences' | 'rules' | 'categories', any[]> = {
+      bills: [],
+      recurrences: [],
+      rules: [],
+      categories: [],
+    };
+    let lose = loseAnswerOf;
+    const request = jest.fn(async (path: string, init?: RequestInit): Promise<unknown> => {
+      const method = init?.method ?? 'GET';
+      const kind = /^\/v1\/(bills|recurrences|rules|categories)/.exec(path)?.[1] as
+        keyof typeof stored | undefined;
+      if (path.startsWith('/v1/search/accounts'))
+        return { data: [{ id: '8', attributes: { name: 'Spotify', type: 'expense' } }] };
+      if (path.startsWith('/v1/rule-groups'))
+        return method === 'POST'
+          ? { data: { id: '5', attributes: {} } }
+          : { data: [{ id: '5', attributes: { title: 'Planned' } }] };
+      if (!kind) throw new Error(`no handler for ${method} ${path}`);
+      const list = stored[kind];
+      if (method === 'GET' && path.includes('?limit=')) return { data: list };
+      if (method === 'GET' || method === 'PUT') {
+        const id = path.split('/').pop()!;
+        const found = list.find((o) => o.id === id);
+        if (!found) throw new FF3RequestError(404, '');
+        return {
+          data: {
+            ...found,
+            attributes: {
+              ...found.attributes,
+              transactions: [{ id: '70' }],
+              repetitions: [{ id: '90' }],
+            },
+          },
+        };
+      }
+      // POST
+      if (!init?.body) throw new Error(`POST without body: ${path}`);
+      const body = JSON.parse(String(init!.body));
+      const name = body.name ?? body.title;
+      if (
+        kind !== 'recurrences' &&
+        list.some(
+          (o) =>
+            String(o.attributes.name ?? o.attributes.title).toLowerCase() ===
+            String(name).toLowerCase(),
+        )
+      )
+        throw new FF3RequestError(422, 'The name has already been taken.');
+      const created = { id: String(list.length + 10), attributes: { ...body } };
+      list.push(created);
+      if (lose === kind) {
+        lose = undefined;
+        throw new TypeError('Network request failed');
+      }
+      return { data: created };
+    });
+    return { client: { request }, stored, request };
+  }
+
+  const payload = (): SavePlannedPayload => ({ key: 'new:1', fields, before: null });
+
+  it.each(['bills', 'recurrences', 'rules'] as const)(
+    'adopts the %s FF3 already made instead of creating another',
+    async (kind) => {
+      const db = createTestDb();
+      const server = statefulFF3(kind);
+      await enqueueOperation(db as any, { id: 'op-1', kind: 'save_planned', payload: payload() });
+
+      await expect(
+        replaySavePlanned(db as any, server.client as any, 'op-1', payload()),
+      ).rejects.toThrow('Network request failed');
+      // What the queue would replay: the payload as it was recorded before the lost answer.
+      const recorded = readPayload<SavePlannedPayload>(
+        'save_planned',
+        (await db.select().from(outboxOperations))[0]!.payloadJson,
+      );
+      await replaySavePlanned(db as any, server.client as any, 'op-1', recorded);
+
+      expect(server.stored[kind]).toHaveLength(1);
+      expect(server.stored.bills).toHaveLength(1);
+      expect(server.stored.recurrences).toHaveLength(1);
+      expect(server.stored.rules).toHaveLength(1);
+    },
+  );
+
+  it('uses the category FF3 already has when creating it is refused', async () => {
+    const db = createTestDb();
+    const server = statefulFF3();
+    server.stored.categories.push({ id: '12', attributes: { name: 'music' } });
+    await replaySavePlanned(db as any, server.client as any, 'op-1', payload());
+
+    const post = server.request.mock.calls.find(
+      ([p, i]) => p === '/v1/recurrences' && i?.method === 'POST',
+    )!;
+    expect(JSON.parse(String(post[1]!.body)).transactions[0]).toMatchObject({ category_id: '12' });
+    expect(server.stored.categories).toHaveLength(1);
   });
 });
