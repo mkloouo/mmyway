@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+### Planned
+
+- A planned transaction's note is its subscription's note in Firefly III, line breaks included; the
+  app keeps the time on the recurring transaction on its own. Saving one without a note needs a
+  Firefly III whose API accepts clearing a subscription's notes: stock 6.7.6 refuses it with "The
+  notes must be at least 1 characters".
+
+### Fixed
+
+- A planned transaction's time no longer turns into "Any time" after an edit, with
+  "mmyway-time: 09:00" glued onto the end of its note. Times already caught this way are read back
+  correctly.
+
 ## [1.4.3] - 2026-09-29
 
 ### Capture

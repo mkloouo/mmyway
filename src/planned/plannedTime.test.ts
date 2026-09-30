@@ -1,13 +1,15 @@
-import { atPlannedTime, readPlannedTime, stripPlannedTime, withPlannedTime } from './plannedTime';
+import { atPlannedTime, plannedTimeNote, readPlannedTime, stripPlannedTime } from './plannedTime';
 
 describe('planned time', () => {
-  it('lives on its own line in the notes, apart from what the user wrote', () => {
-    const notes = withPlannedTime('Family plan', '09:30');
-    expect(notes).toBe('Family plan\nmmyway-time: 09:30');
-    expect(readPlannedTime(notes)).toBe('09:30');
-    expect(stripPlannedTime(notes)).toBe('Family plan');
-    expect(withPlannedTime(notes, '18:05')).toBe('Family plan\nmmyway-time: 18:05');
-    expect(withPlannedTime(notes, null)).toBe('Family plan');
+  it('is kept as a marker, read wherever it is in a text', () => {
+    expect(plannedTimeNote('09:30')).toBe('mmyway-time: 09:30');
+    expect(plannedTimeNote(null)).toBeNull();
+    expect(readPlannedTime('mmyway-time: 09:30')).toBe('09:30');
+    // What an earlier version's note and time became after FF3's recurrence update.
+    const glued = 'Rent\n\ntill ownmmyway-time: 09:00';
+    expect(readPlannedTime(glued)).toBe('09:00');
+    expect(stripPlannedTime(glued)).toBe('Rent\n\ntill own');
+    expect(stripPlannedTime('mmyway-time: 09:00')).toBeNull();
     expect(readPlannedTime('no marker')).toBeNull();
     expect(readPlannedTime('mmyway-time: 25:00')).toBeNull();
   });

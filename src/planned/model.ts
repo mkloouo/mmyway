@@ -2,7 +2,7 @@
 // transaction that share a name, edited together. This file turns the three FF3 objects into one
 // set of fields and back into what FF3 takes for each. Pure, no db.
 import { normkey } from '../lookup/normkey';
-import { readPlannedTime, stripPlannedTime, withPlannedTime } from './plannedTime';
+import { plannedTimeNote, readPlannedTime, stripPlannedTime } from './plannedTime';
 import type {
   BillAttributes,
   PlannedObject,
@@ -136,7 +136,8 @@ export function fieldsOf(group: PlannedGroup, today: string): PlannedFields {
       (type === 'withdrawal' ? actionValue(rule, 'set_destination_account') : null),
     amount: text(tx?.amount) ?? text(bill?.amount_max) ?? '0',
     currencyCode: text(tx?.currency_code) ?? text(bill?.currency_code) ?? '',
-    notes: stripPlannedTime(text(rec?.notes) ?? text(bill?.notes)),
+    // The user's note is the bill's; a recurrence without one (made in the web UI) keeps it itself.
+    notes: bill ? text(bill.notes) : stripPlannedTime(text(rec?.notes)),
     time: readPlannedTime(rec?.notes),
     repeats,
     ...schedule,
@@ -192,7 +193,8 @@ export function billBody(f: PlannedFields, before: PlannedFields | null): Record
     amount_min: f.amount,
     amount_max: f.amount,
     currency_code: f.currencyCode,
-    // FF3 refuses an empty string ("notes must be at least 1 character"); null clears them.
+    // Null clears them. Stock FF3 refuses that on a bill update ("notes must be at least 1
+    // characters"): its API rule lacks the `nullable` its web form has, so this needs a server with it.
     notes: f.notes || null,
     active: true,
     ...(scheduleChanged(before, f)
@@ -267,7 +269,8 @@ export function recurrenceBody(
   return {
     type: f.type,
     title: f.name,
-    notes: withPlannedTime(f.notes, f.time) || null,
+    // Only the time: FF3's recurrence update strips newlines from notes, so the user's is the bill's.
+    notes: plannedTimeNote(f.time),
     active: true,
     apply_rules: true,
     ...(scheduleChanged(before, f)

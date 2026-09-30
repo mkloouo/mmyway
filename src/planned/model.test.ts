@@ -121,7 +121,7 @@ describe('planned model', () => {
     });
   });
 
-  it('sends empty notes as null: FF3 refuses an empty string', () => {
+  it('keeps the note on the bill and only the time on the recurrence', () => {
     const fields = { ...fieldsOf(groupPlanned([bill, rule, recurrence])[0]!, '2026-09-28') };
     const blank: PlannedFields = { ...fields, notes: '', time: null };
     expect(billBody(blank, fields).notes).toBeNull();
@@ -132,6 +132,23 @@ describe('planned model', () => {
       recurrenceBody({ ...blank, time: '09:30', sourceId: '1', destinationId: '4' }, fields, {})
         .notes,
     ).toBe('mmyway-time: 09:30');
+    const noted: PlannedFields = { ...fields, notes: 'Line one\nline two', time: '09:30' };
+    expect(billBody(noted, fields).notes).toBe('Line one\nline two');
+    expect(recurrenceBody({ ...noted, sourceId: '1', destinationId: '4' }, fields, {}).notes).toBe(
+      'mmyway-time: 09:30',
+    );
+  });
+
+  it('reads the note from the bill and the time from the recurrence', () => {
+    const noted = { ...bill, attributes: { ...bill.attributes, notes: 'Line one\nline two' } };
+    const glued = {
+      ...recurrence,
+      attributes: { ...recurrence.attributes, notes: 'Line oneline twommyway-time: 09:00' },
+    } as PlannedObject;
+    const both = fieldsOf(groupPlanned([noted as PlannedObject, rule, glued])[0]!, '2026-09-28');
+    expect([both.notes, both.time]).toEqual(['Line one\nline two', '09:00']);
+    const alone = fieldsOf(groupPlanned([glued])[0]!, '2026-09-28');
+    expect([alone.notes, alone.time]).toEqual(['Line oneline two', '09:00']);
   });
 
   it('tells a planned transaction left as it was from an edited one', () => {
