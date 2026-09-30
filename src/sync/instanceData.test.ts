@@ -1,6 +1,9 @@
+import { eq } from 'drizzle-orm';
 import { createTestDb } from '../db/testDb';
 import { clearInstanceData, isSameInstance, queuedOperationCount } from './instanceData';
 import { enqueueOperation } from './outbox';
+import { readDraft, writeDraft } from '../inbox/draftJson';
+import type { Draft } from '../inbox/draft';
 import {
   aliases,
   cachedTransactions,
@@ -130,5 +133,76 @@ describe('clearInstanceData', () => {
     expect(await getBalancesStale(db)).toBe(false);
     expect(await getDefaultSourceAccountId(db)).toBe('a1');
     expect(await getLocalModelName(db)).toBe('qwen');
+  });
+
+  it('takes the ids out of drafts and aliases and keeps the names they resolve again by', async () => {
+    const db = createTestDb() as any;
+    const draft: Draft = {
+      type: 'withdrawal',
+      amount: '5.00',
+      currencyCode: 'PLN',
+      date: T,
+      description: 'Milk',
+      sourceName: 'Wallet',
+      sourceId: '3',
+      destinationName: 'Żabka',
+      destinationId: '7',
+      isNewPayee: false,
+      categoryName: 'Food',
+      budgetId: '2',
+      extraSplits: [
+        {
+          amount: '1.00',
+          description: 'Bag',
+          payeeName: 'Żabka',
+          payeeId: '7',
+          budgetId: '2',
+          isNewPayee: false,
+        },
+      ],
+    };
+    const row = (id: string, state: string) => ({
+      id,
+      kind: 'manual_entry',
+      state,
+      draftJson: writeDraft(draft),
+      createdAt: T,
+      updatedAt: T,
+    });
+    await db
+      .insert(inboxItems)
+      .values([row('open', 'captured'), row('failed', 'error'), row('done', 'synced')]);
+    await db.insert(aliases).values({
+      id: 'al',
+      kind: 'payee',
+      normalizedKey: 'zabka',
+      rawInput: 'zabka',
+      targetId: '7',
+      targetName: 'Żabka',
+      createdAt: T,
+    });
+
+    await clearInstanceData(db);
+
+    const read = async (id: string) =>
+      readDraft((await db.select().from(inboxItems).where(eq(inboxItems.id, id)))[0].draftJson);
+    for (const id of ['open', 'failed']) {
+      const stripped = await read(id);
+      expect(stripped).toMatchObject({
+        sourceName: 'Wallet',
+        destinationName: 'Żabka',
+        categoryName: 'Food',
+        extraSplits: [{ payeeName: 'Żabka' }],
+      });
+      expect(stripped).not.toHaveProperty('sourceId');
+      expect(stripped).not.toHaveProperty('destinationId');
+      expect(stripped).not.toHaveProperty('budgetId');
+      expect(stripped.extraSplits![0]).not.toHaveProperty('payeeId');
+      expect(stripped.extraSplits![0]).not.toHaveProperty('budgetId');
+    }
+    // History of what was sent isn't a draft anyone can confirm again.
+    expect(await read('done')).toMatchObject({ sourceId: '3', destinationId: '7' });
+    const [alias] = await db.select().from(aliases);
+    expect(alias).toMatchObject({ targetId: null, targetName: 'Żabka' });
   });
 });

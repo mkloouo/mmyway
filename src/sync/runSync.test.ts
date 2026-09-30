@@ -1,5 +1,5 @@
 import { createTestDb } from '../db/testDb';
-import { runSync, SYNC_WATCHDOG_MS } from './runSync';
+import { runSync, withSyncPaused, SYNC_WATCHDOG_MS } from './runSync';
 import { enqueueOperation } from './outbox';
 import { clientFor } from '../api/ff3/session';
 import { readStoredCredentials, probeAbout } from '../api/ff3/auth';
@@ -66,6 +66,28 @@ describe('runSync', () => {
     } finally {
       jest.useRealTimers();
     }
+  });
+
+  it('withSyncPaused waits for a running sync, and a sync asked for meanwhile writes nothing', async () => {
+    signedInWith(['https://ff3.example.com']);
+    const client = buildClient({ slow: true });
+    (clientFor as jest.Mock).mockReturnValue(client);
+    const db = createTestDb() as any;
+
+    const running = runSync(db);
+    let requestsWhenPaused = -1;
+    await withSyncPaused(async () => {
+      requestsWhenPaused = client.request.mock.calls.length;
+      const during = await runSync(db);
+      expect(during.signedIn).toBe(false);
+    });
+
+    await running;
+    // Everything the sync was going to request had been requested before the work began.
+    expect(requestsWhenPaused).toBeGreaterThan(0);
+    expect(client.request.mock.calls).toHaveLength(requestsWhenPaused);
+    // After the pause syncing works again.
+    await expect(runSync(db)).resolves.toMatchObject({ signedIn: true });
   });
 
   it('skips the re-pull of recent transactions when replay succeeded nothing', async () => {

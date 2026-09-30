@@ -50,6 +50,19 @@ export interface DraftSplit {
   extraTags?: string[];
 }
 
+/**
+ * The draft with every FF3 id taken out and the names kept. Ids belong to one instance; a draft
+ * carried to another one re-resolves its names there, and readiness asks for what is missing.
+ */
+export function withoutInstanceIds(draft: Draft): Draft {
+  const { sourceId: _s, destinationId: _d, budgetId: _b, extraSplits, ...rest } = draft;
+  const out: Draft = { ...rest };
+  if (extraSplits) {
+    out.extraSplits = extraSplits.map(({ payeeId: _p, budgetId: _sb, ...split }) => split);
+  }
+  return out;
+}
+
 // Which end of the split is the free-text payee differs by type (defect (1)): a withdrawal's
 // payee is the destination, a deposit's payee is the source, and a transfer has no payee at
 // all — both ends are known asset accounts, so isNewPayee never gates them. A known payee with
