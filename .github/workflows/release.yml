@@ -42,7 +42,7 @@ jobs:
       - name: Free disk space
         run: sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/share/swift
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # Tags and origin/main, for the script's preflight.
           fetch-depth: 0
