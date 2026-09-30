@@ -3,12 +3,14 @@
 import { Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import i18n from '../i18n';
+import { exifTakenAt } from './exifDate';
 
 export type PhotoSource = 'camera' | 'gallery';
 
+/** `takenAt`: when the photo was taken, from its EXIF, if it says. */
 export async function pickPhoto(
   source: PhotoSource,
-): Promise<{ uri: string; base64: string } | null> {
+): Promise<{ uri: string; base64: string; takenAt?: string } | null> {
   const permission =
     source === 'camera'
       ? await ImagePicker.requestCameraPermissionsAsync()
@@ -16,10 +18,12 @@ export async function pickPhoto(
   if (!permission.granted) return null;
   const result =
     source === 'camera'
-      ? await ImagePicker.launchCameraAsync({ base64: true, quality: 0.7 })
-      : await ImagePicker.launchImageLibraryAsync({ base64: true, quality: 0.7 });
+      ? await ImagePicker.launchCameraAsync({ base64: true, quality: 0.7, exif: true })
+      : await ImagePicker.launchImageLibraryAsync({ base64: true, quality: 0.7, exif: true });
   const asset = result.canceled ? undefined : result.assets[0];
-  return asset?.base64 ? { uri: asset.uri, base64: asset.base64 } : null;
+  return asset?.base64
+    ? { uri: asset.uri, base64: asset.base64, takenAt: exifTakenAt(asset.exif) }
+    : null;
 }
 
 /** Asks "camera or gallery?" and resolves with the choice (null on cancel). */

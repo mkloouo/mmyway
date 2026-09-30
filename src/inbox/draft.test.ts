@@ -39,6 +39,11 @@ describe('draftToTransactionPayload', () => {
     expect(payload.splits[0]?.tags).toEqual(['mmyway-shared-alex']);
   });
 
+  it('adds one mmyway-shared tag per name', () => {
+    const payload = draftToTransactionPayload('client-1', { ...base, sharedWith: 'alex, Sam' });
+    expect(payload.splits[0]?.tags).toEqual(['mmyway-shared-alex', 'mmyway-shared-Sam']);
+  });
+
   it('forwards budget_id for a withdrawal with a budget', () => {
     const payload = draftToTransactionPayload('client-1', { ...base, budgetId: 'budget-7' });
     expect(payload.splits[0]?.budget_id).toBe('budget-7');

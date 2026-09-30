@@ -1,5 +1,6 @@
 import {
   receiptToDraft,
+  receiptDate,
   receiptLocalDate,
   buildReceiptDraftReference,
   type ReceiptDraftReference,
@@ -7,6 +8,9 @@ import {
 import { normalizeExtraction } from './providers/local';
 import { createTestDb } from '../db/testDb';
 import { setCashAccountId, setDefaultSourceAccountId } from '../settings/appSettings';
+
+// When the photo was taken: 10:00 in Warsaw (jest.config.js pins TZ=Europe/Warsaw).
+const takenAt = new Date('2026-09-15T08:00:00Z');
 
 const reference: ReceiptDraftReference = {
   categoryNames: ['Groceries', 'Food'],
@@ -27,7 +31,7 @@ describe('receiptToDraft', () => {
       confidence: 0.9,
       payment_method: 'cash',
     });
-    const draft = receiptToDraft(extraction, reference);
+    const draft = receiptToDraft(extraction, reference, takenAt);
     expect(draft).toMatchObject({
       type: 'withdrawal',
       amount: '42.50',
@@ -52,8 +56,8 @@ describe('receiptToDraft', () => {
       payment_method: 'card',
       totally_unexpected_field: { nested: true },
     });
-    expect(() => receiptToDraft(extraction, reference)).not.toThrow();
-    const draft = receiptToDraft(extraction, reference);
+    expect(() => receiptToDraft(extraction, reference, takenAt)).not.toThrow();
+    const draft = receiptToDraft(extraction, reference, takenAt);
     expect(draft.currencyCode).toBe(''); // USD is not in reference.currencyCodes
     expect(draft.sourceId).toBe('acc-card');
   });
@@ -69,7 +73,7 @@ describe('receiptToDraft', () => {
       confidence: 0.1,
       payment_method: 'unknown',
     });
-    const draft = receiptToDraft(extraction, reference);
+    const draft = receiptToDraft(extraction, reference, takenAt);
     expect(draft.currencyCode).toBe('');
     expect(draft.sourceId).toBeUndefined();
   });
@@ -85,7 +89,7 @@ describe('receiptToDraft', () => {
       confidence: 0.9,
       payment_method: 'cash',
     });
-    const draft = receiptToDraft(extraction, reference);
+    const draft = receiptToDraft(extraction, reference, takenAt);
     expect(draft.categoryName).toBeUndefined();
   });
 
@@ -100,7 +104,7 @@ describe('receiptToDraft', () => {
       confidence: 0.2,
       payment_method: 'unknown',
     });
-    const draft = receiptToDraft(extraction, reference);
+    const draft = receiptToDraft(extraction, reference, takenAt);
     expect(draft.lowConfidenceFields).toEqual(['amount', 'payee', 'date']);
   });
 
@@ -115,7 +119,7 @@ describe('receiptToDraft', () => {
       confidence: 0.9,
       payment_method: 'cash',
     });
-    const draft = receiptToDraft(extraction, reference);
+    const draft = receiptToDraft(extraction, reference, takenAt);
     expect(draft.lowConfidenceFields).toBeUndefined();
   });
 });
@@ -138,7 +142,7 @@ describe('buildReceiptDraftReference', () => {
       confidence: 0.9,
       payment_method: 'cash',
     });
-    expect(receiptToDraft(extraction, reference).sourceId).toBe('acc-cash-drawer');
+    expect(receiptToDraft(extraction, reference, takenAt).sourceId).toBe('acc-cash-drawer');
   });
 
   it('falls back to leaving the cash source blank, never a guess, when nothing is configured', async () => {
@@ -156,7 +160,7 @@ describe('buildReceiptDraftReference', () => {
       confidence: 0.9,
       payment_method: 'cash',
     });
-    expect(receiptToDraft(extraction, reference).sourceId).toBeUndefined();
+    expect(receiptToDraft(extraction, reference, takenAt).sourceId).toBeUndefined();
   });
 
   it('a card receipt still uses the default source account', async () => {
@@ -176,5 +180,38 @@ describe('receiptLocalDate', () => {
   });
   it('uses noon when the receipt has no time, so no offset can move the day', () => {
     expect(receiptLocalDate('2026-09-26', null).getDate()).toBe(26);
+  });
+});
+
+describe('receiptDate', () => {
+  it('uses the printed date and time when the receipt has both', () => {
+    expect(receiptDate({ date: '2026-09-14', time: '19:05' }, takenAt).toISOString()).toBe(
+      '2026-09-14T17:05:00.000Z',
+    );
+  });
+
+  it('dates a receipt with nothing printed by when the photo was taken, not when it was read', () => {
+    expect(receiptDate({ date: null, time: null }, takenAt)).toBe(takenAt);
+    const extraction = normalizeExtraction({
+      amount: '10.00',
+      currency: 'PLN',
+      merchant: 'Test',
+      date: null,
+      category: null,
+      items: [],
+      confidence: 0.9,
+      payment_method: 'card',
+    });
+    expect(receiptToDraft(extraction, reference, takenAt).date).toBe(takenAt.toISOString());
+  });
+
+  it("takes the photo's time for a printed date without one, when the photo is from that day", () => {
+    expect(receiptDate({ date: '2026-09-15', time: null }, takenAt)).toBe(takenAt);
+  });
+
+  it('keeps noon for a printed date without a time when the photo is from another day', () => {
+    const d = receiptDate({ date: '2026-09-10', time: null }, takenAt);
+    expect(d.getDate()).toBe(10);
+    expect(d.getHours()).toBe(12);
   });
 });

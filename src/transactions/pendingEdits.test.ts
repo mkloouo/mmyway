@@ -88,3 +88,16 @@ describe('applyPendingEdit', () => {
     expect(applyPendingEdit(row, edits)).toEqual({ status: 'queued', row });
   });
 });
+
+describe('applyPendingEdit and the payee', () => {
+  it('shows a queued payee (or payer) by name until Firefly III has it', () => {
+    const edits = pendingEdits([
+      op('update_transaction', { groupId: 'g1', changes: { destination_name: 'Biedronka' } }),
+    ]);
+    const shown = applyPendingEdit(
+      { ...row, sourceName: 'Revolut', destinationName: 'Lidl' },
+      edits,
+    );
+    expect(shown?.row).toMatchObject({ sourceName: 'Revolut', destinationName: 'Biedronka' });
+  });
+});

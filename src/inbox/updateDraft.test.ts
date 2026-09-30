@@ -3,6 +3,7 @@ import { createManualEntry, confirmInboxItem } from './createManualEntry';
 import { updateDraft, deleteInboxItem } from './updateDraft';
 import { inboxItems, outboxOperations } from '../db/schema';
 import { eq } from 'drizzle-orm';
+import { writeDraft } from './draftJson';
 
 describe('updateDraft', () => {
   it('preserves isNewPayee across a save that changes other fields', async () => {
@@ -76,5 +77,36 @@ describe('deleteInboxItem', () => {
       0,
     );
     expect(await db.select().from(outboxOperations)).toHaveLength(0);
+  });
+});
+
+describe('updateDraft and what the receipt reader was unsure of', () => {
+  it('stops marking a field once the user sets it', async () => {
+    const db = createTestDb();
+    await db.insert(inboxItems).values({
+      id: 'r1',
+      kind: 'receipt',
+      state: 'parsed',
+      draftJson: writeDraft({
+        type: 'withdrawal',
+        amount: '42.50',
+        currencyCode: 'PLN',
+        date: '2026-09-15T10:00:00.000Z',
+        description: 'Żabka',
+        destinationName: 'Żabka',
+        isNewPayee: true,
+        lowConfidenceFields: ['amount', 'date'],
+      }),
+      createdAt: 'c',
+      updatedAt: 'u',
+    });
+
+    await updateDraft(db as any, 'r1', { amount: '41.50' });
+    let row = (await db.select().from(inboxItems).where(eq(inboxItems.id, 'r1')))[0]!;
+    expect(JSON.parse(row.draftJson).lowConfidenceFields).toEqual(['date']);
+
+    await updateDraft(db as any, 'r1', { date: '2026-09-14T10:00:00.000Z' });
+    row = (await db.select().from(inboxItems).where(eq(inboxItems.id, 'r1')))[0]!;
+    expect(JSON.parse(row.draftJson).lowConfidenceFields).toBeUndefined();
   });
 });

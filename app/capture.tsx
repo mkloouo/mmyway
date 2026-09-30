@@ -1,8 +1,9 @@
-// Capture (design §6.2) — amount first, one screen, no scrolling for the common case.
-import { useCallback, useEffect, useMemo, useState } from 'react';
+// Capture (design §6.2) — amount first, one screen. The form scrolls above a pinned keypad only
+// when the window is too short for both (a pop-up or split-screen window, landscape, a big font).
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n, { appLocale } from '../src/i18n';
-import { Animated, Pressable, ScrollView, Text, View } from 'react-native';
+import { Animated, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { useFlyAway, useShake } from '../src/ui/feedback';
 import { pickDateTime } from '../src/ui/pickDate';
 import { useConfirmDiscard } from '../src/ui/useConfirmDiscard';
@@ -24,6 +25,7 @@ import { buildEntryDate, yesterday } from '../src/capture/entryDate';
 import { buildManualEntryInput, type CaptureFormState } from '../src/capture/buildManualEntryInput';
 import { useCaptureDefaults } from '../src/capture/useCaptureDefaults';
 import { useCaptureForm } from '../src/capture/useCaptureForm';
+import { captureKeyHeight } from '../src/capture/keyHeight';
 import { attachReceiptImage } from '../src/inbox/updateDraft';
 import { createManualEntry, confirmInboxItem, undoConfirm } from '../src/inbox/createManualEntry';
 import { draftReadiness } from '../src/inbox/readiness';
@@ -49,9 +51,58 @@ import { errorMessage } from '../src/utils/errorMessage';
 import { pickableCurrencies, primaryCurrencyCode } from '../src/ui/currencies';
 import { TX_TYPES } from '../src/transactions/txTypes';
 
-// A ScrollView defaults to flexGrow/flexShrink 1, so a row of chips would otherwise stretch or
-// be clipped as it competes with the keypad below it for height.
-const rowScroll = { flexGrow: 0, flexShrink: 0 } as const;
+// Below this window height the amount is drawn smaller: every line it saves is one the form
+// doesn't have to scroll.
+const SHORT_WINDOW = 600;
+
+/**
+ * A labelled chip row whose 🔍 chip stays put while the rest scroll sideways: scrolled along with
+ * them, the one way to search could end up off screen.
+ */
+function ChipRow({
+  label,
+  searchLabel,
+  onSearch,
+  children,
+}: {
+  label?: string;
+  searchLabel?: string;
+  onSearch?: () => void;
+  children: ReactNode;
+}) {
+  const t = useTheme();
+  return (
+    <View>
+      {!!label && (
+        <Text style={[t.type.label, { color: t.color.textFaint, paddingHorizontal: t.space.lg }]}>
+          {label}
+        </Text>
+      )}
+      {/* The vertical padding is the chips' hitSlop (Chip): a touch outside the ScrollView never
+          reaches them. */}
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        {!!onSearch && (
+          <View style={{ paddingLeft: t.space.lg, paddingVertical: t.space.xs }}>
+            <Chip label="🔍" accessibilityLabel={searchLabel} onPress={onSearch} />
+          </View>
+        )}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ flex: 1 }}
+          contentContainerStyle={{
+            paddingLeft: onSearch ? t.space.sm : t.space.lg,
+            paddingRight: t.space.lg,
+            paddingVertical: t.space.xs,
+            gap: t.space.sm,
+          }}
+        >
+          {children}
+        </ScrollView>
+      </View>
+    </View>
+  );
+}
 
 function isDirtyAmount(amount: string): boolean {
   return !/^0*[.,]?0*$/.test(amount);
@@ -96,33 +147,17 @@ function AccountChipRow({
   onSearch: () => void;
   onSelect: (id: string) => void;
 }) {
-  const t = useTheme();
   return (
-    <View>
-      <Text style={[t.type.label, { color: t.color.textFaint, paddingHorizontal: t.space.lg }]}>
-        {label}
-      </Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={rowScroll}
-        contentContainerStyle={{
-          paddingHorizontal: t.space.lg,
-          gap: t.space.sm,
-          paddingTop: t.space.xs,
-        }}
-      >
-        <Chip label="🔍" accessibilityLabel={searchLabel} onPress={onSearch} />
-        {topChips(accounts, selectedId).map((a) => (
-          <Chip
-            key={a.id}
-            label={a.name}
-            selected={selectedId === a.id}
-            onPress={() => onSelect(a.id)}
-          />
-        ))}
-      </ScrollView>
-    </View>
+    <ChipRow label={label} searchLabel={searchLabel} onSearch={onSearch}>
+      {topChips(accounts, selectedId).map((a) => (
+        <Chip
+          key={a.id}
+          label={a.name}
+          selected={selectedId === a.id}
+          onPress={() => onSelect(a.id)}
+        />
+      ))}
+    </ChipRow>
   );
 }
 
@@ -136,6 +171,10 @@ export default function CaptureScreen() {
   const { shake, shakeStyle } = useShake();
   const { fly, ghost, ghostStyle, fieldStyle } = useFlyAway();
   const { defaultAccountId, defaultCurrencyCode } = useCaptureDefaults();
+  const window = useWindowDimensions();
+  const keyHeight = captureKeyHeight(window);
+  const short = window.height < SHORT_WINDOW;
+  const amountType = short ? t.type.title : t.type.display;
 
   const assetAccountRows = useAssetAccounts({ includeLiabilities: true });
   const assetAccounts = useMemo(() => assetAccountRows ?? [], [assetAccountRows]);
@@ -453,11 +492,11 @@ export default function CaptureScreen() {
           </Pressable>
         </View>
 
-        <View style={{ alignItems: 'center', paddingVertical: t.space.xl }}>
+        <View style={{ alignItems: 'center', paddingVertical: short ? t.space.sm : t.space.xl }}>
           {/* Full width, so the floating ghost of a longer amount isn't clipped to the new "0". */}
           <View style={{ alignSelf: 'stretch', alignItems: 'center' }}>
             <Animated.Text
-              style={[t.type.display, t.type.money, { color: t.color.text }, fieldStyle]}
+              style={[amountType, t.type.money, { color: t.color.text }, fieldStyle]}
               numberOfLines={1}
             >
               {formatAmountInput(amount, currency)}
@@ -467,7 +506,7 @@ export default function CaptureScreen() {
                 key={ghost.key}
                 pointerEvents="none"
                 style={[
-                  t.type.display,
+                  amountType,
                   t.type.money,
                   {
                     color: t.color.accent,
@@ -491,7 +530,8 @@ export default function CaptureScreen() {
               {needsLabel(readiness.missing)}
             </Animated.Text>
           )}
-          {summaryParts.length > 0 && (
+          {/* The chips below say the same; a short window keeps the line for the form. */}
+          {summaryParts.length > 0 && !short && (
             <Text style={[t.type.body, { color: t.color.textMuted, marginTop: t.space.xs }]}>
               {summaryParts.join(' · ')}
             </Text>
@@ -503,74 +543,63 @@ export default function CaptureScreen() {
           )}
         </View>
 
-        {showFx && (
-          <View style={{ paddingHorizontal: t.space.lg, paddingBottom: t.space.sm }}>
-            <Text style={[t.type.label, { color: t.color.textMuted }]}>
-              {tr('capture.convertsTo', { amount, currency: effectiveCurrencyCode })}
-            </Text>
-            <TextField
-              value={foreignAmount}
-              onChangeText={(foreignAmount) => set({ foreignAmount })}
-              keyboardType="decimal-pad"
-              placeholder={`___ ${accountCurrencyCode}`}
-              style={{ marginTop: t.space.xs }}
-            />
-            {!!impliedRate && !isNegative(impliedRate) && (
-              <Text style={[t.type.label, { color: t.color.textFaint, marginTop: t.space.xs }]}>
-                1 {effectiveCurrencyCode} ≈ {impliedRate} {accountCurrencyCode}
+        {/* The amount stays in view; what's under it scrolls when the window is too short for it
+            and the keypad (pop-up, split screen, landscape). On a phone it all fits. */}
+        <ScrollView
+          style={{ flexGrow: 0, flexShrink: 1 }}
+          contentContainerStyle={{ paddingBottom: t.space.sm }}
+          keyboardShouldPersistTaps="handled"
+        >
+          {showFx && (
+            <View style={{ paddingHorizontal: t.space.lg, paddingBottom: t.space.sm }}>
+              <Text style={[t.type.label, { color: t.color.textMuted }]}>
+                {tr('capture.convertsTo', { amount, currency: effectiveCurrencyCode })}
               </Text>
-            )}
-            {foreignAmountInvalid && (
-              <Text style={[t.type.label, { color: t.color.danger, marginTop: t.space.xs }]}>
-                {tr('common.invalidAmount')}
-              </Text>
-            )}
-            {fxMissing && (
-              <Text style={[t.type.label, { color: t.color.warn, marginTop: t.space.xs }]}>
-                {tr('capture.enterAccountPaid', { currency: accountCurrencyCode })}
-              </Text>
-            )}
-          </View>
-        )}
+              <TextField
+                value={foreignAmount}
+                onChangeText={(foreignAmount) => set({ foreignAmount })}
+                keyboardType="decimal-pad"
+                placeholder={`___ ${accountCurrencyCode}`}
+                style={{ marginTop: t.space.xs }}
+              />
+              {!!impliedRate && !isNegative(impliedRate) && (
+                <Text style={[t.type.label, { color: t.color.textFaint, marginTop: t.space.xs }]}>
+                  1 {effectiveCurrencyCode} ≈ {impliedRate} {accountCurrencyCode}
+                </Text>
+              )}
+              {foreignAmountInvalid && (
+                <Text style={[t.type.label, { color: t.color.danger, marginTop: t.space.xs }]}>
+                  {tr('common.invalidAmount')}
+                </Text>
+              )}
+              {fxMissing && (
+                <Text style={[t.type.label, { color: t.color.warn, marginTop: t.space.xs }]}>
+                  {tr('capture.enterAccountPaid', { currency: accountCurrencyCode })}
+                </Text>
+              )}
+            </View>
+          )}
 
-        <TextField
-          accessibilityLabel={tr('fields.description')}
-          placeholder={tr('fields.description')}
-          value={description}
-          onChangeText={(description) => set({ description })}
-          returnKeyType="done"
-          style={{ marginHorizontal: t.space.lg, marginBottom: t.space.sm }}
-        />
+          <TextField
+            accessibilityLabel={tr('fields.description')}
+            placeholder={tr('fields.description')}
+            value={description}
+            onChangeText={(description) => set({ description })}
+            returnKeyType="done"
+            style={{ marginHorizontal: t.space.lg, marginBottom: t.space.sm }}
+          />
 
-        <View style={{ gap: t.space.sm }}>
-          {isPayeeType && (
-            <View>
-              <Text
-                style={[t.type.label, { color: t.color.textFaint, paddingHorizontal: t.space.lg }]}
+          <View style={{ gap: t.space.sm }}>
+            {isPayeeType && (
+              <ChipRow
+                label={type === 'deposit' ? tr('capture.payer') : tr('capture.payee')}
+                searchLabel={
+                  type === 'deposit' ? tr('payeeSheet.payer.search') : tr('payeeSheet.payee.search')
+                }
+                onSearch={() => setSheet('payee')}
               >
-                {type === 'deposit' ? tr('capture.payer') : tr('capture.payee')}
-              </Text>
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={rowScroll}
-                contentContainerStyle={{
-                  paddingHorizontal: t.space.lg,
-                  gap: t.space.sm,
-                  paddingTop: t.space.xs,
-                }}
-              >
-                <Chip
-                  label="🔍"
-                  accessibilityLabel={
-                    type === 'deposit'
-                      ? tr('payeeSheet.payer.search')
-                      : tr('payeeSheet.payee.search')
-                  }
-                  onPress={() => setSheet('payee')}
-                />
                 {/* A payee picked from search (or typed as new) isn't necessarily among the top
-                    suggestions; show it, selected, so the row says what was chosen. */}
+                  suggestions; show it, selected, so the row says what was chosen. */}
                 {!!merchantRawInput &&
                   !rankedPayees.some((h) => h.displayName === merchantRawInput) && (
                     <Chip label={merchantRawInput} selected onPress={() => setSheet('payee')} />
@@ -583,68 +612,64 @@ export default function CaptureScreen() {
                     onPress={() => applyPayeeHistory(h)}
                   />
                 ))}
-              </ScrollView>
-            </View>
-          )}
+              </ChipRow>
+            )}
 
-          {type === 'transfer' ? (
-            <>
-              <AccountChipRow
-                label={tr('fields.from')}
-                searchLabel={tr('capture.searchSourceAccounts')}
-                accounts={recentAccounts}
-                selectedId={effectiveSourceId}
-                onSearch={() => setSheet('accountSource')}
-                onSelect={(id) => set({ sourceId: id })}
-              />
-              <AccountChipRow
-                label={tr('fields.to')}
-                searchLabel={tr('capture.searchDestinationAccounts')}
-                accounts={recentAccounts.filter((a) => a.id !== effectiveSourceId)}
-                selectedId={destinationId}
-                onSearch={() => setSheet('accountDestination')}
-                onSelect={(id) => set({ destinationId: id })}
-              />
-            </>
-          ) : (
-            <>
-              <AccountChipRow
-                label={type === 'deposit' ? tr('fields.to') : tr('fields.from')}
-                searchLabel={tr('pickers.searchAccounts')}
-                accounts={recentAccounts}
-                selectedId={type === 'withdrawal' ? effectiveSourceId : destinationId}
-                onSearch={() =>
-                  setSheet(type === 'withdrawal' ? 'accountSource' : 'accountDestination')
-                }
-                onSelect={(id) =>
-                  type === 'withdrawal' ? set({ sourceId: id }) : set({ destinationId: id })
-                }
-              />
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                style={rowScroll}
-                contentContainerStyle={{ paddingHorizontal: t.space.lg, gap: t.space.sm }}
-              >
-                <Chip
-                  label={categoryName ?? tr('fields.category')}
-                  selected={!!categoryName}
-                  dotColor={categoryName ? categoryColor(categoryName, t.dark) : undefined}
-                  onPress={() => setSheet('category')}
+            {type === 'transfer' ? (
+              <>
+                <AccountChipRow
+                  label={tr('fields.from')}
+                  searchLabel={tr('capture.searchSourceAccounts')}
+                  accounts={recentAccounts}
+                  selectedId={effectiveSourceId}
+                  onSearch={() => setSheet('accountSource')}
+                  onSelect={(id) => set({ sourceId: id })}
                 />
-                <Chip
-                  label={budget?.name ?? tr('fields.budget')}
-                  selected={!!budgetId}
-                  onPress={() => setSheet('budget')}
+                <AccountChipRow
+                  label={tr('fields.to')}
+                  searchLabel={tr('capture.searchDestinationAccounts')}
+                  accounts={recentAccounts.filter((a) => a.id !== effectiveSourceId)}
+                  selectedId={destinationId}
+                  onSearch={() => setSheet('accountDestination')}
+                  onSelect={(id) => set({ destinationId: id })}
                 />
-              </ScrollView>
-            </>
-          )}
-        </View>
+              </>
+            ) : (
+              <>
+                <AccountChipRow
+                  label={type === 'deposit' ? tr('fields.to') : tr('fields.from')}
+                  searchLabel={tr('pickers.searchAccounts')}
+                  accounts={recentAccounts}
+                  selectedId={type === 'withdrawal' ? effectiveSourceId : destinationId}
+                  onSearch={() =>
+                    setSheet(type === 'withdrawal' ? 'accountSource' : 'accountDestination')
+                  }
+                  onSelect={(id) =>
+                    type === 'withdrawal' ? set({ sourceId: id }) : set({ destinationId: id })
+                  }
+                />
+                <ChipRow>
+                  <Chip
+                    label={categoryName ?? tr('fields.category')}
+                    selected={!!categoryName}
+                    dotColor={categoryName ? categoryColor(categoryName, t.dark) : undefined}
+                    onPress={() => setSheet('category')}
+                  />
+                  <Chip
+                    label={budget?.name ?? tr('fields.budget')}
+                    selected={!!budgetId}
+                    onPress={() => setSheet('budget')}
+                  />
+                </ChipRow>
+              </>
+            )}
+          </View>
+        </ScrollView>
 
         <View style={{ flex: 1 }} />
 
         <Keypad
+          keyHeight={keyHeight}
           onDigit={(key: KeypadKey) => pressKey(key, currency.decimalPlaces)}
           dateLabel={
             dateMode === 'today'
@@ -780,7 +805,7 @@ export default function CaptureScreen() {
           onChangeText={(notes) => set({ notes })}
         />
         <TextField
-          placeholder={tr('fields.sharedWith')}
+          placeholder={tr('capture.sharedWithPlaceholder')}
           value={sharedWith}
           onChangeText={(sharedWith) => set({ sharedWith })}
         />

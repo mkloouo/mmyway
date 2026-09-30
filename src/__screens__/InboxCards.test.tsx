@@ -4,7 +4,9 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { ReactElement } from 'react';
 import '../i18n';
-import { ConfirmCard } from '../ui/InboxCards';
+import { ConfirmCard, ReviewCard } from '../ui/InboxCards';
+import { reviewEditFor } from '../ui/ReviewEditSheet';
+import { setWaitingForReader } from '../receipt/readingProgress';
 import { readDraft, writeDraft } from '../inbox/draftJson';
 import { draftReadiness } from '../inbox/readiness';
 import type { InboxItemRow } from '../inbox/useInboxSections';
@@ -72,6 +74,7 @@ describe('Inbox confirm card', () => {
         onOpen={jest.fn()}
         onConfirm={onConfirm}
         onDelete={jest.fn()}
+        onRetryReading={jest.fn()}
         selection={selection}
       />,
     );
@@ -88,6 +91,7 @@ describe('Inbox confirm card', () => {
         onOpen={jest.fn()}
         onConfirm={jest.fn()}
         onDelete={jest.fn()}
+        onRetryReading={jest.fn()}
         selection={selection}
       />,
     );
@@ -103,9 +107,124 @@ describe('Inbox confirm card', () => {
         onOpen={jest.fn()}
         onConfirm={jest.fn()}
         onDelete={jest.fn()}
+        onRetryReading={jest.fn()}
         selection={selection}
       />,
     );
     expect(screen.getByText('New payee')).toBeTruthy();
+  });
+});
+
+describe('Inbox confirm card, receipts and dates', () => {
+  const handlers = {
+    currencies,
+    onOpen: jest.fn(),
+    onConfirm: jest.fn(),
+    onDelete: jest.fn(),
+    selection,
+  };
+
+  it('says a receipt no reader could reach is waiting, and retries it on request', async () => {
+    const onRetryReading = jest.fn();
+    const receipt = { ...item({}), id: 'waiting-1', kind: 'receipt' as const };
+    setWaitingForReader('waiting-1', true);
+    await wrap(
+      <ConfirmCard
+        {...handlers}
+        item={receipt}
+        draft={null}
+        readiness={null}
+        onRetryReading={onRetryReading}
+      />,
+    );
+    expect(screen.getByText(/Waiting for a receipt reader/)).toBeTruthy();
+    await fireEvent.press(screen.getByText('Retry now'));
+    expect(onRetryReading).toHaveBeenCalled();
+  });
+
+  it('says a receipt is being read while nothing says it is waiting', async () => {
+    const receipt = { ...item({}), id: 'reading-1', kind: 'receipt' as const };
+    await wrap(
+      <ConfirmCard
+        {...handlers}
+        item={receipt}
+        draft={null}
+        readiness={null}
+        onRetryReading={jest.fn()}
+      />,
+    );
+    expect(screen.getByText(/Reading receipt/)).toBeTruthy();
+    expect(screen.queryByText('Retry now')).toBeNull();
+  });
+
+  it('gives a draft from another day its date, not only a time', async () => {
+    await wrap(
+      <ConfirmCard
+        {...handlers}
+        {...cardProps({ date: '2025-03-04T10:00:00Z' })}
+        onRetryReading={jest.fn()}
+      />,
+    );
+    expect(screen.getByText(/2025/)).toBeTruthy();
+  });
+
+  it('asks for a check when the reader was unsure of something', async () => {
+    await wrap(
+      <ConfirmCard
+        {...handlers}
+        {...cardProps({ lowConfidenceFields: ['amount'] })}
+        onRetryReading={jest.fn()}
+      />,
+    );
+    expect(screen.getByText('Check the reading')).toBeTruthy();
+  });
+});
+
+describe('Inbox recurring review card', () => {
+  function review(journal: Record<string, unknown>): InboxItemRow {
+    return {
+      ...item({}),
+      kind: 'recurring_review',
+      state: 'parsed',
+      ff3GroupId: 'g1',
+      draftJson: writeDraft({
+        transaction_journal_id: 'j1',
+        amount: '5000.00',
+        currency_code: 'PLN',
+        date: '2026-09-28T10:00:00Z',
+        ...journal,
+      }),
+    } as InboxItemRow;
+  }
+  const income = {
+    type: 'deposit',
+    description: 'Salary',
+    source_id: 'rev1',
+    source_name: 'Employer',
+    destination_id: 'a1',
+    destination_name: 'Revolut',
+  };
+
+  it('draws a recurring income as income, with the account it went to', async () => {
+    await wrap(
+      <ReviewCard
+        item={review(income)}
+        currencies={currencies}
+        onApprove={jest.fn()}
+        onEdit={jest.fn()}
+        onDelete={jest.fn()}
+      />,
+    );
+    expect(screen.getByText(/Revolut/)).toBeTruthy();
+    expect(screen.queryByText(/Employer/)).toBeNull();
+    expect(screen.queryByText(/−|-5/)).toBeNull();
+  });
+
+  it("edits an income's own account, never its payer", () => {
+    expect(reviewEditFor(review(income))).toMatchObject({
+      type: 'deposit',
+      sourceId: 'rev1',
+      destinationId: 'a1',
+    });
   });
 });

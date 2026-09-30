@@ -1,5 +1,6 @@
 // The Inbox's edit sheet for a recurring transaction FF3 booked: what was actually charged, and
-// from which account. The currency follows the account, so there is nothing to type for it.
+// the user's own account it moved: From for an expense, To for an income, both for a transfer.
+// The currency follows the account the amount is in, so there is nothing to type for it.
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text } from 'react-native';
@@ -11,18 +12,26 @@ import { currencyOf, formatMoney } from './money';
 import { useAction } from './useAction';
 import { useDb } from '../providers/DbProvider';
 import { parseDecimalInput, trimDecimal } from '../api/ff3/decimal';
-import { readReviewJournal, reviewForeign } from '../inbox/draftJson';
+import { readReviewJournal, reviewForeign, reviewType } from '../inbox/draftJson';
 import { editRecurringReview } from '../sync/recurringReview';
 import type { InboxItemRow } from '../inbox/useInboxSections';
 import type { ReferenceAccountRow } from '../accounts/useAssetAccounts';
 
 export interface ReviewEdit {
   id: string;
+  type: 'withdrawal' | 'deposit' | 'transfer';
   amount: string;
   currencyCode: string;
-  accountId: string | null;
+  /** Only the ends that are the user's own accounts are offered: never an income's payer. */
+  sourceId: string | null;
+  destinationId: string | null;
+  /** Firefly III's names for the two ends, for an account the picker doesn't list (a loan). */
+  sourceName: string | null;
+  destinationName: string | null;
   foreign: { amount: string; currencyCode: string } | null;
 }
+
+type End = 'source' | 'destination';
 
 /** The state the Inbox holds while this sheet is open; null when it is closed. */
 export function reviewEditFor(item: InboxItemRow): ReviewEdit {
@@ -35,9 +44,13 @@ export function reviewEditFor(item: InboxItemRow): ReviewEdit {
       : trimDecimal(journal.amount ?? '');
   return {
     id: item.id,
+    type: reviewType(journal),
     amount,
     currencyCode: journal.currency_code ?? '',
-    accountId: journal.source_id ?? null,
+    sourceId: journal.source_id ?? null,
+    destinationId: journal.destination_id ?? null,
+    sourceName: journal.source_name ?? null,
+    destinationName: journal.destination_name ?? null,
     foreign,
   };
 }
@@ -61,11 +74,26 @@ export function ReviewEditSheet({
   const { t: tr } = useTranslation();
   const db = useDb();
   const act = useAction();
-  const [pickingAccount, setPickingAccount] = useState(false);
+  const [pickingAccount, setPickingAccount] = useState<End | null>(null);
 
-  const account = edit ? accounts.find((a) => a.id === edit.accountId) : undefined;
-  // The currency is the account's: picking another account changes it.
-  const currencyCode = account?.currencyCode ?? edit?.currencyCode ?? '';
+  // An expense moves money out of its source, an income into its destination; a transfer both.
+  const ends: End[] = !edit
+    ? []
+    : edit.type === 'transfer'
+      ? ['source', 'destination']
+      : edit.type === 'deposit'
+        ? ['destination']
+        : ['source'];
+  const accountAt = (end: End) =>
+    edit
+      ? accounts.find((a) => a.id === (end === 'source' ? edit.sourceId : edit.destinationId))
+      : undefined;
+  // The currency is the account's the amount is in (an income's destination, else the source):
+  // picking another account changes it.
+  const currencyCode =
+    accountAt(edit?.type === 'deposit' ? 'destination' : 'source')?.currencyCode ??
+    edit?.currencyCode ??
+    '';
   const foreign = edit?.foreign && edit.foreign.currencyCode !== currencyCode ? edit.foreign : null;
   const amountResult = edit ? parseDecimalInput(edit.amount) : null;
   const amountInvalid = !!edit?.amount && !!amountResult && !amountResult.ok;
@@ -78,7 +106,10 @@ export function ReviewEditSheet({
       await editRecurringReview(db, edit.id, {
         amount: amountResult.value,
         currency_code: currencyCode,
-        ...(edit.accountId ? { source_id: edit.accountId } : {}),
+        ...(ends.includes('source') && edit.sourceId ? { source_id: edit.sourceId } : {}),
+        ...(ends.includes('destination') && edit.destinationId
+          ? { destination_id: edit.destinationId }
+          : {}),
         ...(foreign
           ? { foreign_amount: foreign.amount, foreign_currency_code: foreign.currencyCode }
           : {}),
@@ -125,21 +156,42 @@ export function ReviewEditSheet({
                 {tr('common.invalidAmount')}
               </Text>
             )}
-            <Button
-              title={account?.name ?? tr('fields.from')}
-              variant="secondary"
-              onPress={() => setPickingAccount(true)}
-            />
+            {ends.map((end) => (
+              <Button
+                key={end}
+                title={
+                  accountAt(end)?.name ??
+                  (end === 'source' ? edit.sourceName : edit.destinationName) ??
+                  (end === 'source' ? tr('fields.from') : tr('fields.to'))
+                }
+                variant="secondary"
+                onPress={() => setPickingAccount(end)}
+              />
+            ))}
           </>
         )}
       </Sheet>
       <AccountPickerSheet
-        visible={pickingAccount}
-        onClose={() => setPickingAccount(false)}
-        title={tr('fields.from')}
+        visible={!!pickingAccount}
+        onClose={() => setPickingAccount(null)}
+        title={pickingAccount === 'destination' ? tr('fields.to') : tr('fields.from')}
         accounts={accounts}
         currencies={currencies}
-        onSelect={(a) => edit && onChange({ ...edit, accountId: a.id })}
+        excludeId={
+          edit?.type === 'transfer'
+            ? pickingAccount === 'destination'
+              ? edit.sourceId
+              : edit.destinationId
+            : null
+        }
+        onSelect={(a) =>
+          edit &&
+          onChange(
+            pickingAccount === 'destination'
+              ? { ...edit, destinationId: a.id, destinationName: a.name }
+              : { ...edit, sourceId: a.id, sourceName: a.name },
+          )
+        }
       />
     </>
   );

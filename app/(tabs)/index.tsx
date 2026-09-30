@@ -557,6 +557,7 @@ export default function InboxScreen() {
                     onOpen={() => navigateOnce(`/draft/${entry.id}`)}
                     onConfirm={() => confirmSingle(entry.item)}
                     onDelete={() => deleteWithUndo([entry.id])}
+                    onRetryReading={() => void syncNow()}
                     selection={{
                       active: selecting,
                       selected: selectedIds.has(entry.id),

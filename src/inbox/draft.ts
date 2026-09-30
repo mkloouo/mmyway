@@ -2,6 +2,7 @@ import { eq, and, ne } from 'drizzle-orm';
 import type { CreateTransactionPayload, OutboxDb } from '../sync/outbox';
 import type { TransactionSplit } from '../api/ff3/types';
 import { inboxItems } from '../db/schema';
+import { sharedTags } from '../transactions/sharedWith';
 
 export interface Draft {
   type: 'withdrawal' | 'deposit' | 'transfer';
@@ -22,7 +23,7 @@ export interface Draft {
   categoryName?: string;
   budgetId?: string;
   notes?: string;
-  sharedWith?: string; // -> `mmyway-shared-<person>` tag, brief §9 Q12
+  sharedWith?: string; // names, comma-separated -> one `mmyway-shared-<person>` tag each, brief §9 Q12
   extraTags?: string[]; // e.g. `mmyway-reconcile` (Task 9's cash count) — merged in ahead of sharedWith's tag
   // Field names the receipt provider couldn't confidently extract but still populated (design
   // §6.3): the draft screen marks these rows amber with "check this" instead of trusting them
@@ -146,7 +147,7 @@ function extraSplitAsDraft(draft: Draft, split: DraftSplit): Draft {
 
 function draftSplitPayload(draft: Draft): TransactionSplit {
   const tags: string[] = [...(draft.extraTags ?? [])];
-  if (draft.sharedWith) tags.push(`mmyway-shared-${draft.sharedWith}`);
+  tags.push(...sharedTags(draft.sharedWith));
   const { source, destination } = payeeGatedEnd(draft);
 
   return {

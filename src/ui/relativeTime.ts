@@ -26,11 +26,30 @@ export function describeSyncTime(iso: string | null | undefined, now: Date = new
   const minutes = Math.floor((now.getTime() - at.getTime()) / 60000);
   if (minutes < 1) return i18n.t('time.justNow');
   if (minutes < 60) return i18n.t('time.minutesAgo', { count: minutes });
-  const time = at.toLocaleTimeString(appLocale(), { hour: '2-digit', minute: '2-digit' });
+  return dayAndTime(at, now);
+}
+
+/**
+ * An Inbox card's date: "14:05" for today, then as the Sync sheet says it ("yesterday at 09:10",
+ * "3 Sep at 14:32"). A time alone read as today on a draft from last week.
+ */
+export function entryTime(iso: string, now: Date = new Date()): string {
+  const at = new Date(iso);
   const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  return at >= startOfToday && at < startOfTomorrow
+    ? at.toLocaleTimeString(appLocale(), { hour: '2-digit', minute: '2-digit' })
+    : dayAndTime(at, now);
+}
+
+function dayAndTime(at: Date, now: Date): string {
+  const time = at.toLocaleTimeString(appLocale(), { hour: '2-digit', minute: '2-digit' });
   const startOfYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-  if (at >= startOfToday) return i18n.t('time.todayAt', { time });
-  if (at >= startOfYesterday) return i18n.t('time.yesterdayAt', { time });
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const startOfTomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  // A draft can be dated ahead: only today is "today".
+  if (at >= startOfToday && at < startOfTomorrow) return i18n.t('time.todayAt', { time });
+  if (at >= startOfYesterday && at < startOfToday) return i18n.t('time.yesterdayAt', { time });
   const day = at.toLocaleDateString(appLocale(), {
     day: 'numeric',
     month: 'short',

@@ -59,11 +59,19 @@ const ReviewJournalSchema = z.looseObject({
   currency_code: z.string().optional(),
   description: z.string().optional(),
   date: z.string().optional(),
+  type: z.string().optional(),
   source_id: z.string().nullish(),
   source_name: z.string().nullish(),
+  destination_id: z.string().nullish(),
+  destination_name: z.string().nullish(),
   foreign_amount: z.string().nullish(),
   foreign_currency_code: z.string().nullish(),
 });
+
+/** A recurrence books expenses, incomes and transfers alike; anything unrecognised reads as an expense. */
+export function reviewType(journal: ReviewJournal): 'withdrawal' | 'deposit' | 'transfer' {
+  return journal.type === 'deposit' || journal.type === 'transfer' ? journal.type : 'withdrawal';
+}
 
 /**
  * The amount a recurring transaction was planned in when that isn't the currency FF3 booked it

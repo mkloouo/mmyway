@@ -1,4 +1,4 @@
-import { relativeTime, describeSyncTime } from './relativeTime';
+import { relativeTime, describeSyncTime, entryTime } from './relativeTime';
 
 const now = new Date('2026-09-27T12:00:00.000Z');
 
@@ -44,5 +44,25 @@ describe('describeSyncTime', () => {
     expect(result).toMatch(/ at .*32/);
     expect(result).not.toMatch(/2026/);
     expect(describeSyncTime('2025-12-03T12:32:00.000Z', now)).toMatch(/2025/);
+  });
+});
+
+describe('entryTime', () => {
+  const now = new Date('2026-09-27T12:00:00.000Z'); // 14:00 in Warsaw
+
+  it('is just the time for today', () => {
+    expect(entryTime('2026-09-27T06:30:00.000Z', now)).toMatch(/^\D*08.30\D*$/);
+  });
+
+  it('names yesterday and gives older drafts their date', () => {
+    expect(entryTime('2026-09-26T07:10:00.000Z', now)).toMatch(/^yesterday at .*10/);
+    const older = entryTime('2026-09-22T12:05:00.000Z', now);
+    expect(older).toMatch(/22/);
+    expect(older).toMatch(/ at .*05/);
+  });
+
+  it('does not call a draft dated tomorrow "today"', () => {
+    expect(entryTime('2026-09-28T08:00:00.000Z', now)).not.toMatch(/today/);
+    expect(entryTime('2026-09-28T08:00:00.000Z', now)).toMatch(/28/);
   });
 });
