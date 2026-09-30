@@ -41,7 +41,7 @@ export function appLocale(): string {
 
 // i18next's named `use` export is unbound; the instance method is the one to call.
 // eslint-disable-next-line import/no-named-as-default-member
-i18n.use(initReactI18next).init({
+void i18n.use(initReactI18next).init({
   resources,
   lng: resolveDeviceLanguage(),
   fallbackLng: 'en',

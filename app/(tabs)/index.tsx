@@ -168,6 +168,22 @@ export default function InboxScreen() {
     });
   }
 
+  // Through act(): a failed Undo is reported instead of dropped while the snackbar closes and the
+  // entry goes out anyway.
+  const undoBatch = act(
+    tr('common.undo'),
+    async (batch: { id: string; result: ConfirmResult }[]) => {
+      const outcomes = await Promise.all(
+        batch.map(({ id, result }) => undoConfirm(db, id, result)),
+      );
+      forgetLeaving(batch.map(({ id }) => id));
+      setSnackbar({
+        id: generateId(),
+        message: outcomes.includes('already_sent') ? tr('inbox.alreadySent') : tr('inbox.undone'),
+      });
+    },
+  );
+
   function showConfirmedSnackbar(batch: { id: string; result: ConfirmResult }[]) {
     setSnackbar({
       id: generateId(),
@@ -176,16 +192,7 @@ export default function InboxScreen() {
           ? tr('inbox.confirmedCount', { count: batch.length })
           : tr('inbox.confirmed'),
       actionLabel: tr('common.undo'),
-      onAction: async () => {
-        const outcomes = await Promise.all(
-          batch.map(({ id, result }) => undoConfirm(db, id, result)),
-        );
-        forgetLeaving(batch.map(({ id }) => id));
-        setSnackbar({
-          id: generateId(),
-          message: outcomes.includes('already_sent') ? tr('inbox.alreadySent') : tr('inbox.undone'),
-        });
-      },
+      onAction: () => void undoBatch(batch),
     });
   }
 
@@ -306,7 +313,7 @@ export default function InboxScreen() {
   });
   const retryOpNow = act(tr('inbox.retryNow'), async (opId: string) => {
     await retryOperationNow(db, opId);
-    syncNow();
+    void syncNow();
   });
   const discardOp = act(tr('inbox.discard'), async (opId: string) => {
     if (

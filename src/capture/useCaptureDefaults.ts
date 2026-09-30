@@ -11,7 +11,7 @@ export function useCaptureDefaults(): {
   const [defaultCurrencyCode, setDefaultCurrencyCode] = useState<string | null>(null);
 
   useEffect(() => {
-    (async () => {
+    void (async () => {
       const [accountId, currencyCode] = await Promise.all([
         getDefaultSourceAccountId(db),
         getDefaultCurrencyCode(db),

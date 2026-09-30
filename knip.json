@@ -5,8 +5,7 @@
     "scripts/*.mjs",
     "plugins/*.js",
     "src/db/migrations.ts",
-    "tolgee.config.js",
-    "eslint.strict.config.js"
+    "tolgee.config.js"
   ],
   "project": ["app/**/*.{ts,tsx}", "src/**/*.{ts,tsx}", "scripts/**/*.{mjs,ts}", "plugins/*.js"],
   "ignore": [

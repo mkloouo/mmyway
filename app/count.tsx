@@ -1,5 +1,7 @@
 // The cash count — the envelope sweep (design §6.9, decision C of §11). Counts every marked
 // cash envelope in one pass; one confirm creates one adjustment per envelope that differs.
+import { logLine } from '../src/utils/log';
+import { errorMessage } from '../src/utils/errorMessage';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, ScrollView, Text, View } from 'react-native';
@@ -106,12 +108,14 @@ export default function CountScreen() {
       getReconcileShortfallAccountId(db),
       getReconcileSurplusAccountId(db),
       getReconcileCategoryName(db),
-    ]).then(([sf, sp, cat]) => {
-      if (cancelled) return;
-      setShortfallAccountIdState(sf);
-      setSurplusAccountIdState(sp);
-      setReconcileCategoryState(cat);
-    });
+    ])
+      .then(([sf, sp, cat]) => {
+        if (cancelled) return;
+        setShortfallAccountIdState(sf);
+        setSurplusAccountIdState(sp);
+        setReconcileCategoryState(cat);
+      })
+      .catch((err) => logLine('warn', `reconcile settings failed: ${errorMessage(err)}`));
     return () => {
       cancelled = true;
     };

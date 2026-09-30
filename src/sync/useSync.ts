@@ -26,8 +26,8 @@ export function useSync() {
   const syncNow = useCallback(() => refetch({ cancelRefetch: false }), [refetch]);
   // Called by Settings after sign-in/sign-out — the only time the answer useSignedIn caches changes.
   const credentialsChanged = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: SIGNED_IN_QUERY_KEY });
-    syncNow();
+    void queryClient.invalidateQueries({ queryKey: SIGNED_IN_QUERY_KEY });
+    void syncNow();
   }, [queryClient, syncNow]);
   return {
     status: query.isFetching

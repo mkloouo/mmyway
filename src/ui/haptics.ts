@@ -5,12 +5,16 @@
 import { Platform } from 'react-native';
 import * as Haptics from 'expo-haptics';
 
-async function safe(fn: () => Promise<void>): Promise<void> {
-  try {
-    await fn();
-  } catch {
-    // best-effort feedback; never blocks the action it's attached to
-  }
+// Returns void, not the promise: nobody waits for a vibration, and a caller that did would have to
+// handle a rejection this wrapper already swallows.
+function safe(fn: () => Promise<void>): void {
+  void (async () => {
+    try {
+      await fn();
+    } catch {
+      // best-effort feedback; never blocks the action it's attached to
+    }
+  })();
 }
 
 export const haptics = {
