@@ -37,6 +37,17 @@ export interface DetailRowsProps {
   loading?: boolean;
 }
 
+/**
+ * True from the first time `open` is true on. A closed sheet builds nothing until it has been
+ * opened once (a row's page holds four of them, and a receipt many pages); it stays mounted
+ * after that so it can fade out instead of vanishing.
+ */
+function useOpened(open: boolean) {
+  const [opened, setOpened] = useState(open);
+  if (open && !opened) setOpened(true);
+  return opened;
+}
+
 export function DetailRows({
   value,
   onChange,
@@ -57,6 +68,10 @@ export function DetailRows({
     null,
   );
   const [textSheetOpen, setTextSheetOpen] = useState(false);
+  const categoryOpened = useOpened(categorySheetOpen);
+  const budgetOpened = useOpened(budgetSheetOpen);
+  const accountOpened = useOpened(!!accountSheetTarget);
+  const textOpened = useOpened(textSheetOpen);
   /** A row is tappable, with a chevron, unless the screen is read-only. */
   const edit = (onPress: () => void) => (readOnly ? {} : { chevron: true, onPress });
 
@@ -119,69 +134,72 @@ export function DetailRows({
         />
       </Card>
 
-      <PickerSheet
-        visible={categorySheetOpen}
-        onClose={() => setCategorySheetOpen(false)}
-        title={tr('fields.category')}
-        options={categories.map((c) => ({ key: c.name, label: c.name }))}
-        selected={value.categoryName}
-        onSelect={(categoryName) => onChange({ categoryName })}
-        noneLabel={tr('common.none')}
-      />
-
-      <PickerSheet
-        visible={budgetSheetOpen}
-        onClose={() => setBudgetSheetOpen(false)}
-        title={tr('fields.budget')}
-        options={budgets.map((b) => ({ key: b.id, label: b.name }))}
-        selected={value.budgetId}
-        onSelect={(budgetId) => onChange({ budgetId })}
-        noneLabel={tr('common.none')}
-      />
-
-      <AccountPickerSheet
-        visible={!!accountSheetTarget}
-        onClose={() => setAccountSheetTarget(null)}
-        title={accountSheetTarget === 'source' ? tr('fields.from') : tr('fields.to')}
-        accounts={accountChoices}
-        currencies={currencies}
-        excludeId={
-          accountSheetTarget === 'destination' && value.type === 'transfer'
-            ? value.sourceAccountId
-            : null
-        }
-        onSelect={(a) =>
-          onChange(
-            accountSheetTarget === 'source'
-              ? { sourceAccountId: a.id }
-              : { destinationAccountId: a.id },
-          )
-        }
-      />
-
-      <Sheet
-        visible={textSheetOpen}
-        onClose={() => setTextSheetOpen(false)}
-        title={tr('details.noteAndSharedWith')}
-        footer={<Button title={tr('common.done')} onPress={() => setTextSheetOpen(false)} />}
-      >
-        <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('fields.note')}</Text>
-        <TextField
-          value={value.notes ?? ''}
-          onChangeText={(v) => onChange({ notes: v })}
-          buffered
-          multiline
-          style={{ minHeight: 60 }}
+      {categoryOpened && (
+        <PickerSheet
+          visible={categorySheetOpen}
+          onClose={() => setCategorySheetOpen(false)}
+          title={tr('fields.category')}
+          options={categories.map((c) => ({ key: c.name, label: c.name }))}
+          selected={value.categoryName}
+          onSelect={(categoryName) => onChange({ categoryName })}
+          noneLabel={tr('common.none')}
         />
-        <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.sm }]}>
-          {tr('fields.sharedWith')}
-        </Text>
-        <TextField
-          value={value.sharedWith ?? ''}
-          onChangeText={(v) => onChange({ sharedWith: v })}
-          buffered
+      )}
+
+      {budgetOpened && (
+        <PickerSheet
+          visible={budgetSheetOpen}
+          onClose={() => setBudgetSheetOpen(false)}
+          title={tr('fields.budget')}
+          options={budgets.map((b) => ({ key: b.id, label: b.name }))}
+          selected={value.budgetId}
+          onSelect={(budgetId) => onChange({ budgetId })}
+          noneLabel={tr('common.none')}
         />
-      </Sheet>
+      )}
+
+      {accountOpened && (
+        <AccountPickerSheet
+          visible={!!accountSheetTarget}
+          onClose={() => setAccountSheetTarget(null)}
+          title={accountSheetTarget === 'source' ? tr('fields.from') : tr('fields.to')}
+          accounts={accountChoices}
+          currencies={currencies}
+          excludeId={
+            accountSheetTarget === 'destination' && value.type === 'transfer'
+              ? value.sourceAccountId
+              : null
+          }
+          onSelect={(a) =>
+            onChange(
+              accountSheetTarget === 'source'
+                ? { sourceAccountId: a.id }
+                : { destinationAccountId: a.id },
+            )
+          }
+        />
+      )}
+
+      {textOpened && (
+        <Sheet
+          visible={textSheetOpen}
+          onClose={() => setTextSheetOpen(false)}
+          title={tr('details.noteAndSharedWith')}
+          footer={<Button title={tr('common.done')} onPress={() => setTextSheetOpen(false)} />}
+        >
+          <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('fields.note')}</Text>
+          <TextField
+            value={value.notes ?? ''}
+            onCommit={(v) => onChange({ notes: v })}
+            multiline
+            style={{ minHeight: 60 }}
+          />
+          <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.sm }]}>
+            {tr('fields.sharedWith')}
+          </Text>
+          <TextField value={value.sharedWith ?? ''} onCommit={(v) => onChange({ sharedWith: v })} />
+        </Sheet>
+      )}
     </>
   );
 }

@@ -656,7 +656,7 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
         title={textFor === 'title' ? tr('splits.title') : tr('fields.description')}
         footer={<Button title={tr('common.done')} onPress={() => setTextFor(null)} />}
       >
-        <TextField value={textField.value} onChangeText={textField.onChange} buffered autoFocus />
+        <TextField value={textField.value} onCommit={textField.onChange} autoFocus />
       </Sheet>
 
       <PayeeSheet

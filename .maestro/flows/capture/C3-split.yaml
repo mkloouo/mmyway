@@ -39,16 +39,11 @@ tags:
 - tapOn:
     text: 'C3 ${RUN_ID}'
     index: 1
-# Two things are called Title on this screen: the group's (at the top) and each split's own.
-- tapOn:
-    text: 'Title'
-    index: 1
+- tapOn: 'Title'
 - inputText: 'C3 second ${RUN_ID}'
 - tapOn: 'Done'
 # The group title FF3 requires once there is more than one split.
-- tapOn:
-    text: 'Title'
-    index: 0
+- tapOn: 'Group title'
 - inputText: 'C3 group ${RUN_ID}'
 - tapOn: 'Done'
 # Raise the total: the splits now fall 10,00 short, and Reassign hands it out.

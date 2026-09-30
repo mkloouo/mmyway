@@ -382,7 +382,7 @@
   },
   "splits": {
     "split": "Split",
-    "title": "Title",
+    "title": "Group title",
     "total": "Total",
     "editTotal": "Change the total",
     "count_one": "{{count}} split",
