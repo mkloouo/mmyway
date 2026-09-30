@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-09-30
+
 ### Capture
 
 - Capture fits a pop-up or split-screen window, landscape and large text. The fields under the
