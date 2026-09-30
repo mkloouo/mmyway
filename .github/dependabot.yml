@@ -1,6 +1,5 @@
-# NOT ENABLED. Dependabot starts as soon as this file is at .github/dependabot.yml — move it there
-# to switch it on (docs/STATIC_ANALYSIS.md). Grouped and weekly, so it is a PR or two a week, not
-# one per package. Expo SDK packages move together with `npx expo install --fix`, not one by one.
+# Grouped and weekly, so it is a PR or two a week, not one per package. Expo SDK packages move
+# together (`npx expo install --fix` does the same by hand), not one by one.
 version: 2
 updates:
   - package-ecosystem: npm

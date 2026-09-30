@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
     "test": "jest",
+    "test:coverage": "jest --ci --coverage",
     "check": "prettier --check . && tsc --noEmit && expo lint && jest --ci",
     "db:generate": "drizzle-kit generate",
     "release": "node scripts/release.mjs",

@@ -9,4 +9,20 @@ module.exports = {
     'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg)',
   ],
   testPathIgnorePatterns: ['/node_modules/', '/.expo/'],
+  // `npm run test:coverage` (CI): the code that moves money must not lose its tests. The floors sit
+  // a little under what the suite covers today; raise them when the number does.
+  collectCoverageFrom: [
+    'src/sync/**/*.ts',
+    'src/inbox/**/*.ts',
+    'src/splits/**/*.ts',
+    'src/api/ff3/decimal.ts',
+    '!**/*.test.ts',
+  ],
+  coverageReporters: ['text-summary'],
+  coverageThreshold: {
+    './src/sync/': { lines: 80, branches: 75 },
+    './src/inbox/': { lines: 80, branches: 68 },
+    './src/splits/': { lines: 55, branches: 38 },
+    './src/api/ff3/decimal.ts': { lines: 95, branches: 88 },
+  },
 };
