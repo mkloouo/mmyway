@@ -4,7 +4,7 @@
 import { z } from 'zod';
 import type { Draft } from './draft';
 
-export const DRAFT_VERSION = 1;
+const DRAFT_VERSION = 1;
 
 const optionalText = z.string().optional();
 

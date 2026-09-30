@@ -843,5 +843,3 @@ export function Fab({
     </Pressable>
   );
 }
-
-export type { Theme };

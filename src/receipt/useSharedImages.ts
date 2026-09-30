@@ -10,7 +10,7 @@ import { logLine } from '../utils/log';
 import type { OutboxDb } from '../sync/outbox';
 import { errorMessage } from '../utils/errorMessage';
 
-export interface SharedImageFile {
+interface SharedImageFile {
   path: string;
   mimeType: string;
 }

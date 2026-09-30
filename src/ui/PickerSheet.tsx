@@ -6,7 +6,7 @@ import { View } from 'react-native';
 import { Chip, Sheet } from './components';
 import { useTheme } from './theme';
 
-export interface PickerOption {
+interface PickerOption {
   key: string;
   label: string;
   dotColor?: string;

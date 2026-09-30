@@ -17,7 +17,7 @@ coverage floor on the money path; `static-analysis.yml` runs the checks below on
 
 Config: `eslint.config.js` (Expo's rules plus the strict ones), `knip.json`, `.jscpd.json`,
 `jest.config.js` (coverage floors), `.github/dependabot.yml` (grouped, weekly). In CI the cycles,
-dupes and audit steps fail the build; knip, expo-doctor and [gitleaks](https://github.com/gitleaks/gitleaks)
+dupes, dead-code (knip) and audit steps fail the build; expo-doctor and [gitleaks](https://github.com/gitleaks/gitleaks)
 (a scan of the history) only warn, until their findings are cleared.
 
 **Coverage floors** (`npm run test:coverage`, run by CI): `src/sync/`, `src/inbox/`, `src/splits/`
@@ -29,7 +29,7 @@ the suite covers. Raise them when the number rises.
 | Check  | Result                                                                                                                                                             |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | lint   | 36 at the time: 28 floating promises, 3 misused promises, 5 `payload_json` reads/writes outside `payloadJson.ts`; no hardcoded UI text. All fixed since (#92, #78) |
-| dead   | 21 unused exports, 32 unused exported types ([#80](https://github.com/mkloouo/mmyway/issues/80))                                                                   |
+| dead   | clean since #80 (the dead exports and types are un-exported; `expo-system-ui` installed)                                                                           |
 | dupes  | 0.16% (4 clones) — passes                                                                                                                                          |
 | cycles | none at runtime — passes (7 through type-only imports)                                                                                                             |
 | deps   | no high/critical — passes (16 moderate)                                                                                                                            |
@@ -45,6 +45,5 @@ a failed Undo is silently dropped.
 - **GitHub settings** (no code): secret scanning with push protection; CodeQL default setup if the
   repository is public; branch protection on `main` requiring the `CI` and `Static analysis`
   checks and a pull request.
-- Make the knip step fail the build once [#80](https://github.com/mkloouo/mmyway/issues/80) is on
-  `main`, and the expo-doctor step once the SDK packages are current (`npx expo install --fix`, or
-  Dependabot's grouped PR).
+- Make the expo-doctor step fail the build once the SDK packages are current
+  (`npx expo install --fix`, or Dependabot's grouped PR).

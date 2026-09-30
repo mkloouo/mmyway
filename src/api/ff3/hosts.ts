@@ -29,7 +29,7 @@ export interface AddressProbeResult {
   ok: boolean;
 }
 
-export interface ResolveResult {
+interface ResolveResult {
   winner: string | null;
   results: AddressProbeResult[];
 }

@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { logLine } from '../utils/log';
 import type { OutboxKind } from './outbox';
 
-export const PAYLOAD_VERSION = 1;
+const PAYLOAD_VERSION = 1;
 
 const version = z.literal(PAYLOAD_VERSION).optional();
 const changes = z.record(z.string(), z.unknown());

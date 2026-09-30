@@ -12,7 +12,7 @@ export interface JournalAttachment {
   imageSource: { uri: string; headers: Record<string, string> } | null;
 }
 
-export interface QueuedAttachment {
+interface QueuedAttachment {
   opId: string;
   status: string;
   lastError: string | null;

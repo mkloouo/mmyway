@@ -1,5 +1,5 @@
 # Static analysis (docs/STATIC_ANALYSIS.md), beside ci.yml's typecheck, lint and tests. Each check
-# is its own step so a failure names the check. Only the knip step and gitleaks only warn.
+# is its own step so a failure names the check. Only expo-doctor and gitleaks warn.
 name: Static analysis
 
 on:
@@ -29,9 +29,8 @@ jobs:
         run: npm run analyze:dupes
       - name: High or critical advisories in the app's dependencies
         run: npm run analyze:deps
-      - name: Unused files, exports and dependencies (warns only)
+      - name: Unused files, exports and dependencies
         run: npm run analyze:dead
-        continue-on-error: true # make it a failure once #80's cleanup is on main
       - name: Expo config and SDK package versions (warns only)
         run: npm run analyze:doctor
         continue-on-error: true # a patch behind the SDK is Dependabot's to open, not a red build

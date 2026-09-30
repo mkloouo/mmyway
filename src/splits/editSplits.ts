@@ -61,7 +61,7 @@ export function fromQueued(split: QueuedSplit): EditableSplit {
 }
 
 /** Which ends of a split are the group's own accounts, shared by all splits. */
-export function sharedEnds(type: TxType): { source: boolean; destination: boolean } {
+function sharedEnds(type: TxType): { source: boolean; destination: boolean } {
   return { source: type !== 'deposit', destination: type !== 'withdrawal' };
 }
 

@@ -2,7 +2,7 @@ import { probeAbout } from '../api/ff3/auth';
 import { resolveAddress, withTimeout, type AddressProbeResult } from '../api/ff3/hosts';
 import { probeLocalModel } from '../receipt/providers/local';
 
-export interface ReachabilityConfig {
+interface ReachabilityConfig {
   ff3: { addresses: string[]; apiToken: string; remembered: string | null } | null;
   // name -> that provider's addresses (e.g. every local-model URL), ordered
   providers: Record<string, { addresses: string[]; remembered: string | null }>;
@@ -13,7 +13,7 @@ export interface ServerReachability {
   results: AddressProbeResult[]; // empty when not configured
 }
 
-export interface ReachabilityReport {
+interface ReachabilityReport {
   ff3: ServerReachability;
   providers: Record<string, ServerReachability>;
 }
