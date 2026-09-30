@@ -11,20 +11,36 @@
 
 ### Inbox
 
-- A draft's menu (⋯) has a **Title** row, so a receipt's title can be entered even when it is the
-  same as the payee, which the screen doesn't show.
+- A draft always shows its **title** under the payee (empty until entered, tap to type it), as
+  Capture does, even when it is the same as the payee. Before, it was hidden in that case and
+  only entered from the ⋯ menu.
+
+### Accounts
+
+- An account's page has a **Description** under its name, saved to the account's notes in Firefly
+  III. The cash-envelope checkbox still works and never shows up in the description.
 
 ### Changed
 
 - What Firefly III calls a transaction's description is now called **Title** everywhere in the app,
   and its notes are called **Description**, in Capture, drafts, transactions, Planned, Activity's
   search and the change lists. Nothing changes in Firefly III.
+- On a split transaction, the name of the whole group is now **Group title**, so it is no longer
+  confused with each split's own **Title**.
 
 ### Fixed
 
 - Changing the amount on a receipt draft no longer goes through the database for every digit: it
   shows at once, a fast second digit no longer replaces the first, and a receipt with many items no
   longer redraws every item's page for each digit.
+- Typing a title, description or "shared with" on a draft or transaction no longer saves every
+  letter: the text is kept as you type and saved once when you leave the field or close the sheet,
+  so typing stays smooth on a receipt with many items.
+- A receipt with many items only builds the item in view and its neighbours, and the category,
+  budget, account and description sheets are built when first opened, so every edit on it is
+  lighter.
+- The Inbox no longer redraws itself behind an open draft or Capture; it catches up when you come
+  back.
 
 ## [1.4.5] - 2026-09-30
 

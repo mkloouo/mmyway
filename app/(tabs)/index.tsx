@@ -5,6 +5,7 @@ import { Animated, Pressable, SectionList, Text, View } from 'react-native';
 import { usePopOnChange } from '../../src/ui/feedback';
 import { Collapsible, leaveThen } from '../../src/ui/Collapsible';
 import { useTranslation } from 'react-i18next';
+import { useIsFocused } from 'expo-router';
 import { inArray } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
 import { useCurrencies } from '../../src/db/useReferenceData';
@@ -67,7 +68,9 @@ export default function InboxScreen() {
   const t = useTheme();
   const { t: tr } = useTranslation();
   const act = useAction();
-  const { needsAttention, toConfirm, toReview, queued } = useInboxSections();
+  // Not while a draft or Capture is open over it: their writes would re-render this list unseen.
+  const focused = useIsFocused();
+  const { needsAttention, toConfirm, toReview, queued } = useInboxSections({ enabled: focused });
   // Only what the pill counts — not every payload in the queue.
   const { data: outbox } = useLiveQuery(
     db

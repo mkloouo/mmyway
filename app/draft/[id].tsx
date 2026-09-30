@@ -464,30 +464,33 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
                 </Text>
               </Pressable>
             )}
-            {/* A transfer has no payee, so its title is what names it; a payment's shows when it
-                says something the payee doesn't. */}
-            {(draft.type === 'transfer' || draft.description !== payeeName) && (
-              <Pressable
-                onPress={() => setTextFor(0)}
-                disabled={readOnly}
-                accessibilityRole="button"
-                accessibilityLabel={tr('fields.description')}
+            {/* The title is always here, as on Capture, even when it is the payee's name: it is
+                what the transaction is called in Firefly III. A transfer has no payee, so it
+                is the heading. */}
+            <Pressable
+              onPress={() => setTextFor(0)}
+              disabled={readOnly}
+              accessibilityRole="button"
+              accessibilityLabel={tr('fields.description')}
+            >
+              <Text
+                style={[
+                  draft.type === 'transfer' ? t.type.heading : t.type.body,
+                  {
+                    color: !draft.description
+                      ? t.color.textFaint
+                      : draft.type === 'transfer'
+                        ? t.color.text
+                        : t.color.textMuted,
+                    marginTop: t.space.xs,
+                    textAlign: 'center',
+                  },
+                ]}
+                numberOfLines={2}
               >
-                <Text
-                  style={[
-                    draft.type === 'transfer' ? t.type.heading : t.type.body,
-                    {
-                      color: draft.type === 'transfer' ? t.color.text : t.color.textMuted,
-                      marginTop: t.space.xs,
-                      textAlign: 'center',
-                    },
-                  ]}
-                  numberOfLines={2}
-                >
-                  {draft.description || '—'}
-                </Text>
-              </Pressable>
-            )}
+                {draft.description || tr('fields.description')}
+              </Text>
+            </Pressable>
             {!!aliasCaption && (
               <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]}>
                 {aliasCaption}
@@ -656,7 +659,7 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
         title={textFor === 'title' ? tr('splits.title') : tr('fields.description')}
         footer={<Button title={tr('common.done')} onPress={() => setTextFor(null)} />}
       >
-        <TextField value={textField.value} onChangeText={textField.onChange} buffered autoFocus />
+        <TextField value={textField.value} onCommit={textField.onChange} autoFocus />
       </Sheet>
 
       <PayeeSheet
@@ -730,26 +733,13 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
           />
         )}
         {!readOnly && (
-          <>
-            {/* A receipt's title usually equals its merchant, and the screen only shows one that
-                says something else, so this is where it is entered. */}
-            <Row
-              first
-              label={tr('fields.description')}
-              value={(splitMode ? draft.groupTitle || draft.description : draft.description) || '—'}
-              chevron
-              onPress={() => {
-                closeSheet();
-                setTextFor(splitMode ? 'title' : 0);
-              }}
-            />
-            <Row
-              label={tr('fields.currency')}
-              value={draft.currencyCode || '—'}
-              chevron
-              onPress={() => setSheet('currency')}
-            />
-          </>
+          <Row
+            first={!row.ff3GroupId}
+            label={tr('fields.currency')}
+            value={draft.currencyCode || '—'}
+            chevron
+            onPress={() => setSheet('currency')}
+          />
         )}
         <Row
           first={readOnly && !row.ff3GroupId}

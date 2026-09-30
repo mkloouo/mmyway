@@ -1,4 +1,4 @@
-import { Tabs } from 'expo-router';
+import { Tabs, useIsFocused } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTheme } from '../../src/ui/theme';
@@ -7,7 +7,9 @@ import { useInboxSections } from '../../src/inbox/useInboxSections';
 export default function TabsLayout() {
   const t = useTheme();
   const { t: tr } = useTranslation();
-  const { actionableCount } = useInboxSections();
+  // The badge waits while a modal (a draft, Capture) is open over the tabs, and catches up after.
+  const focused = useIsFocused();
+  const { actionableCount } = useInboxSections({ enabled: focused });
 
   return (
     <Tabs

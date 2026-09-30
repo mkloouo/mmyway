@@ -8,21 +8,25 @@ import { useTheme } from './theme';
 export interface TextFieldProps extends TextInputProps {
   invalid?: boolean;
   /**
-   * For a `value` that round-trips through storage (a draft saved to SQLite and read back by a
-   * live query) instead of plain component state. Each keystroke's write comes back a moment
-   * later, and a controlled input re-set to that older text moves the cursor and drops or
-   * repeats what was typed in between. Buffered, the field keeps its own text while focused and
-   * only takes `value` from outside when the user isn't typing in it.
+   * For a `value` that is stored rather than held in component state (a draft saved to SQLite and
+   * read back by a live query). Writing every keystroke put a database round trip, a 100 ms
+   * live-query wait and a re-render of the screen behind each letter, and the value coming back
+   * late moved the cursor and dropped or repeated what was typed in between.
+   *
+   * With `onCommit` the field edits its own text and calls it once, with the final text: when the
+   * field loses focus, or when it unmounts (a sheet closing on Done, the scrim or Android back).
+   * Nothing is written if the text didn't change. `value` is taken from outside only while the
+   * field isn't focused. `onChangeText` still fires per keystroke, for a caller that wants it.
    */
-  buffered?: boolean;
+  onCommit?: (text: string) => void;
 }
 
 export function TextField({
   style,
   invalid,
-  buffered,
   value,
   onChangeText,
+  onCommit,
   onFocus,
   onBlur,
   ...props
@@ -30,17 +34,38 @@ export function TextField({
   const t = useTheme();
   const [text, setText] = useState(value ?? '');
   const focused = useRef(false);
+  // The text as the outside knows it: what came in through `value`, or was last committed.
+  const known = useRef(value ?? '');
+  const typed = useRef(value ?? '');
+  const commitRef = useRef<() => void>(() => {});
+
+  // Refreshed after every render so the unmount cleanup below commits with the caller's latest
+  // callback rather than the one from the first render.
   useEffect(() => {
-    if (buffered && !focused.current) setText(value ?? '');
-  }, [buffered, value]);
+    commitRef.current = () => {
+      if (!onCommit || typed.current === known.current) return;
+      known.current = typed.current;
+      onCommit(typed.current);
+    };
+  });
+  useEffect(() => () => commitRef.current(), []);
+
+  useEffect(() => {
+    if (!onCommit || focused.current) return;
+    const next = value ?? '';
+    known.current = next;
+    typed.current = next;
+    setText(next);
+  }, [onCommit, value]);
 
   return (
     <TextInput
       placeholderTextColor={t.color.textFaint}
       {...props}
-      value={buffered ? text : value}
+      value={onCommit ? text : value}
       onChangeText={(next) => {
-        if (buffered) setText(next);
+        typed.current = next;
+        if (onCommit) setText(next);
         onChangeText?.(next);
       }}
       onFocus={(e) => {
@@ -49,6 +74,7 @@ export function TextField({
       }}
       onBlur={(e) => {
         focused.current = false;
+        commitRef.current();
         onBlur?.(e);
       }}
       style={[

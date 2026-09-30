@@ -53,18 +53,27 @@ export interface InboxSections {
 const TO_CONFIRM_KINDS = new Set(['manual_entry', 'receipt']);
 const TO_CONFIRM_STATES = new Set(['captured', 'parsed']);
 
-export function useInboxSections(): InboxSections {
+/**
+ * `enabled: false` is for the Inbox while a screen is open over it (a draft, Capture): it stays
+ * mounted underneath, and every write the screen on top made re-read the tables and re-rendered
+ * the list nobody could see. It keeps what it had and catches up when enabled again.
+ */
+export function useInboxSections({ enabled = true }: { enabled?: boolean } = {}): InboxSections {
   const db = useDb();
-  const { data: items } = useLiveQuery(db.select().from(inboxItems));
+  const { data: items } = useLiveQuery(db.select().from(inboxItems), [], enabled);
   const { data: outbox } = useLiveQuery(
     db
       .select()
       .from(outboxOperations)
       .where(inArray(outboxOperations.status, ['pending', 'in_flight', 'failed']))
       .orderBy(asc(outboxOperations.sequence)),
+    [],
+    enabled,
   );
   const { data: accounts } = useLiveQuery(
     db.select({ id: referenceAccounts.id, name: referenceAccounts.name }).from(referenceAccounts),
+    [],
+    enabled,
   );
 
   // Only the cached transactions the queue points at, not the whole table.
@@ -85,6 +94,7 @@ export function useInboxSections(): InboxSections {
         ),
       ),
     [refsKey],
+    enabled,
   );
 
   return useMemo(() => {

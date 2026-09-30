@@ -67,7 +67,7 @@ export async function reapplyQueuedAccountEdits(db: OutboxDb): Promise<void> {
       .from(referenceAccounts)
       .where(eq(referenceAccounts.id, p.accountId));
     if (!account) continue;
-    const patch: AccountEdit & { active?: boolean; notes?: string } = { ...p.edit };
+    const patch: AccountEdit & { active?: boolean } = { ...p.edit };
     if (p.active !== undefined) patch.active = p.active;
     if (p.setEnvelopeMarker !== undefined)
       patch.notes = setEnvelopeMarker(account.notes, p.setEnvelopeMarker);

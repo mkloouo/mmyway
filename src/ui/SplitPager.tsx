@@ -1,5 +1,8 @@
 // A split transaction on screen: the tracked total on top (tap to change it), a leftover banner
 // while the splits don't add up to it, and one page per split, swiped through horizontally.
+// Only the page in view and its two neighbours are built: every page is a card of rows with its
+// sheets, so building all of a 25-item receipt's pages made each edit re-render 25 of them. The
+// others are empty views of the same width, so the scroll positions don't move.
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -123,7 +126,7 @@ export function SplitPager({
       >
         {Array.from({ length: count }, (_, i) => (
           <View key={i} style={{ width, gap: t.space.md }}>
-            {renderPage(i)}
+            {Math.abs(i - index) <= 1 ? renderPage(i) : null}
           </View>
         ))}
       </ScrollView>

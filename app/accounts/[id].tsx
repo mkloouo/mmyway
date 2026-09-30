@@ -30,7 +30,7 @@ import { useAction } from '../../src/ui/useAction';
 import { useConfirmDiscard } from '../../src/ui/useConfirmDiscard';
 import { useToast } from '../../src/ui/useToast';
 import { referenceAccounts } from '../../src/db/schema';
-import { hasEnvelopeMarker } from '../../src/accounts/envelopeMarker';
+import { hasEnvelopeMarker, setEnvelopeMarker } from '../../src/accounts/envelopeMarker';
 import {
   setAccountActive,
   setAccountEnvelope,
@@ -41,6 +41,7 @@ import {
   accountFormProblem,
   diffAccountEdit,
   formFromAccount,
+  type AccountEdit,
   type AccountForm,
   type AccountRole,
 } from '../../src/accounts/accountEdit';
@@ -90,6 +91,9 @@ export default function AccountScreen() {
   const [form, setForm] = useState<AccountForm | null>(null);
   const [active, setActive] = useState(true);
   const [envelope, setEnvelope] = useState(false);
+  // The account's notes without the cash-envelope marker line, which has its own checkbox.
+  const [description, setDescription] = useState('');
+  const [initialDescription, setInitialDescription] = useState('');
   // Amount fields are kept as typed ("12,5", "-") and parsed on Save.
   const [openingText, setOpeningText] = useState('');
   const [virtualText, setVirtualText] = useState('');
@@ -105,6 +109,9 @@ export default function AccountScreen() {
     setForm(start);
     setActive(account.active);
     setEnvelope(hasEnvelopeMarker(account.notes));
+    const startDescription = setEnvelopeMarker(account.notes, false);
+    setDescription(startDescription);
+    setInitialDescription(startDescription);
     setOpeningText(start.openingBalance ?? '');
     setVirtualText(start.virtualBalance ?? '');
   }
@@ -117,7 +124,13 @@ export default function AccountScreen() {
     openingBalance: opening?.ok ? opening.value : null,
     virtualBalance: virtual?.ok ? virtual.value : null,
   };
-  const edit = initial && next ? diffAccountEdit(initial, next) : {};
+  const descriptionChanged = description !== initialDescription;
+  // A changed description sends the whole notes text, the envelope marker as it now is included;
+  // the marker alone is a read-modify-write at replay (see setAccountEnvelope).
+  const edit: AccountEdit = {
+    ...(initial && next ? diffAccountEdit(initial, next) : {}),
+    ...(descriptionChanged ? { notes: setEnvelopeMarker(description, envelope) || null } : {}),
+  };
   const problem = next ? accountFormProblem(next) : null;
   const dirty =
     !!account &&
@@ -142,7 +155,7 @@ export default function AccountScreen() {
       if (!canSave || !account) return;
       await updateAccount(db, account.id, edit);
       if (active !== account.active) await setAccountActive(db, account.id, active);
-      if (envelope !== hasEnvelopeMarker(account.notes))
+      if (!descriptionChanged && envelope !== hasEnvelopeMarker(account.notes))
         await setAccountEnvelope(db, account.id, envelope);
       router.back();
     },
@@ -192,6 +205,8 @@ export default function AccountScreen() {
               onChangeText={(name) => patch({ name })}
               placeholder={tr('accounts.name')}
             />
+            <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('fields.note')}</Text>
+            <TextField value={description} onChangeText={setDescription} multiline />
             <Row
               label={tr('fields.currency')}
               value={form.currencyCode}
