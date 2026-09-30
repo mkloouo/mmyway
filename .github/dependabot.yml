@@ -1,5 +1,10 @@
-# Grouped and weekly, so it is a PR or two a week, not one per package. Expo SDK packages move
-# together (`npx expo install --fix` does the same by hand), not one by one.
+# Grouped and weekly, so it is a PR or two a week, not one per package.
+#
+# The Expo SDK decides the versions of Expo's packages, React, React Native and the native modules
+# it bundles (node_modules/expo/bundledNativeModules.json), and a React Native minor (0.86 -> 0.87)
+# is an SDK upgrade, not a bump: the app is built against one set. So Dependabot leaves all of those
+# alone. They move with `npx expo install --fix` (the Static analysis workflow's expo-doctor step
+# fails when they fall behind) or with an SDK upgrade.
 version: 2
 updates:
   - package-ecosystem: npm
@@ -8,26 +13,33 @@ updates:
       interval: weekly
     open-pull-requests-limit: 5
     groups:
-      expo-sdk:
-        patterns:
-          [
-            'expo',
-            'expo-*',
-            '@expo/*',
-            'react-native',
-            'react-native-*',
-            '@react-native/*',
-            'react',
-            'react-dom',
-          ]
       dev-tools:
         dependency-type: development
+      app:
+        dependency-type: production
     ignore:
-      # Major versions of the SDK stack are an upgrade project, not a Dependabot PR.
-      - dependency-name: 'expo*'
+      - dependency-name: 'expo'
+      - dependency-name: 'expo-*'
+      - dependency-name: '@expo/*'
+      - dependency-name: 'react'
+      - dependency-name: 'react-dom'
+      - dependency-name: 'react-native'
+      - dependency-name: 'react-native-*'
+      - dependency-name: '@react-native/*'
+      - dependency-name: '@react-native-community/*'
+      - dependency-name: 'jest-expo'
+      - dependency-name: 'babel-preset-expo'
+      - dependency-name: 'eslint-config-expo'
+      - dependency-name: '@types/react'
+      # Tied to what jest-expo and eslint-config-expo support; move them with the SDK.
+      - dependency-name: 'jest'
         update-types: ['version-update:semver-major']
-      - dependency-name: 'react-native*'
+      - dependency-name: '@types/jest'
         update-types: ['version-update:semver-major']
+      - dependency-name: 'eslint'
+        update-types: ['version-update:semver-major']
+      - dependency-name: 'typescript'
+        update-types: ['version-update:semver-major', 'version-update:semver-minor']
   - package-ecosystem: github-actions
     directory: /
     schedule:
