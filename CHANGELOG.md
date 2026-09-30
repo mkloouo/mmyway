@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.4.4] - 2026-09-30
+
 ### Planned
 
 - A planned transaction's note is its subscription's note in Firefly III, line breaks included; the
