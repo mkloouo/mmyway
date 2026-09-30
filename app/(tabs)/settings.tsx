@@ -97,7 +97,9 @@ export default function SettingsScreen() {
   });
   const queryClient = useQueryClient();
   /** Re-reads every setting. Called after a write and when a sheet that wrote one closes. */
-  const reload = () => queryClient.invalidateQueries({ queryKey: SETTINGS_QUERY_KEY });
+  const reload = () => {
+    void queryClient.invalidateQueries({ queryKey: SETTINGS_QUERY_KEY });
+  };
 
   const signedIn = settings?.signedIn ?? false;
   const ff3Hosts = settings?.ff3Hosts ?? [];

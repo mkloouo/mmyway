@@ -214,6 +214,12 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
   });
   const saving = act.pending(tr('common.save'));
 
+  const deleteNow = act(tr('common.delete'), async () => {
+    if (!item) return;
+    await deletePlanned(db, item);
+    router.back();
+  });
+
   function onDelete() {
     if (!item) return;
     Alert.alert(tr('planned.deleteTitle', { name: item.fields.name }), tr('planned.deleteBody'), [
@@ -221,10 +227,7 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
       {
         text: tr('common.delete'),
         style: 'destructive',
-        onPress: act(tr('common.delete'), async () => {
-          await deletePlanned(db, item);
-          router.back();
-        }),
+        onPress: () => void deleteNow(),
       },
     ]);
   }

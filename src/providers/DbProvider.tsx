@@ -21,7 +21,8 @@ export function DbProvider({ children }: { children: ReactNode }) {
   const { t: tr } = useTranslation();
 
   useEffect(() => {
-    getMigrationDone().then((error) => {
+    // getMigrationDone() resolves with the migration's error (or null); it doesn't reject.
+    void getMigrationDone().then((error) => {
       setMigrationError(error);
       setMigrated(true);
       if (error) return;

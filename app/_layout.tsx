@@ -37,7 +37,7 @@ function SyncOnResume() {
     const subscription = AppState.addEventListener('change', (state) => {
       if (state !== 'active') return;
       const age = lastSyncedAt ? Date.now() - new Date(lastSyncedAt).getTime() : Infinity;
-      if (age > RESUME_SYNC_AFTER_MS) syncNow();
+      if (age > RESUME_SYNC_AFTER_MS) void syncNow();
     });
     return () => subscription.remove();
   }, [syncNow, lastSyncedAt]);
@@ -51,7 +51,7 @@ function SyncOnReconnect() {
     let online: boolean | null = null;
     return NetInfo.addEventListener((state) => {
       const next = state.isConnected === true && state.isInternetReachable !== false;
-      if (online === false && next) syncNow();
+      if (online === false && next) void syncNow();
       online = next;
     });
   }, [syncNow]);

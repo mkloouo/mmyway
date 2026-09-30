@@ -9,6 +9,10 @@ import { readDraft, writeDraft } from '../inbox/draftJson';
 import { draftReadiness } from '../inbox/readiness';
 import type { InboxItemRow } from '../inbox/useInboxSections';
 
+// The first test pays for the cold import of the whole card tree; under a busy parallel run that
+// is more than Jest's default 5 s.
+jest.setTimeout(15_000);
+
 // Reanimated's swipe needs native worklets, which Jest doesn't have; the card is what's under test.
 jest.mock('../ui/SwipeableCard', () => ({
   SwipeableCard: ({ children }: { children: React.ReactNode }) => children,

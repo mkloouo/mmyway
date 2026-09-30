@@ -44,7 +44,7 @@ export function useSharedImages(): void {
       return;
     }
     processing.current = true;
-    (async () => {
+    void (async () => {
       try {
         for (const file of files) {
           try {

@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- If **Undo** on a just-confirmed entry fails, you now get an error message; before, the snackbar
+  closed as if it had worked and the entry was still sent.
 - Activity no longer shows a just-sent transaction twice for a moment (and logs a duplicate-key
   error) when it moves from Queued to synced.
 - Opening a transaction or a draft no longer flashes "PLN" instead of "zł" for a moment, and

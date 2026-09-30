@@ -71,7 +71,7 @@ export function withTimeout(
   return (address) =>
     new Promise<boolean>((resolve) => {
       const timer = setTimeout(() => resolve(false), timeoutMs);
-      probe(address)
+      void probe(address)
         .catch(() => false)
         .then((ok) => {
           clearTimeout(timer);

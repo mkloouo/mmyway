@@ -44,6 +44,8 @@ import { needsLabel } from '../src/ui/readinessLabel';
 import { TextField } from '../src/ui/TextField';
 import { PickerSheet } from '../src/ui/PickerSheet';
 import { useAction } from '../src/ui/useAction';
+import { logLine } from '../src/utils/log';
+import { errorMessage } from '../src/utils/errorMessage';
 import { pickableCurrencies, primaryCurrencyCode } from '../src/ui/currencies';
 import { TX_TYPES } from '../src/transactions/txTypes';
 
@@ -208,12 +210,16 @@ export default function CaptureScreen() {
   );
   useEffect(() => {
     let cancelled = false;
-    buildMerchantLookup(db, { type: lookupType }).then((map) => {
-      if (!cancelled) setLoaded({ type: lookupType, list: [...map.values()] });
-    });
-    accountLastUsed(db).then((m) => {
-      if (!cancelled) setAccountRecency(m);
-    });
+    buildMerchantLookup(db, { type: lookupType })
+      .then((map) => {
+        if (!cancelled) setLoaded({ type: lookupType, list: [...map.values()] });
+      })
+      .catch((err) => logLine('warn', `merchant lookup failed: ${errorMessage(err)}`));
+    accountLastUsed(db)
+      .then((m) => {
+        if (!cancelled) setAccountRecency(m);
+      })
+      .catch((err) => logLine('warn', `account recency failed: ${errorMessage(err)}`));
     return () => {
       cancelled = true;
     };
@@ -245,14 +251,16 @@ export default function CaptureScreen() {
   useEffect(() => {
     if (!isPayeeType || !merchantRawInput.trim()) return;
     let cancelled = false;
-    matchAlias(db, PAYEE, merchantRawInput).then((match) => {
-      if (cancelled) return;
-      const caption =
-        match.matched && match.alias.targetName !== merchantRawInput
-          ? i18n.t('capture.booksViaAlias', { name: match.alias.targetName })
-          : null;
-      setMatchedFor({ text: merchantRawInput, caption });
-    });
+    matchAlias(db, PAYEE, merchantRawInput)
+      .then((match) => {
+        if (cancelled) return;
+        const caption =
+          match.matched && match.alias.targetName !== merchantRawInput
+            ? i18n.t('capture.booksViaAlias', { name: match.alias.targetName })
+            : null;
+        setMatchedFor({ text: merchantRawInput, caption });
+      })
+      .catch((err) => logLine('warn', `alias match failed: ${errorMessage(err)}`));
     return () => {
       cancelled = true;
     };
@@ -364,6 +372,16 @@ export default function CaptureScreen() {
     });
   }
 
+  // Through act(): a failed Undo is reported instead of dropped while the snackbar closes and the
+  // entry goes out anyway.
+  const undoSend = act(
+    tr('common.undo'),
+    async (inboxItemId: string, confirmed: Awaited<ReturnType<typeof confirmInboxItem>>) => {
+      const outcome = await undoConfirm(db, inboxItemId, confirmed);
+      setToast(outcome === 'undone' ? tr('capture.undoneBackInInbox') : tr('inbox.alreadySent'));
+    },
+  );
+
   const save = act(
     tr('common.save'),
     async (andConfirm: boolean) => {
@@ -380,12 +398,7 @@ export default function CaptureScreen() {
           id: inboxItemId,
           message: tr('capture.confirmedLabel', { label }),
           actionLabel: tr('common.undo'),
-          onAction: async () => {
-            const outcome = await undoConfirm(db, inboxItemId, confirmed);
-            setToast(
-              outcome === 'undone' ? tr('capture.undoneBackInInbox') : tr('inbox.alreadySent'),
-            );
-          },
+          onAction: () => void undoSend(inboxItemId, confirmed),
         });
       } else {
         setToast(tr('capture.savedLabel', { label }));

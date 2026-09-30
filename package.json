@@ -23,7 +23,6 @@
     "ff3:test": "node scripts/ff3-test.mjs",
     "e2e": "node scripts/e2e.mjs",
     "analyze": "node scripts/analyze.mjs",
-    "analyze:lint": "eslint -c eslint.strict.config.js app src",
     "analyze:dead": "knip",
     "analyze:dupes": "jscpd --config .jscpd.json",
     "analyze:cycles": "dpdm --no-warning --no-tree -T --exit-code circular:1 \"app/**/*.tsx\" \"src/**/*.ts\" \"src/**/*.tsx\"",

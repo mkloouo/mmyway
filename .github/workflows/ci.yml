@@ -23,6 +23,7 @@ jobs:
       - name: Generate typed routes
         run: CI=1 timeout 90 npx expo start --offline || true
       - run: test -f .expo/types/router.d.ts
+      - run: npx prettier --check .
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test -- --ci

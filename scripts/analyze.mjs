@@ -13,11 +13,6 @@ import { fileURLToPath } from 'node:url';
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 
 export const CHECKS = [
-  {
-    key: 'lint',
-    script: 'analyze:lint',
-    what: 'strict lint: promises, AGENTS.md rules, hardcoded strings',
-  },
   { key: 'dead', script: 'analyze:dead', what: 'unused files, exports, dependencies (knip)' },
   { key: 'dupes', script: 'analyze:dupes', what: 'copy-paste over 1% (jscpd)' },
   { key: 'cycles', script: 'analyze:cycles', what: 'runtime import cycles (dpdm)' },
