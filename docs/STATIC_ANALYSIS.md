@@ -21,14 +21,14 @@ outside `.github/` so it stays off.
 
 ## Baseline (2026-09-30, `main` at `c59b7a7`)
 
-| Check  | Result                                                                                                                                                                          |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| lint   | 36: 28 floating promises, 3 misused promises, 5 `payload_json` reads/writes outside `payloadJson.ts` ([#78](https://github.com/mkloouo/mmyway/issues/78)); no hardcoded UI text |
-| dead   | 21 unused exports, 32 unused exported types ([#80](https://github.com/mkloouo/mmyway/issues/80))                                                                                |
-| dupes  | 0.16% (4 clones) — passes                                                                                                                                                       |
-| cycles | none at runtime — passes (7 through type-only imports)                                                                                                                          |
-| deps   | no high/critical — passes (16 moderate)                                                                                                                                         |
-| doctor | 5 Expo packages one patch behind the SDK (`npx expo install --check`)                                                                                                           |
+| Check  | Result                                                                                                                                                             |
+| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| lint   | 36 at the time: 28 floating promises, 3 misused promises, 5 `payload_json` reads/writes outside `payloadJson.ts`; no hardcoded UI text. All fixed since (#92, #78) |
+| dead   | 21 unused exports, 32 unused exported types ([#80](https://github.com/mkloouo/mmyway/issues/80))                                                                   |
+| dupes  | 0.16% (4 clones) — passes                                                                                                                                          |
+| cycles | none at runtime — passes (7 through type-only imports)                                                                                                             |
+| deps   | no high/critical — passes (16 moderate)                                                                                                                            |
+| doctor | 5 Expo packages one patch behind the SDK (`npx expo install --check`)                                                                                              |
 
 Most floating promises are `haptics.*()` calls, which return a promise nobody needs; making
 `src/ui/haptics.ts` return `void` removes them in one go. The ones that matter are the two Undo
@@ -39,8 +39,9 @@ a failed Undo is silently dropped.
 
 In this order; each step is small and keeps `main` green.
 
-1. **Fix the baseline**, or accept parts of it: (lint is done: haptics → `void`, the Undo handlers
-   in `act`; the five `payload_json` places are a warning until #78 turns them into errors), #80 for the dead exports, `npx expo install --fix`.
+1. **Fix the baseline**, or accept parts of it: lint is done (haptics → `void`, the Undo handlers
+   in `act`, and every `payload_json` read and write through `payloadJson.ts`, so that rule is an
+   error, #78); #80 for the dead exports; `npx expo install --fix`.
 2. **CI:** in `.github/workflows/static-analysis.yml` uncomment `push`/`pull_request` and change
    `npm run analyze` to `npm run analyze -- --strict`. Or fold the checks into `ci.yml` and
    `npm run check`.

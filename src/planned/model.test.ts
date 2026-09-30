@@ -292,6 +292,7 @@ describe('planned model', () => {
           payloadJson: JSON.stringify({
             key: 'spotify',
             billId: '1',
+            before: null,
             fields: { ...fields, amount: '9.99' },
           }),
         },
@@ -324,7 +325,7 @@ describe('planned model', () => {
         {
           kind: 'save_planned',
           sequence: 1,
-          payloadJson: JSON.stringify({ key: 'spotify', billId: '1', fields }),
+          payloadJson: JSON.stringify({ key: 'spotify', billId: '1', before: null, fields }),
         },
       ],
       '2026-09-28',

@@ -4,6 +4,7 @@
 import { byDate, fieldsOf, groupPlanned, type PlannedFields, type PlannedGroup } from './model';
 import type { PlannedObject } from './objects';
 import type { DeletePlannedPayload, SavePlannedPayload } from './replay';
+import { tryReadPayload } from '../sync/payloadJson';
 
 export interface PlannedItem {
   key: string;
@@ -47,12 +48,11 @@ export function plannedItems(
     .sort((a, b) => a.sequence - b.sequence);
   let list = items;
   for (const op of ops) {
-    let payload: SavePlannedPayload | DeletePlannedPayload;
-    try {
-      payload = JSON.parse(op.payloadJson);
-    } catch {
-      continue;
-    }
+    const payload = tryReadPayload<SavePlannedPayload | DeletePlannedPayload>(
+      op.kind,
+      op.payloadJson,
+    );
+    if (!payload) continue;
     const index = list.findIndex((item) =>
       item.group ? matches(item.group, payload) : item.key === payload.key,
     );

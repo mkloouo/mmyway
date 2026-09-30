@@ -50,10 +50,8 @@ module.exports = defineConfig([
     files: ['app/**/*.{ts,tsx}', 'src/**/*.{ts,tsx}'],
     ignores: [...TESTS, 'src/sync/payloadJson.ts', 'src/inbox/draftJson.ts'],
     rules: {
-      // A warning until every payload_json/draft_json read and write goes through its module
-      // (#78); then 'error'.
       'no-restricted-syntax': [
-        'warn',
+        'error',
         {
           selector:
             "CallExpression[callee.object.name='JSON'][callee.property.name='parse'] > MemberExpression[property.name=/^(payloadJson|draftJson)$/]",

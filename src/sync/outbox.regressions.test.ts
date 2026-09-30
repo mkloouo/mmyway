@@ -294,6 +294,10 @@ describe('receipt upload', () => {
       }),
     };
     await replay(db, client);
+    // Between the attempts the queued payload remembers the attachment, and is still versioned.
+    const [waiting] = await db.select().from(outboxOperations);
+    expect(waiting?.payloadJson).toContain('"attachmentId":"att-1"');
+    expect(waiting?.payloadJson).toContain('"v":1');
     await db.update(outboxOperations).set({ nextAttemptAt: null }); // the backoff has passed
     await replay(db, client);
 

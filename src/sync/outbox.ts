@@ -578,7 +578,7 @@ async function replayOne(
         attachmentId = created.data.id;
         await db
           .update(outboxOperations)
-          .set({ payloadJson: JSON.stringify({ ...p, attachmentId }) })
+          .set({ payloadJson: writePayload({ ...p, attachmentId }) })
           .where(eq(outboxOperations.id, row.id));
       }
       await client.request(`/v1/attachments/${attachmentId}/upload`, {

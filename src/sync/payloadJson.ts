@@ -2,6 +2,7 @@
 // (src/inbox/draftJson.ts) — it is written with a version and validated when read back. A payload
 // that doesn't match fails its operation with a readable message instead of sending garbage.
 import { z } from 'zod';
+import { logLine } from '../utils/log';
 import type { OutboxKind } from './outbox';
 
 export const PAYLOAD_VERSION = 1;
@@ -95,23 +96,46 @@ export function readPayload<T = Record<string, unknown>>(kind: OutboxKind, json:
   return payload as T;
 }
 
-const GROUP_KINDS: readonly OutboxKind[] = [
+const GROUP_KINDS: readonly string[] = [
   'update_transaction',
   'recurring_review',
   'delete_transaction',
 ];
 
+const warned = new Set<string>();
+
 /**
- * The transaction group a queued edit, review or delete points at; null for any other kind and for
- * an unreadable payload. For lists and screens that must never throw while rendering.
+ * readPayload for lists, overlays and screens that must never throw while rendering: null for a
+ * payload that can't be read (not JSON, not the shape its kind needs) or a kind this build doesn't
+ * know. Such an operation fails on its own when it is replayed; the screens just skip it. Logged
+ * once per payload, without its values — these run on every render.
  */
-export function payloadGroupId(kind: OutboxKind, json: string): string | null {
-  if (!GROUP_KINDS.includes(kind)) return null;
+export function tryReadPayload<T = Record<string, unknown>>(kind: string, json: string): T | null {
   try {
-    return readPayload<{ groupId: string }>(kind, json).groupId;
-  } catch {
+    if (!Object.hasOwn(SCHEMAS, kind)) throw new Error(`unknown outbox operation kind: ${kind}`);
+    return readPayload<T>(kind as OutboxKind, json);
+  } catch (err) {
+    const message =
+      err instanceof Error && /^(unreadable|unknown) /.test(err.message)
+        ? err.message
+        : `unreadable ${kind} payload (not valid JSON)`;
+    const key = `${kind}:${json}`;
+    if (!warned.has(key)) {
+      if (warned.size >= 200) warned.clear();
+      warned.add(key);
+      logLine('warn', message);
+    }
     return null;
   }
+}
+
+/**
+ * The transaction group a queued edit, review or delete points at; null for any other kind and for
+ * an unreadable payload.
+ */
+export function payloadGroupId(kind: string, json: string): string | null {
+  if (!GROUP_KINDS.includes(kind)) return null;
+  return tryReadPayload<{ groupId: string }>(kind, json)?.groupId ?? null;
 }
 
 export function writePayload(payload: object): string {
