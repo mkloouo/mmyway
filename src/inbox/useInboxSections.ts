@@ -42,7 +42,7 @@ export interface ConfirmEntry {
   confirmable: boolean;
 }
 
-export interface InboxSections {
+interface InboxSections {
   needsAttention: AttentionItem[];
   toConfirm: ConfirmEntry[];
   toReview: InboxItemRow[];

@@ -4,7 +4,7 @@
 import { logLine } from '../utils/log';
 import { errorMessage } from '../utils/errorMessage';
 
-export const MAX_SIDE = 1600;
+const MAX_SIDE = 1600;
 
 /** The image to use instead, or null to keep the original (already small, or resizing failed). */
 export async function downscaleReceipt(

@@ -46,7 +46,7 @@ export interface DeletePlannedPayload {
 }
 
 /** The rule group new rules go into when the simple view creates them. */
-export const PLANNED_RULE_GROUP = 'Planned';
+const PLANNED_RULE_GROUP = 'Planned';
 
 type Read<T> = { data: { id: string; attributes: T } };
 

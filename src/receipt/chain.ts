@@ -3,7 +3,7 @@ import { errorMessage } from '../utils/errorMessage';
 
 // fetch rejects with a TypeError when the request never got an answer, and with an AbortError
 // when a provider's own timeout fired. Anything else means the provider answered.
-export function isUnreachable(err: unknown): boolean {
+function isUnreachable(err: unknown): boolean {
   return err instanceof TypeError || (err instanceof Error && err.name === 'AbortError');
 }
 

@@ -5,7 +5,7 @@ import type { Href } from 'expo-router';
 import type { OutboxKind } from '../sync/outbox';
 import { readPayload } from '../sync/payloadJson';
 
-export interface QueuedChangeLookups {
+interface QueuedChangeLookups {
   accountName: (id: string) => string | undefined;
   /** A cached transaction by its group id or (for a receipt upload) its journal id. */
   transaction: (ref: {

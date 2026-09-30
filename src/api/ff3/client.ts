@@ -1,6 +1,6 @@
 import type { AuthErrorReason } from './types';
 
-export interface FF3ClientConfig {
+interface FF3ClientConfig {
   baseUrl: string; // e.g. https://firefly.example.com — no trailing slash, no /api suffix
   apiToken: string;
 }

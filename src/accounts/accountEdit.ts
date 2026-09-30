@@ -12,7 +12,7 @@ export const ACCOUNT_ROLES = [
 export type AccountRole = (typeof ACCOUNT_ROLES)[number];
 
 /** FF3 has one credit-card type; it is required with the ccAsset role. */
-export const CREDIT_CARD_TYPE = 'monthlyFull';
+const CREDIT_CARD_TYPE = 'monthlyFull';
 
 export interface AccountEdit {
   name?: string;

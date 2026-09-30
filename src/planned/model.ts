@@ -52,7 +52,7 @@ export interface PlannedGroup {
   recurrence?: Extract<PlannedObject, { kind: 'recurrence' }>;
 }
 
-export const groupKey = (name: string) => normkey(name);
+const groupKey = (name: string) => normkey(name);
 
 /** Subscriptions, rules and recurring transactions matched by name (case and accents aside). */
 export function groupPlanned(objects: readonly PlannedObject[]): PlannedGroup[] {
@@ -235,7 +235,7 @@ export function repetitionFor(f: PlannedFields): Record<string, unknown> {
 }
 
 /** The end date a repeating planned transaction is given: FF3's API has no "forever". */
-export const REPEAT_FOREVER_UNTIL = '2099-12-31';
+const REPEAT_FOREVER_UNTIL = '2099-12-31';
 
 /**
  * FF3 recurrence body. `transactionId` is the existing recurrence transaction, updated in place;
@@ -298,7 +298,7 @@ const MANAGED_ACTIONS = new Set([
   'add_tag',
 ]);
 
-export function managedActions(f: PlannedFields): RuleAction[] {
+function managedActions(f: PlannedFields): RuleAction[] {
   const action = (type: string, value: string): RuleAction => ({
     type,
     value,

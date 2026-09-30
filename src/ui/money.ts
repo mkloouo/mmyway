@@ -14,7 +14,7 @@ export interface NumberSeparators {
 let deviceSeparatorsCache: NumberSeparators | null = null;
 
 /** The phone's digit grouping and decimal separators, read once. */
-export function deviceSeparators(): NumberSeparators {
+function deviceSeparators(): NumberSeparators {
   if (deviceSeparatorsCache) return deviceSeparatorsCache;
   const locale = getLocales()[0];
   const decimal = locale?.decimalSeparator || '.';

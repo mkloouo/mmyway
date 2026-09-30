@@ -22,7 +22,7 @@ const SIGN_IN_ERROR_KEYS: Record<AuthErrorReason, string> = {
   api_version_too_low: 'settings.signInErrors.apiVersionTooLow',
 };
 
-export type ConnectResult =
+type ConnectResult =
   | { status: 'connected' }
   /** Signing in somewhere new is refused while changes for the current instance are queued. */
   | { status: 'queued'; count: number }
