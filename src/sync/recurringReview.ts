@@ -5,6 +5,7 @@ import { inboxItems, plannedObjects } from '../db/schema';
 import { enqueueOperation } from './outbox';
 import type { NewOutboxOperation, OutboxDb } from './outbox';
 import { generateId } from '../utils/id';
+import { transition } from '../inbox/state';
 import { readReviewJournal, writeDraft, type ReviewJournal } from '../inbox/draftJson';
 import { plannedKey, readPlannedRow } from '../planned/objects';
 import { atPlannedTime, readPlannedTime } from '../planned/plannedTime';
@@ -55,7 +56,7 @@ export async function pullUnreviewedRecurring(
       .where(eq(inboxItems.ff3GroupId, group.id));
     if (existing) {
       // A card pulled before the planned currency was recorded picks it up on the next sync.
-      if (existing.state !== 'confirmed') continue;
+      if (existing.state !== 'parsed') continue;
       const stored = readReviewJournal(existing.draftJson);
       const updated = await withPlannedForeign(db, stored);
       if (updated !== stored)
@@ -80,7 +81,7 @@ export async function pullUnreviewedRecurring(
     await db.insert(inboxItems).values({
       id: generateId(),
       kind: 'recurring_review',
-      state: 'confirmed', // arrives pre-parsed from the server; only needs a user decision (brief §4.3)
+      state: 'parsed', // arrives pre-parsed from the server; only needs a user decision (brief §4.3)
       draftJson: writeDraft(reviewJournal),
       ff3GroupId: group.id,
       createdAt: now,
@@ -110,9 +111,14 @@ async function decideRecurringReview(
     kind,
     payload: decide(item.ff3GroupId, journal),
   });
+  // Approving is the user's confirm; the card leaves the Inbox at once and the change waits in the
+  // outbox, so the item goes on to `synced` in the same write.
   await db
     .update(inboxItems)
-    .set({ state: 'synced', updatedAt: new Date().toISOString() })
+    .set({
+      state: transition(transition(item.state, 'confirm'), 'synced'),
+      updatedAt: new Date().toISOString(),
+    })
     .where(eq(inboxItems.id, inboxItemId));
 }
 

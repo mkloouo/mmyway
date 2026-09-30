@@ -125,7 +125,7 @@ export function useInboxSections({ enabled = true }: { enabled?: boolean } = {})
         return { id: item.id, item, draft, readiness, confirmable: readiness.ready };
       });
     const toReview = rows.filter(
-      (row) => row.kind === 'recurring_review' && row.state === 'confirmed',
+      (row) => row.kind === 'recurring_review' && row.state === 'parsed',
     );
     const needsAttention: AttentionItem[] = [
       ...rows

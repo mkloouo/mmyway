@@ -17,7 +17,7 @@ describe('planned time on approval', () => {
     await db.insert(inboxItems).values({
       id: 'i1',
       kind: 'recurring_review',
-      state: 'confirmed',
+      state: 'parsed',
       ff3GroupId: 'g1',
       createdAt: 'c',
       updatedAt: 'u',
@@ -30,6 +30,9 @@ describe('planned time on approval', () => {
       }),
     });
     await approveRecurringReview(db as never, 'i1');
+    // Approve is the confirm; the card leaves the Inbox as synced while the change waits to send.
+    const [item] = await db.select().from(inboxItems);
+    expect(item!.state).toBe('synced');
     const [op] = await db.select().from(outboxOperations);
     const date = new Date(JSON.parse(op!.payloadJson).changes.date);
     expect([date.getDate(), date.getHours(), date.getMinutes()]).toEqual([5, 9, 30]);

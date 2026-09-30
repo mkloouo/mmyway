@@ -1,8 +1,8 @@
 // Queues the Planned tab's saves and deletes. Like account edits they go through the outbox, so
 // they work offline and reach FF3 in order with everything else.
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { outboxOperations } from '../db/schema';
-import { enqueueOperation, type OutboxDb } from '../sync/outbox';
+import { enqueueOperation, isUnsent, type OutboxDb } from '../sync/outbox';
 import { readPayload, writePayload } from '../sync/payloadJson';
 import { requestSync } from '../sync/syncTrigger';
 import { generateId } from '../utils/id';
@@ -15,12 +15,7 @@ async function queuedSaveFor(db: OutboxDb, key: string) {
   const ops = await db
     .select()
     .from(outboxOperations)
-    .where(
-      and(
-        eq(outboxOperations.kind, 'save_planned'),
-        inArray(outboxOperations.status, ['pending', 'failed']),
-      ),
-    );
+    .where(and(eq(outboxOperations.kind, 'save_planned'), isUnsent()));
   return (
     ops.find((op) => readPayload<SavePlannedPayload>(op.kind, op.payloadJson).key === key) ?? null
   );
