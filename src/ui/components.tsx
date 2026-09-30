@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  ActivityIndicator,
   Animated,
   Keyboard,
   Modal,
@@ -261,6 +262,7 @@ export function Row({
   onPress,
   tone,
   first,
+  loading,
 }: {
   label: string;
   /** Omitted on an action row (Delete, Duplicate): it shows `icon` there instead of a value. */
@@ -272,8 +274,11 @@ export function Row({
   onPress?: () => void;
   tone?: 'default' | 'warn' | 'danger';
   first?: boolean;
+  /** The value is still being read: a spinner stands where "—" would flash. */
+  loading?: boolean;
 }) {
   const t = useTheme();
+  const { t: tr } = useTranslation();
   const valueColor =
     tone === 'warn' ? t.color.warn : tone === 'danger' ? t.color.danger : t.color.text;
   const content = (
@@ -290,7 +295,15 @@ export function Row({
     >
       {leading}
       <Text style={[t.type.body, { color: t.color.textMuted, flexShrink: 0 }]}>{label}</Text>
-      {value !== undefined || !icon ? (
+      {loading ? (
+        <View style={{ flex: 1, alignItems: 'flex-end' }}>
+          <ActivityIndicator
+            size="small"
+            color={t.color.accent}
+            accessibilityLabel={tr('common.loading')}
+          />
+        </View>
+      ) : value !== undefined || !icon ? (
         <Text
           style={[t.type.body, { color: valueColor, flex: 1, textAlign: 'right' }]}
           numberOfLines={1}
@@ -445,16 +458,26 @@ export function Money({
   currency,
   type,
   size = 'body',
+  loading,
 }: {
   amount: string;
   currency: DisplayCurrency;
   type?: 'withdrawal' | 'deposit' | 'transfer';
   size?: 'body' | 'heading' | 'title' | 'display';
+  /** The currencies are still loading: without them the code would stand in for the symbol. */
+  loading?: boolean;
 }) {
   const t = useTheme();
+  const { t: tr } = useTranslation();
   const signed = amount.trim().startsWith('-') || amount.trim().startsWith('−');
   const color =
     type === 'deposit' ? t.color.income : type === 'transfer' ? t.color.transfer : t.color.text;
+  if (loading)
+    return (
+      <View style={{ minHeight: t.type[size].lineHeight }}>
+        <ActivityIndicator color={t.color.accent} accessibilityLabel={tr('common.loading')} />
+      </View>
+    );
   return (
     <Text style={[t.type[size], t.type.money, { color }]} numberOfLines={1}>
       {(type && !signed ? signFor(type) : '') + formatMoney(amount, currency)}

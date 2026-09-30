@@ -7,7 +7,7 @@ import { useShake } from '../../src/ui/feedback';
 import { useLocalSearchParams, router } from 'expo-router';
 import { eq } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
-import { useBudgets, useCategories, useCurrencies } from '../../src/db/useReferenceData';
+import { useBudgetRows, useCategories, useCurrencyRows } from '../../src/db/useReferenceData';
 import { pickDateTime } from '../../src/ui/pickDate';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
@@ -110,10 +110,18 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
   const act = useAction();
   const { shake, shakeStyle } = useShake(); // the visual twin of the warn haptic
 
-  const assetAccounts = useAssetAccounts() ?? [];
+  const accountRows = useAssetAccounts();
+  const assetAccounts = accountRows ?? [];
   const categories = useCategories();
-  const budgets = useBudgets();
-  const currencies = useCurrencies();
+  // undefined until each table's first read lands: a spinner stands in for "—" and for the
+  // currency code that would otherwise replace its symbol.
+  const budgetRows = useBudgetRows();
+  const budgets = budgetRows ?? [];
+  const currencyRows = useCurrencyRows();
+  const currencies = currencyRows ?? [];
+  const currenciesLoading = currencyRows === undefined;
+  const referenceLoading =
+    currenciesLoading || accountRows === undefined || budgetRows === undefined;
 
   // A confirmed entry whose create is still waiting in the queue can be taken back — the same
   // rule as Undo: only while it is `pending`, never once sending started.
@@ -349,6 +357,7 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
       currencies={currencies}
       categories={categories}
       budgets={budgets}
+      loading={referenceLoading}
     />
   );
 
@@ -384,6 +393,7 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
             currencies={currencies}
             categories={categories}
             budgets={budgets}
+            loading={referenceLoading}
           />
         ) : (
           detailRows
@@ -434,7 +444,13 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
         {!splitMode && (
           <View style={{ alignItems: 'center', paddingVertical: t.space.lg }}>
             <Pressable onPress={() => setKeypadFor(0)} disabled={readOnly}>
-              <Money amount={draft.amount} currency={currency} type={draft.type} size="title" />
+              <Money
+                amount={draft.amount}
+                currency={currency}
+                type={draft.type}
+                size="title"
+                loading={currenciesLoading}
+              />
             </Pressable>
             {draft.type !== 'transfer' && (
               <Pressable onPress={() => setSheet('payee')} disabled={readOnly}>
@@ -624,7 +640,13 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
         onClose={closeKeypad}
         title={keypadFor === 'total' ? tr('splits.total') : tr('fields.amount')}
       >
-        <Money amount={keypadValue} currency={currency} type={draft.type} size="display" />
+        <Money
+          amount={keypadValue}
+          currency={currency}
+          type={draft.type}
+          size="display"
+          loading={currenciesLoading}
+        />
         <Keypad compact onDigit={typeDigit} saveLabel={tr('common.done')} onSave={closeKeypad} />
       </Sheet>
 

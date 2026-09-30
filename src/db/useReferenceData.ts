@@ -28,8 +28,13 @@ export function useCategories(): (typeof referenceCategories.$inferSelect)[] {
   return data ?? EMPTY;
 }
 
-export function useBudgets(): (typeof referenceBudgets.$inferSelect)[] {
+/** undefined until the first read lands, for a screen that shows a spinner instead of "—". */
+export function useBudgetRows(): (typeof referenceBudgets.$inferSelect)[] | undefined {
   const db = useDb();
   const { data } = useLiveQuery(db.select().from(referenceBudgets));
-  return data ?? EMPTY;
+  return data;
+}
+
+export function useBudgets(): (typeof referenceBudgets.$inferSelect)[] {
+  return useBudgetRows() ?? EMPTY;
 }
