@@ -87,4 +87,11 @@ describe('ff3AccountBody', () => {
       ff3AccountBody({ accountRole: 'savingAsset', virtualBalance: null, name: undefined }),
     ).toEqual({ account_role: 'savingAsset', virtual_balance: null });
   });
+
+  it('sends the description as FF3 notes, null to clear it', () => {
+    expect(ff3AccountBody({ notes: 'Rent money\nmmyway-envelope' })).toEqual({
+      notes: 'Rent money\nmmyway-envelope',
+    });
+    expect(ff3AccountBody({ notes: null })).toEqual({ notes: null });
+  });
 });

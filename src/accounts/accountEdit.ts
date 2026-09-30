@@ -24,9 +24,12 @@ export interface AccountEdit {
   virtualBalance?: string | null;
   creditCardType?: string | null;
   monthlyPaymentDate?: string | null;
+  /** The whole notes text, cash-envelope marker line included (see envelopeMarker.ts). */
+  notes?: string | null;
 }
 
-export type AccountForm = Required<AccountEdit>;
+/** The notes are edited as a description apart from the form (the marker line isn't the user's). */
+export type AccountForm = Required<Omit<AccountEdit, 'notes'>>;
 
 const FF3_FIELDS: Record<keyof AccountEdit, string> = {
   name: 'name',
@@ -38,6 +41,7 @@ const FF3_FIELDS: Record<keyof AccountEdit, string> = {
   virtualBalance: 'virtual_balance',
   creditCardType: 'credit_card_type',
   monthlyPaymentDate: 'monthly_payment_date',
+  notes: 'notes',
 };
 
 export function formFromAccount(row: ReferenceAccountRow): AccountForm {

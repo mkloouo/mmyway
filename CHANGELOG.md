@@ -15,6 +15,11 @@
   Capture does, even when it is the same as the payee. Before, it was hidden in that case and
   only entered from the ⋯ menu.
 
+### Accounts
+
+- An account's page has a **Description** under its name, saved to the account's notes in Firefly
+  III. The cash-envelope checkbox still works and never shows up in the description.
+
 ### Changed
 
 - What Firefly III calls a transaction's description is now called **Title** everywhere in the app,
