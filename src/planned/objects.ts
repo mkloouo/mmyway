@@ -148,7 +148,7 @@ const PATHS: Record<PlannedKind, string> = {
 export const plannedPath = (kind: PlannedKind, id?: string) =>
   id ? `${PATHS[kind]}/${id}` : PATHS[kind];
 
-async function fetchAllOf(
+export async function fetchAllOf(
   client: FF3Client,
   kind: PlannedKind,
 ): Promise<{ id: string; attributes: Record<string, unknown> }[]> {

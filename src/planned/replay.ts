@@ -2,7 +2,8 @@
 // subscription, recurring transaction and rule, in that order — the recurring transaction links
 // to the subscription by id, the rule by name. Each object created is recorded in the queued
 // payload straight away, so a retry after a failure part-way updates it instead of creating a
-// second one. The recurring transaction is sent its accounts and category by id: FF3's recurrence
+// second one. An object whose id was not recorded — the request landed and only the answer was
+// lost — is found again by name before anything is created (adoptExisting). The recurring transaction is sent its accounts and category by id: FF3's recurrence
 // API ignores names, and a missing account id made it fail after saving half a recurrence.
 import { eq } from 'drizzle-orm';
 import type { FF3Client } from '../api/ff3/client';
@@ -13,6 +14,7 @@ import type { OutboxDb } from '../sync/outbox';
 import { writePayload } from '../sync/payloadJson';
 import { billBody, recurrenceBody, ruleBody, scheduleChanged, type PlannedFields } from './model';
 import {
+  fetchAllOf,
   plannedPath,
   storePlanned,
   type PlannedKind,
@@ -71,11 +73,52 @@ async function categoryIdFor(db: OutboxDb, client: FF3Client, name: string): Pro
     categories.find((c) => c.name === name) ??
     categories.find((c) => c.name.toLowerCase() === name.toLowerCase());
   if (known) return known.id;
-  const created = await client.request<Read<{ name: string }>>('/v1/categories', {
-    method: 'POST',
-    body: JSON.stringify({ name }),
-  });
-  return String(created.data.id);
+  try {
+    const created = await client.request<Read<{ name: string }>>('/v1/categories', {
+      method: 'POST',
+      body: JSON.stringify({ name }),
+    });
+    return String(created.data.id);
+  } catch (err) {
+    // It exists in FF3 but not in the synced categories yet (or an earlier attempt made it).
+    if (!(err instanceof FF3RequestError && err.status === 422)) throw err;
+    for (let page = 1; ; page++) {
+      const response = await client.request<{
+        data: { id: string; attributes: { name: string } }[];
+      }>(`/v1/categories?limit=100&page=${page}`);
+      const found = response.data.find(
+        (c) => c.attributes.name.toLowerCase() === name.toLowerCase(),
+      );
+      if (found) return String(found.id);
+      if (response.data.length < 100) throw err;
+    }
+  }
+}
+
+/**
+ * The object FF3 already holds under this name, if any. A save that has no recorded id may have
+ * landed with only its answer lost; creating again would be refused (a bill or rule with the same
+ * name: a 422 on every retry) or accepted (a second recurring transaction, booking twice a period).
+ */
+async function adoptExisting(
+  client: FF3Client,
+  kind: PlannedKind,
+  name: string,
+): Promise<string | null> {
+  const wanted = name.trim().toLowerCase();
+  const nameOf = (a: Record<string, unknown>) =>
+    String((kind === 'bill' ? a.name : a.title) ?? '')
+      .trim()
+      .toLowerCase();
+  const found = (await fetchAllOf(client, kind)).find(
+    (o) =>
+      nameOf(o.attributes) === wanted &&
+      // A rule of the same title in someone's own rule group is theirs, not ours.
+      (kind !== 'rule' ||
+        o.attributes.rule_group_title === undefined ||
+        o.attributes.rule_group_title === PLANNED_RULE_GROUP),
+  );
+  return found ? String(found.id) : null;
 }
 
 async function send<T>(
@@ -105,6 +148,13 @@ export async function replaySavePlanned(
   const f = p.fields;
 
   // A missing object is created from all the fields; an existing one is sent what changed.
+  if (!p.billId) {
+    const adopted = await adoptExisting(client, 'bill', f.name);
+    if (adopted) {
+      p.billId = adopted;
+      await remember();
+    }
+  }
   const bill = await send<Record<string, unknown>>(
     client,
     'bill',
@@ -130,7 +180,8 @@ export async function replaySavePlanned(
   // recurring transaction instead of updating it: the old one is deleted first (never two booking
   // at once), then a new one is created with the whole schedule. Recorded at each step, so a retry
   // carries on rather than replacing again.
-  if (p.recurrenceId && !p.recurrenceReplaced && scheduleChanged(p.before, f)) {
+  // A new save (no `before`) has nothing to replace: a retry's recurring transaction is its own.
+  if (p.recurrenceId && !p.recurrenceReplaced && p.before && scheduleChanged(p.before, f)) {
     p.replacedRecurrenceIds = [...(p.replacedRecurrenceIds ?? []), p.recurrenceId];
     p.recurrenceId = null;
     p.recurrenceReplaced = true;
@@ -145,6 +196,16 @@ export async function replaySavePlanned(
     await remember();
   }
 
+  // Found by title: an earlier attempt of this save made it, with this very schedule.
+  let adoptedRecurrence = false;
+  if (!p.recurrenceId) {
+    const adopted = await adoptExisting(client, 'recurrence', f.name);
+    if (adopted) {
+      p.recurrenceId = adopted;
+      adoptedRecurrence = true;
+      await remember();
+    }
+  }
   let transactionId: string | null = null;
   let repetitionId: string | null = null;
   if (p.recurrenceId) {
@@ -154,8 +215,13 @@ export async function replaySavePlanned(
     transactionId = current.data.attributes.transactions?.[0]?.id ?? null;
     repetitionId = current.data.attributes.repetitions?.[0]?.id ?? null;
   }
-  // An existing one is sent what changed; after a replacement it already has this schedule.
-  const recurrenceBefore = p.recurrenceId ? (p.recurrenceReplaced ? f : p.before) : null;
+  // An existing one is sent what changed; after a replacement, or when found by title, it already
+  // has this schedule (as does a retry of a new save's own).
+  const recurrenceBefore = p.recurrenceId
+    ? p.recurrenceReplaced || adoptedRecurrence || !p.before
+      ? f
+      : p.before
+    : null;
   const recurrence = await send<Record<string, unknown>>(
     client,
     'recurrence',
@@ -173,6 +239,13 @@ export async function replaySavePlanned(
   }
   await storePlanned(db, 'recurrence', p.recurrenceId, recurrence.data.attributes);
 
+  if (!p.ruleId) {
+    const adopted = await adoptExisting(client, 'rule', f.name);
+    if (adopted) {
+      p.ruleId = adopted;
+      await remember();
+    }
+  }
   let body: Record<string, unknown>;
   if (p.ruleId) {
     // Read now, not when the edit was queued: the rule's own triggers may have changed in FF3.
