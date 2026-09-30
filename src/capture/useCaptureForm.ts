@@ -68,7 +68,14 @@ export function captureFormReducer(state: CaptureForm, action: Action): CaptureF
     case 'saved':
       // The screen stays open for the next entry (design §6.2): the amount clears, the rest of
       // the context (type, payee, accounts, date) is kept for a run of similar entries.
-      return { ...state, amount: '0', foreignAmount: '', photoUri: null };
+      // In 'today' mode, the date is refreshed so the next entry starts with the current time.
+      return {
+        ...state,
+        amount: '0',
+        foreignAmount: '',
+        photoUri: null,
+        date: state.dateMode === 'today' ? new Date() : state.date,
+      };
   }
 }
 

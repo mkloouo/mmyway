@@ -11,7 +11,7 @@
 //
 // Never point this at a real Firefly III: every command assumes the instance is disposable.
 
-import { execFileSync, spawnSync } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import net from 'node:net';

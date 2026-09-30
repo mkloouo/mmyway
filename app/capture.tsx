@@ -321,7 +321,13 @@ export default function CaptureScreen() {
 
   // FX (design §6.2): reveal when the account leg's currency differs from the chosen currency.
   const accountCurrencyCode =
-    type === 'deposit' ? destinationAccount?.currencyCode : sourceAccount?.currencyCode;
+    type === 'deposit'
+      ? destinationAccount?.currencyCode
+      : type === 'transfer'
+        ? sourceAccount?.currencyCode === effectiveCurrencyCode
+          ? destinationAccount?.currencyCode
+          : sourceAccount?.currencyCode
+        : sourceAccount?.currencyCode;
   const showFx =
     !!accountCurrencyCode &&
     !!effectiveCurrencyCode &&
@@ -345,7 +351,7 @@ export default function CaptureScreen() {
     type,
     amount,
     currencyCode: effectiveCurrencyCode ?? '',
-    date,
+    date: dateMode === 'today' ? new Date() : date,
     description,
     merchantRawInput,
     forceNewPayee,

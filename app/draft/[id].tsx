@@ -384,6 +384,7 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
         payee={split ? split.payeeName : payeeName}
         isNewPayee={split ? split.isNewPayee : draft.isNewPayee}
         readOnly={readOnly}
+        amountTone={index === 0 && unsure.includes('amount') ? 'warn' : 'default'}
         onAmountPress={() => setKeypadFor(index)}
         onDescriptionPress={() => setTextFor(index)}
         onPayeePress={() => (index === 0 ? setSheet('payee') : setExtraPayeeFor(index))}
@@ -468,6 +469,7 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
                 type={draft.type}
                 size="title"
                 loading={currenciesLoading}
+                tone={unsure.includes('amount') ? 'warn' : 'default'}
               />
             </Pressable>
             {/* The title is what the transaction is called in Firefly III, as on the transaction
