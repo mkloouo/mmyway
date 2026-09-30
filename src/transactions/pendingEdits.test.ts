@@ -3,7 +3,14 @@ import { pendingEdits, applyPendingEdit } from './pendingEdits';
 let seq = 0;
 function op(kind: string, payload: object, status = 'pending', lastError: string | null = null) {
   seq += 1;
-  return { kind, status, lastError, sequence: seq, payloadJson: JSON.stringify(payload) };
+  // The fields every real edit carries (src/sync/payloadJson.ts validates them); a test names only
+  // what it is about.
+  const full = {
+    transactionJournalId: 'j1',
+    expectedUpdatedAt: '2026-01-01T00:00:00Z',
+    ...payload,
+  };
+  return { kind, status, lastError, sequence: seq, payloadJson: JSON.stringify(full) };
 }
 
 const row = {

@@ -4,6 +4,7 @@
 // Pure, no db.
 import type { TransactionSplit } from '../api/ff3/types';
 import type { EditChanges } from './editDiff';
+import { tryReadPayload } from '../sync/payloadJson';
 
 export type PendingEditStatus = 'queued' | 'failed' | 'conflict';
 
@@ -50,18 +51,14 @@ export function pendingEdits(outbox: readonly OutboxRow[]): PendingEdits {
   for (const op of ops) {
     const isUpdate = op.kind === 'update_transaction' || op.kind === 'recurring_review';
     if (!isUpdate && op.kind !== 'attach_receipt') continue;
-    let payload: {
+    const payload = tryReadPayload<{
       groupId?: string;
       transactionJournalId?: string;
       changes?: EditChanges;
       splits?: QueuedSplit[];
       groupTitle?: string;
-    };
-    try {
-      payload = JSON.parse(op.payloadJson);
-    } catch {
-      continue;
-    }
+    }>(op.kind, op.payloadJson);
+    if (!payload) continue;
     const status = statusOf(op);
     if (isUpdate && payload.groupId) {
       const current = byGroup.get(payload.groupId);

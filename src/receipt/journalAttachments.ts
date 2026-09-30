@@ -2,6 +2,8 @@
 // the outbox) and the attachments FF3 already holds for that journal. Before this, attaching to a
 // synced transaction gave no sign anywhere that anything had happened.
 import type { FF3Client } from '../api/ff3/client';
+import type { AttachReceiptPayload } from '../sync/outbox';
+import { tryReadPayload } from '../sync/payloadJson';
 
 export interface JournalAttachment {
   id: string;
@@ -99,19 +101,14 @@ export function queuedAttachments(
   return outbox
     .filter((op) => op.kind === 'attach_receipt')
     .flatMap((op) => {
-      let payload: { transactionJournalId?: string; receiptImagePath?: string };
-      try {
-        payload = JSON.parse(op.payloadJson);
-      } catch {
-        return [];
-      }
-      if (String(payload.transactionJournalId) !== journalId) return [];
+      const payload = tryReadPayload<AttachReceiptPayload>(op.kind, op.payloadJson);
+      if (!payload || String(payload.transactionJournalId) !== journalId) return [];
       return [
         {
           opId: op.id,
           status: op.status,
           lastError: op.lastError,
-          receiptImagePath: payload.receiptImagePath ?? null,
+          receiptImagePath: payload.receiptImagePath,
         },
       ];
     });

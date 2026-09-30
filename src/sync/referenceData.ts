@@ -16,6 +16,7 @@ import {
   outboxOperations,
 } from '../db/schema';
 import type { OutboxDb } from './outbox';
+import { payloadGroupId } from './payloadJson';
 import { logLine } from '../utils/log';
 import { setAccountOrder } from '../settings/appSettings';
 import { addDecimal } from '../api/ff3/decimal';
@@ -456,14 +457,12 @@ async function pruneDeletedInWindow(
   const gone = inWindow.map((r) => r.groupId).filter((id) => !seen.has(id));
   if (gone.length === 0) return;
   const queued = new Set(
-    (await db.select({ payloadJson: outboxOperations.payloadJson }).from(outboxOperations))
-      .map((op) => {
-        try {
-          return (JSON.parse(op.payloadJson) as { groupId?: string }).groupId;
-        } catch {
-          return undefined;
-        }
-      })
+    (
+      await db
+        .select({ kind: outboxOperations.kind, payloadJson: outboxOperations.payloadJson })
+        .from(outboxOperations)
+    )
+      .map((op) => payloadGroupId(op.kind, op.payloadJson))
       .filter((id): id is string => !!id),
   );
   const removable = gone.filter((id) => !queued.has(id));
