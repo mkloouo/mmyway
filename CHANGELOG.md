@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Activity no longer shows a just-sent transaction twice for a moment (and logs a duplicate-key
+  error) when it moves from Queued to synced.
+
 ## [1.4.4] - 2026-09-30
 
 ### Planned

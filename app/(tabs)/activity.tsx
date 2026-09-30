@@ -274,8 +274,16 @@ export default function ActivityScreen() {
       .filter((r): r is QueuedRow => !!r);
     // Pinned rows follow the same filters as the cached ones: they used to show under every account.
     const filter = { type, accountId: accountFilter, search };
-    const pinned = [...queuedRows, ...landingRows].filter((row) =>
-      matchesActivityFilter(row, filter),
+    // The live queries behind the pinned rows and the cached ones update on separate ticks, so
+    // for a moment after a send both can hold the same entry — two rows under one key. The cached
+    // row wins.
+    const cachedKeys = new Set(
+      sections
+        .flatMap((s) => s.data.map((row) => rowKey(row)))
+        .filter((k) => k.startsWith('inbox:')),
+    );
+    const pinned = [...queuedRows, ...landingRows].filter(
+      (row) => !cachedKeys.has(rowKey(row)) && matchesActivityFilter(row, filter),
     );
     const result: DisplaySection[] = sections
       .map((s): DisplaySection => ({
@@ -301,6 +309,7 @@ export default function ActivityScreen() {
     return result;
   }, [
     sections,
+    rowKey,
     pendingDeletes,
     edits,
     queuedRows,
