@@ -1,5 +1,5 @@
 import { createTestDb } from '../db/testDb';
-import { runSync } from './runSync';
+import { runSync, SYNC_WATCHDOG_MS } from './runSync';
 import { enqueueOperation } from './outbox';
 import { clientFor } from '../api/ff3/session';
 import { readStoredCredentials, probeAbout } from '../api/ff3/auth';
@@ -50,6 +50,22 @@ describe('runSync', () => {
     const summary = await runSync(createTestDb() as any);
     expect(summary).toMatchObject({ signedIn: false, ff3Reachable: false, replaySucceeded: 0 });
     expect(probeAbout).not.toHaveBeenCalled();
+  });
+
+  it('gives up on a sync that never ends, so the next one starts fresh instead of joining it', async () => {
+    jest.useFakeTimers();
+    try {
+      (readStoredCredentials as jest.Mock).mockReturnValueOnce(new Promise(() => undefined));
+      (readHosts as jest.Mock).mockResolvedValue([]);
+      const hung = runSync(createTestDb() as any);
+      await jest.advanceTimersByTimeAsync(SYNC_WATCHDOG_MS);
+      await expect(hung).resolves.toMatchObject({ error: 'timed out' });
+
+      (readStoredCredentials as jest.Mock).mockResolvedValue(null);
+      await expect(runSync(createTestDb() as any)).resolves.toMatchObject({ signedIn: false });
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('skips the re-pull of recent transactions when replay succeeded nothing', async () => {
