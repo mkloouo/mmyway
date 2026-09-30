@@ -109,7 +109,7 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
   const act = useAction();
   const { shake, shakeStyle } = useShake(); // the visual twin of the warn haptic
 
-  const accountRows = useAssetAccounts();
+  const accountRows = useAssetAccounts({ includeLiabilities: true });
   const assetAccounts = accountRows ?? [];
   const categories = useCategories();
   // undefined until each table's first read lands: a spinner stands in for "—" and for the

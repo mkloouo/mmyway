@@ -76,12 +76,17 @@ function chunks<T>(items: T[], size = 500): T[][] {
   return out;
 }
 
+/** FF3 calls a loan, debt or mortgage `liabilities` (older versions `liability`); the app keeps one word. */
+function accountTypeOf(type: string): string {
+  return type === 'liabilities' ? 'liability' : type;
+}
+
 export async function pullReferenceData(db: OutboxDb, client: FF3Client): Promise<void> {
   const now = new Date().toISOString();
 
   const [accountsByType, categories, budgets, currencies] = await Promise.all([
     Promise.all(
-      ['asset', 'cash', 'expense', 'revenue'].map((type) =>
+      ['asset', 'cash', 'expense', 'revenue', 'liabilities'].map((type) =>
         fetchAll<AccountRead>(client, `/v1/accounts?type=${type}`),
       ),
     ),
@@ -119,7 +124,7 @@ export async function pullReferenceData(db: OutboxDb, client: FF3Client): Promis
       const row = {
         id: account.id,
         name: account.attributes.name,
-        type: account.attributes.type,
+        type: accountTypeOf(account.attributes.type),
         currencyCode: account.attributes.currency_code,
         active: account.attributes.active,
         currentBalance: extra.current_balance ?? null,

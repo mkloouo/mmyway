@@ -134,9 +134,9 @@ function TransactionEditor({ row }: { row: CachedRow }) {
   );
   // An old transaction can point at an account since made inactive — look its name up across
   // every account for display, but only offer active ones when picking a new one.
-  const allAccountRows = useAssetAccounts({ includeInactive: true });
+  const allAccountRows = useAssetAccounts({ includeInactive: true, includeLiabilities: true });
   const allAssetAccounts = allAccountRows ?? [];
-  const activeAssetAccounts = useAssetAccounts() ?? [];
+  const activeAssetAccounts = useAssetAccounts({ includeLiabilities: true }) ?? [];
   const categories = useCategories();
   // undefined until each table's first read lands: the screen shows a spinner for what it
   // can't resolve yet, not "—" or a currency code standing in for its symbol.

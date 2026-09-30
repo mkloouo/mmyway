@@ -2,6 +2,7 @@ import { createTestDb } from '../db/testDb';
 import { pullRecentTransactions, pullOlderTransactions, pullReferenceData } from './referenceData';
 import { cachedTransactions, referenceAccounts, referenceCurrencies } from '../db/schema';
 import { enqueueOperation } from './outbox';
+import { pruneReferenceData } from './referenceHygiene';
 
 // `totals` overrides meta.pagination.total per call index — real FF3 responses always carry it,
 // and pullOlderTransactions' anyTransactionsBefore probe reads it to tell a quiet chunk from the
@@ -307,6 +308,39 @@ describe('pullReferenceData', () => {
       }),
     };
   }
+
+  it('pulls loans, debts and mortgages as liability accounts, and prunes only what FF3 dropped', async () => {
+    const db = createTestDb();
+    const client = {
+      request: jest.fn(async (path: string): Promise<{ data: unknown[] }> => {
+        if (path.startsWith('/v1/accounts?type=liabilities'))
+          return {
+            data: [
+              {
+                id: 'loan-1',
+                attributes: {
+                  name: 'Car loan',
+                  type: 'liabilities',
+                  currency_code: 'PLN',
+                  active: true,
+                  current_balance: '-5000.00',
+                },
+              },
+            ],
+          };
+        if (path.startsWith('/v1/currencies')) return { data: [] };
+        return { data: [] };
+      }),
+    };
+    const pullStartedAt = new Date().toISOString();
+    await pullReferenceData(db as any, client as any);
+    await pruneReferenceData(db as any, pullStartedAt);
+
+    expect(client.request).toHaveBeenCalledWith(expect.stringContaining('type=liabilities'));
+    const rows = await db.select().from(referenceAccounts);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ id: 'loan-1', type: 'liability', currentBalance: '-5000.00' });
+  });
 
   it('the balance and its date survive a pull', async () => {
     const db = createTestDb();
