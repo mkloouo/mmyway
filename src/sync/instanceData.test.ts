@@ -101,7 +101,7 @@ describe('clearInstanceData', () => {
       {
         id: 'review',
         kind: 'recurring_review',
-        state: 'confirmed',
+        state: 'parsed',
         draftJson: '{}',
         createdAt: T,
         updatedAt: T,
