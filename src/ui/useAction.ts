@@ -10,7 +10,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 import { Alert } from 'react-native';
 import { reportErrors } from './reportError';
 
-export interface ActionRunner {
+interface ActionRunner {
   <A extends unknown[]>(
     action: string,
     fn: (...args: A) => Promise<void>,

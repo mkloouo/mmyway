@@ -5,9 +5,9 @@ import { useCallback, useReducer } from 'react';
 import type { Draft } from '../inbox/draft';
 import { applyDigit, type KeypadKey } from './amountInput';
 
-export type DateMode = 'today' | 'yesterday' | 'custom';
+type DateMode = 'today' | 'yesterday' | 'custom';
 
-export interface CaptureForm {
+interface CaptureForm {
   type: Draft['type'];
   amount: string;
   currencyCode: string | null;

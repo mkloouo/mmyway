@@ -102,7 +102,7 @@ export function plannedKey(kind: PlannedKind, id: string): string {
   return `${kind}:${id}`;
 }
 
-export function nameOf(kind: PlannedKind, attributes: Record<string, unknown>): string {
+function nameOf(kind: PlannedKind, attributes: Record<string, unknown>): string {
   const value = kind === 'bill' ? attributes.name : attributes.title;
   return typeof value === 'string' ? value : '';
 }
@@ -124,7 +124,7 @@ export function readPlannedRow(row: PlannedRow): PlannedObject | null {
   }
 }
 
-export function plannedRow(
+function plannedRow(
   kind: PlannedKind,
   id: string,
   attributes: Record<string, unknown>,

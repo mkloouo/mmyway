@@ -8,7 +8,7 @@
 import { normkey } from '../lookup/normkey';
 import type { ActivityTypeFilter } from './useTransactionPage';
 
-export interface SentItem {
+interface SentItem {
   id: string;
   kind: string;
   ff3GroupId: string | null;
@@ -38,7 +38,7 @@ export function landingItems<T extends SentItem>(
   );
 }
 
-export interface PinnableRow {
+interface PinnableRow {
   type: 'withdrawal' | 'deposit' | 'transfer';
   sourceId: string | null;
   destinationId: string | null;

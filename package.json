@@ -1,6 +1,6 @@
 {
   "name": "mmyway",
-  "version": "1.4.5",
+  "version": "1.4.6",
   "main": "expo-router/entry",
   "scripts": {
     "start": "expo start",
@@ -54,6 +54,7 @@
     "expo-splash-screen": "~57.0.9",
     "expo-sqlite": "~57.0.3",
     "expo-status-bar": "~57.0.1",
+    "expo-system-ui": "~57.0.4",
     "expo-task-manager": "~57.0.20",
     "i18next": "^26.4.2",
     "react": "19.2.3",

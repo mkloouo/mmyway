@@ -99,7 +99,7 @@ interface KeypadBaseProps {
  * keypad also has the date and note cells, and needs all three of their props — a union rather
  * than optional props, so a caller that forgets one doesn't compile.
  */
-export type KeypadProps = KeypadBaseProps &
+type KeypadProps = KeypadBaseProps &
   (
     | { compact: true }
     | {

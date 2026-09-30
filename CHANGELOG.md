@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.4.6] - 2026-09-30
+
 ### Capture
 
 - A **title** field sits between the amount and the payee, so a transaction is named without

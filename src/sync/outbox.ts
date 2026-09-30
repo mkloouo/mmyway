@@ -119,7 +119,7 @@ export interface NewOutboxOperation {
     | Record<string, unknown>;
 }
 
-export interface ReplayResult {
+interface ReplayResult {
   succeeded: string[];
   conflicted: string[];
   failedAt: string | null; // operation id where replay stopped, if any
@@ -133,7 +133,7 @@ export function retryDelayMs(attempts: number): number {
   return Math.min(RETRY_BASE_MS * 2 ** Math.max(0, attempts - 1), RETRY_MAX_MS);
 }
 
-export type ConflictHandler = (
+type ConflictHandler = (
   op: { id: string; payload: UpdateTransactionPayload | DeleteTransactionPayload },
   serverUpdatedAt: string,
 ) => void;
@@ -233,7 +233,7 @@ function insertOperation(db: OutboxDb, op: NewOutboxOperation): void {
  * its way and left alone; `done` rows are deleted, not kept. Every "is it still queued?" question
  * asks through this (#79).
  */
-export const UNSENT_STATUSES = ['pending', 'failed'] as const;
+const UNSENT_STATUSES = ['pending', 'failed'] as const;
 export const isUnsent = () => inArray(outboxOperations.status, [...UNSENT_STATUSES]);
 
 /** A create that never left the device: nothing of it can be in FF3 (Undo may take it back). */
@@ -245,7 +245,7 @@ export const neverSent = () =>
  * queued was taken back out or can't be sent. `errorMessage` says what to fix; without it the
  * item keeps whatever it had.
  */
-export function returnToInbox(tx: OutboxDb, itemId: string, errorMessage?: string): void {
+function returnToInbox(tx: OutboxDb, itemId: string, errorMessage?: string): void {
   const [item] = tx
     .select({ kind: inboxItems.kind })
     .from(inboxItems)
@@ -813,6 +813,8 @@ export function serverUnavailable(err: unknown): boolean {
 /**
  * What the Inbox's failed-operation card shows: FF3's own message and first field error instead of
  * the raw JSON body (`401: {"message":"Unauthenticated.","exception":…}`).
+ *
+ * @public Exported for outbox.regressions.test.ts, which loads it with `requireActual`.
  */
 export function describeFF3Error(err: FF3RequestError): string {
   try {

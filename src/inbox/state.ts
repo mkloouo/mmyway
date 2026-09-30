@@ -1,6 +1,5 @@
 export type InboxState = 'captured' | 'parsed' | 'confirmed' | 'synced' | 'error';
-export type InboxEvent =
-  'parsed' | 'confirm' | 'synced' | 'fail' | 'retry' | 'return' | 'return_reviewed';
+type InboxEvent = 'parsed' | 'confirm' | 'synced' | 'fail' | 'retry' | 'return' | 'return_reviewed';
 
 const TRANSITIONS: Record<InboxState, Partial<Record<InboxEvent, InboxState>>> = {
   captured: { parsed: 'parsed', confirm: 'confirmed', fail: 'error' }, // manual entries can confirm directly (no parse step)

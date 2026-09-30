@@ -8,7 +8,7 @@ import { tryReadPayload } from '../sync/payloadJson';
 
 export type PendingEditStatus = 'queued' | 'failed' | 'conflict';
 
-export interface PendingEdit {
+interface PendingEdit {
   status: PendingEditStatus;
   /** Every queued change to the transaction, merged in replay order. */
   changes: EditChanges;
@@ -38,7 +38,7 @@ function worse(a: PendingEditStatus, b: PendingEditStatus): PendingEditStatus {
   return RANK[b] > RANK[a] ? b : a;
 }
 
-export interface PendingEdits {
+interface PendingEdits {
   byGroup: Map<string, PendingEdit>;
   /** attach_receipt is keyed by journal, not group. */
   byJournal: Map<string, PendingEditStatus>;

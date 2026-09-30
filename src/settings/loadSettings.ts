@@ -18,7 +18,7 @@ import {
   getLocale,
 } from './appSettings';
 
-export interface AppSettingsSnapshot {
+interface AppSettingsSnapshot {
   signedIn: boolean;
   ff3Hosts: string[];
   ff3ActiveHost: string | null;

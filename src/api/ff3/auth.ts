@@ -7,7 +7,7 @@ const MIN_API_VERSION = [6, 3, 2] as const;
 const LEGACY_HOST_KEY = 'ff3_host';
 export const TOKEN_KEY = 'ff3_api_token';
 
-export type SignInResult =
+type SignInResult =
   | { ok: true; client: FF3Client; apiVersion: string; defaultCurrencyCode: string }
   | { ok: false; reason: AuthErrorReason };
 

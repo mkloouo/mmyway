@@ -3,21 +3,21 @@ import { aliases } from '../db/schema';
 import { matchAlias, upsertAlias, PAYEE } from './aliases';
 import type { OutboxDb } from '../sync/outbox';
 
-export interface AliasExport {
+interface AliasExport {
   kind: string;
   rawInput: string;
   targetId: string | null;
   targetName: string;
 }
 
-export interface AliasCollision {
+interface AliasCollision {
   kind: string;
   rawInput: string;
   existingTargetName: string;
   incomingTargetName: string;
 }
 
-export interface AliasImportResult {
+interface AliasImportResult {
   imported: number;
   collisions: AliasCollision[];
   /** Account, budget and currency aliases, which nothing reads any more (older exports, the bot's). */

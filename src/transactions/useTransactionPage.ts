@@ -17,7 +17,7 @@ export type ActivityTypeFilter = 'all' | 'withdrawal' | 'deposit' | 'transfer';
 export type CachedTransactionRow = Omit<typeof cachedTransactions.$inferSelect, 'type'> &
   DayTransaction;
 
-export interface UseTransactionPageResult {
+interface UseTransactionPageResult {
   sections: DaySection<CachedTransactionRow>[];
   /** The filter `sections` were read for; lags the requested one until its read lands. */
   dataKey: string;

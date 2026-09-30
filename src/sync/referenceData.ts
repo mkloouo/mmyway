@@ -283,11 +283,11 @@ async function windowStart(db: OutboxDb): Promise<string> {
   return dateOnly(start);
 }
 
-export type CachedTransactionInsert = typeof cachedTransactions.$inferInsert;
+type CachedTransactionInsert = typeof cachedTransactions.$inferInsert;
 
 /** One cached row per FF3 transaction group. Also used by the outbox to store the server's copy on a conflict. */
 /** What Activity search matches against: each field folded by normkey, kept apart so a query can't span two. */
-export function searchKeyOf(parts: (string | null | undefined)[]): string {
+function searchKeyOf(parts: (string | null | undefined)[]): string {
   return parts.map((p) => normkey(p ?? '')).join('|');
 }
 

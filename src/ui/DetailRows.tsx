@@ -21,7 +21,7 @@ export interface DetailRowsValue {
   sharedWith: string | null;
 }
 
-export interface DetailRowsProps {
+interface DetailRowsProps {
   value: DetailRowsValue;
   onChange: (patch: Partial<DetailRowsValue>) => void;
   onDatePress: () => void;

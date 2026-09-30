@@ -85,7 +85,7 @@ function anyOk(report: ServerReachability): boolean {
   return report.results.some((r) => r.ok);
 }
 
-export type SyncMode = 'full' | 'push';
+type SyncMode = 'full' | 'push';
 
 let inFlight: { mode: SyncMode; promise: Promise<SyncSummary> } | null = null;
 let recovered = false;

@@ -97,7 +97,7 @@ export interface Theme {
   type: typeof type;
 }
 
-export function themeFor(scheme: string | null | undefined): Theme {
+function themeFor(scheme: string | null | undefined): Theme {
   const isDark = scheme === 'dark';
   return { dark: isDark, color: isDark ? dark : light, space, radius, type };
 }

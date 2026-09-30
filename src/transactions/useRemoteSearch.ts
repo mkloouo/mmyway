@@ -7,7 +7,7 @@ import { useDb } from '../providers/DbProvider';
 import { searchTransactions } from './remoteSearch';
 import { mapRemoteResult, type RemoteResultRow } from './activityRows';
 
-export type RemoteSearchState =
+type RemoteSearchState =
   | { status: 'idle' }
   | { status: 'loading'; query: string }
   | { status: 'done'; query: string; rows: RemoteResultRow[] }
