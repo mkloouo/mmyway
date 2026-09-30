@@ -11,8 +11,9 @@
 
 ### Inbox
 
-- A draft's menu (⋯) has a **Title** row, so a receipt's title can be entered even when it is the
-  same as the payee, which the screen doesn't show.
+- A draft always shows its **title** under the payee (empty until entered, tap to type it), as
+  Capture does, even when it is the same as the payee. Before, it was hidden in that case and
+  only entered from the ⋯ menu.
 
 ### Changed
 
