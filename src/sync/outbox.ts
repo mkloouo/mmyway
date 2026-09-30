@@ -27,6 +27,7 @@ import { generateId } from '../utils/id';
 import { setEnvelopeMarker } from '../accounts/envelopeMarker';
 import { ff3AccountBody, type AccountEdit } from '../accounts/accountEdit';
 import { requestSync } from './syncTrigger';
+import { returnedState, transition } from '../inbox/state';
 import { deletePersistedReceiptImage } from '../receipt/imageFiles';
 import { cachedRowFromGroup } from './referenceData';
 import { readPayload, writePayload } from './payloadJson';
@@ -227,6 +228,39 @@ function insertOperation(db: OutboxDb, op: NewOutboxOperation): void {
  * Transaction-safe variant for callers that must write the op and their own state atomically
  * (confirmInboxItem, the create's follow-up writes). Pass the `tx` from `db.transaction`.
  */
+/**
+ * An operation that hasn't gone out: replay may claim it and Cancel may drop it. `in_flight` is on
+ * its way and left alone; `done` rows are deleted, not kept. Every "is it still queued?" question
+ * asks through this (#79).
+ */
+const UNSENT_STATUSES = ['pending', 'failed'] as const;
+export const isUnsent = () => inArray(outboxOperations.status, [...UNSENT_STATUSES]);
+
+/** A create that never left the device: nothing of it can be in FF3 (Undo may take it back). */
+export const neverSent = () =>
+  and(eq(outboxOperations.status, 'pending'), eq(outboxOperations.attempts, 0));
+
+/**
+ * Hands an inbox item back to the Inbox as a draft, in the caller's transaction: the create it
+ * queued was taken back out or can't be sent. `errorMessage` says what to fix; without it the
+ * item keeps whatever it had.
+ */
+function returnToInbox(tx: OutboxDb, itemId: string, errorMessage?: string): void {
+  const [item] = tx
+    .select({ kind: inboxItems.kind })
+    .from(inboxItems)
+    .where(eq(inboxItems.id, itemId))
+    .all();
+  tx.update(inboxItems)
+    .set({
+      state: returnedState(item?.kind ?? 'manual_entry'),
+      ...(errorMessage === undefined ? {} : { errorMessage }),
+      updatedAt: new Date().toISOString(),
+    })
+    .where(eq(inboxItems.id, itemId))
+    .run();
+}
+
 export function enqueueOperationSync(tx: OutboxDb, op: NewOutboxOperation): void {
   insertOperation(tx, op);
 }
@@ -284,7 +318,7 @@ async function rebaseLaterEdits(
     .from(outboxOperations)
     .where(
       and(
-        inArray(outboxOperations.status, ['pending', 'failed']),
+        isUnsent(),
         inArray(outboxOperations.kind, [
           'update_transaction',
           'recurring_review',
@@ -325,7 +359,7 @@ export async function replayOutbox(
       await db
         .select()
         .from(outboxOperations)
-        .where(inArray(outboxOperations.status, ['pending', 'failed']))
+        .where(isUnsent())
         .orderBy(asc(outboxOperations.sequence))
     ).filter((row) => !attempted.has(row.id));
     if (pending.length === 0) return result;
@@ -352,12 +386,7 @@ export async function replayOutbox(
       const [row] = await db
         .update(outboxOperations)
         .set({ status: 'in_flight' })
-        .where(
-          and(
-            eq(outboxOperations.id, candidate.id),
-            inArray(outboxOperations.status, ['pending', 'failed']),
-          ),
-        )
+        .where(and(eq(outboxOperations.id, candidate.id), isUnsent()))
         .returning();
       if (!row) continue; // undone, discarded, or claimed by someone else since the list was read
 
@@ -468,7 +497,7 @@ async function recordCreated(
       tx.update(inboxItems)
         .set({
           ff3GroupId: created?.id ?? null,
-          state: 'synced',
+          state: transition('confirmed', 'synced'),
           updatedAt: new Date().toISOString(),
         })
         .where(eq(inboxItems.id, row.inboxItemId))
@@ -505,19 +534,8 @@ async function replayOne(
         // Sending it anyway either fails (a deleted account: a 422 that blocks the queue) or
         // quietly re-creates the thing (FF3 makes a new category from an unknown name). Hand the
         // entry back as a draft that says what to pick again; the rest of the queue carries on.
-        const [item] = await db
-          .select({ kind: inboxItems.kind })
-          .from(inboxItems)
-          .where(eq(inboxItems.id, row.inboxItemId));
         db.transaction((tx) => {
-          tx.update(inboxItems)
-            .set({
-              state: item?.kind === 'receipt' ? 'parsed' : 'captured',
-              errorMessage: missing.join(' '),
-              updatedAt: new Date().toISOString(),
-            })
-            .where(eq(inboxItems.id, row.inboxItemId!))
-            .run();
+          returnToInbox(tx, row.inboxItemId!, missing.join(' '));
           tx.delete(outboxOperations).where(eq(outboxOperations.id, row.id)).run();
         });
         return 'returned';
@@ -922,31 +940,22 @@ export async function discardOperation(
       return 'landed';
     }
   }
-  const [op] = await db
-    .delete(outboxOperations)
-    .where(and(eq(outboxOperations.id, opId), ne(outboxOperations.status, 'in_flight')))
-    .returning();
+  const op = db.transaction((tx) => {
+    const [dropped] = tx
+      .delete(outboxOperations)
+      .where(and(eq(outboxOperations.id, opId), ne(outboxOperations.status, 'in_flight')))
+      .returning()
+      .all();
+    if (dropped?.kind === 'create_transaction' && dropped.inboxItemId)
+      returnToInbox(tx, dropped.inboxItemId);
+    return dropped;
+  });
   if (!op) {
     const [still] = await db
       .select({ id: outboxOperations.id })
       .from(outboxOperations)
       .where(eq(outboxOperations.id, opId));
     return still ? 'sending' : 'discarded';
-  }
-  if (op.kind === 'create_transaction' && op.inboxItemId) {
-    const [item] = await db
-      .select({ kind: inboxItems.kind })
-      .from(inboxItems)
-      .where(eq(inboxItems.id, op.inboxItemId));
-    await db
-      .update(inboxItems)
-      // A receipt goes back reviewed: as `captured` the next sync would read the photo again and
-      // overwrite the draft.
-      .set({
-        state: item?.kind === 'receipt' ? 'parsed' : 'captured',
-        updatedAt: new Date().toISOString(),
-      })
-      .where(eq(inboxItems.id, op.inboxItemId));
   }
   return 'discarded';
 }

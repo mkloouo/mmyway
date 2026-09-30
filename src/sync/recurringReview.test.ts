@@ -34,6 +34,8 @@ describe('pullUnreviewedRecurring', () => {
     expect(created).toBe(1);
     const rows = await db.select().from(inboxItems);
     expect(rows).toHaveLength(1);
+    // Waiting for the user's decision, like a receipt waiting for review; `confirmed` is "queued".
+    expect(rows[0]!.state).toBe('parsed');
   });
 
   it('picks transactions by recurrence_id, since FF3 tags nothing it books (early triggers included)', async () => {

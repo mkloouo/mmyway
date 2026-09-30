@@ -10,6 +10,7 @@
   opening anything. The **Details** chip is gone; the keypad's Note key is now **More**, and shows a
   dot when its description, who it is shared with or its photo is set.
 - Once a date is picked, the keypad's date key uses a much smaller font so the whole date fits.
+- Loans, debts and mortgages from Firefly III can be picked as accounts.
 
 ### Inbox
 

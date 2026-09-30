@@ -29,6 +29,15 @@ const rows = [
 ];
 
 describe('selectAssetAccounts', () => {
+  it('offers liabilities only where a transaction account is picked', () => {
+    const withLoan = [...rows, row('5', 'Car loan', 'liability', true)];
+    expect(selectAssetAccounts(withLoan).map((a) => a.id)).toEqual(['4', '1']);
+    expect(selectAssetAccounts(withLoan, { includeLiabilities: true }).map((a) => a.id)).toEqual([
+      '5',
+      '4',
+      '1',
+    ]);
+  });
   it('keeps active asset accounts only, sorted by name', () => {
     expect(selectAssetAccounts(rows).map((a) => a.id)).toEqual(['4', '1']);
   });

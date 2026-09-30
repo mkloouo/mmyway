@@ -103,7 +103,7 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
   const t = useTheme();
   const { t: tr } = useTranslation();
   const act = useAction();
-  const assetAccounts = useAssetAccounts() ?? [];
+  const assetAccounts = useAssetAccounts({ includeLiabilities: true }) ?? [];
   const categories = useCategories();
   // undefined until the reference currencies load: the amount would otherwise be drawn with the
   // currency code standing in for its symbol, then redrawn a frame later at a different width.

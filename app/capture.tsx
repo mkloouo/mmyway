@@ -137,7 +137,7 @@ export default function CaptureScreen() {
   const { fly, ghost, ghostStyle, fieldStyle } = useFlyAway();
   const { defaultAccountId, defaultCurrencyCode } = useCaptureDefaults();
 
-  const assetAccountRows = useAssetAccounts();
+  const assetAccountRows = useAssetAccounts({ includeLiabilities: true });
   const assetAccounts = useMemo(() => assetAccountRows ?? [], [assetAccountRows]);
   const categories = useCategories();
   const budgets = useBudgets();

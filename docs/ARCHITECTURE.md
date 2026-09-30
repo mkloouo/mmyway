@@ -27,16 +27,19 @@ Rules that apply everywhere are in `AGENTS.md`; translations are `docs/LOCALIZAT
 
 `src/inbox/state.ts` is the whole state machine:
 
-| From                              | Event     | To                                              |
-| --------------------------------- | --------- | ----------------------------------------------- |
-| `captured`                        | `parsed`  | `parsed`                                        |
-| `captured`                        | `confirm` | `confirmed` (manual entries have no parse step) |
-| `parsed`                          | `confirm` | `confirmed`                                     |
-| `confirmed`                       | `synced`  | `synced`                                        |
-| `captured`, `parsed`, `confirmed` | `fail`    | `error`                                         |
-| `error`                           | `retry`   | `captured`                                      |
+| From                              | Event     | To                                                       |
+| --------------------------------- | --------- | -------------------------------------------------------- |
+| `captured`                        | `parsed`  | `parsed`                                                 |
+| `captured`                        | `confirm` | `confirmed` (manual entries have no parse step)          |
+| `parsed`                          | `confirm` | `confirmed`                                              |
+| `confirmed`                       | `synced`  | `synced`                                                 |
+| `captured`, `parsed`, `confirmed` | `fail`    | `error`                                                  |
+| `confirmed`                       | `return`  | `captured` (`parsed` for a receipt: it was already read) |
+| `error`                           | `retry`   | `captured`                                               |
 
-A create the outbox can't send (an account deleted in FF3) hands its item back to `captured`/`parsed` with an `errorMessage`, so the user fixes the draft rather than losing it.
+A create the outbox can't send (an account deleted in FF3) or that is cancelled hands its item back with `return` (`returnToInbox` in `outbox.ts`), with an `errorMessage` when there is something to fix, so the user fixes the draft rather than losing it. A recurring-transaction review is `parsed` while it waits for the user's decision; approving is its `confirm`.
+
+Whether an operation has gone out is asked through `isUnsent()` (`pending` or `failed`: replay may claim it, Cancel may drop it) and `neverSent()` (`pending` with no attempt: Undo may take it back) in `outbox.ts`, not by spelling out the statuses.
 
 ### Edits to transactions already in FF3
 
