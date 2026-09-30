@@ -1,7 +1,7 @@
 // Inbox (design §6.1) — the approval queue. Only ever holds unfinished work; confirmed/synced
 // items leave every section (see src/inbox/useInboxSections.ts).
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, Animated, Pressable, SectionList, Text, View } from 'react-native';
+import { Animated, Pressable, SectionList, Text, View } from 'react-native';
 import { usePopOnChange } from '../../src/ui/feedback';
 import { Collapsible, leaveThen } from '../../src/ui/Collapsible';
 import { useTranslation } from 'react-i18next';
@@ -40,7 +40,9 @@ import {
 import { deleteInboxItem, retryErroredItem } from '../../src/inbox/updateDraft';
 import { confirmDestructive } from '../../src/ui/confirm';
 import { approveRecurringReview, deleteRecurringReview } from '../../src/sync/recurringReview';
-import { discardOperation, retryOperationNow } from '../../src/sync/outbox';
+import { discardOperation, mayHaveLanded, retryOperationNow } from '../../src/sync/outbox';
+import { getClient } from '../../src/api/ff3/session';
+import { alertDiscardOutcome } from '../../src/inbox/discardAlert';
 import { requestSync } from '../../src/sync/syncTrigger';
 import { reportErrors } from '../../src/ui/reportError';
 import { useSync, useSignedIn, usePullToRefresh } from '../../src/sync/useSync';
@@ -317,20 +319,21 @@ export default function InboxScreen() {
       return;
     await discardOperation(db, opId);
   });
-  // A new transaction goes back to the Inbox to edit, so it needs no confirmation; any other
+  // A new transaction goes back to the Inbox to edit, so it needs no confirmation — unless a send
+  // was already attempted: it may be in FF3, which discardOperation checks first. Any other
   // change is gone once cancelled.
   const cancelQueued = act(tr('inbox.cancelChange'), async (op: QueuedChange['op']) => {
+    const goesBackToInbox = op.kind === 'create_transaction';
     if (
-      op.kind !== 'create_transaction' &&
+      (!goesBackToInbox || mayHaveLanded(op)) &&
       !(await confirmDestructive(
         tr('inbox.cancelChangeTitle'),
         tr('inbox.cancelChange'),
-        tr('inbox.discardChangeBody'),
+        goesBackToInbox ? tr('inbox.cancelAttemptedBody') : tr('inbox.discardChangeBody'),
       ))
     )
       return;
-    if ((await discardOperation(db, op.id)) === 'sending')
-      Alert.alert(tr('inbox.alreadySending'), tr('inbox.alreadySendingBody'));
+    alertDiscardOutcome(await discardOperation(db, op.id, () => getClient(db)));
   });
   function resolveConflict(groupId: string) {
     navigateOnce(`/transactions/${groupId}`);

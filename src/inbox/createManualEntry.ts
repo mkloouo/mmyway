@@ -1,4 +1,4 @@
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { inboxItems, outboxOperations } from '../db/schema';
 import { resolvePayeeAlias } from '../lookup/aliases';
 import { transition, type InboxState } from './state';
@@ -139,7 +139,7 @@ export async function confirmInboxItem(db: OutboxDb, inboxItemId: string): Promi
 
 // Undo stays inside the same rule confirm itself follows (Global Constraints): it may delete a
 // still-`pending` outbox operation, never touch one that already sent. `already_sent` means the
-// operation moved past `pending` (in flight, done, or failed) between confirm and the tap. The
+// operation moved past a first `pending` (in flight, done, or attempted) between confirm and the tap. The
 // delete is conditional on `pending` in the same statement, and replay claims an op the same
 // way before sending it — so exactly one of the two wins, and a replay that loaded the queue
 // before the tap skips the undone op instead of sending it.
@@ -153,8 +153,10 @@ export async function undoConfirm(
     .where(
       and(
         eq(outboxOperations.id, undo.outboxOperationId),
-        // Waiting, or waiting to be retried after a failed attempt: either way not on its way.
-        inArray(outboxOperations.status, ['pending', 'failed']),
+        // Only a create that never left the device: one that was attempted may already be in FF3
+        // (the answer lost), and Cancel — which asks FF3 first — is the way out of that.
+        eq(outboxOperations.status, 'pending'),
+        eq(outboxOperations.attempts, 0),
       ),
     )
     .returning({ id: outboxOperations.id });

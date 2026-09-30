@@ -11,6 +11,9 @@
 
 ### Fixed
 
+- Cancelling a new transaction whose send failed now checks Firefly III first, so it can't end up
+  booked twice. If it already arrived it is kept as sent; if Firefly III can't be reached, it stays
+  queued.
 - Syncing no longer stops for good after a request that never gets an answer (for example when
   the phone switches networks mid-sync).
 - A planned transaction's time no longer turns into "Any time" after an edit, with
