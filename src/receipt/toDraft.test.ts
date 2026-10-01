@@ -122,6 +122,21 @@ describe('receiptToDraft', () => {
     const draft = receiptToDraft(extraction, reference, takenAt);
     expect(draft.lowConfidenceFields).toBeUndefined();
   });
+
+  it('falls back to localized Receipt description when merchant is missing', () => {
+    const extraction = normalizeExtraction({
+      amount: '42.50',
+      currency: 'PLN',
+      merchant: null,
+      date: '2026-09-15',
+      category: 'Groceries',
+      items: [],
+      confidence: 0.9,
+      payment_method: 'cash',
+    });
+    const draft = receiptToDraft(extraction, reference, takenAt);
+    expect(draft.description).toBe('Receipt');
+  });
 });
 
 describe('buildReceiptDraftReference', () => {

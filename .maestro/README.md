@@ -6,17 +6,19 @@ driven on a real phone over USB against a throwaway, patched Firefly III — nev
 ```sh
 npm run ff3:test -- fresh          # once: a seeded test Firefly III in Docker (about a minute)
 npm run e2e                        # the smoke, every build (S1–S6)
+npm run e2e -- --ios               # the smoke on an iOS simulator
 npm run e2e -- release             # everything, before a release
 npm run e2e -- --changed           # the smoke + the flows for what this branch changed
 npm run e2e -- Q2 P1               # just these
 ```
 
-Needs: Docker, `adb` (Android platform-tools), [Maestro](https://maestro.mobile.dev)
+Needs: Docker, `adb` (Android platform-tools) or `xcrun simctl` (iOS), [Maestro](https://maestro.mobile.dev)
 (`curl -Ls "https://get.maestro.mobile.dev" | bash`), the Dev build installed
-(`com.mkloouo.mmyway.dev`, `--apk` installs one; the flows sign in through a link only that build
+(`com.mkloouo.mmyway.dev`, `--apk` / `--app` installs one; the flows sign in through a link only that build
 answers, so it has to be built from a checkout that has `app/e2e-sign-in.tsx`), and the phone on USB
-with debugging on. The runner connects the phone to the test instance with `adb reverse`, so
-`http://localhost:8080` on the phone is the laptop's Docker.
+with debugging on or a booted iOS simulator. On Android the runner connects the phone to the test
+instance with `adb reverse`, so `http://localhost:8080` on the phone is the laptop's Docker (on iOS
+simulator, localhost is shared directly with the Mac host).
 
 Results go to `e2e-results/<time>-<run id>/`: `report.md` in the checklist's "Copy results" format
 (paste it into the release PR), screenshots, each flow's Maestro log and JUnit XML.

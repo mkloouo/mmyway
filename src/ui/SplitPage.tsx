@@ -16,6 +16,7 @@ export function SplitPage({
   payee,
   isNewPayee,
   readOnly,
+  amountTone = 'default',
   onAmountPress,
   onDescriptionPress,
   onPayeePress,
@@ -29,6 +30,7 @@ export function SplitPage({
   payee: string | null | undefined;
   isNewPayee?: boolean;
   readOnly?: boolean;
+  amountTone?: 'default' | 'warn';
   onAmountPress: () => void;
   onDescriptionPress: () => void;
   onPayeePress: () => void;
@@ -48,7 +50,7 @@ export function SplitPage({
           accessibilityRole="button"
           accessibilityLabel={tr('fields.amount')}
         >
-          <Money amount={amount} currency={currency} type={type} size="heading" />
+          <Money amount={amount} currency={currency} type={type} size="heading" tone={amountTone} />
         </Pressable>
         <Pressable
           onPress={onDescriptionPress}

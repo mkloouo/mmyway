@@ -357,7 +357,7 @@ function fail(message) {
 }
 const say = (message) => console.log(`▶ ${message}`);
 
-function parseArgs(argv) {
+export function parseArgs(argv) {
   const opts = { _: [] };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -384,6 +384,7 @@ const BOOLEAN = new Set([
   'manual-share',
   'help',
   'json',
+  'ios',
 ]);
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -396,8 +397,9 @@ function maestroBin() {
   fail('Maestro is not installed: curl -Ls "https://get.maestro.mobile.dev" | bash');
 }
 
-let DEVICE = null;
-function adb(args, { allowFail = false, capture = true } = {}) {
+/** @type {string | null} */
+export let DEVICE = null;
+export function adb(args, { allowFail = false, capture = true } = {}) {
   const r = spawnSync('adb', [...(DEVICE ? ['-s', DEVICE] : []), ...args], {
     encoding: 'utf8',
     stdio: capture ? ['ignore', 'pipe', 'pipe'] : 'inherit',
@@ -406,6 +408,92 @@ function adb(args, { allowFail = false, capture = true } = {}) {
   if (r.status !== 0 && !allowFail)
     throw new Error(`adb ${args.join(' ')} failed: ${r.stderr || r.stdout}`);
   return (r.stdout ?? '').trim();
+}
+
+export function simctl(args, { allowFail = false, capture = true } = {}) {
+  const r = spawnSync('xcrun', ['simctl', ...args], {
+    encoding: 'utf8',
+    stdio: capture ? ['ignore', 'pipe', 'pipe'] : 'inherit',
+  });
+  if (r.error) fail(`xcrun simctl is not available: ${r.error.message}`);
+  if (r.status !== 0 && !allowFail)
+    throw new Error(`simctl ${args.join(' ')} failed: ${r.stderr || r.stdout}`);
+  return r.status === 0 ? (r.stdout ?? '').trim() : '';
+}
+
+/**
+ * @param {string | null | undefined} requested
+ * @param {{ adbFn?: () => { stdout: string, error?: any } }} [opts]
+ */
+export function findAndroidDevice(
+  requested,
+  { adbFn = () => spawnSync('adb', ['devices'], { encoding: 'utf8' }) } = {},
+) {
+  const devices = adbFn();
+  if (devices.error) throw new Error('adb is not installed (Android platform-tools)');
+  const serials = (devices.stdout ?? '')
+    .split('\n')
+    .slice(1)
+    .map((l) => l.split('\t'))
+    .filter(([s, state]) => s && state === 'device')
+    .map(([s]) => s);
+  const dev = requested ?? (serials.length === 1 ? serials[0] : null);
+  if (!dev) {
+    throw new Error(
+      serials.length
+        ? `several devices — pick one with --device (${serials.join(', ')})`
+        : 'no phone connected with USB debugging on',
+    );
+  }
+  return dev;
+}
+
+/**
+ * @param {string | null | undefined} requested
+ * @param {{ simctlFn?: typeof simctl }} [opts]
+ */
+export function findIosSimulator(requested, { simctlFn = simctl } = {}) {
+  let list;
+  try {
+    list = JSON.parse(simctlFn(['list', 'devices', 'available', '--json']));
+  } catch (err) {
+    throw new Error(`failed to list iOS simulators: ${err.message}`);
+  }
+  const all = Object.values(list.devices ?? {})
+    .flat()
+    .filter((d) => d.isAvailable);
+
+  if (requested) {
+    const match = all.filter(
+      (d) =>
+        d.udid.toLowerCase() === requested.toLowerCase() ||
+        d.name.toLowerCase() === requested.toLowerCase(),
+    );
+    if (!match.length) throw new Error(`no iOS simulator matches "${requested}"`);
+    const booted = match.filter((d) => d.state === 'Booted');
+    const selected = booted.length === 1 ? booted[0] : match[0];
+    if (match.length > 1 && booted.length !== 1) {
+      throw new Error(
+        `several simulators match "${requested}" — pick one with --device by UDID (${match.map((d) => `${d.name} [${d.udid}]`).join(', ')})`,
+      );
+    }
+    if (selected.state !== 'Booted') {
+      say(`booting iOS simulator ${selected.name} (${selected.udid})`);
+      simctlFn(['boot', selected.udid]);
+    }
+    return selected.udid;
+  }
+
+  const booted = all.filter((d) => d.state === 'Booted');
+  if (booted.length === 1) return booted[0].udid;
+  if (booted.length > 1) {
+    throw new Error(
+      `several booted simulators — pick one with --device (${booted.map((d) => `${d.name} (${d.udid})`).join(', ')})`,
+    );
+  }
+  throw new Error(
+    'no iOS simulator is booted — boot one with xcrun simctl boot <id> or pass --device <name|udid>',
+  );
 }
 
 /**
@@ -438,11 +526,46 @@ function reinstallApp(appId, apk) {
 }
 
 /**
- * Whether the phone routes the sign-in link (.maestro/subflows/sign-in.yaml) to the installed app.
- * Only a Dev build from a checkout with app/e2e-sign-in.tsx registers its scheme; on an older
- * build the flows would wait out a 45 s timeout for "Connected to Firefly III" instead.
+ * @param {string} appId
+ * @param {string | null} [device]
+ * @param {{ simctlFn?: typeof simctl }} [opts]
  */
-function answersSignInLink() {
+export function isInstalledIos(appId, device = DEVICE, { simctlFn = simctl } = {}) {
+  const p = simctlFn(['get_app_container', device ?? '', appId, 'app'], { allowFail: true });
+  return Boolean(p && fs.existsSync(p));
+}
+
+/**
+ * @param {string} appId
+ * @param {string} [appPath]
+ * @param {string | null} [device]
+ * @param {{ simctlFn?: typeof simctl }} [opts]
+ */
+export function reinstallAppIos(appId, appPath, device = DEVICE, { simctlFn = simctl } = {}) {
+  let file = appPath;
+  let tempDir = null;
+  if (!file) {
+    const current = simctlFn(['get_app_container', device ?? '', appId, 'app']);
+    if (!current || !fs.existsSync(current)) {
+      throw new Error(`cannot reinstall ${appId}: not found on simulator and no --app provided`);
+    }
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'mmyway-app-'));
+    file = path.join(tempDir, path.basename(current));
+    fs.cpSync(current, file, { recursive: true });
+  }
+  simctlFn(['uninstall', device ?? '', appId], { allowFail: true });
+  try {
+    simctlFn(['install', device ?? '', file]);
+  } catch (err) {
+    fail(
+      `${err.message}\n${appId} is uninstalled now — install it again with: xcrun simctl install ${device} ${file}`,
+    );
+  } finally {
+    if (tempDir) fs.rmSync(tempDir, { recursive: true, force: true });
+  }
+}
+
+export function answersSignInLinkAndroid() {
   const out = adb(
     [
       'shell',
@@ -460,8 +583,58 @@ function answersSignInLink() {
   return !/no activity found/i.test(out);
 }
 
-const NO_SIGN_IN_LINK = (what) =>
-  `${what} doesn't answer the sign-in link (mmyway-dev://e2e-sign-in), so the flows can't sign in: it is older than app/e2e-sign-in.tsx, or it isn't the Dev build. Build the Dev build again (npm run android:build:dev) and pass it with --apk.`;
+/**
+ * @param {string} plistPath
+ * @returns {any | null}
+ */
+export function readPlistJson(plistPath) {
+  try {
+    const r = spawnSync('plutil', ['-convert', 'json', '-o', '-', plistPath], { encoding: 'utf8' });
+    if (r.status !== 0 || !r.stdout) return null;
+    return JSON.parse(r.stdout);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * @param {string} appId
+ * @param {string | null} [device]
+ * @param {{ simctlFn?: typeof simctl; readPlistFn?: (plistPath: string) => any }} [opts]
+ */
+export function answersSignInLinkIos(
+  appId,
+  device = DEVICE,
+  { simctlFn = simctl, readPlistFn = readPlistJson } = {},
+) {
+  try {
+    const appDir = simctlFn(['get_app_container', device ?? '', appId, 'app'], { allowFail: true });
+    if (!appDir) return false;
+    const plist = path.join(appDir, 'Info.plist');
+    if (!fs.existsSync(plist)) return false;
+    const json = readPlistFn(plist);
+    if (!json) return false;
+    const schemes = (json.CFBundleURLTypes ?? []).flatMap((t) => t.CFBundleURLSchemes ?? []);
+    return schemes.includes('mmyway-dev');
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * @param {string} platform
+ * @param {string} appId
+ * @param {string | null} [device]
+ * @param {{ simctlFn?: typeof simctl; readPlistFn?: (plistPath: string) => any }} [opts]
+ */
+export function answersSignInLink(platform, appId, device = DEVICE, opts = {}) {
+  return platform === 'ios'
+    ? answersSignInLinkIos(appId, device, opts)
+    : answersSignInLinkAndroid();
+}
+
+export const NO_SIGN_IN_LINK = (what, platform = 'android') =>
+  `${what} doesn't answer the sign-in link (mmyway-dev://e2e-sign-in), so the flows can't sign in: it is older than app/e2e-sign-in.tsx, or it isn't the Dev build. Build the Dev build again (${platform === 'ios' ? 'for iOS simulator' : 'npm run android:build:dev'}) and pass it with ${platform === 'ios' ? '--app' : '--apk'}.`;
 
 function ff3Test(args) {
   return execFileSync(process.execPath, [path.join(ROOT, 'scripts', 'ff3-test.mjs'), ...args], {
@@ -504,18 +677,24 @@ function changedFiles(base) {
 
 // ---------- host steps ----------
 
-const HOST_STEPS = {
+export const HOST_STEPS = {
   async share(step, ctx) {
     const src = path.join(FIXTURES, step.fixture);
     const name = `${ctx.runId}-${step.fixture}`;
-    const dir = '/sdcard/Pictures/mmyway-test';
     if (ctx.opts['manual-share']) {
       console.log(
-        `\n  Share ${src} into ${ctx.appId} now (Gallery → Share → mmyway), then press Enter.`,
+        `\n  Share ${src} into ${ctx.appId} now (${ctx.platform === 'ios' ? 'Photos' : 'Gallery'} → Share → mmyway), then press Enter.`,
       );
       await new Promise((resolve) => process.stdin.once('data', resolve));
       return;
     }
+    if (ctx.platform === 'ios') {
+      simctl(['addmedia', DEVICE, src], { allowFail: true });
+      throw new Error(
+        'sharing photos directly into the app is not supported on iOS simulator — rerun with --manual-share',
+      );
+    }
+    const dir = '/sdcard/Pictures/mmyway-test';
     adb(['shell', 'mkdir', '-p', dir]);
     adb(['push', src, `${dir}/${name}`]);
     adb(
@@ -586,6 +765,9 @@ const HOST_STEPS = {
   },
 
   async backgroundJob(_step, ctx) {
+    if (ctx.platform === 'ios') {
+      throw new Error('backgroundJob is not supported on iOS simulator (Android WorkManager only)');
+    }
     // Only the background task may send it: the app's process is gone, the network comes back,
     // and the WorkManager job is run on demand instead of in ~15 minutes.
     adb(['shell', 'am', 'kill', ctx.appId], { allowFail: true });
@@ -609,47 +791,104 @@ const HOST_STEPS = {
     ff3Test(['cron', '--name', ctx.opts.name ?? 'default']);
   },
 
-  async wifi(step) {
+  async wifi(step, ctx) {
+    if (ctx.platform === 'ios') {
+      throw new Error('Wi-Fi toggle is not supported on iOS simulator');
+    }
     adb(['shell', 'svc', 'wifi', step.on ? 'enable' : 'disable'], { allowFail: true });
     await sleep(step.on ? 8000 : 3000);
   },
 
-  async night(step) {
-    adb(['shell', 'cmd', 'uimode', 'night', step.on ? 'yes' : 'no'], { allowFail: true });
+  async night(step, ctx) {
+    if (ctx.platform === 'ios') {
+      simctl(['ui', DEVICE, 'appearance', step.on ? 'dark' : 'light'], { allowFail: true });
+    } else {
+      adb(['shell', 'cmd', 'uimode', 'night', step.on ? 'yes' : 'no'], { allowFail: true });
+    }
     await sleep(2000);
   },
 
   async logSecrets(_step, ctx) {
-    const r = spawnSync(
-      'adb',
-      [...(DEVICE ? ['-s', DEVICE] : []), 'shell', 'run-as', ctx.appId, 'cat', 'files/mmyway.log'],
-      { encoding: 'utf8' },
-    );
-    if (r.status !== 0) {
-      ctx.notes.push(
-        'T5: the log could not be read over adb (not a debuggable build) — check it for secrets by hand.',
+    let stdout = '';
+    if (ctx.platform === 'ios') {
+      try {
+        const dataDir = simctl(['get_app_container', DEVICE, ctx.appId, 'data']);
+        const logFile = path.join(dataDir, 'Documents', 'mmyway.log');
+        if (fs.existsSync(logFile)) {
+          stdout = fs.readFileSync(logFile, 'utf8');
+        } else {
+          ctx.notes.push(
+            'T5: mmyway.log not found in app container — check it for secrets by hand.',
+          );
+          return;
+        }
+      } catch {
+        ctx.notes.push(
+          'T5: the log could not be read from simulator — check it for secrets by hand.',
+        );
+        return;
+      }
+    } else {
+      const r = spawnSync(
+        'adb',
+        [
+          ...(DEVICE ? ['-s', DEVICE] : []),
+          'shell',
+          'run-as',
+          ctx.appId,
+          'cat',
+          'files/mmyway.log',
+        ],
+        { encoding: 'utf8' },
       );
-      return;
+      if (r.status !== 0) {
+        ctx.notes.push(
+          'T5: the log could not be read over adb (not a debuggable build) — check it for secrets by hand.',
+        );
+        return;
+      }
+      stdout = r.stdout;
     }
     // The run's own credentials, read from env at run time — no value is in this file.
     const watched = [ctx.env.FF3_TOKEN, ctx.env.GEMINI_KEY].filter((v) => v && v.length > 8); // ggignore
-    const leaked = watched.filter((v) => r.stdout.includes(v.slice(0, 24)));
-    if (leaked.length || /Bearer [A-Za-z0-9._-]{20,}/.test(r.stdout))
+    const leaked = watched.filter((v) => stdout.includes(v.slice(0, 24)));
+    if (leaked.length || /Bearer [A-Za-z0-9._-]{20,}/.test(stdout))
       throw new Error('the Diagnostics log contains an API token or key');
   },
 
   async install(step, ctx) {
-    const apk = step.which === 'previous' ? ctx.opts['previous-apk'] : ctx.opts.apk;
-    if (step.which === 'previous') adb(['uninstall', ctx.appId], { allowFail: true });
-    adb(['install', '-r', apk], { capture: false });
-    if (!answersSignInLink())
-      throw new Error(
-        NO_SIGN_IN_LINK(
-          step.which === 'previous'
-            ? `--previous-apk (${path.basename(apk)})`
-            : `--apk (${path.basename(apk)})`,
-        ),
-      );
+    if (ctx.platform === 'ios') {
+      const app =
+        step.which === 'previous'
+          ? (ctx.opts['previous-app'] ?? ctx.opts['previous-apk'])
+          : (ctx.opts.app ?? ctx.opts.apk);
+      if (!app)
+        throw new Error(`missing ${step.which === 'previous' ? '--previous-app' : '--app'}`);
+      if (step.which === 'previous') simctl(['uninstall', DEVICE, ctx.appId], { allowFail: true });
+      simctl(['install', DEVICE, app], { capture: false });
+      if (!answersSignInLink('ios', ctx.appId, DEVICE))
+        throw new Error(
+          NO_SIGN_IN_LINK(
+            step.which === 'previous'
+              ? `--previous-app (${path.basename(app)})`
+              : `--app (${path.basename(app)})`,
+            'ios',
+          ),
+        );
+    } else {
+      const apk = step.which === 'previous' ? ctx.opts['previous-apk'] : ctx.opts.apk;
+      if (step.which === 'previous') adb(['uninstall', ctx.appId], { allowFail: true });
+      adb(['install', '-r', apk], { capture: false });
+      if (!answersSignInLink('android', ctx.appId))
+        throw new Error(
+          NO_SIGN_IN_LINK(
+            step.which === 'previous'
+              ? `--previous-apk (${path.basename(apk)})`
+              : `--apk (${path.basename(apk)})`,
+            'android',
+          ),
+        );
+    }
   },
 };
 
@@ -806,16 +1045,35 @@ async function selftest(opts) {
 
 // ---------- the run ----------
 
-function requirementsMissing(flow, ctx) {
+export function requirementsMissing(flow, ctx) {
   const missing = [];
+  const isIos = ctx.platform === 'ios';
   for (const r of flow.requires ?? []) {
-    if (r === 'reader' && !ctx.env.GEMINI_KEY && !ctx.env.LOCAL_MODEL_URL)
+    if (r === 'reader' && !ctx.env?.GEMINI_KEY && !ctx.env?.LOCAL_MODEL_URL)
       missing.push('a receipt reader (--gemini-key or --local-model-url + --local-model-name)');
-    if (r === 'lan' && (!ctx.opts.lan || !ctx.env.FF3_LAN_URL))
-      missing.push('--lan (phone on the same Wi-Fi as this computer)');
-    if (r === 'second' && !ctx.opts['second-instance']) missing.push('--second-instance');
-    if (r === 'apks' && !(ctx.opts.apk && ctx.opts['previous-apk']))
-      missing.push('--apk and --previous-apk');
+    if (r === 'lan') {
+      if (isIos) missing.push('--lan is not supported on iOS simulator (no Wi-Fi toggle)');
+      else if (!ctx.opts?.lan || !ctx.env?.FF3_LAN_URL)
+        missing.push('--lan (phone on the same Wi-Fi as this computer)');
+    }
+    if (r === 'second' && !ctx.opts?.['second-instance']) missing.push('--second-instance');
+    if (r === 'apks') {
+      const hasPrevious = Boolean(ctx.opts?.['previous-app'] || ctx.opts?.['previous-apk']);
+      const hasCurrent = Boolean(ctx.opts?.app || ctx.opts?.apk);
+      if (!(hasPrevious && hasCurrent))
+        missing.push(isIos ? '--app and --previous-app' : '--apk and --previous-apk');
+    }
+  }
+  if (isIos) {
+    if (flow.steps.some((s) => typeof s === 'object' && s.host === 'backgroundJob')) {
+      missing.push('Android WorkManager (not available on iOS)');
+    }
+    if (
+      !ctx.opts?.['manual-share'] &&
+      flow.steps.some((s) => typeof s === 'object' && s.host === 'share')
+    ) {
+      missing.push('--manual-share (sharing photos into app is manual on iOS simulator)');
+    }
   }
   return missing;
 }
@@ -881,23 +1139,15 @@ async function run(opts) {
   const appId = opts['app-id'] ?? process.env.APP_ID ?? 'com.mkloouo.mmyway.dev';
   const instance = opts.name ?? 'default';
   const maestro = maestroBin();
+  const platform = opts.ios || opts.platform === 'ios' ? 'ios' : 'android';
+  const isIos = platform === 'ios';
 
-  // Preflight: one phone, the app, the test instance.
-  const devices = spawnSync('adb', ['devices'], { encoding: 'utf8' });
-  if (devices.error) fail('adb is not installed (Android platform-tools)');
-  const serials = devices.stdout
-    .split('\n')
-    .slice(1)
-    .map((l) => l.split('\t'))
-    .filter(([s, state]) => s && state === 'device')
-    .map(([s]) => s);
-  DEVICE = opts.device ?? (serials.length === 1 ? serials[0] : null);
-  if (!DEVICE)
-    fail(
-      serials.length
-        ? `several devices — pick one with --device (${serials.join(', ')})`
-        : 'no phone connected with USB debugging on',
-    );
+  // Preflight: one phone or simulator, the app, the test instance.
+  try {
+    DEVICE = isIos ? findIosSimulator(opts.device) : findAndroidDevice(opts.device);
+  } catch (err) {
+    fail(err.message);
+  }
 
   const ff3 = ff3Env(instance);
   if (!(await healthy(ff3.FF3_URL)))
@@ -909,7 +1159,9 @@ async function run(opts) {
     ff3Test(['reset', '--name', instance]);
   }
   const port = new URL(ff3.FF3_URL).port;
-  adb(['reverse', `tcp:${port}`, `tcp:${port}`]);
+  if (!isIos) {
+    adb(['reverse', `tcp:${port}`, `tcp:${port}`]);
+  }
 
   const env = {
     APP_ID: appId,
@@ -932,37 +1184,56 @@ async function run(opts) {
     }
     const b = ff3Env('second');
     const bPort = new URL(b.FF3_URL).port;
-    adb(['reverse', `tcp:${bPort}`, `tcp:${bPort}`]);
+    if (!isIos) {
+      adb(['reverse', `tcp:${bPort}`, `tcp:${bPort}`]);
+    }
     env.FF3_B_URL = b.FF3_URL;
     env.FF3_B_TOKEN = b.FF3_TOKEN;
   }
 
+  const appFile = isIos ? (opts.app ?? opts.apk) : opts.apk;
   const reinstall = opts.reinstall && !opts['keep-app-data'];
-  if (opts.apk && !flows.some((f) => f.id === 'U1') && !reinstall) {
-    say(`installing ${opts.apk}`);
-    adb(['install', '-r', opts.apk], { capture: false });
-  }
-  if (!adb(['shell', 'pm', 'path', appId], { allowFail: true }) && !(reinstall && opts.apk))
-    fail(`${appId} isn't installed on the phone — pass --apk, or --app-id for another variant`);
-  if (reinstall) {
-    say('reinstalling the app, so the run starts signed out with an empty database');
-    reinstallApp(appId, opts.apk);
-  } else if (!opts['keep-app-data']) {
-    say('clearing the app, so the run starts signed out with an empty database');
-    try {
-      adb(['shell', 'pm', 'clear', appId]);
-    } catch (err) {
-      if (!/CLEAR_APP_USER_DATA|SecurityException/.test(err.message)) throw err;
+  if (isIos) {
+    if (appFile && !flows.some((f) => f.id === 'U1') && !reinstall) {
+      say(`installing ${appFile}`);
+      simctl(['install', DEVICE, appFile]);
+    }
+    if (!isInstalledIos(appId) && !(reinstall && appFile))
       fail(
-        `this phone doesn't let adb clear an app's data (some vendors restrict it on user builds;
+        `${appId} isn't installed on the simulator — pass --app, or --app-id for another variant`,
+      );
+    if (reinstall || !opts['keep-app-data']) {
+      say('reinstalling the app, so the run starts signed out with an empty database');
+      reinstallAppIos(appId, appFile);
+    }
+  } else {
+    if (opts.apk && !flows.some((f) => f.id === 'U1') && !reinstall) {
+      say(`installing ${opts.apk}`);
+      adb(['install', '-r', opts.apk], { capture: false });
+    }
+    if (!adb(['shell', 'pm', 'path', appId], { allowFail: true }) && !(reinstall && opts.apk))
+      fail(`${appId} isn't installed on the phone — pass --apk, or --app-id for another variant`);
+    if (reinstall) {
+      say('reinstalling the app, so the run starts signed out with an empty database');
+      reinstallApp(appId, opts.apk);
+    } else if (!opts['keep-app-data']) {
+      say('clearing the app, so the run starts signed out with an empty database');
+      try {
+        adb(['shell', 'pm', 'clear', appId]);
+      } catch (err) {
+        if (!/CLEAR_APP_USER_DATA|SecurityException/.test(err.message)) throw err;
+        fail(
+          `this phone doesn't let adb clear an app's data (some vendors restrict it on user builds;
 on Xiaomi, turning on "USB debugging (Security settings)" allows it). Rerun with --reinstall to
 uninstall and reinstall the app instead.`,
-      );
+        );
+      }
     }
   }
 
   // U1 installs its own builds (and checks them); every other flow signs in through the link.
-  if (!flows.every((f) => f.id === 'U1') && !answersSignInLink()) fail(NO_SIGN_IN_LINK(appId));
+  if (!flows.every((f) => f.id === 'U1') && !answersSignInLink(platform, appId, DEVICE))
+    fail(NO_SIGN_IN_LINK(appId, platform));
 
   const outDir = path.join(
     ROOT,
@@ -970,7 +1241,7 @@ uninstall and reinstall the app instead.`,
     `${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}-${env.RUN_ID}`,
   );
   fs.mkdirSync(outDir, { recursive: true });
-  const ctx = { opts, appId, env, runId: env.RUN_ID, notes: [] };
+  const ctx = { opts, appId, env, runId: env.RUN_ID, notes: [], platform };
   const results = [];
   const started = Date.now();
 
@@ -1026,7 +1297,9 @@ uninstall and reinstall the app instead.`,
       }
     }
     // Whatever happened, give the next flow a phone with network and a light theme.
-    adb(['shell', 'cmd', 'connectivity', 'airplane-mode', 'disable'], { allowFail: true });
+    if (!isIos) {
+      adb(['shell', 'cmd', 'connectivity', 'airplane-mode', 'disable'], { allowFail: true });
+    }
     const seconds = Math.round((Date.now() - t0) / 1000);
     if (failure) {
       results.push({ id: flow.id, title: flow.title, status: 'fail', detail: failure.message });
@@ -1039,7 +1312,10 @@ uninstall and reinstall the app instead.`,
     }
   }
 
-  const report = reportMarkdown(results, { build: opts.build ?? `${appId} @ ${gitHead()}`, tier });
+  const report = reportMarkdown(results, {
+    build: opts.build ?? `${appId} (${platform}) @ ${gitHead()}`,
+    tier,
+  });
   fs.writeFileSync(
     path.join(outDir, 'report.md'),
     report + (ctx.notes.length ? `\n${ctx.notes.map((n) => `> ${n}`).join('\n')}\n` : ''),
@@ -1063,10 +1339,11 @@ function gitHead() {
   }
 }
 
-const HELP = `Runs the device checklist with Maestro on a USB-connected phone, against the throwaway
+const HELP = `Runs the device checklist with Maestro on a USB-connected phone or iOS simulator, against the throwaway
 Firefly III (npm run ff3:test -- fresh first).
 
   npm run e2e                        the smoke (every build, ~5 min)
+  npm run e2e -- --ios               the smoke on iOS simulator
   npm run e2e -- release             everything (before a release)
   npm run e2e -- S3 Q2 P1            just these flows
   npm run e2e -- --changed [base]    the smoke + the flows for files changed since base (origin/main)
@@ -1074,22 +1351,25 @@ Firefly III (npm run ff3:test -- fresh first).
   npm run e2e -- selftest            check .maestro/scripts/ff3.js against the test instance (no phone)
 
 Options
+  --platform <android|ios>  platform to target (default "android")
+  --ios                     shortcut for --platform ios
   --app-id <id>             default com.mkloouo.mmyway.dev (the Dev build; installs next to the real app)
-  --apk <file>              install this build first (and U1's "new" build)
-  --previous-apk <file>     U1: the previous release, installed first and upgraded over (it must
-                            have the sign-in link too: built from a checkout with app/e2e-sign-in.tsx)
-  --device <serial>         when several phones are connected
+  --apk <file>              install this build first (and U1's "new" build) on Android
+  --app <path>              install this .app build first (and U1's "new" build) on iOS simulator
+  --previous-apk <file>     U1: the previous release on Android (built from checkout with app/e2e-sign-in.tsx)
+  --previous-app <path>     U1: the previous release on iOS simulator (.app bundle)
+  --device <serial|udid>    when several phones or simulators are available (Android serial or iOS simulator UDID/name)
   --name <instance>         the ff3-test instance (default "default")
   --gemini-key <key>        R1: read receipts with Gemini ($GEMINI_KEY)
   --local-model-url <url>   R1: an OpenAI-compatible reader the phone can reach ($LOCAL_MODEL_URL)
   --local-model-name <name> its model ($LOCAL_MODEL_NAME)
   --lan                     T2: the phone is on the same Wi-Fi as this computer
   --second-instance         T3b: switch to a second throwaway Firefly III
-  --manual-share            R1–R3: pause and let you share the photo by hand
+  --manual-share            R1–R3: pause and let you share the photo by hand (required on iOS simulator)
   --no-reset                don't reset Firefly III to its seed first
   --keep-app-data           don't clear the app first
   --reinstall               start with empty app data by uninstalling and reinstalling the app
-                            (--apk, or the APK already on the phone) — for phones that refuse
+                            (--apk / --app, or the build already installed) — for phones that refuse
                             \`pm clear\` (SecurityException: CLEAR_APP_USER_DATA)
   --build <label>           the build name in the report
 

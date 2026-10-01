@@ -424,6 +424,28 @@ function TransactionEditor({ row }: { row: CachedRow }) {
         ...s,
         internalReference: s.internalReference ?? goneSplit?.internalReference ?? null,
       }));
+    if (next.length === 1 && baseSplits.length <= 1) {
+      const remaining = next[0]!;
+      setEdited(null);
+      setTotalEdit(null);
+      setTitleEdit(null);
+      setRemoved([]);
+      setPage(0);
+      setChanges((prev) => ({
+        ...prev,
+        amount: total,
+        description: remaining.description,
+        category_name: remaining.categoryName,
+        notes: remaining.notes,
+        tags: remaining.tags,
+        source_id: remaining.sourceId ?? undefined,
+        source_name: remaining.sourceName ?? undefined,
+        destination_id: remaining.destinationId ?? undefined,
+        destination_name: remaining.destinationName ?? undefined,
+        budget_id: remaining.budgetId ?? undefined,
+      }));
+      return;
+    }
     // One split left holds the whole total; with more, split 1 takes the removed amount.
     if (next.length === 1) next[0] = { ...next[0]!, amount: total };
     setEdited(next);

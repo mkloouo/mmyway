@@ -18,7 +18,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { useTheme, hitSize, type Theme } from './theme';
+import { useTheme, hitSize } from './theme';
 import { formatMoney, signFor, type DisplayCurrency } from './money';
 import { usePop } from './feedback';
 import { haptics } from './haptics';
@@ -463,12 +463,14 @@ export function Money({
   currency,
   type,
   size = 'body',
+  tone,
   loading,
 }: {
   amount: string;
   currency: DisplayCurrency;
   type?: 'withdrawal' | 'deposit' | 'transfer';
   size?: 'body' | 'heading' | 'title' | 'display';
+  tone?: 'default' | 'warn';
   /** The currencies are still loading: without them the code would stand in for the symbol. */
   loading?: boolean;
 }) {
@@ -476,7 +478,13 @@ export function Money({
   const { t: tr } = useTranslation();
   const signed = amount.trim().startsWith('-') || amount.trim().startsWith('−');
   const color =
-    type === 'deposit' ? t.color.income : type === 'transfer' ? t.color.transfer : t.color.text;
+    tone === 'warn'
+      ? t.color.warn
+      : type === 'deposit'
+        ? t.color.income
+        : type === 'transfer'
+          ? t.color.transfer
+          : t.color.text;
   if (loading)
     return (
       <View style={{ minHeight: t.type[size].lineHeight }}>

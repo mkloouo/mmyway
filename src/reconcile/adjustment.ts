@@ -7,20 +7,28 @@ import { writeDraft } from '../inbox/draftJson';
 import { confirmInboxItem } from '../inbox/createManualEntry';
 import type { OutboxDb } from '../sync/outbox';
 import { generateId } from '../utils/id';
+import i18n from '../i18n';
 import type { SweepAdjustment } from './sweep';
+
+export const DEFAULT_SHORTFALL_PAYEE = 'Cash shortfall';
+export const DEFAULT_SURPLUS_PAYEE = 'Cash surplus';
 
 export async function createAndConfirmAdjustment(
   db: OutboxDb,
   adjustment: SweepAdjustment,
   settings: {
-    shortfallAccountId: string | null;
-    surplusAccountId: string | null;
-    categoryName: string | null;
-  },
+    shortfallAccountId?: string | null;
+    surplusAccountId?: string | null;
+    shortfallAccountName?: string | null;
+    surplusAccountName?: string | null;
+    categoryName?: string | null;
+  } = {},
 ): Promise<void> {
   const isWithdrawal = adjustment.type === 'withdrawal';
   const payeeAccountId = isWithdrawal ? settings.shortfallAccountId : settings.surplusAccountId;
-  if (!payeeAccountId) throw new Error('reconcile payee account is not configured');
+  const defaultPayeeName = isWithdrawal
+    ? settings.shortfallAccountName || DEFAULT_SHORTFALL_PAYEE
+    : settings.surplusAccountName || DEFAULT_SURPLUS_PAYEE;
 
   const now = new Date().toISOString();
   const draft: Draft = {
@@ -28,10 +36,12 @@ export async function createAndConfirmAdjustment(
     amount: adjustment.amount,
     currencyCode: adjustment.currencyCode,
     date: now,
-    description: 'Cash count',
-    isNewPayee: false,
-    sourceId: isWithdrawal ? adjustment.accountId : payeeAccountId,
-    destinationId: isWithdrawal ? payeeAccountId : adjustment.accountId,
+    description: i18n.t('count.title'),
+    isNewPayee: !payeeAccountId,
+    sourceId: isWithdrawal ? adjustment.accountId : (payeeAccountId ?? undefined),
+    sourceName: !isWithdrawal && !payeeAccountId ? defaultPayeeName : undefined,
+    destinationId: isWithdrawal ? (payeeAccountId ?? undefined) : adjustment.accountId,
+    destinationName: isWithdrawal && !payeeAccountId ? defaultPayeeName : undefined,
     categoryName: settings.categoryName || undefined,
     extraTags: ['mmyway-reconcile'],
   };

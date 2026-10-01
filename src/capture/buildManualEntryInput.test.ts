@@ -136,6 +136,33 @@ describe('buildManualEntryInput', () => {
     expect(input.foreignCurrencyCode).toBeUndefined();
   });
 
+  it('FX on transfer: keeps source currency as amount and destination as foreign', () => {
+    const fxAccounts = [
+      { id: 'acc-pln', name: 'PLN Account', currencyCode: 'PLN' },
+      { id: 'acc-eur', name: 'EUR Account', currencyCode: 'EUR' },
+    ];
+    const input = buildManualEntryInput(
+      {
+        ...base,
+        type: 'transfer',
+        sourceId: 'acc-pln',
+        destinationId: 'acc-eur',
+        amount: '430.00',
+        currencyCode: 'PLN',
+        foreignAmount: '100.00',
+        foreignCurrencyCode: 'EUR',
+      },
+      fxAccounts,
+    );
+    expect(input).toMatchObject({
+      type: 'transfer',
+      amount: '430.00',
+      currencyCode: 'PLN',
+      foreignAmount: '100.00',
+      foreignCurrencyCode: 'EUR',
+    });
+  });
+
   it('serialises the date as ISO', () => {
     expect(buildManualEntryInput(base, accounts).date).toBe('2026-09-27T14:02:00.000Z');
   });
