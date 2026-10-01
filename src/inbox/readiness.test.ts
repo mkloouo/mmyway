@@ -79,4 +79,47 @@ describe('draftReadiness', () => {
     const ready = drafts.filter((d) => draftReadiness(d).ready);
     expect(ready).toHaveLength(2);
   });
+
+  describe('a currency the account does not hold (#105)', () => {
+    const foreign: Draft = {
+      ...base,
+      currencyCode: 'EUR',
+      type: 'withdrawal',
+      sourceId: 'acc-1',
+      destinationName: 'Lidl',
+    };
+
+    it('is not ready until the converted amount is set', () => {
+      expect(draftReadiness(foreign, 'PLN')).toEqual({
+        ready: false,
+        missing: ['converted amount'],
+      });
+      expect(draftReadiness({ ...foreign, foreignAmount: '95.80' }, 'PLN').ready).toBe(true);
+    });
+
+    it('a zero converted amount still counts as missing', () => {
+      expect(draftReadiness({ ...foreign, foreignAmount: '0.00' }, 'PLN').missing).toContain(
+        'converted amount',
+      );
+    });
+
+    it('is not asked for when the currencies match, or the account is unknown', () => {
+      expect(draftReadiness({ ...foreign, currencyCode: 'PLN' }, 'PLN').ready).toBe(true);
+      expect(draftReadiness(foreign).ready).toBe(true);
+    });
+
+    // A split group needs one converted amount per split, which #129 covers; until then the rule
+    // would make such a draft unconfirmable with no field to fill.
+    it('is not asked for on a split draft', () => {
+      const split: Draft = {
+        ...foreign,
+        total: '20.00',
+        amount: '12.00',
+        extraSplits: [
+          { amount: '8.00', description: 'second', payeeName: 'Lidl', isNewPayee: false },
+        ],
+      };
+      expect(draftReadiness(split, 'PLN').ready).toBe(true);
+    });
+  });
 });

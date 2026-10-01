@@ -50,6 +50,7 @@ import { alertDiscardOutcome } from '../../src/inbox/discardAlert';
 import { askPhotoSource, pickPhoto } from '../../src/receipt/pickPhoto';
 import { updateDraft, deleteInboxItem, attachReceiptImage } from '../../src/inbox/updateDraft';
 import { draftReadiness } from '../../src/inbox/readiness';
+import { draftAccountCurrency, needsForeignAmount } from '../../src/inbox/fx';
 import { unsureFields } from '../../src/inbox/unsure';
 import { useMerchantHistories } from '../../src/lookup/useMerchantHistories';
 import { confirmDestructive } from '../../src/ui/confirm';
@@ -82,6 +83,8 @@ import {
 import { absorb, leftover } from '../../src/splits/allocate';
 import { askLeftover, placeLeftover, type LeftoverHandlers } from '../../src/splits/placeLeftover';
 
+import { divideDecimal } from '../../src/api/ff3/decimal';
+
 export default function DraftScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const db = useDb();
@@ -102,7 +105,7 @@ export default function DraftScreen() {
   return <DraftEditor row={row} />;
 }
 
-function DraftEditor({ row }: { row: InboxItemRow }) {
+export function DraftEditor({ row }: { row: InboxItemRow }) {
   const id = row.id;
   const db = useDb();
   const t = useTheme();
@@ -158,7 +161,7 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
   // Split editing (page 0 is the draft's own fields, 1..N its extraSplits).
   const [page, setPage] = useState(0);
   const [allocation, setAllocation] = useState<AllocationMode | null>(null);
-  const [keypadFor, setKeypadFor] = useState<number | 'total' | null>(null);
+  const [keypadFor, setKeypadFor] = useState<number | 'total' | 'foreign' | null>(null);
   const [textFor, setTextFor] = useState<number | 'title' | null>(null);
   const [extraPayeeFor, setExtraPayeeFor] = useState<number | null>(null);
 
@@ -171,7 +174,18 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
 
   const currency = currencyOf(currencies, draft.currencyCode);
   const dp = currency.decimalPlaces;
-  const readiness = draftReadiness(draft);
+  // FX (design §6.2), as on Capture: a draft read in a currency the account doesn't hold has to
+  // say what the account was charged, or FF3 books the receipt's number in the account's currency.
+  const accountCurrencyCode = draftAccountCurrency(draft, (id) =>
+    id ? assetAccounts.find((a) => a.id === id)?.currencyCode : undefined,
+  );
+  const showFx = needsForeignAmount(accountCurrencyCode, draft.currencyCode);
+  const impliedRate =
+    draft.foreignAmount && draft.amount && draft.amount !== '0'
+      ? divideDecimal(draft.foreignAmount, draft.amount, 2)
+      : null;
+  const accountCurrency = currencyOf(currencies, accountCurrencyCode ?? '');
+  const readiness = draftReadiness(draft, accountCurrencyCode);
   // What the receipt reader wasn't sure about: marked amber until the user sets it (#120).
   const unsure = readOnly ? [] : unsureFields(draft);
   const unsureRows = new Set(unsure.filter((f) => f !== 'amount'));
@@ -185,9 +199,16 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
   // Not awaited, but never silent: a failed write is logged and shown instead of becoming an
   // unhandled rejection.
   function patch(fields: Partial<Draft>) {
+    // Changing an account or the currency invalidates whatever conversion was entered for the old
+    // pair, so it is dropped and asked for again — otherwise a stale figure is sent as the amount
+    // the account was charged. Here rather than in each handler, so every writer is covered.
+    const next =
+      'sourceId' in fields || 'destinationId' in fields || 'currencyCode' in fields
+        ? { foreignAmount: undefined, foreignCurrencyCode: undefined, ...fields }
+        : fields;
     void reportErrors(
       tr('common.save'),
-      () => updateDraft(db, id, fields),
+      () => updateDraft(db, id, next),
       (message) => setSnackbar({ id: generateId(), message }),
     );
   }
@@ -322,6 +343,12 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
     const target = keypadFor;
     setKeypadFor(null);
     if (target === null) return;
+    // The converted figure is its own field; it doesn't take part in the splits' leftover.
+    if (target === 'foreign') {
+      if (typed !== null)
+        patch({ foreignAmount: typed, foreignCurrencyCode: accountCurrencyCode ?? undefined });
+      return;
+    }
     if (target === 'total') {
       const nextTotal = typed ?? total;
       if (typed !== null) patch({ total: typed });
@@ -418,9 +445,11 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
   const keypadValue =
     keypadFor === 'total'
       ? total
-      : typeof keypadFor === 'number'
-        ? (amounts[keypadFor] ?? '0')
-        : draft.amount;
+      : keypadFor === 'foreign'
+        ? (draft.foreignAmount ?? '0')
+        : typeof keypadFor === 'number'
+          ? (amounts[keypadFor] ?? '0')
+          : draft.amount;
 
   // The text sheet edits one of three things; the value and its setter stay in step as one pair.
   const textField: { value: string; onChange: (value: string) => void } =
@@ -573,6 +602,29 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
             detailRows(true)
           )}
 
+          {showFx && (
+            <Card style={{ marginHorizontal: t.space.lg, gap: t.space.xs }}>
+              <Row
+                first
+                label={tr('draft.accountCharged')}
+                value={`${draft.foreignAmount || '—'} ${accountCurrencyCode}`}
+                tone={draft.foreignAmount ? 'default' : 'warn'}
+                chevron={!readOnly}
+                onPress={readOnly ? undefined : () => setKeypadFor('foreign')}
+              />
+              {!draft.foreignAmount && !readOnly && (
+                <Text style={[t.type.label, { color: t.color.warn }]}>
+                  {tr('capture.enterAccountPaid', { currency: accountCurrencyCode })}
+                </Text>
+              )}
+              {!!draft.foreignAmount && !!impliedRate && impliedRate !== '0' && (
+                <Text style={[t.type.label, { color: t.color.textFaint }]}>
+                  1 {draft.currencyCode} ≈ {impliedRate} {accountCurrencyCode}
+                </Text>
+              )}
+            </Card>
+          )}
+
           {row.kind !== 'receipt' && !row.receiptImagePath && row.state !== 'synced' && (
             <Card style={{ marginHorizontal: t.space.lg }}>
               <Row
@@ -665,9 +717,15 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
 
       <AmountSheet
         visible={keypadFor !== null}
-        title={keypadFor === 'total' ? tr('splits.total') : tr('fields.amount')}
+        title={
+          keypadFor === 'total'
+            ? tr('splits.total')
+            : keypadFor === 'foreign'
+              ? tr('draft.accountCharged')
+              : tr('fields.amount')
+        }
         initial={keypadValue}
-        currency={currency}
+        currency={keypadFor === 'foreign' ? accountCurrency : currency}
         type={draft.type}
         loading={currenciesLoading}
         onDone={commitKeypad}

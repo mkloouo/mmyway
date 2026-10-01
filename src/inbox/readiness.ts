@@ -2,6 +2,7 @@
 // §6.2's Save & ✓, and Confirm all's filter). Pure — no db access — so every screen and test uses
 // the same rule.
 import type { Draft } from './draft';
+import { needsForeignAmount } from './fx';
 import { leftover } from '../splits/allocate';
 
 export interface DraftReadiness {
@@ -17,11 +18,26 @@ function isZeroAmount(amount: string): boolean {
   return /^-?0*\.?0*$/.test(amount.trim());
 }
 
-export function draftReadiness(draft: Draft): DraftReadiness {
+/**
+ * `accountCurrencyCode` is the currency of the asset leg the money moves through
+ * (`src/inbox/fx.ts`'s `accountLegCurrency`), when the caller knows it. Without it the converted
+ * amount can't be judged, so a caller that doesn't read accounts leaves it out.
+ */
+export function draftReadiness(draft: Draft, accountCurrencyCode?: string | null): DraftReadiness {
   const missing: string[] = [];
 
   if (isZeroAmount(draft.amount)) missing.push('amount');
   if (isBlank(draft.currencyCode)) missing.push('currency');
+  // FF3 books the transaction in the account's currency: without the converted figure the number
+  // read off the receipt would be booked as if the account had been charged it (#105). Only for a
+  // plain entry — a split group needs one converted amount per split (#129).
+  if (
+    needsForeignAmount(accountCurrencyCode, draft.currencyCode) &&
+    (draft.extraSplits ?? []).length === 0 &&
+    (isBlank(draft.foreignAmount) || isZeroAmount(draft.foreignAmount ?? ''))
+  ) {
+    missing.push('converted amount');
+  }
 
   if (draft.type === 'withdrawal' || draft.type === 'transfer') {
     if (isBlank(draft.sourceId) && isBlank(draft.sourceName)) missing.push('source account');

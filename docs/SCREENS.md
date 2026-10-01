@@ -63,7 +63,7 @@ What 1.4.6 gets wrong or lacks, most important first.
 | Type             | ✎         | ❌ ¹    | 👁           | ❌ #117          | ✎            |
 | Amount           | ✎         | ✎       | ✎           | ✎                | ✎            |
 | Currency         | ✎         | 🟡 ²    | 👁           | 👁                | ✎            |
-| Converted amount | 🟡 ³      | ❌ #105 | ❌ ⁴        | ✎                | ❓           |
+| Converted amount | 🟡 ³      | ✎       | ❌ ⁴        | ✎                | ❓           |
 | Title            | ✎         | ✎       | ✎           | 👁                | ✎ (Name)     |
 | Payee / Payer    | ✎         | 🟡 ⁵    | ❌ #115     | 🟡 ⁶             | ✎            |
 | From / To        | ✎         | ✎       | ✎           | 🟡 #117          | ✎            |
@@ -233,7 +233,7 @@ row, or Duplicate. One editor serves manual entries and receipts.
 - **DRF-1** 🟡 Amount (tap for the keypad), with the currency next to it. Today the currency is in
   the ⋯ menu.
 - **DRF-2** ❌ Type switch: Expense / Income / Transfer.
-- **DRF-3** ❌ Converted amount, as on Capture (#105). A manual entry saved with one keeps it and
+- **DRF-3** ✅ Converted amount, as on Capture (#105). A manual entry saved with one keeps it and
   shows it.
 - **DRF-4** ✅ Title under the payee; tap to edit. When empty it shows "Title".
 - **DRF-5** 🟡 Payee/Payer as a labelled row (#115). ✅ The New payee flag, the alias caption, and
