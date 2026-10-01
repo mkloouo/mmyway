@@ -217,6 +217,7 @@
     "receiptFromGallery": "Квитанція з галереї"
   },
   "draft": {
+    "accountCharged": "",
     "alreadySentBody": "Він досяг Firefly III, перш ніж його вдавалося скасувати.",
     "cancelSending": "Скасувати надсилання",
     "cancelSendingHint": "Вона повернеться до папки \"Вхідні\", де ви можете її відредагувати та підтвердити ще раз.",
@@ -495,6 +496,7 @@
   },
   "readiness": {
     "amount": "сума",
+    "convertedAmount": "",
     "currency": "валюта",
     "destinationAccount": "цільовий обліковий запис",
     "missing": "Відсутнє: {{fields}}",

@@ -29,6 +29,7 @@ import { captureKeyHeight } from '../src/capture/keyHeight';
 import { attachReceiptImage } from '../src/inbox/updateDraft';
 import { createManualEntry, confirmInboxItem, undoConfirm } from '../src/inbox/createManualEntry';
 import { draftReadiness } from '../src/inbox/readiness';
+import { accountLegCurrency, needsForeignAmount } from '../src/inbox/fx';
 import {
   accountLastUsed,
   buildMerchantLookup,
@@ -320,18 +321,14 @@ export default function CaptureScreen() {
   const budget = budgets.find((b) => b.id === budgetId);
 
   // FX (design §6.2): reveal when the account leg's currency differs from the chosen currency.
-  const accountCurrencyCode =
-    type === 'deposit'
-      ? destinationAccount?.currencyCode
-      : type === 'transfer'
-        ? sourceAccount?.currencyCode === effectiveCurrencyCode
-          ? destinationAccount?.currencyCode
-          : sourceAccount?.currencyCode
-        : sourceAccount?.currencyCode;
-  const showFx =
-    !!accountCurrencyCode &&
-    !!effectiveCurrencyCode &&
-    accountCurrencyCode !== effectiveCurrencyCode;
+  // The same rule as the draft screen's, from src/inbox/fx.ts.
+  const accountCurrencyCode = accountLegCurrency(
+    type,
+    effectiveCurrencyCode,
+    sourceAccount?.currencyCode,
+    destinationAccount?.currencyCode,
+  );
+  const showFx = needsForeignAmount(accountCurrencyCode, effectiveCurrencyCode);
   // parseDecimalInput accepts a comma or a bare trailing separator as the user is still typing —
   // divideDecimal doesn't, and a raw "12,50" used to crash the screen.
   const foreignAmountResult =

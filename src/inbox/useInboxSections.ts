@@ -13,6 +13,7 @@ import {
 } from './queuedChanges';
 import { readDraft } from './draftJson';
 import { draftReadiness, type DraftReadiness } from './readiness';
+import { draftAccountCurrency } from './fx';
 import type { Draft } from './draft';
 
 export type InboxItemRow = typeof inboxItems.$inferSelect;
@@ -71,7 +72,13 @@ export function useInboxSections({ enabled = true }: { enabled?: boolean } = {})
     enabled,
   );
   const { data: accounts } = useLiveQuery(
-    db.select({ id: referenceAccounts.id, name: referenceAccounts.name }).from(referenceAccounts),
+    db
+      .select({
+        id: referenceAccounts.id,
+        name: referenceAccounts.name,
+        currencyCode: referenceAccounts.currencyCode,
+      })
+      .from(referenceAccounts),
     [],
     enabled,
   );
@@ -100,6 +107,7 @@ export function useInboxSections({ enabled = true }: { enabled?: boolean } = {})
   return useMemo(() => {
     const rows = items ?? [];
     const accountNames = new Map((accounts ?? []).map((a) => [a.id, a.name]));
+    const accountCurrencies = new Map((accounts ?? []).map((a) => [a.id, a.currencyCode]));
     const txList = txs ?? [];
     const lookups = {
       accountName: (id: string) => accountNames.get(id),
@@ -121,7 +129,12 @@ export function useInboxSections({ enabled = true }: { enabled?: boolean } = {})
         if (item.kind === 'receipt' && item.state === 'captured')
           return { id: item.id, item, draft: null, readiness: null, confirmable: false };
         const draft = readDraft(item.draftJson);
-        const readiness = draftReadiness(draft);
+        // With the account's currency, so Confirm all can't send a draft that still owes the
+        // converted amount (#105).
+        const readiness = draftReadiness(
+          draft,
+          draftAccountCurrency(draft, (id) => (id ? accountCurrencies.get(id) : undefined)),
+        );
         return { id: item.id, item, draft, readiness, confirmable: readiness.ready };
       });
     const toReview = rows.filter(

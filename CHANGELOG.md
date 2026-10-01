@@ -13,6 +13,7 @@
 
 ### Inbox
 
+- A draft in a currency the chosen account doesn't hold now asks what the account was charged, the way Capture does, and can't be confirmed until you fill it in. Before, the receipt's own figure was booked as if the account had been charged that, so the amount was wrong and the exchange rate was lost. Changing the account or the currency asks again. (Split drafts still don't ask; that's tracked separately.)
 - On a receipt review, an unsure amount highlights the main amount at the top in amber alongside the warning banner.
 - A change Firefly III refuses now says which request it refused and which fields, e.g. "— PUT
   /v1/recurrences/12 (notes)", after Firefly III's message.

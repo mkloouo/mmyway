@@ -5,6 +5,7 @@ import i18n from '../i18n';
 const MISSING_KEYS: Record<string, string> = {
   amount: 'amount',
   currency: 'currency',
+  'converted amount': 'convertedAmount',
   'source account': 'sourceAccount',
   'destination account': 'destinationAccount',
   payee: 'payee',

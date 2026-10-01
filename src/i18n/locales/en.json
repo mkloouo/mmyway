@@ -207,6 +207,7 @@
     "receiptFromGallery": "Receipt from the gallery"
   },
   "draft": {
+    "accountCharged": "Account charged",
     "alreadySentBody": "It reached Firefly III before it could be cancelled.",
     "cancelSending": "Cancel sending",
     "cancelSendingHint": "It goes back to the Inbox, where you can edit it and confirm it again.",
@@ -449,6 +450,7 @@
   },
   "readiness": {
     "amount": "amount",
+    "convertedAmount": "the amount the account was charged",
     "currency": "currency",
     "destinationAccount": "destination account",
     "missing": "Missing: {{fields}}",
