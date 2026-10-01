@@ -55,9 +55,16 @@ const rows = [];
 for (const check of checks) {
   process.stdout.write(`▶ ${check.key.padEnd(7)} ${check.what} … `);
   const t0 = Date.now();
-  const r = spawnSync('npm', ['run', '-s', check.script], {
+  // A silent loglevel (from `-s`, on this script's own invocation or on the spawn) reaches
+  // expo-doctor's nested `npm explain`, which then prints nothing to stderr — and that stderr
+  // is how expo-doctor tells "package not installed" from a real failure, so three checks come
+  // back as bogus "Unexpected error"s. Run the script plainly and drop the inherited setting;
+  // gist() already ignores the `> script` banner lines that lets through.
+  const { npm_config_loglevel: _silent, ...env } = process.env;
+  const r = spawnSync('npm', ['run', check.script], {
     cwd: ROOT,
     encoding: 'utf8',
+    env,
     shell: process.platform === 'win32',
   });
   const ok = r.status === 0;

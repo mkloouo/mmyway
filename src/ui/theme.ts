@@ -2,7 +2,7 @@
 // Screens never write a literal hex; they read from useTheme().
 import { useColorScheme } from 'react-native';
 
-export interface Palette {
+interface Palette {
   bg: string;
   surface: string;
   surfaceAlt: string;
@@ -71,15 +71,15 @@ const dark: Palette = {
   photoBackdrop: '#000000',
 };
 
-export const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, xxxl: 32 } as const;
-export const radius = { sm: 10, md: 14, lg: 22, pill: 999 } as const;
+const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, xxxl: 32 } as const;
+const radius = { sm: 10, md: 14, lg: 22, pill: 999 } as const;
 /** Smallest comfortable touch target (design §3.3). */
 export const hitSize = 44;
 
 // Money always renders with tabular figures so columns line up down a list.
 const tabular = { fontVariant: ['tabular-nums' as const] };
 
-export const type = {
+const type = {
   display: { fontSize: 40, lineHeight: 44, fontWeight: '700' as const, ...tabular },
   title: { fontSize: 24, lineHeight: 30, fontWeight: '700' as const },
   heading: { fontSize: 17, lineHeight: 22, fontWeight: '600' as const },
@@ -89,7 +89,7 @@ export const type = {
   money: tabular,
 } as const;
 
-export interface Theme {
+interface Theme {
   dark: boolean;
   color: Palette;
   space: typeof space;
