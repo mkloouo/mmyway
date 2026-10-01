@@ -14,6 +14,8 @@
 ### Inbox
 
 - On a receipt review, an unsure amount highlights the main amount at the top in amber alongside the warning banner.
+- A change Firefly III refuses now says which request it refused and which fields, e.g. "— PUT
+  /v1/recurrences/12 (notes)", after Firefly III's message.
 
 ### Activity
 

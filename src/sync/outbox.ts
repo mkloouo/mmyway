@@ -817,19 +817,23 @@ export function serverUnavailable(err: unknown): boolean {
  * @public Exported for outbox.regressions.test.ts, which loads it with `requireActual`.
  */
 export function describeFF3Error(err: FF3RequestError): string {
+  // Which call, and which fields FF3 named: a planned save makes three calls, and "The notes must
+  // be at least 1 characters" alone didn't say which of them refused it.
+  const where = (fields: string[]) =>
+    err.request ? ` — ${err.request}${fields.length ? ` (${fields.join(', ')})` : ''}` : '';
   try {
     const body = JSON.parse(err.body) as { message?: string; errors?: Record<string, string[]> };
     const field = body.errors ? Object.values(body.errors).flat()[0] : undefined;
     const text = [body.message, field]
       .filter((part, i, all) => !!part && all.indexOf(part) === i)
       .join(' — ');
-    if (text) return `${text} (${err.status})`;
+    if (text) return `${text} (${err.status})${where(Object.keys(body.errors ?? {}))}`;
   } catch {
     // not JSON: an HTML error page or empty body
   }
   return err.body && err.body.length < 200 && !err.body.trimStart().startsWith('<')
-    ? `${err.body} (${err.status})`
-    : `Firefly III answered ${err.status}`;
+    ? `${err.body} (${err.status})${where([])}`
+    : `Firefly III answered ${err.status}${where([])}`;
 }
 
 function receiptFilename(path: string): string {
