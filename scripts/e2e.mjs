@@ -584,19 +584,36 @@ export function answersSignInLinkAndroid() {
 }
 
 /**
+ * @param {string} plistPath
+ * @returns {any | null}
+ */
+export function readPlistJson(plistPath) {
+  try {
+    const r = spawnSync('plutil', ['-convert', 'json', '-o', '-', plistPath], { encoding: 'utf8' });
+    if (r.status !== 0 || !r.stdout) return null;
+    return JSON.parse(r.stdout);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * @param {string} appId
  * @param {string | null} [device]
- * @param {{ simctlFn?: typeof simctl }} [opts]
+ * @param {{ simctlFn?: typeof simctl; readPlistFn?: (plistPath: string) => any }} [opts]
  */
-export function answersSignInLinkIos(appId, device = DEVICE, { simctlFn = simctl } = {}) {
+export function answersSignInLinkIos(
+  appId,
+  device = DEVICE,
+  { simctlFn = simctl, readPlistFn = readPlistJson } = {},
+) {
   try {
     const appDir = simctlFn(['get_app_container', device ?? '', appId, 'app'], { allowFail: true });
     if (!appDir) return false;
     const plist = path.join(appDir, 'Info.plist');
     if (!fs.existsSync(plist)) return false;
-    const r = spawnSync('plutil', ['-convert', 'json', '-o', '-', plist], { encoding: 'utf8' });
-    if (r.status !== 0) return false;
-    const json = JSON.parse(r.stdout);
+    const json = readPlistFn(plist);
+    if (!json) return false;
     const schemes = (json.CFBundleURLTypes ?? []).flatMap((t) => t.CFBundleURLSchemes ?? []);
     return schemes.includes('mmyway-dev');
   } catch {
@@ -608,9 +625,12 @@ export function answersSignInLinkIos(appId, device = DEVICE, { simctlFn = simctl
  * @param {string} platform
  * @param {string} appId
  * @param {string | null} [device]
+ * @param {{ simctlFn?: typeof simctl; readPlistFn?: (plistPath: string) => any }} [opts]
  */
-export function answersSignInLink(platform, appId, device = DEVICE) {
-  return platform === 'ios' ? answersSignInLinkIos(appId, device) : answersSignInLinkAndroid();
+export function answersSignInLink(platform, appId, device = DEVICE, opts = {}) {
+  return platform === 'ios'
+    ? answersSignInLinkIos(appId, device, opts)
+    : answersSignInLinkAndroid();
 }
 
 export const NO_SIGN_IN_LINK = (what, platform = 'android') =>

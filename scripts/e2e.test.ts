@@ -298,10 +298,22 @@ describe('e2e flows', () => {
         fs.writeFileSync(plist, '<?xml version=\"1.0\" encoding=\"UTF-8\"?><!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\"><plist version=\"1.0\"><dict><key>CFBundleURLTypes</key><array><dict><key>CFBundleURLSchemes</key><array><string>mmyway-dev</string></array></dict></array></dict></plist>');
 
         const mockSimctlDev = () => tmp;
-        const answersDev = e2e.answersSignInLinkIos('com.mkloouo.mmyway.dev', 'sim-1', { simctlFn: mockSimctlDev });
+        const mockReadPlist = (p) => {
+          const content = fs.readFileSync(p, 'utf8');
+          const schemes = Array.from(content.matchAll(new RegExp('<string>([^<]+)</string>', 'g')), (m) => m[1]);
+          return { CFBundleURLTypes: [{ CFBundleURLSchemes: schemes }] };
+        };
+
+        const answersDev = e2e.answersSignInLinkIos('com.mkloouo.mmyway.dev', 'sim-1', {
+          simctlFn: mockSimctlDev,
+          readPlistFn: mockReadPlist,
+        });
 
         fs.writeFileSync(plist, '<?xml version=\"1.0\" encoding=\"UTF-8\"?><!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\"><plist version=\"1.0\"><dict><key>CFBundleURLTypes</key><array><dict><key>CFBundleURLSchemes</key><array><string>mmyway</string></array></dict></array></dict></plist>');
-        const answersProd = e2e.answersSignInLinkIos('com.mkloouo.mmyway', 'sim-1', { simctlFn: mockSimctlDev });
+        const answersProd = e2e.answersSignInLinkIos('com.mkloouo.mmyway', 'sim-1', {
+          simctlFn: mockSimctlDev,
+          readPlistFn: mockReadPlist,
+        });
 
         fs.rmSync(tmp, { recursive: true, force: true });
         console.log(JSON.stringify({ answersDev, answersProd }));
