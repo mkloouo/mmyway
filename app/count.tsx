@@ -157,6 +157,21 @@ export default function CountScreen() {
       .sort()[0] ?? null;
   const stale = isBalanceStale(oldestBalanceDate);
 
+  const matchingShortfall = expenseAccounts.find(
+    (a) => /^cash shortfall$/i.test(a.name) || /shortfall|reconcil/i.test(a.name),
+  );
+  const matchingSurplus = revenueAccounts.find(
+    (a) => /^cash surplus$/i.test(a.name) || /surplus|reconcil/i.test(a.name),
+  );
+
+  const selectedShortfall = expenseAccounts.find((a) => a.id === shortfallAccountId);
+  const effectiveShortfall = selectedShortfall ?? matchingShortfall ?? null;
+  const effectiveShortfallId = effectiveShortfall?.id ?? null;
+
+  const selectedSurplus = revenueAccounts.find((a) => a.id === surplusAccountId);
+  const effectiveSurplus = selectedSurplus ?? matchingSurplus ?? null;
+  const effectiveSurplusId = effectiveSurplus?.id ?? null;
+
   const confirmReview = act(tr('inbox.confirm'), async () => {
     // Re-read at the moment of booking: a write can be queued, or a sync land, while the
     // review sheet is open.
@@ -168,8 +183,8 @@ export default function CountScreen() {
     }
     for (const adjustment of adjustments) {
       await createAndConfirmAdjustment(db, adjustment, {
-        shortfallAccountId,
-        surplusAccountId,
+        shortfallAccountId: effectiveShortfallId,
+        surplusAccountId: effectiveSurplusId,
         categoryName: reconcileCategory,
       });
     }
@@ -194,9 +209,6 @@ export default function CountScreen() {
     setDenomAccountId(null);
   }
 
-  const missingSettings = adjustments.some((a) =>
-    a.type === 'withdrawal' ? !shortfallAccountId : !surplusAccountId,
-  );
   const denomAccount = envelopeAccounts.find((a) => a.id === denomAccountId) ?? null;
   const denomLadder = denomAccount ? denominationsFor(denomAccount.currencyCode) : null;
 
@@ -405,12 +417,10 @@ export default function CountScreen() {
             title={
               confirming
                 ? tr('draft.confirming')
-                : missingSettings
-                  ? tr('count.configureFirst')
-                  : tr('count.confirmCount', { count: adjustments.length })
+                : tr('count.confirmCount', { count: adjustments.length })
             }
             onPress={confirmReview}
-            disabled={confirming || missingSettings || !canCount}
+            disabled={confirming || !canCount}
           />
         }
       >
@@ -428,6 +438,16 @@ export default function CountScreen() {
             />
           );
         })}
+        <Row
+          label={tr('count.payeesLabel')}
+          value={`${effectiveShortfall?.name ?? tr('count.defaultPayeeShortfall')} · ${effectiveSurplus?.name ?? tr('count.defaultPayeeSurplus')}`}
+          chevron
+          onPress={() => {
+            setReviewOpen(false);
+            setSettingsOpen(true);
+          }}
+        />
+        {!!reconcileCategory && <Row label={tr('fields.category')} value={reconcileCategory} />}
       </Sheet>
 
       <Sheet
@@ -446,11 +466,21 @@ export default function CountScreen() {
             marginBottom: t.space.md,
           }}
         >
+          {!expenseAccounts.some((a) => /^cash shortfall$/i.test(a.name)) && (
+            <Chip
+              label={tr('count.defaultShortfallPayee')}
+              selected={!shortfallAccountId && !selectedShortfall}
+              onPress={act(tr('count.shortfallPayee'), async () => {
+                await setReconcileShortfallAccountId(db, '');
+                setShortfallAccountIdState(null);
+              })}
+            />
+          )}
           {expenseAccounts.map((a) => (
             <Chip
               key={a.id}
               label={a.name}
-              selected={a.id === shortfallAccountId}
+              selected={a.id === (selectedShortfall?.id ?? effectiveShortfallId)}
               onPress={act(tr('count.shortfallPayee'), async () => {
                 await setReconcileShortfallAccountId(db, a.id);
                 setShortfallAccountIdState(a.id);
@@ -467,11 +497,21 @@ export default function CountScreen() {
             marginBottom: t.space.md,
           }}
         >
+          {!revenueAccounts.some((a) => /^cash surplus$/i.test(a.name)) && (
+            <Chip
+              label={tr('count.defaultSurplusPayee')}
+              selected={!surplusAccountId && !selectedSurplus}
+              onPress={act(tr('count.surplusPayee'), async () => {
+                await setReconcileSurplusAccountId(db, '');
+                setSurplusAccountIdState(null);
+              })}
+            />
+          )}
           {revenueAccounts.map((a) => (
             <Chip
               key={a.id}
               label={a.name}
-              selected={a.id === surplusAccountId}
+              selected={a.id === (selectedSurplus?.id ?? effectiveSurplusId)}
               onPress={act(tr('count.surplusPayee'), async () => {
                 await setReconcileSurplusAccountId(db, a.id);
                 setSurplusAccountIdState(a.id);

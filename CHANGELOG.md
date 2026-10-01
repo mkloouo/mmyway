@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Cash count
+
+- Cash count adjustments no longer block saving with "Configure payees first" when shortfall or surplus payees haven't been picked by hand. The count automatically defaults to "Cash shortfall" and "Cash surplus" (creating them in Firefly III if needed), and the review sheet shows the chosen payees with direct access to change them.
+
 ### Capture
 
 - A transfer between accounts with different currencies typed in the source account's currency preserves the destination foreign amount without swapping currencies.
