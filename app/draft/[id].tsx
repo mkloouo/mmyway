@@ -83,6 +83,8 @@ import {
 import { absorb, leftover } from '../../src/splits/allocate';
 import { askLeftover, placeLeftover, type LeftoverHandlers } from '../../src/splits/placeLeftover';
 
+import { divideDecimal } from '../../src/api/ff3/decimal';
+
 export default function DraftScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const db = useDb();
@@ -103,7 +105,7 @@ export default function DraftScreen() {
   return <DraftEditor row={row} />;
 }
 
-function DraftEditor({ row }: { row: InboxItemRow }) {
+export function DraftEditor({ row }: { row: InboxItemRow }) {
   const id = row.id;
   const db = useDb();
   const t = useTheme();
@@ -177,7 +179,11 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
   const accountCurrencyCode = draftAccountCurrency(draft, (id) =>
     id ? assetAccounts.find((a) => a.id === id)?.currencyCode : undefined,
   );
-  const showFx = !readOnly && needsForeignAmount(accountCurrencyCode, draft.currencyCode);
+  const showFx = needsForeignAmount(accountCurrencyCode, draft.currencyCode);
+  const impliedRate =
+    draft.foreignAmount && draft.amount && draft.amount !== '0'
+      ? divideDecimal(draft.foreignAmount, draft.amount, 2)
+      : null;
   const accountCurrency = currencyOf(currencies, accountCurrencyCode ?? '');
   const readiness = draftReadiness(draft, accountCurrencyCode);
   // What the receipt reader wasn't sure about: marked amber until the user sets it (#120).
@@ -603,12 +609,17 @@ function DraftEditor({ row }: { row: InboxItemRow }) {
                 label={tr('draft.accountCharged')}
                 value={`${draft.foreignAmount || '—'} ${accountCurrencyCode}`}
                 tone={draft.foreignAmount ? 'default' : 'warn'}
-                chevron
-                onPress={() => setKeypadFor('foreign')}
+                chevron={!readOnly}
+                onPress={readOnly ? undefined : () => setKeypadFor('foreign')}
               />
-              {!draft.foreignAmount && (
+              {!draft.foreignAmount && !readOnly && (
                 <Text style={[t.type.label, { color: t.color.warn }]}>
                   {tr('capture.enterAccountPaid', { currency: accountCurrencyCode })}
+                </Text>
+              )}
+              {!!draft.foreignAmount && !!impliedRate && impliedRate !== '0' && (
+                <Text style={[t.type.label, { color: t.color.textFaint }]}>
+                  1 {draft.currencyCode} ≈ {impliedRate} {accountCurrencyCode}
                 </Text>
               )}
             </Card>

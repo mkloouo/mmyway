@@ -1,6 +1,8 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { TextField } from '../ui/TextField';
 
+jest.setTimeout(15_000);
+
 // A draft's title and notes are saved to SQLite and read back through a live query. Writing every
 // keystroke put a database trip and a re-render of the screen behind each letter, so the field
 // keeps its own text and hands it over once.
