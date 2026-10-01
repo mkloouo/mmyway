@@ -12,6 +12,7 @@ import { logLine } from '../utils/log';
 import { resolvePayeeAlias } from '../lookup/aliases';
 import { readDraft, writeDraft } from '../inbox/draftJson';
 import { errorMessage } from '../utils/errorMessage';
+import i18n from '../i18n';
 
 // Below this confidence, guessing a field the model wasn't sure about does more harm than
 // leaving it blank for the user to fill in on the draft screen.
@@ -115,7 +116,7 @@ export function receiptToDraft(
     amount: extraction.amount ?? '',
     currencyCode: currencyTrusted ? extraction.currency! : '',
     date,
-    description: extraction.merchant ?? 'Receipt',
+    description: extraction.merchant ?? i18n.t('draft.receipt'),
     destinationName: extraction.merchant ?? undefined,
     isNewPayee: true, // a payee alias (parseReceiptItem) or the draft screen's payee picker corrects this
     categoryName: category,
