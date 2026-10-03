@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-10-03
+
 ### Fixed
 
 - **A save no longer fails when the shop already exists in Firefly III.** Typing a payee whose
