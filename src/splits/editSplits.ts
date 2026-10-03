@@ -135,8 +135,10 @@ export function toPayloadSplits(
       // Null clears it in FF3 (as it does a note); left out would keep what the split had.
       category_name: s.categoryName ?? null,
       budget_id: s.budgetId ?? null,
-      // Null, never '': FF3 rejects a note of length 0, and null clears one.
+      // Null, never '': null is how a note is cleared, and FF3 stores '' as null regardless.
       notes: sendableNotes(s.notes),
+      // An empty array, not an omission: it is how an edit clears tags (FF3 6.7.6 answers 200
+      // and rereads as []). A recurrence is the opposite case, see api/ff3/sanitize.ts.
       tags: sanitizeTags(s.tags) ?? [],
     } as TransactionSplit & { transaction_journal_id?: string };
     if (s.journalId) out.transaction_journal_id = s.journalId;

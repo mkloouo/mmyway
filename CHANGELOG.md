@@ -5,11 +5,10 @@
 ### Fixed
 
 - **A save no longer fails when the shop already exists in Firefly III.** Typing a payee whose
-  name Firefly III already holds used to end with "The name has already been taken" and the entry
-  stuck in the queue; it now books against the existing shop.
-- **An account past the first hundred is found.** Picking a shop or account by name searched only
-  the first page of Firefly III's results, so on a large instance a name that was really there
-  came back as "no account named …".
+  name Firefly III already holds used to end with "This account name is already in use" and the
+  entry stuck in the queue; it now books against the existing shop.
+- **A shop or account is picked out by its exact name.** With two accounts whose names differ
+  only in capitalisation, an entry could be filed against the wrong one.
 - Searching transactions looks two pages deep instead of one, so a hit further back shows up.
 
 ## [1.6.0] - 2026-10-03

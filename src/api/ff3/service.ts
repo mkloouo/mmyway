@@ -48,11 +48,13 @@ export class FF3Service {
       // 1. Local-first check in SQLite
       if (this.db) {
         const cached = await this.db.select().from(referenceAccounts);
-        const match = cached.find((a) =>
-          payeeType
-            ? a.name.toLowerCase() === trimmedName.toLowerCase() && a.type === payeeType
-            : a.name.toLowerCase() === trimmedName.toLowerCase() && !PAYEE_TYPES.includes(a.type),
-        );
+        const rightType = (a: { type: string }) =>
+          payeeType ? a.type === payeeType : !PAYEE_TYPES.includes(a.type);
+        // FF3 lets two accounts differ only in case ("Lidl" and "lidl" are both real, with
+        // their own ids), so the exact name wins before the case-insensitive fallback does.
+        const match =
+          cached.find((a) => rightType(a) && a.name === trimmedName) ??
+          cached.find((a) => rightType(a) && a.name.toLowerCase() === trimmedName.toLowerCase());
         if (match) return match.id;
       }
 

@@ -1,7 +1,11 @@
 // Unified pagination helper for Firefly III collection endpoints.
 // FF3 paginates every collection endpoint (default 50 or 100), and responses carry either a
-// `meta.pagination` object or end when `data.length < limit`. This helper guarantees complete
-// fetches across all pages with optional early termination.
+// `meta.pagination` object or end when `data.length < limit`.
+// Probed against version-6.7.6: `/v1/accounts` and `/v1/search/transactions` paginate properly
+// (a page past the last returns `data: []` with the real `total_pages`), but
+// `/v1/search/accounts` ignores `limit` and `page` entirely — it answers every match in one go
+// and reports `total_pages: 1`, so page 99 returns page 1. Honouring `total_pages` is what keeps
+// that endpoint from looping forever on the same page.
 import type { FF3Client } from './client';
 
 export interface PaginationOptions<T> {

@@ -136,4 +136,71 @@ describe('account ids', () => {
     expect(split.source_id).toBe('acc-wallet');
     expect(client.request).not.toHaveBeenCalled();
   });
+
+  it("sends a new entry's payee from the local reference cache, without searching FF3", async () => {
+    const db = createTestDb();
+    await db.insert(referenceAccounts).values({
+      id: 'acc-zabka',
+      name: 'Żabka',
+      type: 'expense',
+      currencyCode: 'PLN',
+      active: true,
+      syncedAt: new Date().toISOString(),
+    });
+    await enqueueOperation(db, {
+      id: 'op-cached',
+      kind: 'create_transaction',
+      payload: {
+        clientId: 'c-cached',
+        splits: [
+          {
+            type: 'withdrawal',
+            source_id: '9',
+            destination_name: 'Żabka',
+            description: 'x',
+          } as any,
+        ],
+      },
+    });
+    const client = fakeFF3([]);
+    await replayOutbox(db as any, client as any);
+
+    const post = client.request.mock.calls.find(([path]) => path === '/v1/transactions')!;
+    const [sent] = JSON.parse(String((post[1] as RequestInit).body)).transactions;
+    expect(sent).toMatchObject({ source_id: '9', destination_id: 'acc-zabka' });
+    expect(sent).not.toHaveProperty('destination_name');
+    expect(
+      client.request.mock.calls.filter(([path]) => path.startsWith('/v1/search/accounts')),
+    ).toHaveLength(0);
+  });
+
+  it('ignores a cached row of the wrong type for the end being resolved', async () => {
+    const db = createTestDb();
+    // A payee and an own account sharing a name: a withdrawal's source must be the asset one.
+    await db.insert(referenceAccounts).values([
+      {
+        id: 'payee-cash',
+        name: 'Cash',
+        type: 'expense',
+        currencyCode: 'PLN',
+        active: true,
+        syncedAt: new Date().toISOString(),
+      },
+      {
+        id: 'own-cash',
+        name: 'Cash',
+        type: 'asset',
+        currencyCode: 'PLN',
+        active: true,
+        syncedAt: new Date().toISOString(),
+      },
+    ]);
+    const client = fakeFF3([]);
+    const split = await withAccountIds(accountResolver(client as any, db as any), {
+      type: 'withdrawal',
+      source_name: 'Cash',
+      destination_id: '9',
+    });
+    expect(split.source_id).toBe('own-cash');
+  });
 });

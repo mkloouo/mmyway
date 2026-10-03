@@ -55,8 +55,9 @@ function comparable(key: string, value: unknown): string {
 }
 
 /**
- * An empty note can't be sent: FF3 rejects a note of length 0 ("at least 1 character"), while
- * null means "no note" and clears one.
+ * Null means "no note" and clears one. An empty string is not rejected (probed against FF3
+ * version-6.7.6: a PUT with `notes: ""` answers 200), but FF3 stores it as null anyway, so
+ * sending null is sending what the server would have recorded.
  */
 export function sendableNotes(notes: string | null | undefined): string | null {
   return notes && notes.length > 0 ? notes : null;

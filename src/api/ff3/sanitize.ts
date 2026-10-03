@@ -1,10 +1,15 @@
-// Preprocessing and payload sanitization for Firefly III API requests.
-// Firefly III has strict validation rules:
-// - tags: validated with `min:1`, rejecting `[]` or `[""]`. Must be omitted if empty.
-// - notes: rejects `""` of length 0 with "at least 1 characters". Must be `null` to clear.
-// - coordinates: latitude, longitude, zoom_level must travel together (required_with).
-// - text fields: should be trimmed.
-
+// Preprocessing for Firefly III API payloads. What FF3 actually validates, probed against
+// fireflyiii/core:version-6.7.6 (the version `npm run ff3:test` pins) rather than assumed:
+// - tags: `/v1/recurrences` rejects `[]` with "transactions.0.tags must be at least 1 characters";
+//   it accepts `[""]`. `/v1/transactions` accepts `[]` on both POST and PUT, and a PUT with `[]`
+//   is how tags get cleared (see editSplits.ts). So omitting an empty array is for recurrences.
+// - notes: `/v1/transactions` accepts `""` and stores it as null, so sending null is what FF3
+//   does anyway, not a workaround for a rejection.
+// - coordinates: a half pair (latitude without longitude) is accepted, and zoom_level is
+//   optional. Dropping an incomplete pair keeps a stray half-coordinate off the FF3 map.
+// - description: `""` and null both fail "The description field is required." Trimming one to
+//   null changes the shape, not the outcome.
+// - text fields: trimmed, because the account name is what resolution matches on.
 /** Sanitizes notes: empty string or whitespace becomes null (clears in FF3). */
 export function sanitizeNotes(notes: string | null | undefined): string | null | undefined {
   if (notes === undefined) return undefined;
