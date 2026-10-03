@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-10-03
+
 ### Capture
 
 - **A new entry records where it was made**, and the pin shows up on Firefly III's own map. The
