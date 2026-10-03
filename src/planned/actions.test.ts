@@ -1,10 +1,10 @@
 import { createTestDb } from '../db/testDb';
 import { outboxOperations } from '../db/schema';
 import { readPayload } from '../sync/payloadJson';
-import { savePlanned } from './actions';
+import { savePlanned, triggerPlanned } from './actions';
 import type { PlannedItem } from './items';
 import type { PlannedFields, PlannedGroup } from './model';
-import type { SavePlannedPayload } from './replay';
+import type { SavePlannedPayload, TriggerPlannedPayload } from './replay';
 
 const fields: PlannedFields = {
   name: 'Play24 - Internet 5G',
@@ -110,5 +110,26 @@ describe('savePlanned', () => {
     await db.update(outboxOperations).set({ status: 'in_flight' });
     await savePlanned(db as any, inFF3, { ...fields, date: '2026-10-19' });
     expect(await saves(db)).toHaveLength(2);
+  });
+});
+
+describe('triggerPlanned (#44)', () => {
+  it('queues the recurrence and the occurrence it is firing', async () => {
+    const db = createTestDb();
+    await triggerPlanned(db as any, inFF3);
+    const [op] = await db.select().from(outboxOperations);
+    expect(op?.kind).toBe('trigger_planned');
+    expect(readPayload<TriggerPlannedPayload>('trigger_planned', op!.payloadJson)).toEqual({
+      key: group.key,
+      name: fields.name,
+      recurrenceId: '3',
+      date: '2026-10-05',
+    });
+  });
+
+  it('does nothing for one Firefly III does not hold yet — nothing to fire', async () => {
+    const db = createTestDb();
+    await triggerPlanned(db as any, { key: 'new:1', fields, group: null, queued: true });
+    expect(await db.select().from(outboxOperations)).toHaveLength(0);
   });
 });

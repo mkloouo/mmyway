@@ -69,6 +69,26 @@ export async function savePlanned(
   await enqueueOperation(db, { id: generateId(), kind: 'save_planned', payload });
 }
 
+/**
+ * Books the next occurrence now instead of waiting for its day (#44) — testing a new recurrence,
+ * or paying one early. Queued like the saves above, so it lands after a schedule change still
+ * waiting to be sent rather than firing the schedule FF3 still holds.
+ */
+export async function triggerPlanned(db: OutboxDb, item: PlannedItem): Promise<void> {
+  const recurrenceId = item.group?.recurrence?.id;
+  if (!recurrenceId) return;
+  await enqueueOperation(db, {
+    id: generateId(),
+    kind: 'trigger_planned',
+    payload: {
+      key: item.key,
+      name: item.fields.name,
+      recurrenceId,
+      date: item.fields.date,
+    },
+  });
+}
+
 export async function deletePlanned(db: OutboxDb, item: PlannedItem): Promise<void> {
   let ids = {
     billId: item.group?.bill?.id ?? null,

@@ -45,6 +45,14 @@ export interface DeletePlannedPayload {
   recurrenceId?: string | null;
 }
 
+export interface TriggerPlannedPayload {
+  key: string;
+  name: string;
+  recurrenceId: string;
+  /** YYYY-MM-DD: the occurrence being fired — the next one it was planned for. */
+  date: string;
+}
+
 /** The rule group new rules go into when the simple view creates them. */
 const PLANNED_RULE_GROUP = 'Planned';
 
@@ -275,6 +283,28 @@ export async function replayDeletePlanned(
     if (!id) continue;
     await deleteIfPresent(client, kind, id);
     await storePlanned(db, kind, id, null);
+  }
+}
+
+/**
+ * Books the next occurrence of a recurring transaction now, the way FF3's own Recurring page's
+ * trigger does: `POST /v1/recurrences/{id}/trigger?date=…` runs the recurring job for that date
+ * alone. FF3 doesn't force it, so an occurrence it has already booked isn't booked twice, and a
+ * recurrence that fires nothing for that date simply creates nothing. The booked transaction
+ * reaches the Inbox as a review card on the next sync (src/sync/recurringReview.ts), like one the
+ * nightly cron booked. A recurrence deleted in the meantime is nothing left to fire.
+ */
+export async function replayTriggerPlanned(
+  client: FF3Client,
+  payload: TriggerPlannedPayload,
+): Promise<void> {
+  try {
+    await client.request(
+      `${plannedPath('recurrence', payload.recurrenceId)}/trigger?date=${encodeURIComponent(payload.date)}`,
+      { method: 'POST' },
+    );
+  } catch (err) {
+    if (!(err instanceof FF3RequestError && err.status === 404)) throw err;
   }
 }
 

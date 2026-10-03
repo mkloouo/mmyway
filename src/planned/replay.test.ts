@@ -3,7 +3,7 @@ import { outboxOperations, referenceCategories } from '../db/schema';
 import { enqueueOperation } from '../sync/outbox';
 import { readPayload } from '../sync/payloadJson';
 import type { PlannedFields } from './model';
-import { replaySavePlanned, type SavePlannedPayload } from './replay';
+import { replaySavePlanned, replayTriggerPlanned, type SavePlannedPayload } from './replay';
 import { FF3RequestError } from '../api/ff3/client';
 
 const fields: PlannedFields = {
@@ -306,5 +306,26 @@ describe('replaySavePlanned after an answer was lost', () => {
     )!;
     expect(JSON.parse(String(post[1]!.body)).transactions[0]).toMatchObject({ category_id: '12' });
     expect(server.stored.categories).toHaveLength(1);
+  });
+});
+
+describe('replayTriggerPlanned (#44)', () => {
+  const payload = { key: 'spotify', name: 'TEST Spotify', recurrenceId: '3', date: '2026-10-05' };
+
+  it("fires the occurrence through FF3's own trigger endpoint", async () => {
+    const client = { request: jest.fn(async () => ({ data: [] })) };
+    await replayTriggerPlanned(client as any, payload);
+    expect(client.request).toHaveBeenCalledWith('/v1/recurrences/3/trigger?date=2026-10-05', {
+      method: 'POST',
+    });
+  });
+
+  it('treats a recurrence deleted in the meantime as nothing left to fire', async () => {
+    const client = {
+      request: jest.fn(async () => {
+        throw new FF3RequestError(404, '');
+      }),
+    };
+    await expect(replayTriggerPlanned(client as any, payload)).resolves.toBeUndefined();
   });
 });

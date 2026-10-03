@@ -37,8 +37,10 @@ import { accountResolver, withAccountIds } from './accountIds';
 import {
   replayDeletePlanned,
   replaySavePlanned,
+  replayTriggerPlanned,
   type DeletePlannedPayload,
   type SavePlannedPayload,
+  type TriggerPlannedPayload,
 } from '../planned/replay';
 
 export type OutboxKind =
@@ -51,7 +53,8 @@ export type OutboxKind =
   | 'update_account'
   | 'reorder_accounts'
   | 'save_planned'
-  | 'delete_planned';
+  | 'delete_planned'
+  | 'trigger_planned';
 
 /** The kinds that change an account balance in FF3 once they land; receipts and account edits don't. */
 export const LEDGER_KINDS = [
@@ -134,6 +137,7 @@ export interface NewOutboxOperation {
     | ReorderAccountsPayload
     | SavePlannedPayload
     | DeletePlannedPayload
+    | TriggerPlannedPayload
     | Record<string, unknown>;
 }
 
@@ -823,6 +827,12 @@ async function replayOne(
 
     if (row.kind === 'delete_planned') {
       await replayDeletePlanned(db, client, payload as DeletePlannedPayload);
+      await db.delete(outboxOperations).where(eq(outboxOperations.id, row.id));
+      return 'done';
+    }
+
+    if (row.kind === 'trigger_planned') {
+      await replayTriggerPlanned(client, payload as TriggerPlannedPayload);
       await db.delete(outboxOperations).where(eq(outboxOperations.id, row.id));
       return 'done';
     }

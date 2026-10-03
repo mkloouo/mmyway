@@ -55,6 +55,7 @@ export function subjectsOf(op: {
       break;
     case 'save_planned':
     case 'delete_planned':
+    case 'trigger_planned':
       add('planned', p.key);
       add('bill', p.billId);
       add('rule', p.ruleId);

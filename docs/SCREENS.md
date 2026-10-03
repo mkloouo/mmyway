@@ -303,7 +303,9 @@ Subscriptions and recurring transactions, handled as one thing. Tab 3.
   frequency, every N; description and tags. Save stays off until something changes. Delete.
 - **PLN-3** ✅ Detailed view: subscriptions, rules and recurring transactions as Firefly III has
   them, read-only.
-- **PLN-4** ❌ Book it now (#44).
+- **PLN-4** ✅ **Book it now** on a planned transaction Firefly III holds: it fires the occurrence
+  through FF3's own trigger endpoint, queued, and the booked transaction arrives in the Inbox as a
+  recurring review on the next sync.
 - **PLN-5** ❓ Budget; an end (until a date, or N times); converted amount; the next three dates;
   what it booked recently.
 

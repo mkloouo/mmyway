@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Planned
+
+- **Book it now** on a planned transaction books its next occurrence ahead of its day, the way
+  Firefly III's own Recurring page does — for trying out a new recurring transaction, or paying one
+  early. It arrives in the Inbox as a recurring transaction to approve on the next sync, and it is
+  not booked a second time when the day itself comes round.
+
 ### Receipts
 
 - **A receipt photo can be deleted.** Open it full screen and **Remove photo** is there. On a draft

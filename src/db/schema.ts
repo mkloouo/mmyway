@@ -111,6 +111,7 @@ export const outboxOperations = sqliteTable('outbox_operations', {
       'reorder_accounts',
       'save_planned',
       'delete_planned',
+      'trigger_planned',
     ],
   }).notNull(),
   payloadJson: text('payload_json').notNull(),

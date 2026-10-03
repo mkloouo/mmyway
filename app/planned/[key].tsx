@@ -41,7 +41,7 @@ import {
   type PlannedFields,
 } from '../../src/planned/model';
 import { dayLabel, frequencyName } from '../../src/planned/labels';
-import { deletePlanned, savePlanned } from '../../src/planned/actions';
+import { deletePlanned, savePlanned, triggerPlanned } from '../../src/planned/actions';
 import type { PlannedItem } from '../../src/planned/items';
 import { localDay } from '../../src/utils/day';
 import { TX_TYPES } from '../../src/transactions/txTypes';
@@ -217,6 +217,26 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
     router.back();
   });
 
+  // Books the next occurrence ahead of its day (#44): testing a new recurrence, or paying one
+  // early. Only once FF3 holds the recurring transaction — there is nothing to fire before that.
+  const triggerNow = act(tr('planned.triggerNow'), async () => {
+    if (!item) return;
+    await triggerPlanned(db, item);
+    router.back();
+  });
+
+  function onTrigger() {
+    if (!item) return;
+    Alert.alert(
+      tr('planned.triggerTitle', { name: item.fields.name }),
+      tr('planned.triggerBody', { date: dayLabel(item.fields.date) }),
+      [
+        { text: tr('common.cancel'), style: 'cancel' },
+        { text: tr('planned.triggerNow'), onPress: () => void triggerNow() },
+      ],
+    );
+  }
+
   function onDelete() {
     if (!item) return;
     Alert.alert(tr('planned.deleteTitle', { name: item.fields.name }), tr('planned.deleteBody'), [
@@ -387,6 +407,17 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
         )}
 
         <SectionHeader title={tr('planned.sectionMore')} />
+        {!!item?.group?.recurrence && (
+          <Card style={{ marginHorizontal: t.space.lg, marginBottom: t.space.sm }}>
+            <Row
+              first
+              label={tr('planned.triggerNow')}
+              value={dayLabel(fields.date)}
+              chevron
+              onPress={onTrigger}
+            />
+          </Card>
+        )}
         <Card style={{ marginHorizontal: t.space.lg, gap: t.space.sm }}>
           <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('fields.note')}</Text>
           <TextField

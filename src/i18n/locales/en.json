@@ -310,12 +310,14 @@
     "opKind": {
       "attach_receipt": "Uploading a receipt",
       "create_transaction": "Sending a new transaction",
+      "delete_attachment": "Deleting a receipt photo",
       "delete_planned": "Deleting a planned transaction",
       "delete_transaction": "Deleting a transaction",
       "other": "A change",
       "recurring_review": "Approving a recurring transaction",
       "reorder_accounts": "Saving the account order",
       "save_planned": "Saving a planned transaction",
+      "trigger_planned": "Booking a recurring transaction now",
       "update_account": "Saving an account",
       "update_transaction": "Saving a transaction edit"
     },
@@ -451,8 +453,11 @@
     "time": "Time",
     "timeHint": "Firefly III books it on the day; approving it in the Inbox moves it to this time.",
     "title": "Planned",
+    "triggerBody": "Firefly III books the occurrence planned for {{date}} now. It arrives in the Inbox as a recurring transaction to approve on the next sync. It is not booked twice on the day itself.",
     "triggerCount_one": "{{count, number}} trigger",
-    "triggerCount_other": "{{count, number}} triggers"
+    "triggerCount_other": "{{count, number}} triggers",
+    "triggerNow": "Book it now",
+    "triggerTitle": "Book {{name}} now?"
   },
   "readiness": {
     "amount": "amount",

@@ -332,12 +332,14 @@
     "opKind": {
       "attach_receipt": "Завантаження квитанції",
       "create_transaction": "Надсилання нової транзакції",
+      "delete_attachment": "",
       "delete_planned": "Видалення запланованої транзакції",
       "delete_transaction": "Видалення транзакції",
       "other": "Зміна",
       "recurring_review": "Схвалення повторюваної транзакції",
       "reorder_accounts": "",
       "save_planned": "Збереження запланованої транзакції",
+      "trigger_planned": "",
       "update_account": "Збереження облікового запису",
       "update_transaction": "Збереження редагування транзакції"
     },
@@ -495,10 +497,13 @@
     "time": "Час",
     "timeHint": "Firefly III бронює його на день; схвалення у папці \"Вхідні\" переносить його на цей час.",
     "title": "Заплановано",
+    "triggerBody": "",
     "triggerCount_one": "Тригер {{count, number}}",
     "triggerCount_few": "{{count, number}} тригери",
     "triggerCount_many": "{{count, number}} тригерів",
-    "triggerCount_other": "Тригери {{count, number}}"
+    "triggerCount_other": "Тригери {{count, number}}",
+    "triggerNow": "",
+    "triggerTitle": ""
   },
   "readiness": {
     "amount": "сума",

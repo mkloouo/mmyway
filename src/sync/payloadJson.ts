@@ -91,6 +91,13 @@ const SCHEMAS = {
     ruleId: z.string().nullish(),
     recurrenceId: z.string().nullish(),
   }),
+  trigger_planned: z.looseObject({
+    v: version,
+    key: z.string(),
+    name: z.string(),
+    recurrenceId: z.string(),
+    date: z.string(),
+  }),
 } satisfies Record<OutboxKind, z.ZodType>;
 
 export function readPayload<T = Record<string, unknown>>(kind: OutboxKind, json: string): T {

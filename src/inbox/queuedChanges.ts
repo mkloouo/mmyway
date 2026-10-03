@@ -193,5 +193,11 @@ export function describeQueuedChange(
     }
     case 'delete_planned':
       return { subject: str(p.name), route: null, changed: [] };
+    case 'trigger_planned':
+      return {
+        subject: str(p.name),
+        route: `/planned/${encodeURIComponent(p.key as string)}`,
+        changed: [],
+      };
   }
 }
