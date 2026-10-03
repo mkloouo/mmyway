@@ -23,6 +23,7 @@ const KEYS = {
   balancesStale: 'balances_stale',
   locale: 'locale',
   plannedMode: 'planned_mode',
+  recordLocation: 'record_location',
 } as const;
 
 async function getSetting(db: OutboxDb, key: string): Promise<string | null> {
@@ -187,3 +188,14 @@ export function parsePlannedMode(raw: string | null | undefined): PlannedMode {
 }
 export const setPlannedMode = (db: OutboxDb, value: PlannedMode) =>
   setSetting(db, KEYS.plannedMode, value);
+
+/**
+ * Whether a new entry records where it was made (#67). On unless it was turned off, so the
+ * permission prompt is the only thing standing between a fresh install and a located entry —
+ * and turning it off here keeps the permission but stops using it.
+ */
+export async function getRecordLocation(db: OutboxDb): Promise<boolean> {
+  return (await getSetting(db, KEYS.recordLocation)) !== '0';
+}
+export const setRecordLocation = (db: OutboxDb, value: boolean) =>
+  setSetting(db, KEYS.recordLocation, value ? '1' : '0');

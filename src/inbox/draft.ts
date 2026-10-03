@@ -35,6 +35,9 @@ export interface Draft {
   // reading can be traced back to the model that made it. A retry overwrites it, so it always
   // names the reading the draft holds. Never set outside src/receipt/toDraft.ts.
   readBy?: { provider: string; model: string; at: string };
+  // Where the entry was made (#67, src/capture/position.ts): the phone's position while Capture or
+  // the camera was open. Carried onto the transaction's splits as FF3's own latitude/longitude.
+  location?: DraftLocation;
   // A split entry (the Split button, a duplicated split transaction). Split 1 is the draft's own
   // fields above; these are splits 2..N, sharing its type, date, currency and own account.
   // `total` is the total the user tracks (the splits must add up to it before Confirm) and
@@ -43,6 +46,17 @@ export interface Draft {
   total?: string;
   groupTitle?: string;
 }
+
+/** Where an entry was made: filled by src/capture/position.ts, sent as FF3's own location fields. */
+export interface DraftLocation {
+  latitude: number;
+  longitude: number;
+  /** How far off the fix may be, in metres, as the phone reported it. Kept here, not sent. */
+  accuracyM?: number;
+}
+
+/** Street level on FF3's own map; it insists on a zoom_level whenever a latitude is sent. */
+const FF3_ZOOM_LEVEL = 16;
 
 export interface DraftSplit {
   amount: string;
@@ -181,6 +195,7 @@ function extraSplitAsDraft(draft: Draft, split: DraftSplit, foreignAmount?: stri
     notes: split.notes,
     sharedWith: split.sharedWith,
     extraTags: split.extraTags,
+    location: draft.location,
   };
 }
 
@@ -206,6 +221,14 @@ function draftSplitPayload(draft: Draft, bookingCurrencyCode?: string): Transact
     budget_id: draft.budgetId,
     tags: tags.length ? tags : undefined,
     notes: draft.notes,
+    // Every split of a group was bought in the same place, so each carries the same pin (#67).
+    ...(draft.location
+      ? {
+          latitude: draft.location.latitude,
+          longitude: draft.location.longitude,
+          zoom_level: FF3_ZOOM_LEVEL,
+        }
+      : {}),
   };
 }
 

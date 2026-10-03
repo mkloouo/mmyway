@@ -2,7 +2,7 @@
 // "Save & ✓" and "Save to inbox" (design §6.2 step 9) build the payload identically and the
 // three type branches (§6.2 step 11) are testable without mounting the screen.
 import type { ManualEntryInput } from '../inbox/createManualEntry';
-import type { Draft } from '../inbox/draft';
+import type { Draft, DraftLocation } from '../inbox/draft';
 
 export interface CaptureFormState {
   type: Draft['type'];
@@ -20,6 +20,8 @@ export interface CaptureFormState {
   sharedWith: string;
   foreignAmount: string;
   foreignCurrencyCode: string | null;
+  /** Where the phone was when the entry was saved, if a fix had arrived by then (#67). */
+  location?: DraftLocation;
 }
 
 export function buildManualEntryInput(
@@ -87,5 +89,6 @@ export function buildManualEntryInput(
     foreignAmount: fx?.foreignAmount,
     foreignCurrencyCode: fx?.foreignCurrencyCode,
     sharedWith: state.sharedWith || undefined,
+    location: state.location,
   };
 }

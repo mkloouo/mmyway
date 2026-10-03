@@ -219,3 +219,36 @@ describe('a split entry in a currency the account does not hold (#129)', () => {
     expect(payload.splits.map((s) => s.foreign_amount)).toEqual([undefined, undefined]);
   });
 });
+
+describe('where the entry was made (#67)', () => {
+  const located: Draft = {
+    ...base,
+    location: { latitude: 52.22971, longitude: 21.0123, accuracyM: 24 },
+  };
+
+  it('goes on the split as FF3 location fields, zoom level included', () => {
+    expect(draftToTransactionPayload('client-1', located).splits[0]).toMatchObject({
+      latitude: 52.22971,
+      longitude: 21.0123,
+      zoom_level: 16,
+    });
+  });
+
+  it('is left off entirely when there is no fix — FF3 refuses a lone longitude', () => {
+    const split = draftToTransactionPayload('client-1', base).splits[0]!;
+    expect('latitude' in split).toBe(false);
+    expect('zoom_level' in split).toBe(false);
+  });
+
+  it('pins every split of a group at the same place', () => {
+    const payload = draftToTransactionPayload('client-1', {
+      ...located,
+      total: '30.00',
+      amount: '20.00',
+      extraSplits: [
+        { amount: '10.00', description: 'second', payeeName: 'Rossmann', isNewPayee: false },
+      ],
+    });
+    expect(payload.splits.map((s) => s.latitude)).toEqual([52.22971, 52.22971]);
+  });
+});

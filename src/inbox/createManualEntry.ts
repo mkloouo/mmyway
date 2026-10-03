@@ -2,7 +2,7 @@ import { and, eq } from 'drizzle-orm';
 import { inboxItems, outboxOperations, referenceAccounts } from '../db/schema';
 import { resolvePayeeAlias } from '../lookup/aliases';
 import { transition, type InboxState } from './state';
-import { draftToTransactionPayload, type Draft } from './draft';
+import { draftToTransactionPayload, type Draft, type DraftLocation } from './draft';
 import { bookingLegAccountId } from './fx';
 import { enqueueOperationSync, neverSent } from '../sync/outbox';
 import { requestSync, SYNC_DELAY } from '../sync/syncTrigger';
@@ -32,6 +32,8 @@ export interface ManualEntryInput {
   foreignAmount?: string;
   foreignCurrencyCode?: string;
   sharedWith?: string;
+  /** Where the entry was made, when a fix had arrived by the time it was saved (#67). */
+  location?: DraftLocation;
 }
 
 export async function createManualEntry(
@@ -49,6 +51,7 @@ export async function createManualEntry(
     foreignAmount: input.foreignAmount,
     foreignCurrencyCode: input.foreignCurrencyCode,
     sharedWith: input.sharedWith,
+    location: input.location,
   };
 
   let draft: Draft;

@@ -45,10 +45,13 @@ import {
   setDefaultCurrencyCode,
   setCashAccountId,
   setLocale,
+  setRecordLocation,
 } from '../../src/settings/appSettings';
 import type { AppLocale } from '../../src/i18n';
 import { TextField } from '../../src/ui/TextField';
 import { PickerSheet } from '../../src/ui/PickerSheet';
+import { Checkbox } from '../../src/ui/Checkbox';
+import { forgetPosition, startPositionRequest } from '../../src/capture/position';
 import { useAction } from '../../src/ui/useAction';
 import { pickableCurrencies, primaryCurrencyCode } from '../../src/ui/currencies';
 import { confirmDestructive } from '../../src/ui/confirm';
@@ -104,6 +107,7 @@ export default function SettingsScreen() {
   const cashAccountId = settings?.cashAccountId ?? null;
   const lastSyncedAt = settings?.lastSyncedAt ?? null;
   const locale: AppLocale = settings?.locale ?? 'system';
+  const recordLocation = settings?.recordLocation ?? true;
   // The one setting that is typed before it's saved, so it needs a draft of its own.
   const [localModelNameInput, setLocalModelNameInput] = useState<string | null>(null);
   const localModelName = localModelNameInput ?? settings?.localModelName ?? '';
@@ -131,6 +135,13 @@ export default function SettingsScreen() {
   /** Keeps a double-tap on any Save from writing the same secret or setting twice. */
   const saveOnce = act(tr('common.save'), (write: () => Promise<void>) => write());
   const saving = act.pending(tr('common.save'));
+  // Keeps the permission; only stops the app using it (#67).
+  const toggleLocation = act(tr('settings.recordLocation'), async () => {
+    await setRecordLocation(db, !recordLocation);
+    if (recordLocation) forgetPosition();
+    else startPositionRequest(db);
+    reload();
+  });
   const signingIn = act.pending(tr('settings.signIn'));
 
   const onSignIn = act(tr('settings.signIn'), async () => {
@@ -274,6 +285,12 @@ export default function SettingsScreen() {
             chevron
             value={accountLabel(cashAccountId)}
             onPress={() => setSheet('cashAccount')}
+          />
+          <Checkbox
+            checked={recordLocation}
+            onPress={() => void toggleLocation()}
+            label={tr('settings.recordLocation')}
+            hint={tr('settings.recordLocationHint')}
           />
         </Card>
 

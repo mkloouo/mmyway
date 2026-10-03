@@ -18,6 +18,7 @@ import {
   Sheet,
 } from '../src/ui/components';
 import { captureReceipt, attachReceiptToJournal } from '../src/receipt/ingest';
+import { startPositionRequest } from '../src/capture/position';
 import { pickPhoto, type PhotoSource } from '../src/receipt/pickPhoto';
 import { requestSync, SYNC_DELAY } from '../src/sync/syncTrigger';
 import { TextField } from '../src/ui/TextField';
@@ -115,6 +116,9 @@ export default function ReceiptScreen() {
   useEffect(() => {
     if (autoLaunched.current) return;
     autoLaunched.current = true;
+    // Where the photo is being taken (#67), asked for alongside the camera rather than after it:
+    // a fix takes seconds, and nothing waits for this one either.
+    startPositionRequest(db);
     void capture(source === 'gallery' ? 'gallery' : 'camera');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

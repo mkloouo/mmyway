@@ -32,6 +32,13 @@ const DraftSchema = z.looseObject({
   // Optional, so a draft written before it existed still reads as v1 — a version bump would
   // reject every draft already in the table.
   readBy: z.looseObject({ provider: z.string(), model: z.string(), at: z.string() }).optional(),
+  location: z
+    .looseObject({
+      latitude: z.number(),
+      longitude: z.number(),
+      accuracyM: z.number().optional(),
+    })
+    .optional(),
   extraSplits: z
     .array(
       z.looseObject({

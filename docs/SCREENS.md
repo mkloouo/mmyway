@@ -30,7 +30,7 @@ What 1.4.6 gets wrong or lacks, most important first.
 | 9   | **A draft can't change type**, so a refund receipt can't become income.                                                                                                                                                                                                                 | DRF-2               | to file       |
 | 10  | **Capture's "Today" is when Capture opened**, not when you saved, so a run of entries all get the first one's time.                                                                                                                                                                     | CAP-8               | to file       |
 | 11  | **The phone going offline only shows after a sync fails.**                                                                                                                                                                                                                              | INB-2               | to file       |
-| 12  | From your notes: location #67 and crop #70 are still open; reader and model #68 and delete photo #69 have landed (#68 on the draft only — the transaction screen still has none).                                                                                                       | —                   | —             |
+| 12  | From your notes: crop #70 is still open. Location #67, reader and model #68 and delete photo #69 have landed — #67 without a picked image's EXIF GPS, and #68 on the draft only.                                                                                                        | —                   | —             |
 
 ## 1. Shared rules
 
@@ -51,7 +51,7 @@ What 1.4.6 gets wrong or lacks, most important first.
 | **Description**      | `notes`                                        | Multi-line free text.                                                                                                                                                                                                                                |
 | **Shared with**      | tag `mmyway-shared-<name>`                     | One or more people, suggesting names used before (#121).                                                                                                                                                                                             |
 | **Receipt**          | attachment                                     | Attach from the camera or gallery, view full screen, remove the photo, crop (#70).                                                                                                                                                                   |
-| **Location**         | `latitude`, `longitude`                        | Recorded in the background; nothing waits for it (#67).                                                                                                                                                                                              |
+| **Location**         | `latitude`, `longitude`, `zoom_level`          | The phone's position while Capture or the camera is open, at "balanced" accuracy; nothing waits for it, and Settings → **Record where it was made** turns it off. Every split of a group gets the same pin.                                          |
 | **Read by**          | kept on the phone                              | Which reader and model read a receipt (#68).                                                                                                                                                                                                         |
 
 ### 1.2 Which screen has which field
@@ -74,7 +74,7 @@ What 1.4.6 gets wrong or lacks, most important first.
 | Shared with      | 🟡 #121   | 🟡 #121 | 🟡 #121     | ·                | ·            |
 | Tags             | ·         | ·       | ·           | ·                | ✎ ⁸          |
 | Receipt          | ✎ attach  | 🟡 ⁹    | 🟡 ⁹        | ·                | ·            |
-| Location         | ❌ #67    | ❌ #67  | ❌ #67      | ·                | ·            |
+| Location         | ✓ auto    | ✓ shown | ·           | ·                | ·            |
 | Read by          | ·         | ❌ #68  | ❌ #68 ¹⁰   | ·                | ·            |
 | Splits           | ·         | ✎       | ✎           | ·                | ·            |
 
@@ -183,7 +183,8 @@ An entry in under ten seconds, amount first. Opens from **＋ Add** as a modal.
 - **CAP-8** 🟡 Date key: Today ▾ / Yesterday / pick a date and time. ❌ "Today" is stamped when Capture
   opened, not when you save.
 - **CAP-9** ✅ **More**: description, shared with, receipt photo. The key shows a dot when any is set.
-- **CAP-10** ❌ Location, recorded in the background (#67).
+- **CAP-10** ✅ Location: a position is asked for as Capture opens and whatever has arrived by the
+  time you save goes on the entry. Nothing waits for it.
 - **CAP-11** ✅ A "Needs payee" line. **Save & ✓** stays off until the entry is ready and shakes if
   pressed early. **Save to inbox** always works.
 - **CAP-12** ✅ After a save, the amount clears and everything else stays for the next entry.
@@ -221,7 +222,8 @@ apps also land here.
 - **RCP-3** ✅ The same photo twice gives "already in your Inbox" with **Open it**.
 - **RCP-4** ❌ Crop before reading (#70). The picker's own crop is the cheap version.
 - **RCP-5** ❌ Keep when the photo was taken (EXIF), for the date (#118).
-- **RCP-6** ❌ Keep where the photo was taken (EXIF GPS), for the location (#67).
+- **RCP-6** 🟡 Where the photo was taken: the camera screen asks for a position of its own, so a
+  photo taken here is located. ❌ A picked or shared image's own EXIF GPS is not read.
 - **RCP-7** ✅ Opened from a transaction: upload only, no reading.
 - **RCP-8** ❓ A long receipt taken as two photos.
 
@@ -245,7 +247,9 @@ row, or Duplicate. One editor serves manual entries and receipts.
 - **DRF-10** ❌ "Check" marks on what the reader wasn't sure about (#120).
 - **DRF-11** 🟡 Receipt: ✅ photo, full screen, item count, **Remove photo** in the viewer; ❌ crop (#70).
 - **DRF-12** ✅ "Read by Gemini (gemini-3.1-flash-lite)" under the receipt card, and in Diagnostics.
-- **DRF-13** ❌ Location (#67).
+- **DRF-13** ✅ A faint "📍 near 52.22971, 21.0123" line when the entry has a position. The
+  coordinates as they are: a place name would need a geocoder, and Firefly III's own map is where
+  this is worth looking at.
 - **DRF-14** ✅ **Split**: a tracked total and one page per split (amount, title, payee, category,
   budget, description, shared with), sliders when the splits don't add up, and a Group title.
 - **DRF-15** ✅ **Confirm** stays off until the draft is ready and says what's missing. ⋯ →
@@ -284,7 +288,8 @@ attention card.
   (#121).
 - **TXN-6** ✅ Receipts: thumbnails, full screen, uploading / failed state, Attach another, and
   **Remove photo** in the viewer — a confirmed, queued `delete_attachment`.
-- **TXN-7** ❌ Read by (#68, extended) and Location (#67).
+- **TXN-7** ❌ Read by (#68, extended) and Location, neither shown here — both are on the draft,
+  and the pin is on Firefly III's map.
 - **TXN-8** ✅ **Split** and **Save**. Save stays off while the splits don't add up, and a save
   that changes nothing just closes.
 - **TXN-9** ✅ Conflict view: what changed in Firefly III next to your change, with Keep mine /
@@ -340,7 +345,8 @@ Tab 4.
 - **SET-3** ✅ Defaults: account, currency, cash payments account.
 - **SET-4** ✅ Accounts; Aliases (search, add, remove, export and import); Language; About
   (version, last sync, Diagnostics with share and clear).
-- **SET-5** ❌ A switch to turn location recording on or off (#67).
+- **SET-5** ✅ **Record where it was made** under Defaults, on unless turned off; turning it off
+  keeps the permission and stops the app using it.
 - **SET-6** ❓ Theme (system / light / dark); which Gemini model to use (#68 mentions its default).
 
 ## Your calls (❓), in one list
@@ -371,7 +377,7 @@ transactions) · Planned converted amount.
 | Show the receipt, crop it                                                          | DRF-11, RCP-4 (#70)     |
 | Split                                                                              | DRF-14                  |
 | Capture: type, currency, foreign currency, title, description, source, destination | CAP-1–9                 |
-| Capture: location                                                                  | CAP-10 (#67)            |
+| Capture: location                                                                  | CAP-10                  |
 | "Should have figured"                                                              | CAP-14                  |
 | Capture crammed on small windows                                                   | CAP-13 (#116)           |
 | No way to edit an existing withdrawal's payee                                      | TXN-3, DRF-5 (#115)     |

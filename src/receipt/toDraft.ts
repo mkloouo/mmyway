@@ -6,7 +6,7 @@ import { buildChain } from './buildChain';
 import { runProviderChain } from './chain';
 import { setReadingProvider, setWaitingForReader } from './readingProgress';
 import type { OutboxDb } from '../sync/outbox';
-import type { Draft } from '../inbox/draft';
+import type { Draft, DraftLocation } from '../inbox/draft';
 import type { ReceiptExtraction } from './types';
 import { logLine } from '../utils/log';
 import { resolvePayeeAlias } from '../lookup/aliases';
@@ -139,6 +139,14 @@ function capturedDate(item: { draftJson: string; createdAt: string }): Date {
   return new Date(item.createdAt);
 }
 
+function capturedLocation(item: { draftJson: string }): DraftLocation | undefined {
+  try {
+    return readDraft(item.draftJson).location;
+  } catch {
+    return undefined;
+  }
+}
+
 function markReceiptError(db: OutboxDb, itemId: string, message: string): Promise<unknown> {
   return db
     .update(inboxItems)
@@ -212,6 +220,9 @@ export async function parseReceiptItem(
   // A merchant read before and corrected since books to the corrected payee (src/lookup/aliases.ts).
   const draft = await resolvePayeeAlias(db, {
     ...receiptToDraft(result.extraction, reference, capturedDate(before)),
+    // receiptToDraft builds a fresh draft from what was read; where the photo was taken is the
+    // stub's and has to survive it (#67).
+    location: capturedLocation(before),
     readBy: {
       provider: result.providerName,
       model: result.providerModel,

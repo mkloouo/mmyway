@@ -16,6 +16,7 @@ import {
   getLocalModelBaseUrls,
   getLocalModelName,
   getLocale,
+  getRecordLocation,
 } from './appSettings';
 
 interface AppSettingsSnapshot {
@@ -31,6 +32,7 @@ interface AppSettingsSnapshot {
   cashAccountId: string | null;
   lastSyncedAt: string | null;
   locale: AppLocale;
+  recordLocation: boolean;
 }
 
 export const SETTINGS_QUERY_KEY = ['settings'] as const;
@@ -49,6 +51,7 @@ export async function loadSettings(db: OutboxDb): Promise<AppSettingsSnapshot> {
     cashAccountId,
     lastSyncedAt,
     locale,
+    recordLocation,
   ] = await Promise.all([
     readStoredCredentials(),
     readHosts(),
@@ -62,6 +65,7 @@ export async function loadSettings(db: OutboxDb): Promise<AppSettingsSnapshot> {
     getCashAccountId(db),
     getLastSyncedAt(db),
     getLocale(db),
+    getRecordLocation(db),
   ]);
   return {
     signedIn: !!creds,
@@ -76,5 +80,6 @@ export async function loadSettings(db: OutboxDb): Promise<AppSettingsSnapshot> {
     cashAccountId,
     lastSyncedAt,
     locale,
+    recordLocation,
   };
 }

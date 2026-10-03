@@ -25,6 +25,7 @@ import { buildEntryDate, yesterday } from '../src/capture/entryDate';
 import { buildManualEntryInput, type CaptureFormState } from '../src/capture/buildManualEntryInput';
 import { useCaptureDefaults } from '../src/capture/useCaptureDefaults';
 import { useCaptureForm } from '../src/capture/useCaptureForm';
+import { recentPosition, startPositionRequest } from '../src/capture/position';
 import { captureKeyHeight } from '../src/capture/keyHeight';
 import { attachReceiptImage } from '../src/inbox/updateDraft';
 import { createManualEntry, confirmInboxItem, undoConfirm } from '../src/inbox/createManualEntry';
@@ -247,6 +248,11 @@ export default function CaptureScreen() {
   const [accountRecency, setAccountRecency] = useState<Map<string, string>>(
     () => peekAccountLastUsed() ?? new Map(),
   );
+  // Where this is being typed (#67): asked for as the screen opens, and whatever has arrived by
+  // the time Save is tapped goes on the entry. Nothing waits for it, and nothing fails without it.
+  useEffect(() => {
+    startPositionRequest(db);
+  }, [db]);
   useEffect(() => {
     let cancelled = false;
     buildMerchantLookup(db, { type: lookupType })
@@ -363,6 +369,7 @@ export default function CaptureScreen() {
     sharedWith,
     foreignAmount: showFx ? parsedForeignAmount : '',
     foreignCurrencyCode: showFx ? (accountCurrencyCode ?? null) : null,
+    location: recentPosition(),
   };
 
   const previewDraft: Draft = {

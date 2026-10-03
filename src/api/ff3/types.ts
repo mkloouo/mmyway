@@ -39,6 +39,11 @@ export interface TransactionSplit {
   budget_id?: string;
   tags?: string[];
   notes?: string;
+  // Where it happened, on FF3's own map. All three travel together: FF3 validates zoom_level and
+  // longitude as `required_with:latitude`.
+  latitude?: number;
+  longitude?: number;
+  zoom_level?: number;
 }
 
 export interface TransactionRead {

@@ -17,6 +17,7 @@ import { parseReceiptItem, type ParseOutcome } from './toDraft';
 import { persistReceiptImage } from './imageFiles';
 import { downscaleReceipt } from './downscale';
 import { writeDraft } from '../inbox/draftJson';
+import { recentPosition } from '../capture/position';
 
 type CaptureResult =
   | { kind: 'duplicate'; itemId: string }
@@ -69,6 +70,10 @@ export async function captureReceipt(
     date: original.takenAt ?? now,
     description: '',
     isNewPayee: true,
+    // Where the photo was taken (#67), as far as the fix the camera screen asked for got. A
+    // picked or shared image has no fix of its own; it keeps whatever the phone last knew, or
+    // none — its EXIF GPS is not read.
+    location: recentPosition(),
   };
   await db.insert(inboxItems).values({
     id,

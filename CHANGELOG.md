@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Capture
+
+- **A new entry records where it was made**, and the pin shows up on Firefly III's own map. The
+  position is asked for as Capture or the camera opens and whatever has arrived by the time you
+  save goes on the entry — nothing ever waits for it, and nothing is recorded in the background. A
+  draft shows a faint "📍 near …" line when it has one. The permission is asked for the first time
+  Capture opens, and Settings → Defaults → **Record where it was made** turns it off without
+  revoking the permission. A photo picked from the gallery or shared from another app has no
+  position of its own.
+
 ### Planned
 
 - **Book it now** on a planned transaction books its next occurrence ahead of its day, the way

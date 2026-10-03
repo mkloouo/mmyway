@@ -628,6 +628,22 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
             detailRows(true)
           )}
 
+          {/* Where it was made (#67). The coordinates as they are: naming the place would need a
+              geocoder, and Firefly III's own map is where this is worth looking at. */}
+          {!!draft.location && (
+            <Text
+              style={[
+                t.type.label,
+                { color: t.color.textFaint, paddingHorizontal: t.space.xl, paddingTop: t.space.sm },
+              ]}
+            >
+              {tr('draft.near', {
+                latitude: draft.location.latitude,
+                longitude: draft.location.longitude,
+              })}
+            </Text>
+          )}
+
           {showFx && (
             <Card style={{ marginHorizontal: t.space.lg, gap: t.space.xs }}>
               <Row
