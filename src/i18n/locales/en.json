@@ -226,6 +226,7 @@
     "photoInFf3": "The photo is in Firefly III (no copy kept on this phone).",
     "pickCurrency": "Pick a currency",
     "queued": "Queued",
+    "readBy": "Read by {{provider}} ({{model}})",
     "receipt": "Receipt",
     "showPhoto": "Show the receipt photo",
     "synced": "Synced",

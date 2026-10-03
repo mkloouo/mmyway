@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Receipts
+
+- A receipt draft says which reader read it and with which model — "Read by Gemini
+  (gemini-3.1-flash-lite)" under the photo — so a reading that came out wrong can be pinned on the
+  model that made it. The Diagnostics log notes the same. Retrying a read replaces it.
+
 ### Fixed
 
 - A split entry in a currency your account doesn't hold now asks what the account was charged in

@@ -15,6 +15,8 @@ export interface ReceiptExtraction {
 
 export interface ReceiptProvider {
   name: string;
+  /** Which model this reader runs: kept with the reading, so a bad one can be traced (#68). */
+  model: string;
   extract(input: {
     imageBase64: string;
     hint?: string;
@@ -27,6 +29,7 @@ export type ReceiptChainResult =
   | {
       ok: true;
       providerName: string;
+      providerModel: string;
       extraction: ReceiptExtraction;
     }
   | {

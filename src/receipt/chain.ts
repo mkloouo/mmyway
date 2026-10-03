@@ -19,7 +19,7 @@ export async function runProviderChain(
     onAttempt?.(provider.name);
     try {
       const extraction = await provider.extract(input);
-      return { ok: true, providerName: provider.name, extraction };
+      return { ok: true, providerName: provider.name, providerModel: provider.model, extraction };
     } catch (err) {
       if (!isUnreachable(err)) anyAnswered = true;
       errors.push(`${provider.name}: ${errorMessage(err)}`);

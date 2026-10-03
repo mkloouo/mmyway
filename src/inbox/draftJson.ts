@@ -29,6 +29,9 @@ const DraftSchema = z.looseObject({
   sharedWith: optionalText,
   extraTags: z.array(z.string()).optional(),
   lowConfidenceFields: z.array(z.string()).optional(),
+  // Optional, so a draft written before it existed still reads as v1 — a version bump would
+  // reject every draft already in the table.
+  readBy: z.looseObject({ provider: z.string(), model: z.string(), at: z.string() }).optional(),
   extraSplits: z
     .array(
       z.looseObject({

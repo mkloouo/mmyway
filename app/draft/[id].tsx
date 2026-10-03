@@ -670,6 +670,14 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
               <Text style={[t.type.body, { color: t.color.textMuted }]}>
                 {itemCount > 0 ? tr('draft.itemCount', { count: itemCount }) : tr('draft.receipt')}
               </Text>
+              {!!draft.readBy && (
+                <Text style={[t.type.label, { color: t.color.textFaint }]}>
+                  {tr('draft.readBy', {
+                    provider: draft.readBy.provider,
+                    model: draft.readBy.model,
+                  })}
+                </Text>
+              )}
             </Card>
           )}
         </ScrollView>

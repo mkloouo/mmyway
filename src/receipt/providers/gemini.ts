@@ -20,6 +20,7 @@ export function createGeminiProvider(config: {
   const model = config.model ?? 'gemini-3.1-flash-lite';
   return {
     name: 'Gemini',
+    model,
     async extract({ imageBase64, hint, categoryNames, currencyCodes = [] }) {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), config.timeoutMs ?? 30000);

@@ -5,6 +5,7 @@ import type { ReceiptProvider } from './types';
 function providerThatThrows(name: string): ReceiptProvider {
   return {
     name,
+    model: `${name}-1`,
     extract: async () => {
       throw new TypeError('Network request failed');
     },
@@ -13,13 +14,14 @@ function providerThatThrows(name: string): ReceiptProvider {
 function providerThatAnswersBadly(name: string): ReceiptProvider {
   return {
     name,
+    model: `${name}-1`,
     extract: async () => {
       throw new Error(`${name} provider HTTP 400`);
     },
   };
 }
 function providerThatSucceeds(name: string, extraction: any): ReceiptProvider {
-  return { name, extract: async () => extraction };
+  return { name, model: `${name}-1`, extract: async () => extraction };
 }
 
 describe('runProviderChain', () => {
@@ -69,6 +71,7 @@ describe('runProviderChain', () => {
   it('treats a provider timeout as unreachable', async () => {
     const timeout: ReceiptProvider = {
       name: 'local',
+      model: 'local-1',
       extract: async () => {
         const e = new Error('aborted');
         e.name = 'AbortError';
@@ -172,5 +175,14 @@ describe("the bot schema's answer shape", () => {
       normalizeExtraction({ confidence: 'none', payment_method: 'unknown', card_network: null })
         .notAReceipt,
     ).toBe(true);
+  });
+});
+
+it('names the model that read the receipt, not only the reader', async () => {
+  const gemini = providerThatSucceeds('gemini', normalizeExtraction({ amount: '1.00' }));
+  expect(await runProviderChain([gemini], { imageBase64: 'x', categoryNames: [] })).toMatchObject({
+    ok: true,
+    providerName: 'gemini',
+    providerModel: 'gemini-1',
   });
 });

@@ -31,6 +31,10 @@ export interface Draft {
   // §6.3): the draft screen marks these rows amber with "check this" instead of trusting them
   // silently. Never set outside src/receipt/toDraft.ts.
   lowConfidenceFields?: string[];
+  // Which reader read this receipt, and with which model (#68): shown on the draft so a bad
+  // reading can be traced back to the model that made it. A retry overwrites it, so it always
+  // names the reading the draft holds. Never set outside src/receipt/toDraft.ts.
+  readBy?: { provider: string; model: string; at: string };
   // A split entry (the Split button, a duplicated split transaction). Split 1 is the draft's own
   // fields above; these are splits 2..N, sharing its type, date, currency and own account.
   // `total` is the total the user tracks (the splits must add up to it before Confirm) and

@@ -208,11 +208,16 @@ export async function parseReceiptItem(
     return 'failed';
   }
 
+  logLine('info', `receipt ${itemId}: read by ${result.providerName} (${result.providerModel})`);
   // A merchant read before and corrected since books to the corrected payee (src/lookup/aliases.ts).
-  const draft = await resolvePayeeAlias(
-    db,
-    receiptToDraft(result.extraction, reference, capturedDate(before)),
-  );
+  const draft = await resolvePayeeAlias(db, {
+    ...receiptToDraft(result.extraction, reference, capturedDate(before)),
+    readBy: {
+      provider: result.providerName,
+      model: result.providerModel,
+      at: new Date().toISOString(),
+    },
+  });
   // Only if nothing touched the item while the provider was working (a parse takes seconds; the
   // user may already have opened the card and typed an amount) — their edits win.
   const updated = await db
