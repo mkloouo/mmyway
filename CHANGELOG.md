@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.5.3] - 2026-10-03
+
 ### Activity
 
 - A transaction's **Type** can be changed: an income becomes an expense, either becomes a
