@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.5.2] - 2026-10-03
+
 ### Capture
 
 - Typing on an amount that already has a figure in it — a transaction's, a draft's, a split's —
