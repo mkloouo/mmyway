@@ -157,3 +157,26 @@ export function minorToPosition(value: bigint, cap: bigint): number {
   if (cap <= 0n) return 0;
   return Number(value) / Number(cap);
 }
+
+/**
+ * `total` split in the same proportion as `weights`, in minor units. The rounding remainder is
+ * handed out one minor unit at a time, largest fraction first (largest-remainder), so the shares
+ * always add back up to `total` exactly — a converted total spread over a split entry's splits
+ * must not lose or invent a minor unit (#129). All-zero weights give all-zero shares.
+ */
+export function proportionalShares(total: bigint, weights: readonly bigint[]): bigint[] {
+  const sum = weights.reduce((acc, w) => acc + w, 0n);
+  if (sum <= 0n) return weights.map(() => 0n);
+  const shares = weights.map((w) => (total * w) / sum);
+  let rest = total - shares.reduce((acc, s) => acc + s, 0n);
+  const step = rest < 0n ? -1n : 1n;
+  const byRemainder = weights
+    .map((w, i) => ({ i, fraction: (total * w) % sum }))
+    .sort((a, b) => (a.fraction === b.fraction ? a.i - b.i : a.fraction < b.fraction ? 1 : -1));
+  for (const { i } of byRemainder) {
+    if (rest === 0n) break;
+    shares[i] = (shares[i] ?? 0n) + step;
+    rest -= step;
+  }
+  return shares;
+}

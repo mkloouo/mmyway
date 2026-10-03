@@ -7,6 +7,7 @@ import {
   fromMinor,
   leftover,
   positionToMinor,
+  proportionalShares,
   sumMinor,
   toMinor,
 } from './allocate';
@@ -95,5 +96,26 @@ describe('absorb', () => {
 
   it('is null when the absorbing split would reach zero', () => {
     expect(absorb(['5.00', '30.00'], -500n, 2)).toBeNull();
+  });
+});
+
+describe('proportionalShares', () => {
+  it('splits in proportion and keeps the total exact', () => {
+    // 100.00 over 70/30 is clean; over three equal splits it isn't, and the remainder has to
+    // land somewhere rather than vanish.
+    expect(proportionalShares(10000n, [7000n, 3000n])).toEqual([7000n, 3000n]);
+    const thirds = proportionalShares(10000n, [1000n, 1000n, 1000n]);
+    expect(thirds.reduce((a, s) => a + s, 0n)).toBe(10000n);
+    expect(thirds).toEqual([3334n, 3333n, 3333n]);
+  });
+
+  it('gives the remainder to the largest fractions first', () => {
+    const shares = proportionalShares(100n, [1n, 1n, 4n]);
+    expect(shares).toEqual([17n, 17n, 66n]);
+    expect(shares.reduce((a, s) => a + s, 0n)).toBe(100n);
+  });
+
+  it('is all zeros when there is nothing to weigh by', () => {
+    expect(proportionalShares(10000n, [0n, 0n])).toEqual([0n, 0n]);
   });
 });

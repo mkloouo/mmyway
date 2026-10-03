@@ -171,3 +171,51 @@ describe('a known payee without an id', () => {
     });
   });
 });
+
+describe('a split entry in a currency the account does not hold (#129)', () => {
+  const split: Draft = {
+    ...base,
+    amount: '70.00',
+    currencyCode: 'EUR',
+    foreignAmount: '428.50',
+    foreignCurrencyCode: 'PLN',
+    total: '100.00',
+    groupTitle: 'Rossmann',
+    extraSplits: [
+      { amount: '30.00', description: 'Household', payeeName: 'Rossmann', isNewPayee: false },
+    ],
+  };
+
+  it('puts a converted amount on every split, adding up to the converted total', () => {
+    const payload = draftToTransactionPayload('client-1', split, 'PLN');
+    // orientForBooking has turned each pair round: PLN is what the account is charged.
+    expect(payload.splits.map((s) => s.amount)).toEqual(['299.95', '128.55']);
+    expect(payload.splits.map((s) => s.currency_code)).toEqual(['PLN', 'PLN']);
+    expect(payload.splits.map((s) => s.foreign_amount)).toEqual(['70.00', '30.00']);
+    expect(payload.splits.map((s) => s.foreign_currency_code)).toEqual(['EUR', 'EUR']);
+  });
+
+  it('loses nothing to rounding when the shares do not divide evenly', () => {
+    const payload = draftToTransactionPayload(
+      'client-1',
+      {
+        ...split,
+        amount: '33.33',
+        foreignAmount: '100.00',
+        total: '99.99',
+        extraSplits: [
+          { amount: '33.33', description: 'b', payeeName: 'Rossmann', isNewPayee: false },
+          { amount: '33.33', description: 'c', payeeName: 'Rossmann', isNewPayee: false },
+        ],
+      },
+      'PLN',
+    );
+    expect(payload.splits.map((s) => s.amount)).toEqual(['33.34', '33.33', '33.33']);
+  });
+
+  it('leaves a split entry with no foreign side alone', () => {
+    const { foreignAmount: _a, foreignCurrencyCode: _c, ...plain } = split;
+    const payload = draftToTransactionPayload('client-1', plain, 'EUR');
+    expect(payload.splits.map((s) => s.foreign_amount)).toEqual([undefined, undefined]);
+  });
+});

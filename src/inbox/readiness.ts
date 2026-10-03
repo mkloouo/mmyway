@@ -29,11 +29,10 @@ export function draftReadiness(draft: Draft, accountCurrencyCode?: string | null
   if (isZeroAmount(draft.amount)) missing.push('amount');
   if (isBlank(draft.currencyCode)) missing.push('currency');
   // FF3 books the transaction in the account's currency: without the converted figure the number
-  // read off the receipt would be booked as if the account had been charged it (#105). Only for a
-  // plain entry — a split group needs one converted amount per split (#129).
+  // read off the receipt would be booked as if the account had been charged it (#105). A split
+  // entry asks for the converted total, which is shared out per split when it is queued (#129).
   if (
     needsForeignAmount(accountCurrencyCode, draft.currencyCode) &&
-    (draft.extraSplits ?? []).length === 0 &&
     (isBlank(draft.foreignAmount) || isZeroAmount(draft.foreignAmount ?? ''))
   ) {
     missing.push('converted amount');

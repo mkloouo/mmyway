@@ -218,6 +218,7 @@
   },
   "draft": {
     "accountCharged": "",
+    "accountChargedTotal": "",
     "alreadySentBody": "Він досяг Firefly III, перш ніж його вдавалося скасувати.",
     "cancelSending": "Скасувати надсилання",
     "cancelSendingHint": "Вона повернеться до папки \"Вхідні\", де ви можете її відредагувати та підтвердити ще раз.",

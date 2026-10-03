@@ -208,6 +208,7 @@
   },
   "draft": {
     "accountCharged": "Account charged",
+    "accountChargedTotal": "Account charged, total",
     "alreadySentBody": "It reached Firefly III before it could be cancelled.",
     "cancelSending": "Cancel sending",
     "cancelSendingHint": "It goes back to the Inbox, where you can edit it and confirm it again.",

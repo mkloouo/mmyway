@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- A split entry in a currency your account doesn't hold now asks what the account was charged in
+  total, and shares that total out over the splits in the same proportion as the splits
+  themselves — to the last grosz, so the splits still add up to exactly what you were charged.
+  Before, such an entry was confirmed without the question and booked as if the account's
+  currency had been the receipt's.
+
 ## [1.5.4] - 2026-10-03
 
 ### Fixed

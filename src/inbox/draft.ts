@@ -3,6 +3,7 @@ import type { CreateTransactionPayload, OutboxDb } from '../sync/outbox';
 import type { TransactionSplit } from '../api/ff3/types';
 import { inboxItems } from '../db/schema';
 import { sharedTags } from '../transactions/sharedWith';
+import { fromMinor, proportionalShares, toMinor } from '../splits/allocate';
 import { orientForBooking } from './fx';
 
 export interface Draft {
@@ -115,15 +116,42 @@ export function draftToTransactionPayload(
   const split = (d: Draft) => draftSplitPayload(d, bookingCurrencyCode);
   const extras = draft.extraSplits ?? [];
   if (extras.length === 0) return { clientId, splits: [split(draft)] };
+  const converted = convertedShares(draft);
   return {
     clientId,
     groupTitle: draft.groupTitle || draft.description,
-    splits: [split(draft), ...extras.map((s) => split(extraSplitAsDraft(draft, s)))],
+    splits: [
+      split(converted ? { ...draft, foreignAmount: converted[0] } : draft),
+      ...extras.map((s, i) => split(extraSplitAsDraft(draft, s, converted?.[i + 1]))),
+    ],
   };
 }
 
+/** Plenty for comparing amounts of any currency; the shares go out at the entered scale. */
+const WEIGHT_SCALE = 12;
+
+/**
+ * FF3's `foreign_amount` is per split, so a split entry in a currency the account doesn't hold
+ * can't send one converted figure for the group (#129, after #105): the draft carries the
+ * converted *total*, and it is spread over the splits in the same proportion as the splits
+ * themselves. The shares are allocated in the minor units the total was typed in, so they add
+ * back up to it exactly. Null when there is nothing to spread.
+ */
+function convertedShares(draft: Draft): string[] | null {
+  const extras = draft.extraSplits ?? [];
+  if (!draft.foreignAmount || !draft.foreignCurrencyCode) return null;
+  const weights = [draft.amount, ...extras.map((s) => s.amount)].map((a) =>
+    toMinor(a, WEIGHT_SCALE),
+  );
+  if (weights.every((w) => w <= 0n)) return null;
+  const decimals = (draft.foreignAmount.split('.')[1] ?? '').length;
+  return proportionalShares(toMinor(draft.foreignAmount, decimals), weights).map((share) =>
+    fromMinor(share, decimals),
+  );
+}
+
 /** Split 2..N as a whole draft: the group's shared fields from split 1, the rest its own. */
-function extraSplitAsDraft(draft: Draft, split: DraftSplit): Draft {
+function extraSplitAsDraft(draft: Draft, split: DraftSplit, foreignAmount?: string): Draft {
   const payee =
     draft.type === 'withdrawal'
       ? { destinationName: split.payeeName, destinationId: split.payeeId }
@@ -140,6 +168,8 @@ function extraSplitAsDraft(draft: Draft, split: DraftSplit): Draft {
     destinationName: draft.destinationName,
     ...payee,
     amount: split.amount,
+    foreignAmount,
+    foreignCurrencyCode: foreignAmount ? draft.foreignCurrencyCode : undefined,
     description: split.description,
     isNewPayee: split.isNewPayee,
     categoryName: split.categoryName,

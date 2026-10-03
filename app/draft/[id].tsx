@@ -182,9 +182,11 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
     id ? assetAccounts.find((a) => a.id === id)?.currencyCode : undefined,
   );
   const showFx = needsForeignAmount(accountCurrencyCode, draft.currencyCode);
+  // Against the tracked total, not split 1's amount: a split entry is charged, and converted, as
+  // a whole (#129).
   const impliedRate =
-    draft.foreignAmount && draft.amount && draft.amount !== '0'
-      ? divideDecimal(draft.foreignAmount, draft.amount, 2)
+    draft.foreignAmount && draftTotal(draft) !== '0'
+      ? divideDecimal(draft.foreignAmount, draftTotal(draft), 2)
       : null;
   const accountCurrency = currencyOf(currencies, accountCurrencyCode ?? '');
   const readiness = draftReadiness(draft, accountCurrencyCode);
@@ -197,6 +199,7 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
   const total = draftTotal(draft);
   const rest = splitMode ? leftover(total, amounts, dp) : 0n;
   const pageIndex = Math.min(page, extras.length);
+  const chargedLabel = tr(splitMode ? 'draft.accountChargedTotal' : 'draft.accountCharged');
 
   // Not awaited, but never silent: a failed write is logged and shown instead of becoming an
   // unhandled rejection.
@@ -610,7 +613,7 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
             <Card style={{ marginHorizontal: t.space.lg, gap: t.space.xs }}>
               <Row
                 first
-                label={tr('draft.accountCharged')}
+                label={chargedLabel}
                 value={`${draft.foreignAmount || '—'} ${accountCurrencyCode}`}
                 tone={draft.foreignAmount ? 'default' : 'warn'}
                 chevron={!readOnly}
@@ -725,7 +728,7 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
           keypadFor === 'total'
             ? tr('splits.total')
             : keypadFor === 'foreign'
-              ? tr('draft.accountCharged')
+              ? chargedLabel
               : tr('fields.amount')
         }
         initial={keypadValue}

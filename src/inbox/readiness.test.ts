@@ -108,9 +108,9 @@ describe('draftReadiness', () => {
       expect(draftReadiness(foreign).ready).toBe(true);
     });
 
-    // A split group needs one converted amount per split, which #129 covers; until then the rule
-    // would make such a draft unconfirmable with no field to fill.
-    it('is not asked for on a split draft', () => {
+    // A split draft asks for the converted total, which is shared out per split when it is
+    // queued (#129) — it is no longer exempt from the rule.
+    it('is asked for on a split draft too, as the converted total', () => {
       const split: Draft = {
         ...foreign,
         total: '20.00',
@@ -119,7 +119,8 @@ describe('draftReadiness', () => {
           { amount: '8.00', description: 'second', payeeName: 'Lidl', isNewPayee: false },
         ],
       };
-      expect(draftReadiness(split, 'PLN').ready).toBe(true);
+      expect(draftReadiness(split, 'PLN').missing).toContain('converted amount');
+      expect(draftReadiness({ ...split, foreignAmount: '86.40' }, 'PLN').ready).toBe(true);
     });
   });
 });
