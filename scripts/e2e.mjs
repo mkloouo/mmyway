@@ -222,6 +222,13 @@ export const FLOWS = [
     steps: ['activity/A3-split-detail-duplicate.yaml'],
     areas: ['app/transactions/', 'src/transactions/', 'src/splits/'],
   },
+  {
+    id: 'A4',
+    tier: 'release',
+    title: 'Change an income into an expense',
+    steps: ['activity/A4-change-kind.yaml'],
+    areas: ['app/transactions/', 'src/transactions/changeType.ts', 'src/sync/accountIds.ts'],
+  },
 
   {
     id: 'P1',

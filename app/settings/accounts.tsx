@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, ScrollView, Text, View } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useDb } from '../../src/providers/DbProvider';
 import { SearchField } from '../../src/ui/SearchField';
@@ -18,6 +19,8 @@ import { navigateOnce } from '../../src/ui/navigateOnce';
 import { useAction } from '../../src/ui/useAction';
 import { PendingDot } from '../../src/ui/PendingDot';
 import { usePendingAccountIds } from '../../src/accounts/usePendingAccountIds';
+
+const FADE_MS = 160;
 
 export default function AccountsScreen() {
   const db = useDb();
@@ -128,44 +131,60 @@ export default function AccountsScreen() {
           </>
         }
       />
+      {/* Reorder swaps both the line under the bar and the list itself. Each side fades in on
+          its own (the old one just goes): two of them animating at once would both claim the
+          space for the length of the fade, and the list would jump as they handed it over. The
+          keys are what makes React mount a new one, so `entering` runs at all. */}
       {reordering ? (
-        <Text style={[t.type.label, { color: t.color.textMuted, paddingHorizontal: t.space.lg }]}>
+        <Animated.Text
+          key="hint"
+          entering={FadeIn.duration(FADE_MS)}
+          style={[t.type.label, { color: t.color.textMuted, paddingHorizontal: t.space.lg }]}
+        >
           {tr('accounts.reorderHint')}
-        </Text>
+        </Animated.Text>
       ) : (
-        <View style={{ paddingHorizontal: t.space.lg }}>
+        <Animated.View
+          key="search"
+          entering={FadeIn.duration(FADE_MS)}
+          style={{ paddingHorizontal: t.space.lg }}
+        >
           <SearchField
             value={search}
             onChangeText={setSearch}
             placeholder={tr('pickers.searchAccounts')}
           />
-        </View>
+        </Animated.View>
       )}
       {reordering ? (
-        <ScrollView contentContainerStyle={{ padding: t.space.lg }} scrollEnabled={!holding}>
-          {visible.length === 0 ? (
-            empty
-          ) : (
-            <DragList
-              items={visible}
-              keyOf={(a) => a.id}
-              renderItem={row}
-              onMove={move}
-              onDragChange={setHolding}
-              gap={t.space.sm}
-              moveLabels={{ up: tr('accounts.moveUp'), down: tr('accounts.moveDown') }}
-            />
-          )}
-        </ScrollView>
+        <Animated.View key="drag" entering={FadeIn.duration(FADE_MS)} style={{ flex: 1 }}>
+          <ScrollView contentContainerStyle={{ padding: t.space.lg }} scrollEnabled={!holding}>
+            {visible.length === 0 ? (
+              empty
+            ) : (
+              <DragList
+                items={visible}
+                keyOf={(a) => a.id}
+                renderItem={row}
+                onMove={move}
+                onDragChange={setHolding}
+                gap={t.space.sm}
+                moveLabels={{ up: tr('accounts.moveUp'), down: tr('accounts.moveDown') }}
+              />
+            )}
+          </ScrollView>
+        </Animated.View>
       ) : (
-        <FlatList
-          data={visible}
-          keyExtractor={(a) => a.id}
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{ padding: t.space.lg, gap: t.space.sm }}
-          renderItem={({ item }) => row(item)}
-          ListEmptyComponent={empty}
-        />
+        <Animated.View key="browse" entering={FadeIn.duration(FADE_MS)} style={{ flex: 1 }}>
+          <FlatList
+            data={visible}
+            keyExtractor={(a) => a.id}
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={{ padding: t.space.lg, gap: t.space.sm }}
+            renderItem={({ item }) => row(item)}
+            ListEmptyComponent={empty}
+          />
+        </Animated.View>
       )}
     </Screen>
   );

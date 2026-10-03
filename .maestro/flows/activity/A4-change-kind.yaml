@@ -1,0 +1,39 @@
+appId: ${APP_ID}
+name: 'A4 · Change an income into an expense'
+tags:
+  - release
+---
+# An income already in Firefly III, turned into an expense in the app. Both ends are rewired
+# (src/transactions/changeType.ts): the account the money arrived in becomes the account it is
+# paid from, and the payer becomes the payee. Checked against Firefly III, because getting this
+# the wrong way round books the money backwards.
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      ACTION: createTx
+      TYPE: deposit
+      SOURCE: 'A4 payer ${RUN_ID}'
+      DESTINATION: 'Checking'
+      DESCRIPTION: 'A4 ${RUN_ID}'
+      AMOUNT: '55.00'
+- runFlow: ../../subflows/ready.yaml
+- runFlow:
+    file: ../../subflows/open-transaction.yaml
+    env: { QUERY: 'A4 ${RUN_ID}' }
+- assertVisible: 'Income'
+- tapOn: 'Type'
+- tapOn: 'Expense'
+# The ends have swapped: the account is now what it is paid from, the payer is now the payee.
+- assertVisible: 'Checking'
+- assertVisible: 'A4 payer ${RUN_ID}'
+- tapOn: 'Save'
+- runFlow: ../../subflows/wait-sent.yaml
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      ACTION: findTx
+      DESCRIPTION: 'A4 ${RUN_ID}'
+      EXPECT_TYPE: 'withdrawal'
+      EXPECT_SOURCE: 'Checking'
+      EXPECT_DESTINATION: 'A4 payer ${RUN_ID}'
+      EXPECT_AMOUNT: '55.00'

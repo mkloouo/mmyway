@@ -76,6 +76,7 @@ import { useMerchantHistories } from '../../src/lookup/useMerchantHistories';
 import { ReceiptThumb } from '../../src/ui/ReceiptThumb';
 import { ConflictView } from '../../src/ui/ConflictView';
 import { txTypeLabelKey } from '../../src/transactions/txTypes';
+import { endsReady, rewireForType, type TxEnds } from '../../src/transactions/changeType';
 import { sharedWithFromTags, withSharedWith } from '../../src/transactions/sharedWith';
 
 type TxType = 'withdrawal' | 'deposit' | 'transfer';
@@ -196,7 +197,6 @@ function TransactionEditor({ row }: { row: CachedRow }) {
   const [payeeFor, setPayeeFor] = useState<number | null>(null);
   const [removed, setRemoved] = useState<string[]>([]);
 
-  const type = row.type as TxType;
   const conflictOp = (outbox ?? []).find((op) => {
     if (op.status !== 'failed' || op.lastError !== 'conflict') return false;
     // recurring_review is an update too (the reviewed tag, plus any corrections) and conflicts the same way.
@@ -216,6 +216,9 @@ function TransactionEditor({ row }: { row: CachedRow }) {
   // Save still sends only this screen's `changes`; the queued edit replays first.
   const pendingEdit = pendingEdits(outbox ?? []).byGroup.get(row.groupId);
   const shown: EditChanges = { ...pendingEdit?.changes, ...changes };
+  // This visit's kind, not the cached one: changing it is an edit like any other, so every branch
+  // below (which end is the payee, what a split carries, what Save sends) follows from it.
+  const type = (shown.type as TxType | undefined) ?? (row.type as TxType);
 
   // Receipt thumbnails: uploads still queued, from the phone, then what FF3 holds, fetched with the
   // API token like any request (src/receipt/journalAttachments.ts).
@@ -253,16 +256,19 @@ function TransactionEditor({ row }: { row: CachedRow }) {
     },
   ];
   const effectiveAmount = shown.amount ?? row.amount;
+  // `!== undefined`, like the budget and category below: a kind change empties the end it can't
+  // answer for, and `null` there means "the user still has to pick one" — not "fall back to the
+  // account this was before", which is the account the new kind can't use.
   const effectiveSourceId =
-    shown.source_id ??
-    row.sourceId ??
-    allAssetAccounts.find((a) => a.name === row.sourceName)?.id ??
-    null;
+    shown.source_id !== undefined
+      ? shown.source_id
+      : (row.sourceId ?? allAssetAccounts.find((a) => a.name === row.sourceName)?.id ?? null);
   const effectiveDestinationId =
-    shown.destination_id ??
-    row.destinationId ??
-    allAssetAccounts.find((a) => a.name === row.destinationName)?.id ??
-    null;
+    shown.destination_id !== undefined
+      ? shown.destination_id
+      : (row.destinationId ??
+        allAssetAccounts.find((a) => a.name === row.destinationName)?.id ??
+        null);
   // A cleared budget or category is `null` (not absent): it must not fall back to the cached value.
   const effectiveBudgetId =
     shown.budget_id !== undefined
@@ -277,9 +283,13 @@ function TransactionEditor({ row }: { row: CachedRow }) {
   // neither. A new one is queued by name and turned into an id when it's sent (src/sync/accountIds.ts).
   const effectivePayee =
     type === 'withdrawal'
-      ? (shown.destination_name ?? row.destinationName)
+      ? shown.destination_name !== undefined
+        ? shown.destination_name
+        : row.destinationName
       : type === 'deposit'
-        ? (shown.source_name ?? row.sourceName)
+        ? shown.source_name !== undefined
+          ? shown.source_name
+          : row.sourceName
         : null;
   const effectiveSharedWith = sharedWithFromTags(effectiveTags);
   const dateLabel = effectiveDate.toLocaleString(appLocale(), {
@@ -334,9 +344,30 @@ function TransactionEditor({ row }: { row: CachedRow }) {
     };
   }
 
+  /** The two ends as they stand, for changeType.ts. */
+  const ends: TxEnds = {
+    sourceId: effectiveSourceId,
+    sourceName: type === 'deposit' ? effectivePayee : (shown.source_name ?? row.sourceName ?? null),
+    destinationId: effectiveDestinationId,
+    destinationName:
+      type === 'withdrawal'
+        ? effectivePayee
+        : (shown.destination_name ?? row.destinationName ?? null),
+  };
+  // Judged only once this visit has touched an end: a cached row that reached the phone without
+  // an account id must not have its Save disabled over something the user never changed.
+  const endsTouched = (
+    ['type', 'source_id', 'source_name', 'destination_id', 'destination_name'] as const
+  ).some((key) => key in changes);
+  const ready = !endsTouched || endsReady(type, ends);
+
   function handleDetailChange(change: Partial<DetailRowsValue>) {
     setChanges((prev) => {
       const next = { ...prev };
+      // The kind decides which sort of account belongs at each end, so it rewires both of them;
+      // an end it can't answer for is emptied and Save waits for it (src/transactions/changeType.ts).
+      if (change.type && change.type !== type)
+        Object.assign(next, rewireForType(type, change.type, ends));
       if ('categoryName' in change) next.category_name = change.categoryName ?? null;
       if ('sourceAccountId' in change) next.source_id = change.sourceAccountId ?? undefined;
       if ('destinationAccountId' in change)
@@ -469,6 +500,7 @@ function TransactionEditor({ row }: { row: CachedRow }) {
   // What the screen showed before this visit's edits: the cache, under any queued edit. Save
   // compares against it by value, so touching a field without changing it queues nothing.
   const baseline: EditChanges = {
+    type: row.type as TxType,
     amount: row.amount,
     date: row.date,
     description: row.description,
@@ -525,6 +557,8 @@ function TransactionEditor({ row }: { row: CachedRow }) {
       router.back();
       return;
     }
+    // A kind change with an end still to pick would be a 422; the button is disabled for it.
+    if (!ready) return;
     const toSend = changedFields(changes, baseline);
     // FF3 requires a description: one cleared out is left as it was rather than refused with a 422.
     if ('description' in toSend && !toSend.description?.trim()) delete toSend.description;
@@ -661,7 +695,7 @@ function TransactionEditor({ row }: { row: CachedRow }) {
     <Screen bottom>
       <View style={{ flex: 1 }}>
         <AppBar
-          title={txTypeLabelKey(row.type) ? tr(txTypeLabelKey(row.type)!) : row.type}
+          title={txTypeLabelKey(type) ? tr(txTypeLabelKey(type)!) : type}
           subtitle={
             pendingEdit
               ? pendingEdit.status === 'queued'
@@ -773,6 +807,9 @@ function TransactionEditor({ row }: { row: CachedRow }) {
                 onChange={handleDetailChange}
                 onDatePress={openDatePicker}
                 payee={{ name: effectivePayee, onPress: () => setPayeeFor(0) }}
+                // A split transaction's kind can't be changed here: every split has its own ends
+                // to rewire, and the pager edits them one page at a time.
+                typeEditable
                 accounts={allAssetAccounts}
                 pickableAccounts={activeAssetAccounts}
                 currencies={currencies}
@@ -803,11 +840,21 @@ function TransactionEditor({ row }: { row: CachedRow }) {
           </Card>
         </ScrollView>
 
+        {!ready && (
+          <Text
+            style={[
+              t.type.label,
+              { color: t.color.warn, paddingHorizontal: t.space.lg, textAlign: 'center' },
+            ]}
+          >
+            {type === 'transfer' ? tr('transaction.pickBothAccounts') : tr('transaction.pickPayee')}
+          </Text>
+        )}
         <View style={{ padding: t.space.lg, flexDirection: 'row', gap: t.space.sm }}>
           <Button
             title={saving ? tr('common.saving') : tr('common.save')}
             onPress={onSave}
-            disabled={saving || rest !== 0n}
+            disabled={saving || rest !== 0n || !ready}
             size="lg"
             style={{ flex: 1 }}
           />

@@ -10,11 +10,27 @@ import type { TransactionSplit } from '../api/ff3/types';
  */
 export type EditChanges = Omit<
   Partial<TransactionSplit>,
-  'category_name' | 'budget_id' | 'notes'
+  | 'category_name'
+  | 'budget_id'
+  | 'notes'
+  | 'source_id'
+  | 'source_name'
+  | 'destination_id'
+  | 'destination_name'
 > & {
   category_name?: string | null;
   budget_id?: string | null;
   notes?: string | null;
+  /**
+   * The ends are nullable because changing a transaction's kind empties the end the new kind
+   * can't answer for — the second account a transfer needs, or the payee a transfer never had
+   * (src/transactions/changeType.ts). A null end is a field the user still has to fill; the
+   * screen won't save until it is, so FF3 is never sent one.
+   */
+  source_id?: string | null;
+  source_name?: string | null;
+  destination_id?: string | null;
+  destination_name?: string | null;
 };
 
 type Changes = EditChanges;

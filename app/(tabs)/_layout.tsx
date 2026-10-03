@@ -15,6 +15,10 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        // Tabs default to no animation at all: switching was a hard cut between two full screens,
+        // the most-used move in the app. `shift` slides the incoming tab in from the side it sits
+        // on, so it reads as moving along the bar rather than the screen being replaced.
+        animation: 'shift',
         tabBarActiveTintColor: t.color.accent,
         tabBarInactiveTintColor: t.color.textFaint,
         tabBarStyle: {

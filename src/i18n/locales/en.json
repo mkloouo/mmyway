@@ -248,7 +248,8 @@
     "notes": "Description",
     "sharedWith": "Shared with",
     "tags": "Tags",
-    "to": "To"
+    "to": "To",
+    "type": "Type"
   },
   "inbox": {
     "alreadyLanded": "Already in Firefly III",
@@ -605,6 +606,8 @@
     "changesQueued": "changes queued",
     "deleteTitle": "Delete this transaction?",
     "duplicate": "Duplicate",
+    "pickBothAccounts": "Pick the account the money leaves and the one it arrives in",
+    "pickPayee": "Say who this was paid to",
     "photoLoadFailed": "Couldn't load this photo. Diagnostics has the reason.",
     "splits_one": "{{count, number}} split — edit the amounts in Firefly III",
     "splits_other": "{{count, number}} splits — edit the amounts in Firefly III",

@@ -27,4 +27,18 @@ describe('Snackbar', () => {
     });
     expect(dismissed).toHaveBeenCalledTimes(1);
   });
+
+  it('stays on screen while it fades out, then goes', async () => {
+    const entry: SnackbarEntry = { id: 'a', message: 'Confirmed' };
+    const view = await render(<Snackbar entry={entry} onDismiss={jest.fn()} />);
+    expect(view.getByText('Confirmed')).toBeTruthy();
+    await view.rerender(<Snackbar entry={null} onDismiss={jest.fn()} />);
+    // Still drawn, fading — but already hidden from a screen reader and untappable.
+    expect(view.getByText('Confirmed', { includeHiddenElements: true })).toBeTruthy();
+    expect(view.queryByText('Confirmed')).toBeNull();
+    await act(async () => {
+      jest.advanceTimersByTime(1000);
+    });
+    expect(view.queryByText('Confirmed', { includeHiddenElements: true })).toBeNull();
+  });
 });

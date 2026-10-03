@@ -87,6 +87,7 @@ export function applyPendingEdit<
     categoryName: string | null;
     sourceName?: string | null;
     destinationName?: string | null;
+    type?: string;
   },
 >(row: T, edits: PendingEdits): { row: T; status: PendingEditStatus } | null {
   const edit = edits.byGroup.get(row.groupId);
@@ -101,6 +102,9 @@ export function applyPendingEdit<
       ...row,
       description: c.description ?? row.description,
       amount: c.amount ?? row.amount,
+      // A queued kind change: Activity would otherwise keep drawing a now-expense as income,
+      // green and the wrong way round, until the next sync.
+      type: c.type ?? row.type,
       categoryName: 'category_name' in c ? (c.category_name ?? null) : row.categoryName,
       // A new payee (or payer) is queued by name.
       sourceName: c.source_name ?? row.sourceName,

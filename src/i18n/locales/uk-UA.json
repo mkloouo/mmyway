@@ -260,7 +260,8 @@
     "notes": "Нотатки",
     "sharedWith": "Спільно з",
     "tags": "Теги",
-    "to": "До"
+    "to": "До",
+    "type": ""
   },
   "inbox": {
     "alreadyLanded": "Вже у Firefly III",
@@ -669,6 +670,8 @@
     "changesQueued": "зміни в черзі",
     "deleteTitle": "Видалити цю транзакцію?",
     "duplicate": "Дублікат",
+    "pickBothAccounts": "",
+    "pickPayee": "",
     "photoLoadFailed": "Не вдалося завантажити це фото. Шукайте причину в діагностиці.",
     "splits_one": "{{count, number}} split — редагування сум у Firefly III",
     "splits_few": "{{count, number}} розбиття — редагування сум у Firefly III",

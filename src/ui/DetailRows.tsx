@@ -9,6 +9,7 @@ import { categoryColor } from './categoryColor';
 import { AccountPickerSheet, type AccountPickerAccount } from './AccountPickerSheet';
 import { TextField } from './TextField';
 import { PickerSheet } from './PickerSheet';
+import { TX_TYPES, txTypeLabelKey } from '../transactions/txTypes';
 
 export interface DetailRowsValue {
   type: 'withdrawal' | 'deposit' | 'transfer';
@@ -34,6 +35,12 @@ interface DetailRowsProps {
    */
   payee?: { name: string | null | undefined; onPress: () => void };
   unsure?: ReadonlySet<UnsureRow>;
+  /**
+   * Adds a **Type** row at the top, so an expense can be turned into an income or a transfer. It
+   * reports the new type through `onChange` and nothing else: which account and which payee each
+   * type needs is the caller's to rewire (src/transactions/changeType.ts).
+   */
+  typeEditable?: boolean;
   readOnly?: boolean;
   /** For display — an old transaction can name an account since made inactive. */
   accounts: AccountPickerAccount[];
@@ -70,6 +77,7 @@ export function DetailRows({
   loading,
   payee,
   unsure,
+  typeEditable,
 }: DetailRowsProps) {
   const t = useTheme();
   const { t: tr } = useTranslation();
@@ -79,6 +87,8 @@ export function DetailRows({
     null,
   );
   const [textSheetOpen, setTextSheetOpen] = useState(false);
+  const [typeSheetOpen, setTypeSheetOpen] = useState(false);
+  const typeOpened = useOpened(typeSheetOpen);
   const categoryOpened = useOpened(categorySheetOpen);
   const budgetOpened = useOpened(budgetSheetOpen);
   const accountOpened = useOpened(!!accountSheetTarget);
@@ -96,9 +106,17 @@ export function DetailRows({
   return (
     <>
       <Card style={{ marginHorizontal: t.space.lg }}>
-        {showPayee && payee && (
+        {typeEditable && (
           <Row
             first
+            label={tr('fields.type')}
+            value={tr(txTypeLabelKey(value.type) ?? 'fields.type')}
+            {...edit(() => setTypeSheetOpen(true))}
+          />
+        )}
+        {showPayee && payee && (
+          <Row
+            first={!typeEditable}
             label={value.type === 'deposit' ? tr('capture.payer') : tr('capture.payee')}
             value={payee.name || '—'}
             {...check('payee')}
@@ -107,7 +125,7 @@ export function DetailRows({
         )}
         {value.type !== 'transfer' && (
           <Row
-            first={!showPayee}
+            first={!typeEditable && !showPayee}
             label={tr('fields.category')}
             value={value.categoryName ?? '—'}
             leading={
@@ -121,7 +139,7 @@ export function DetailRows({
         )}
         {(value.type === 'withdrawal' || value.type === 'transfer') && (
           <Row
-            first={value.type === 'transfer'}
+            first={!typeEditable && value.type === 'transfer'}
             label={tr('fields.from')}
             value={sourceAccount?.name ?? '—'}
             loading={loading && !sourceAccount && !!value.sourceAccountId}
@@ -161,6 +179,19 @@ export function DetailRows({
           {...edit(() => setTextSheetOpen(true))}
         />
       </Card>
+
+      {typeOpened && (
+        <PickerSheet
+          visible={typeSheetOpen}
+          onClose={() => setTypeSheetOpen(false)}
+          title={tr('fields.type')}
+          options={TX_TYPES.map((x) => ({ key: x.type, label: tr(x.labelKey) }))}
+          selected={value.type}
+          onSelect={(key) => {
+            if (key && key !== value.type) onChange({ type: key as DetailRowsValue['type'] });
+          }}
+        />
+      )}
 
       {categoryOpened && (
         <PickerSheet

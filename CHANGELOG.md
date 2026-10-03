@@ -2,6 +2,27 @@
 
 ## [Unreleased]
 
+### Activity
+
+- A transaction's **Type** can be changed: an income becomes an expense, either becomes a
+  transfer, and back. Both ends are rewired for you — the account the money arrived in becomes the
+  account it is paid from, and the payer becomes the payee. Going to or from a transfer leaves one
+  end for you to fill (the other account, or who it was paid to), and Save waits until you have.
+  Split transactions still can't be changed this way; each split has its own two ends.
+
+### Accounts
+
+- Reordering now animates: an account grows as you pick it up, the ones it passes slide out of its
+  way, and it settles into its new place when you let go instead of jumping there. A drag you
+  cancel travels home the same way.
+
+### Everywhere
+
+- Switching tabs slides the new tab in instead of cutting to it, and the Accounts list fades
+  between browsing and reordering.
+- The `Confirmed · Undo` bar fades out when its five seconds are up or you tap Undo, instead of
+  vanishing between two frames.
+
 ## [1.5.2] - 2026-10-03
 
 ### Capture
