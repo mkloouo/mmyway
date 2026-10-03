@@ -7,51 +7,22 @@
 // Own accounts are never created: an unknown one is an error.
 import type { FF3Client } from '../api/ff3/client';
 
+import { createFF3Service } from '../api/ff3/service';
+import type { OutboxDb } from './outbox';
+
 type TxType = 'withdrawal' | 'deposit' | 'transfer';
 type End = 'source' | 'destination';
-type Found = { id: string; attributes: { name: string; type: string } };
-
-const PAYEE_TYPES = ['expense', 'revenue'];
-
-/** The FF3 account type a name-only end must be, or null for "one of the user's own accounts". */
-function payeeTypeOf(type: TxType, end: End): 'expense' | 'revenue' | null {
-  if (type === 'withdrawal' && end === 'destination') return 'expense';
-  if (type === 'deposit' && end === 'source') return 'revenue';
-  return null;
-}
 
 /** Resolves names to ids, remembering each so splits sharing a payee don't look it up twice. */
-export function accountResolver(client: FF3Client) {
+export function accountResolver(client: FF3Client, db?: OutboxDb) {
   const known = new Map<string, Promise<string>>();
-
-  async function lookUp(name: string, payeeType: 'expense' | 'revenue' | null): Promise<string> {
-    const query = new URLSearchParams({
-      query: name,
-      field: 'name',
-      type: payeeType ?? 'all',
-      limit: '100',
-    });
-    const found = await client.request<{ data: Found[] }>(`/v1/search/accounts?${query}`);
-    const candidates = (found.data ?? []).filter((a) =>
-      payeeType ? a.attributes.type === payeeType : !PAYEE_TYPES.includes(a.attributes.type),
-    );
-    // The search matches parts of names; only the account with this exact name will do.
-    const match =
-      candidates.find((a) => a.attributes.name === name) ??
-      candidates.find((a) => a.attributes.name.toLowerCase() === name.toLowerCase());
-    if (match) return String(match.id);
-    if (!payeeType) throw new Error(`There is no account named "${name}" in Firefly III.`);
-    const created = await client.request<{ data: { id: string } }>('/v1/accounts', {
-      method: 'POST',
-      body: JSON.stringify({ name, type: payeeType }),
-    });
-    return String(created.data.id);
-  }
+  const service = createFF3Service(client, db);
 
   return function accountId(type: TxType, end: End, name: string): Promise<string> {
-    const payeeType = payeeTypeOf(type, end);
-    const key = `${payeeType ?? 'own'}\n${name}`;
-    if (!known.has(key)) known.set(key, lookUp(name, payeeType));
+    const key = `${type}\n${end}\n${name.trim().toLowerCase()}`;
+    if (!known.has(key)) {
+      known.set(key, service.accounts.resolve(type, end, name));
+    }
     return known.get(key)!;
   };
 }

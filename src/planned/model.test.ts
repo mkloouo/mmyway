@@ -214,6 +214,33 @@ describe('planned model', () => {
     ).toMatchObject({ category_id: null });
   });
 
+  it('omits tags from recurrence transaction when empty, and includes them when present', () => {
+    const fields = fieldsOf(groupPlanned([bill, rule, recurrence])[0]!, '2026-09-28');
+    const withTags = recurrenceBody(
+      { ...fields, tags: ['sub', 'spotify'], sourceId: '1', destinationId: '4' },
+      null,
+      {},
+    );
+    const [txWith] = withTags.transactions as Record<string, unknown>[];
+    expect(txWith!.tags).toEqual(['sub', 'spotify']);
+
+    const withoutTags = recurrenceBody(
+      { ...fields, tags: [], sourceId: '1', destinationId: '4' },
+      null,
+      {},
+    );
+    const [txWithout] = withoutTags.transactions as Record<string, unknown>[];
+    expect(txWithout).not.toHaveProperty('tags');
+
+    const emptyStrings = recurrenceBody(
+      { ...fields, tags: ['', '   '], sourceId: '1', destinationId: '4' },
+      null,
+      {},
+    );
+    const [txEmpty] = emptyStrings.transactions as Record<string, unknown>[];
+    expect(txEmpty).not.toHaveProperty('tags');
+  });
+
   it('maps frequencies to recurrence repetitions', () => {
     const f = { date: '2026-09-28', every: 1, repeats: true } as PlannedFields;
     expect(repetitionFor({ ...f, frequency: 'weekly' })).toMatchObject({

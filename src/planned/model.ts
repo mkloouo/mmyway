@@ -263,7 +263,7 @@ export function recurrenceBody(
     destination_id: f.destinationId,
     // Null clears it on an edit.
     category_id: opts.categoryId ?? null,
-    tags: f.tags,
+    ...(f.tags.some((t) => t.trim()) ? { tags: f.tags.filter((t) => t.trim()) } : {}),
     ...(opts.billId ? { bill_id: opts.billId } : {}),
   };
   return {

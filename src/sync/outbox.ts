@@ -34,6 +34,7 @@ import { cachedRowFromGroup } from './referenceData';
 import { readPayload, tryReadPayload, writePayload } from './payloadJson';
 import { OutboxBlocker, subjectsOf } from './outboxSubjects';
 import { accountResolver, withAccountIds } from './accountIds';
+import { sanitizeSplit } from '../api/ff3/sanitize';
 import {
   replayDeletePlanned,
   replaySavePlanned,
@@ -563,7 +564,7 @@ async function replayOne(
         return 'returned';
       }
       const reference = internalReferenceFor(p.clientId);
-      const resolve = accountResolver(client);
+      const resolve = accountResolver(client, db);
       const splits: TransactionSplit[] = [];
       for (const split of p.splits) splits.push(await withAccountIds(resolve, split));
       let created: TransactionRead;
@@ -573,11 +574,13 @@ async function replayOne(
           body: JSON.stringify({
             error_if_duplicate_hash: true,
             ...(p.groupTitle ? { group_title: p.groupTitle } : {}),
-            transactions: splits.map((split) => ({
-              ...split,
-              internal_reference:
-                (split as { internal_reference?: string }).internal_reference ?? reference,
-            })),
+            transactions: splits.map((split) =>
+              sanitizeSplit({
+                ...split,
+                internal_reference:
+                  (split as { internal_reference?: string }).internal_reference ?? reference,
+              }),
+            ),
           }),
         });
         created = response.data;
@@ -714,15 +717,14 @@ async function replayOne(
         const u = p as UpdateTransactionPayload;
         let updated: { data?: TransactionRead } | null = null;
         if (!u.applied) {
-          const resolve = accountResolver(client);
+          const resolve = accountResolver(client, db);
           const groupType = await cachedTypeOf(db, u.groupId);
           const transactions = [];
           for (const split of u.splits ?? [
             { transaction_journal_id: u.transactionJournalId, ...u.changes },
           ]) {
-            // FF3 rejects a note of length 0; edits queued before that was known still carry ''.
-            const cleaned = split.notes === '' ? { ...split, notes: null } : split;
-            transactions.push(await withAccountIds(resolve, cleaned, groupType));
+            const resolved = await withAccountIds(resolve, split, groupType);
+            transactions.push(sanitizeSplit(resolved));
           }
           const body = u.splits
             ? { ...(u.groupTitle !== undefined ? { group_title: u.groupTitle } : {}), transactions }

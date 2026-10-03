@@ -3,6 +3,7 @@
 // is kept as FF3 sent it, for the detailed view.
 import { eq } from 'drizzle-orm';
 import type { FF3Client } from '../api/ff3/client';
+import { fetchAllPages } from '../api/ff3/paginate';
 import { plannedObjects } from '../db/schema';
 import type { OutboxDb } from '../sync/outbox';
 
@@ -152,14 +153,7 @@ export async function fetchAllOf(
   client: FF3Client,
   kind: PlannedKind,
 ): Promise<{ id: string; attributes: Record<string, unknown> }[]> {
-  const out: { id: string; attributes: Record<string, unknown> }[] = [];
-  for (let page = 1; ; page++) {
-    const response = await client.request<{
-      data: { id: string; attributes: Record<string, unknown> }[];
-    }>(`${PATHS[kind]}?limit=100&page=${page}`);
-    out.push(...response.data);
-    if (response.data.length < 100) return out;
-  }
+  return fetchAllPages<{ id: string; attributes: Record<string, unknown> }>(client, PATHS[kind]);
 }
 
 /**

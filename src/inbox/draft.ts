@@ -1,6 +1,7 @@
 import { eq, and, ne } from 'drizzle-orm';
 import type { CreateTransactionPayload, OutboxDb } from '../sync/outbox';
 import type { TransactionSplit } from '../api/ff3/types';
+import { sanitizeSplit } from '../api/ff3/sanitize';
 import { inboxItems } from '../db/schema';
 import { sharedTags } from '../transactions/sharedWith';
 import { fromMinor, proportionalShares, toMinor } from '../splits/allocate';
@@ -205,7 +206,7 @@ function draftSplitPayload(draft: Draft, bookingCurrencyCode?: string): Transact
   const { source, destination } = payeeGatedEnd(draft);
   const money = orientForBooking(draft, bookingCurrencyCode);
 
-  return {
+  return sanitizeSplit({
     type: draft.type,
     date: draft.date,
     amount: money.amount,
@@ -219,7 +220,7 @@ function draftSplitPayload(draft: Draft, bookingCurrencyCode?: string): Transact
     destination_name: destination.name,
     category_name: draft.categoryName,
     budget_id: draft.budgetId,
-    tags: tags.length ? tags : undefined,
+    tags,
     notes: draft.notes,
     // Every split of a group was bought in the same place, so each carries the same pin (#67).
     ...(draft.location
@@ -229,7 +230,7 @@ function draftSplitPayload(draft: Draft, bookingCurrencyCode?: string): Transact
           zoom_level: FF3_ZOOM_LEVEL,
         }
       : {}),
-  };
+  });
 }
 
 export async function findDuplicateReceiptItem(

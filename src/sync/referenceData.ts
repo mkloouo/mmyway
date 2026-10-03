@@ -1,5 +1,6 @@
 import { and, desc, eq, gte, inArray, isNull, lte, sql } from 'drizzle-orm';
 import type { FF3Client } from '../api/ff3/client';
+import { fetchAllPages } from '../api/ff3/paginate';
 import type {
   AccountRead,
   CategoryRead,
@@ -29,15 +30,7 @@ const PAGE_SIZE = 100;
 // instance has hundreds of expense accounts, and asking for one page of accounts returned
 // nothing but payees — no asset account ever reached the device.
 export async function fetchAll<T>(client: FF3Client, path: string): Promise<T[]> {
-  const separator = path.includes('?') ? '&' : '?';
-  const out: T[] = [];
-  for (let page = 1; ; page++) {
-    const response = await client.request<{ data: T[] }>(
-      `${path}${separator}limit=${PAGE_SIZE}&page=${page}`,
-    );
-    out.push(...response.data);
-    if (response.data.length < PAGE_SIZE) return out;
-  }
+  return fetchAllPages<T>(client, path, { pageSize: PAGE_SIZE });
 }
 
 // AccountRead (src/api/ff3/types.ts, pinned) doesn't declare these — narrowed with a local

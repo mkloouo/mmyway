@@ -8,8 +8,9 @@
 import { eq } from 'drizzle-orm';
 import type { FF3Client } from '../api/ff3/client';
 import { FF3RequestError } from '../api/ff3/client';
-import { outboxOperations, referenceCategories } from '../db/schema';
+import { outboxOperations } from '../db/schema';
 import { accountResolver } from '../sync/accountIds';
+import { createFF3Service } from '../api/ff3/service';
 import type { OutboxDb } from '../sync/outbox';
 import { writePayload } from '../sync/payloadJson';
 import { billBody, recurrenceBody, ruleBody, scheduleChanged, type PlannedFields } from './model';
@@ -59,48 +60,12 @@ const PLANNED_RULE_GROUP = 'Planned';
 type Read<T> = { data: { id: string; attributes: T } };
 
 async function ensureRuleGroup(client: FF3Client): Promise<string> {
-  for (let page = 1; ; page++) {
-    const response = await client.request<{
-      data: { id: string; attributes: { title: string } }[];
-    }>(`/v1/rule-groups?limit=100&page=${page}`);
-    const found = response.data.find((g) => g.attributes.title === PLANNED_RULE_GROUP);
-    if (found) return String(found.id);
-    if (response.data.length < 100) break;
-  }
-  const created = await client.request<Read<{ title: string }>>('/v1/rule-groups', {
-    method: 'POST',
-    body: JSON.stringify({ title: PLANNED_RULE_GROUP, active: true }),
-  });
-  return String(created.data.id);
+  return createFF3Service(client).ruleGroups.ensure(PLANNED_RULE_GROUP);
 }
 
 /** The category's FF3 id: from the synced categories, or a new category when FF3 has none by that name. */
 async function categoryIdFor(db: OutboxDb, client: FF3Client, name: string): Promise<string> {
-  const categories = await db.select().from(referenceCategories);
-  const known =
-    categories.find((c) => c.name === name) ??
-    categories.find((c) => c.name.toLowerCase() === name.toLowerCase());
-  if (known) return known.id;
-  try {
-    const created = await client.request<Read<{ name: string }>>('/v1/categories', {
-      method: 'POST',
-      body: JSON.stringify({ name }),
-    });
-    return String(created.data.id);
-  } catch (err) {
-    // It exists in FF3 but not in the synced categories yet (or an earlier attempt made it).
-    if (!(err instanceof FF3RequestError && err.status === 422)) throw err;
-    for (let page = 1; ; page++) {
-      const response = await client.request<{
-        data: { id: string; attributes: { name: string } }[];
-      }>(`/v1/categories?limit=100&page=${page}`);
-      const found = response.data.find(
-        (c) => c.attributes.name.toLowerCase() === name.toLowerCase(),
-      );
-      if (found) return String(found.id);
-      if (response.data.length < 100) throw err;
-    }
-  }
+  return createFF3Service(client, db).categories.resolve(name);
 }
 
 /**
@@ -176,7 +141,7 @@ export async function replaySavePlanned(
   await storePlanned(db, 'bill', p.billId, bill.data.attributes);
 
   // FF3's recurrence API only takes ids: a payee typed or picked by name becomes its account's.
-  const resolve = accountResolver(client);
+  const resolve = accountResolver(client, db);
   const sourceId = f.sourceId ?? (await resolve(f.type, 'source', f.sourceName ?? ''));
   const destinationId =
     f.destinationId ?? (await resolve(f.type, 'destination', f.destinationName ?? ''));

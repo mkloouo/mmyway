@@ -1,4 +1,5 @@
 import { createTestDb } from '../db/testDb';
+import { referenceAccounts } from '../db/schema';
 import { accountResolver, withAccountIds } from './accountIds';
 import { enqueueOperation, replayOutbox } from './outbox';
 
@@ -112,5 +113,27 @@ describe('account ids', () => {
     const [sent] = JSON.parse(String((post[1] as RequestInit).body)).transactions;
     expect(sent).toMatchObject({ source_id: '9', destination_id: '6' });
     expect(sent).not.toHaveProperty('destination_name');
+  });
+
+  it('resolves own account from local SQLite reference_accounts first', async () => {
+    const db = createTestDb();
+    await db.insert(referenceAccounts).values({
+      id: 'acc-wallet',
+      name: 'Physical Wallet',
+      type: 'asset',
+      currencyCode: 'PLN',
+      active: true,
+      syncedAt: new Date().toISOString(),
+    });
+    const client = { request: jest.fn() };
+    const resolve = accountResolver(client as any, db as any);
+
+    const split = await withAccountIds(resolve, {
+      type: 'withdrawal',
+      source_name: 'Physical Wallet',
+      destination_id: '9',
+    });
+    expect(split.source_id).toBe('acc-wallet');
+    expect(client.request).not.toHaveBeenCalled();
   });
 });
