@@ -45,6 +45,11 @@ const SCHEMAS = {
     receiptImagePath: z.string(),
     attachmentId: z.string().optional(),
   }),
+  delete_attachment: z.looseObject({
+    v: version,
+    attachmentId: z.string(),
+    transactionJournalId: z.string(),
+  }),
   update_account: z.looseObject({
     v: version,
     accountId: z.string(),

@@ -33,6 +33,23 @@ export async function attachReceiptImage(
     .where(eq(inboxItems.id, inboxItemId));
 }
 
+/**
+ * Takes the photo off an entry and deletes the file (#69): the wrong receipt, a blurry shot, a
+ * duplicate. A receipt draft keeps what was read from it — the fields are the user's to correct,
+ * not the photo's to take back.
+ */
+export async function removeReceiptImage(db: OutboxDb, inboxItemId: string): Promise<void> {
+  const [item] = await db.select().from(inboxItems).where(eq(inboxItems.id, inboxItemId));
+  if (!item) throw new Error(`inbox item ${inboxItemId} not found`);
+  if (NOT_EDITABLE.has(item.state))
+    throw new Error(`cannot update inbox item ${inboxItemId}: already ${item.state}`);
+  await db
+    .update(inboxItems)
+    .set({ receiptImagePath: null, updatedAt: new Date().toISOString() })
+    .where(eq(inboxItems.id, inboxItemId));
+  deletePersistedReceiptImage(item.receiptImagePath);
+}
+
 export async function updateDraft(
   db: OutboxDb,
   inboxItemId: string,

@@ -47,9 +47,11 @@ import { useQuery } from '@tanstack/react-query';
 import { getClient } from '../../src/api/ff3/session';
 import {
   fetchJournalAttachments,
+  queuedAttachmentDeletes,
   queuedAttachments,
   receiptPreviews,
 } from '../../src/receipt/journalAttachments';
+import { deleteJournalAttachment } from '../../src/receipt/ingest';
 import { pendingEdits } from '../../src/transactions/pendingEdits';
 import { payloadGroupId } from '../../src/sync/payloadJson';
 import { useAction } from '../../src/ui/useAction';
@@ -154,6 +156,7 @@ function TransactionEditor({ row }: { row: CachedRow }) {
   // Receipt status: uploads still queued here, and what FF3 already holds. Refetched whenever the
   // number of queued uploads changes, so a finished upload shows up without leaving the screen.
   const queued = queuedAttachments(outbox ?? [], row.journalId);
+  const deletedAttachmentIds = queuedAttachmentDeletes(outbox ?? [], row.journalId);
   const attachments = useQuery({
     queryKey: ['journal-attachments', groupId, row.journalId, queued.length],
     queryFn: async () => {
@@ -180,8 +183,8 @@ function TransactionEditor({ row }: { row: CachedRow }) {
 
   const [changes, setChanges] = useState<EditChanges>({});
   const [menuOpen, setMenuOpen] = useState(false);
-  /** The file:// uri of the photo open full screen. */
-  const [photo, setPhoto] = useState<string | null>(null);
+  /** The photo open full screen: its file:// uri, and its FF3 attachment id when FF3 holds it. */
+  const [photo, setPhoto] = useState<{ uri: string; attachmentId: string | null } | null>(null);
   // Split editing: null means "as cached / as queued".
   const [edited, setEdited] = useState<EditableSplit[] | null>(null);
   const [totalEdit, setTotalEdit] = useState<string | null>(null);
@@ -228,6 +231,7 @@ function TransactionEditor({ row }: { row: CachedRow }) {
     queuedPaths: queued.map((q) => q.receiptImagePath).filter((p): p is string => !!p),
     capturedPath: localReceiptPath,
     remote: attachments.data,
+    deletedIds: deletedAttachmentIds,
   });
   // The receipt card's rows in order: what FF3 holds, what is still uploading, then "Attach".
   const receiptRows: {
@@ -236,7 +240,9 @@ function TransactionEditor({ row }: { row: CachedRow }) {
     tone?: 'danger';
     onPress?: () => void;
   }[] = [
-    ...(attachments.data ?? []).map((a) => ({ key: a.id, value: `📎 ${a.filename}` })),
+    ...(attachments.data ?? [])
+      .filter((a) => !deletedAttachmentIds.includes(a.id))
+      .map((a) => ({ key: a.id, value: `📎 ${a.filename}` })),
     ...queued.map((q) => ({
       key: q.opId,
       value:
@@ -579,6 +585,21 @@ function TransactionEditor({ row }: { row: CachedRow }) {
     router.push(`/draft/${id}`);
   });
 
+  // A photo Firefly III holds (#69). Queued like every other write, and confirmed first: FF3
+  // keeps no copy of a deleted attachment.
+  const deletePhoto = act(tr('common.delete'), async () => {
+    const attachmentId = photo?.attachmentId;
+    if (!attachmentId) return;
+    const ok = await confirmDestructive(
+      tr('transaction.deletePhotoTitle'),
+      tr('common.delete'),
+      tr('transaction.deletePhotoBody'),
+    );
+    if (!ok) return;
+    setPhoto(null);
+    await deleteJournalAttachment(db, { attachmentId, transactionJournalId: row.journalId });
+  });
+
   const onDelete = act(tr('common.delete'), async () => {
     setMenuOpen(false);
     if (!(await confirmDestructive(tr('transaction.deleteTitle'), tr('common.delete')))) return;
@@ -825,7 +846,13 @@ function TransactionEditor({ row }: { row: CachedRow }) {
           )}
           <Card style={{ marginHorizontal: t.space.lg, gap: t.space.sm }}>
             {previews.map((p) => (
-              <ReceiptThumb key={p.key} preview={p} onOpen={setPhoto} />
+              <ReceiptThumb
+                key={p.key}
+                preview={p}
+                // Only a photo FF3 holds (one downloaded with a Bearer header) can be deleted
+                // there; a local one still waiting to upload goes by cancelling the upload.
+                onOpen={(uri) => setPhoto({ uri, attachmentId: p.source.headers ? p.key : null })}
+              />
             ))}
             {/* One list, so only the first row carries the "Receipt" label and the top border. */}
             <View>
@@ -971,7 +998,11 @@ function TransactionEditor({ row }: { row: CachedRow }) {
         <Row first label={tr('transaction.duplicate')} icon="copy-outline" onPress={onDuplicate} />
         <Row label={tr('common.delete')} icon="trash-outline" tone="danger" onPress={onDelete} />
       </Sheet>
-      <PhotoViewer uri={photo} onClose={() => setPhoto(null)} />
+      <PhotoViewer
+        uri={photo?.uri ?? null}
+        onClose={() => setPhoto(null)}
+        onDelete={photo?.attachmentId ? deletePhoto : undefined}
+      />
     </Screen>
   );
 }

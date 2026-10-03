@@ -92,7 +92,10 @@ export function referencedTransactions(ops: readonly { kind: OutboxKind; payload
     const p = safeRead(op.kind, op.payloadJson);
     if (!p) continue;
     if (typeof p.groupId === 'string') groupIds.push(p.groupId);
-    if (op.kind === 'attach_receipt' && typeof p.transactionJournalId === 'string')
+    if (
+      (op.kind === 'attach_receipt' || op.kind === 'delete_attachment') &&
+      typeof p.transactionJournalId === 'string'
+    )
       journalIds.push(p.transactionJournalId);
   }
   return { groupIds, journalIds };
@@ -142,7 +145,8 @@ export function describeQueuedChange(
         changed,
       };
     }
-    case 'attach_receipt': {
+    case 'attach_receipt':
+    case 'delete_attachment': {
       const cached = lookups.transaction({ journalId: p.transactionJournalId as string });
       return {
         subject: cached?.description ?? null,

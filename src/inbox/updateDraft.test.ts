@@ -1,9 +1,9 @@
 import { createTestDb } from '../db/testDb';
 import { createManualEntry, confirmInboxItem } from './createManualEntry';
-import { updateDraft, deleteInboxItem } from './updateDraft';
+import { updateDraft, deleteInboxItem, removeReceiptImage } from './updateDraft';
 import { inboxItems, outboxOperations } from '../db/schema';
 import { eq } from 'drizzle-orm';
-import { writeDraft } from './draftJson';
+import { readDraft, writeDraft } from './draftJson';
 
 describe('updateDraft', () => {
   it('preserves isNewPayee across a save that changes other fields', async () => {
@@ -108,5 +108,49 @@ describe('updateDraft and what the receipt reader was unsure of', () => {
     await updateDraft(db as any, 'r1', { date: '2026-09-14T10:00:00.000Z' });
     row = (await db.select().from(inboxItems).where(eq(inboxItems.id, 'r1')))[0]!;
     expect(JSON.parse(row.draftJson).lowConfidenceFields).toBeUndefined();
+  });
+});
+
+describe('removeReceiptImage (#69)', () => {
+  it('takes the photo off the entry and keeps what was read from it', async () => {
+    const db = createTestDb();
+    const now = new Date().toISOString();
+    await db.insert(inboxItems).values({
+      id: 'item-1',
+      kind: 'receipt',
+      state: 'parsed',
+      draftJson: writeDraft({
+        type: 'withdrawal',
+        amount: '12.00',
+        currencyCode: 'PLN',
+        date: now,
+        description: 'Żabka',
+        isNewPayee: false,
+      }),
+      receiptImagePath: 'file:///data/receipts/r.jpg',
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await removeReceiptImage(db as any, 'item-1');
+
+    const [item] = await db.select().from(inboxItems).where(eq(inboxItems.id, 'item-1'));
+    expect(item?.receiptImagePath).toBeNull();
+    expect(readDraft(item!.draftJson).amount).toBe('12.00');
+  });
+
+  it('refuses once the entry is confirmed — its photo is on its way to FF3', async () => {
+    const db = createTestDb();
+    const now = new Date().toISOString();
+    await db.insert(inboxItems).values({
+      id: 'item-1',
+      kind: 'receipt',
+      state: 'confirmed',
+      draftJson: '{}',
+      receiptImagePath: 'file:///data/receipts/r.jpg',
+      createdAt: now,
+      updatedAt: now,
+    });
+    await expect(removeReceiptImage(db as any, 'item-1')).rejects.toThrow('already confirmed');
   });
 });

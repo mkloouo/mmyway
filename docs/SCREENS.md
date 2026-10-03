@@ -30,7 +30,7 @@ What 1.4.6 gets wrong or lacks, most important first.
 | 9   | **A draft can't change type**, so a refund receipt can't become income.                                                                                                                                                                                                                 | DRF-2               | to file       |
 | 10  | **Capture's "Today" is when Capture opened**, not when you saved, so a run of entries all get the first one's time.                                                                                                                                                                     | CAP-8               | to file       |
 | 11  | **The phone going offline only shows after a sync fails.**                                                                                                                                                                                                                              | INB-2               | to file       |
-| 12  | From your notes, already filed: location #67, reader and model #68 (this extends it to the transaction screen), delete photo #69, crop #70.                                                                                                                                             | —                   | —             |
+| 12  | From your notes: location #67 and crop #70 are still open; reader and model #68 and delete photo #69 have landed (#68 on the draft only — the transaction screen still has none).                                                                                                       | —                   | —             |
 
 ## 1. Shared rules
 
@@ -48,9 +48,9 @@ What 1.4.6 gets wrong or lacks, most important first.
 | **Category**         | `category_name`                                | Only categories synced from Firefly III, never hardcoded. None clears it.                                                                                                                                                                            |
 | **Budget**           | `budget_id`                                    | Expenses only. Firefly III ignores it on anything else.                                                                                                                                                                                              |
 | **Date**             | `date`                                         | Date and time. A new entry is dated when you save it. A receipt uses the printed date, else when the photo was taken, else when it was captured.                                                                                                     |
-| **Description**      | `notes`                                        | Multi-line free text. #64 may move it.                                                                                                                                                                                                               |
+| **Description**      | `notes`                                        | Multi-line free text.                                                                                                                                                                                                                                |
 | **Shared with**      | tag `mmyway-shared-<name>`                     | One or more people, suggesting names used before (#121).                                                                                                                                                                                             |
-| **Receipt**          | attachment                                     | Attach from the camera or gallery, view full screen, crop (#70), delete (#69).                                                                                                                                                                       |
+| **Receipt**          | attachment                                     | Attach from the camera or gallery, view full screen, remove the photo, crop (#70).                                                                                                                                                                   |
 | **Location**         | `latitude`, `longitude`                        | Recorded in the background; nothing waits for it (#67).                                                                                                                                                                                              |
 | **Read by**          | kept on the phone                              | Which reader and model read a receipt (#68).                                                                                                                                                                                                         |
 
@@ -91,7 +91,7 @@ What 1.4.6 gets wrong or lacks, most important first.
    tap on the card open the transaction screen?
 8. ❓ Planned transactions have free-form tags. Transactions use tags only for Shared with. Should
    Capture, Draft and Transaction get general tags too?
-9. View and attach work. Crop (#70) and delete (#69) are missing.
+9. View, attach and remove work. Crop (#70) is missing.
 10. This extends #68, which covers only the draft. The transaction screen can find the reading
     through the Inbox item that created the transaction, as it already does for the local photo.
 
@@ -243,8 +243,8 @@ row, or Duplicate. One editor serves manual entries and receipts.
 - **DRF-8** ❌ Shared with several people (#121).
 - **DRF-9** ❌ Date: the printed date, else when the photo was taken, else when it was captured (#118).
 - **DRF-10** ❌ "Check" marks on what the reader wasn't sure about (#120).
-- **DRF-11** 🟡 Receipt: ✅ photo, full screen, item count; ❌ crop (#70); ❌ replace or delete (#69).
-- **DRF-12** ❌ "Read by Gemini (gemini-3.1-flash-lite)" (#68).
+- **DRF-11** 🟡 Receipt: ✅ photo, full screen, item count, **Remove photo** in the viewer; ❌ crop (#70).
+- **DRF-12** ✅ "Read by Gemini (gemini-3.1-flash-lite)" under the receipt card, and in Diagnostics.
 - **DRF-13** ❌ Location (#67).
 - **DRF-14** ✅ **Split**: a tracked total and one page per split (amount, title, payee, category,
   budget, description, shared with), sliders when the splits don't add up, and a Group title.
@@ -282,8 +282,8 @@ attention card.
 - **TXN-4** ❌ Converted amount, shown and editable.
 - **TXN-5** 🟡 ✅ From / To, Category, Budget, Date, Description. 🟡 Shared with keeps only one name
   (#121).
-- **TXN-6** 🟡 Receipts: ✅ thumbnails, full screen, uploading / failed state, Attach another;
-  ❌ delete (#69).
+- **TXN-6** ✅ Receipts: thumbnails, full screen, uploading / failed state, Attach another, and
+  **Remove photo** in the viewer — a confirmed, queued `delete_attachment`.
 - **TXN-7** ❌ Read by (#68, extended) and Location (#67).
 - **TXN-8** ✅ **Split** and **Save**. Save stays off while the splits don't add up, and a save
   that changes nothing just closes.

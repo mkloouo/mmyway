@@ -76,15 +76,35 @@ export function receiptPreviews(input: {
   capturedPath: string | null;
   /** FF3's attachments for the journal; null or undefined when they couldn't be read. */
   remote: readonly JournalAttachment[] | null | undefined;
+  /** Attachment ids with a delete queued (#69): gone from here at once, not at the next pull. */
+  deletedIds?: readonly string[];
 }): ReceiptPreview[] {
   const local = new Set(input.queuedPaths);
   if (!input.remote && input.capturedPath) local.add(input.capturedPath);
+  const deleted = new Set(input.deletedIds ?? []);
   return [
     ...[...local].map((uri) => ({ key: uri, source: { uri } })),
     ...(input.remote ?? []).flatMap((a) =>
-      a.imageSource ? [{ key: a.id, source: a.imageSource }] : [],
+      a.imageSource && !deleted.has(a.id) ? [{ key: a.id, source: a.imageSource }] : [],
     ),
   ];
+}
+
+/** Attachment ids with a `delete_attachment` still waiting in the outbox for this journal. */
+export function queuedAttachmentDeletes(
+  outbox: { kind: string; payloadJson: string }[],
+  journalId: string,
+): string[] {
+  return outbox
+    .filter((op) => op.kind === 'delete_attachment')
+    .flatMap((op) => {
+      const payload = tryReadPayload<{
+        attachmentId: string;
+        transactionJournalId: string;
+      }>(op.kind, op.payloadJson);
+      if (!payload || String(payload.transactionJournalId) !== journalId) return [];
+      return [payload.attachmentId];
+    });
 }
 
 /** attach_receipt operations still in the outbox for this journal. */

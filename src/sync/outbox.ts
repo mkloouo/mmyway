@@ -29,8 +29,9 @@ import { ff3AccountBody, type AccountEdit } from '../accounts/accountEdit';
 import { requestSync } from './syncTrigger';
 import { returnedState, transition } from '../inbox/state';
 import { deletePersistedReceiptImage } from '../receipt/imageFiles';
+import { forgetAttachmentFile } from '../receipt/attachmentFiles';
 import { cachedRowFromGroup } from './referenceData';
-import { readPayload, writePayload } from './payloadJson';
+import { readPayload, tryReadPayload, writePayload } from './payloadJson';
 import { OutboxBlocker, subjectsOf } from './outboxSubjects';
 import { accountResolver, withAccountIds } from './accountIds';
 import {
@@ -45,6 +46,7 @@ export type OutboxKind =
   | 'update_transaction'
   | 'delete_transaction'
   | 'attach_receipt'
+  | 'delete_attachment'
   | 'recurring_review'
   | 'update_account'
   | 'reorder_accounts'
@@ -93,6 +95,12 @@ export interface AttachReceiptPayload {
   receiptImagePath: string; // file:// uri; read lazily at replay time, never held in memory across app restarts
 }
 
+export interface DeleteAttachmentPayload {
+  attachmentId: string;
+  /** Which journal's photo it was, so the replay waits behind that journal's own changes. */
+  transactionJournalId: string;
+}
+
 export interface UpdateAccountPayload {
   accountId: string;
   setEnvelopeMarker?: boolean; // the desired on/off state; the notes text itself is read fresh at replay
@@ -121,6 +129,7 @@ export interface NewOutboxOperation {
     | UpdateTransactionPayload
     | DeleteTransactionPayload
     | AttachReceiptPayload
+    | DeleteAttachmentPayload
     | UpdateAccountPayload
     | ReorderAccountsPayload
     | SavePlannedPayload
@@ -622,6 +631,22 @@ async function replayOne(
       return 'done';
     }
 
+    if (row.kind === 'delete_attachment') {
+      const p = payload as DeleteAttachmentPayload;
+      try {
+        await client.request(`/v1/attachments/${encodeURIComponent(p.attachmentId)}`, {
+          method: 'DELETE',
+        });
+      } catch (err) {
+        // Already gone (deleted in FF3's web UI, or a retry after the first call landed) is the
+        // outcome this operation wanted, not a failure to park in the queue.
+        if (!(err instanceof FF3RequestError) || err.status !== 404) throw err;
+      }
+      forgetAttachmentFile(p.attachmentId);
+      await db.delete(outboxOperations).where(eq(outboxOperations.id, row.id));
+      return 'done';
+    }
+
     if (
       row.kind === 'update_transaction' ||
       row.kind === 'recurring_review' ||
@@ -980,6 +1005,13 @@ export async function discardOperation(
       returnToInbox(tx, dropped.inboxItemId);
     return dropped;
   });
+  // A cancelled upload is the one way a photo attached to an already-synced transaction (no inbox
+  // item to show it) stops being wanted — the file goes with it rather than sitting in documents/
+  // forever, which pruneUploadedReceiptImages only reaches for an uploaded one (#69).
+  if (op?.kind === 'attach_receipt' && !op.inboxItemId) {
+    const p = tryReadPayload<AttachReceiptPayload>(op.kind, op.payloadJson);
+    deletePersistedReceiptImage(p?.receiptImagePath);
+  }
   if (!op) {
     const [still] = await db
       .select({ id: outboxOperations.id })

@@ -86,6 +86,17 @@ export async function captureReceipt(
   return { kind: 'created', itemId: id, parse };
 }
 
+/**
+ * Queues the removal of a photo Firefly III already holds (#69). Through the outbox like every
+ * other write, so it works offline and keeps its place behind this journal's own changes.
+ */
+export async function deleteJournalAttachment(
+  db: OutboxDb,
+  input: { attachmentId: string; transactionJournalId: string },
+): Promise<void> {
+  await enqueueOperation(db, { id: generateId(), kind: 'delete_attachment', payload: input });
+}
+
 /** C2: attach a photo to an already-synced transaction — no inbox item, no parsing, just the upload. */
 export async function attachReceiptToJournal(
   db: OutboxDb,

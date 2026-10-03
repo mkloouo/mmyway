@@ -49,7 +49,12 @@ import { discardOperation } from '../../src/sync/outbox';
 import { getClient } from '../../src/api/ff3/session';
 import { alertDiscardOutcome } from '../../src/inbox/discardAlert';
 import { askPhotoSource, pickPhoto } from '../../src/receipt/pickPhoto';
-import { updateDraft, deleteInboxItem, attachReceiptImage } from '../../src/inbox/updateDraft';
+import {
+  updateDraft,
+  deleteInboxItem,
+  attachReceiptImage,
+  removeReceiptImage,
+} from '../../src/inbox/updateDraft';
 import { draftReadiness } from '../../src/inbox/readiness';
 import { draftAccountCurrency, needsForeignAmount } from '../../src/inbox/fx';
 import { unsureFields } from '../../src/inbox/unsure';
@@ -200,6 +205,20 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
   const rest = splitMode ? leftover(total, amounts, dp) : 0n;
   const pageIndex = Math.min(page, extras.length);
   const chargedLabel = tr(splitMode ? 'draft.accountChargedTotal' : 'draft.accountCharged');
+
+  // A wrong photo goes, the fields it was read into stay (#69). A draft with nothing in it but
+  // the photo says so, rather than being left as a card nobody can confirm.
+  const removePhoto = act(tr('capture.removePhoto'), async () => {
+    const empty = !draft.description.trim() && readiness.missing.includes('amount');
+    const ok = await confirmDestructive(
+      tr('draft.removePhotoTitle'),
+      tr('capture.removePhoto'),
+      empty ? tr('draft.removePhotoEmpty') : undefined,
+    );
+    if (!ok) return;
+    closeSheet();
+    await removeReceiptImage(db, id);
+  });
 
   // Not awaited, but never silent: a failed write is logged and shown instead of becoming an
   // unhandled rejection.
@@ -854,7 +873,11 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
         onSelect={(code) => code && patch({ currencyCode: code })}
       />
       <Snackbar entry={snackbar} onDismiss={dismissSnackbar} />
-      <PhotoViewer uri={sheet === 'photo' ? row.receiptImagePath : null} onClose={closeSheet} />
+      <PhotoViewer
+        uri={sheet === 'photo' ? row.receiptImagePath : null}
+        onClose={closeSheet}
+        onDelete={readOnly ? undefined : removePhoto}
+      />
     </Screen>
   );
 }

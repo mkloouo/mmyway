@@ -4,6 +4,11 @@
 
 ### Receipts
 
+- **A receipt photo can be deleted.** Open it full screen and **Remove photo** is there. On a draft
+  it takes the photo off the entry and deletes the file from the phone, keeping whatever was read
+  off it; on a transaction it removes the attachment from Firefly III, after asking, since that
+  can't be undone. The thumbnail goes at once rather than at the next sync. Cancelling a queued
+  upload now deletes the photo from the phone too, instead of leaving it there for good.
 - A receipt draft says which reader read it and with which model — "Read by Gemini
   (gemini-3.1-flash-lite)" under the photo — so a reading that came out wrong can be pinned on the
   model that made it. The Diagnostics log notes the same. Retrying a read replaces it.

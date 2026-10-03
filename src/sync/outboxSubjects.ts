@@ -44,6 +44,7 @@ export function subjectsOf(op: {
       add('group', p.groupId);
       break;
     case 'attach_receipt':
+    case 'delete_attachment':
       add('journal', p.transactionJournalId);
       break;
     case 'update_account':

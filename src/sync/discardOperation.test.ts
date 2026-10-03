@@ -183,3 +183,71 @@ describe('discardOperation', () => {
     });
   });
 });
+
+describe('cancelling a queued photo upload (#69)', () => {
+  afterEach(() => {
+    jest.dontMock('expo-file-system');
+    jest.resetModules();
+  });
+
+  it('deletes the device copy, since nothing is left to show it', async () => {
+    jest.resetModules();
+    const deleted: string[] = [];
+    jest.doMock('expo-file-system', () => ({
+      File: class {
+        exists = true;
+        constructor(public uri: string) {}
+        delete() {
+          deleted.push(this.uri);
+        }
+      },
+    }));
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { discardOperation: discard, enqueueOperation: enqueue } = require('./outbox');
+    const db = createTestDb();
+    await enqueue(db, {
+      id: 'op-1',
+      kind: 'attach_receipt',
+      payload: { transactionJournalId: 'j1', receiptImagePath: 'file:///data/receipts/r.jpg' },
+    });
+
+    expect(await discard(db, 'op-1')).toBe('discarded');
+    expect(deleted).toEqual(['file:///data/receipts/r.jpg']);
+  });
+
+  it('keeps it when an Inbox entry still shows it', async () => {
+    jest.resetModules();
+    const deleted: string[] = [];
+    jest.doMock('expo-file-system', () => ({
+      File: class {
+        exists = true;
+        constructor(public uri: string) {}
+        delete() {
+          deleted.push(this.uri);
+        }
+      },
+    }));
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { discardOperation: discard, enqueueOperation: enqueue } = require('./outbox');
+    const db = createTestDb();
+    const now = new Date().toISOString();
+    await db.insert(inboxItems).values({
+      id: 'item-1',
+      kind: 'receipt',
+      state: 'synced',
+      draftJson: '{}',
+      receiptImagePath: 'file:///data/receipts/r.jpg',
+      createdAt: now,
+      updatedAt: now,
+    });
+    await enqueue(db, {
+      id: 'op-1',
+      inboxItemId: 'item-1',
+      kind: 'attach_receipt',
+      payload: { transactionJournalId: 'j1', receiptImagePath: 'file:///data/receipts/r.jpg' },
+    });
+
+    expect(await discard(db, 'op-1')).toBe('discarded');
+    expect(deleted).toEqual([]);
+  });
+});

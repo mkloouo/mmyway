@@ -495,3 +495,31 @@ describe('references deleted in FF3', () => {
     expect(client.request).toHaveBeenCalledTimes(1); // only the account update was sent
   });
 });
+
+describe('deleting a photo Firefly III holds (#69)', () => {
+  it('sends the DELETE; one already gone counts as done rather than parking in the queue', async () => {
+    const db = createTestDb();
+    await enqueueOperation(db, {
+      id: 'op-1',
+      kind: 'delete_attachment',
+      payload: { attachmentId: 'att-1', transactionJournalId: 'j1' },
+    });
+    await enqueueOperation(db, {
+      id: 'op-2',
+      kind: 'delete_attachment',
+      payload: { attachmentId: 'att-2', transactionJournalId: 'j2' },
+    });
+    const client = {
+      request: jest.fn(async (path: string) => {
+        if (path === '/v1/attachments/att-2') throw new FF3RequestError(404, '');
+        return undefined;
+      }),
+    };
+
+    const result = await replayOutbox(db as any, client as any);
+
+    expect(result.succeeded).toEqual(['op-1', 'op-2']);
+    expect(client.request).toHaveBeenCalledWith('/v1/attachments/att-1', { method: 'DELETE' });
+    expect(await db.select().from(outboxOperations)).toHaveLength(0);
+  });
+});

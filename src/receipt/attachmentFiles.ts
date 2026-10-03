@@ -8,18 +8,37 @@ import { errorMessage } from '../utils/errorMessage';
 
 const CACHE_DIR = 'ff3-attachments';
 
-/** A local file:// uri for the attachment, downloading it the first time. */
-export async function attachmentFile(
-  attachmentId: string,
-  source: { uri: string; headers: Record<string, string> },
-): Promise<string> {
+function cachedFile(attachmentId: string) {
   // Lazy require: see outbox.ts's attach_receipt branch.
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { Directory, File, Paths } = require('expo-file-system');
   const dir = new Directory(Paths.cache, CACHE_DIR);
   if (!dir.exists) dir.create({ intermediates: true, idempotent: true });
   // Attachment ids are never reused in FF3, so a file already here is this attachment.
-  const file = new File(dir, attachmentId.replace(/[^\w-]/g, '_'));
+  return new File(dir, attachmentId.replace(/[^\w-]/g, '_'));
+}
+
+/**
+ * Drops the cached copy of an attachment deleted in FF3 (#69). Without this the thumbnail would
+ * keep showing the photo FF3 no longer has, since a file already in the cache is never re-fetched.
+ */
+export function forgetAttachmentFile(attachmentId: string): void {
+  try {
+    const file = cachedFile(attachmentId);
+    if (file.exists) file.delete();
+  } catch {
+    // Best effort: a leftover file costs some storage, never correctness.
+  }
+}
+
+/** A local file:// uri for the attachment, downloading it the first time. */
+export async function attachmentFile(
+  attachmentId: string,
+  source: { uri: string; headers: Record<string, string> },
+): Promise<string> {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { File } = require('expo-file-system');
+  const file = cachedFile(attachmentId);
   if (file.exists && file.size > 0) return file.uri;
   try {
     const downloaded = await File.downloadFileAsync(source.uri, file, {

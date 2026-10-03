@@ -1,5 +1,6 @@
 import {
   fetchJournalAttachments,
+  queuedAttachmentDeletes,
   queuedAttachments,
   receiptPreviews,
   type JournalAttachment,
@@ -125,5 +126,35 @@ describe('receiptPreviews', () => {
         remote: [{ id: '2', filename: 'a.pdf', imageSource: null }],
       }),
     ).toEqual([]);
+  });
+});
+
+describe('a photo with a delete queued (#69)', () => {
+  const image = (id: string): JournalAttachment => ({
+    id,
+    filename: 'receipt.jpg',
+    imageSource: { uri: `https://ff3/att/${id}`, headers: {} },
+  });
+  const payload = (attachmentId: string, journalId: string) =>
+    JSON.stringify({ v: 1, attachmentId, transactionJournalId: journalId });
+
+  it('is read out of the outbox for its own journal only', () => {
+    const outbox = [
+      { kind: 'delete_attachment', payloadJson: payload('1', '10') },
+      { kind: 'delete_attachment', payloadJson: payload('2', '11') },
+      { kind: 'attach_receipt', payloadJson: '{"v":1}' },
+    ];
+    expect(queuedAttachmentDeletes(outbox, '10')).toEqual(['1']);
+  });
+
+  it('is gone from the thumbnails at once, not at the next pull', () => {
+    expect(
+      receiptPreviews({
+        queuedPaths: [],
+        capturedPath: null,
+        remote: [image('1'), image('2')],
+        deletedIds: ['1'],
+      }).map((p) => p.key),
+    ).toEqual(['2']);
   });
 });
