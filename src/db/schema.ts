@@ -107,6 +107,7 @@ export const outboxOperations = sqliteTable('outbox_operations', {
       'attach_receipt',
       'recurring_review',
       'update_account',
+      'reorder_accounts',
       'save_planned',
       'delete_planned',
     ],

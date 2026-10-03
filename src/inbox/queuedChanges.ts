@@ -165,6 +165,12 @@ export function describeQueuedChange(
         changed,
       };
     }
+    case 'reorder_accounts':
+      return {
+        subject: null,
+        route: '/settings/accounts',
+        changed: ['inbox.changedOrder'],
+      };
     case 'save_planned': {
       const fields = p.fields as Record<string, unknown>;
       const before = p.before as Record<string, unknown> | null;

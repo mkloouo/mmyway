@@ -9,7 +9,7 @@ import {
 } from '../db/schema';
 import { setEnvelopeMarker } from '../accounts/envelopeMarker';
 import type { AccountEdit } from '../accounts/accountEdit';
-import type { OutboxDb, UpdateAccountPayload } from './outbox';
+import type { OutboxDb, ReorderAccountsPayload, UpdateAccountPayload } from './outbox';
 import { getAccountOrder, setAccountOrder } from '../settings/appSettings';
 import { readPayload } from './payloadJson';
 
@@ -49,7 +49,7 @@ export async function reapplyQueuedAccountEdits(db: OutboxDb): Promise<void> {
     .from(outboxOperations)
     .where(
       and(
-        eq(outboxOperations.kind, 'update_account'),
+        inArray(outboxOperations.kind, ['update_account', 'reorder_accounts']),
         inArray(outboxOperations.status, ['pending', 'failed', 'in_flight']),
       ),
     )
@@ -57,6 +57,17 @@ export async function reapplyQueuedAccountEdits(db: OutboxDb): Promise<void> {
   const order = await getAccountOrder(db);
   let orderChanged = false;
   for (const op of ops) {
+    if (op.kind === 'reorder_accounts') {
+      const { orderedIds } = readPayload<ReorderAccountsPayload>(
+        'reorder_accounts',
+        op.payloadJson,
+      );
+      orderedIds.forEach((id, index) => {
+        order[id] = index + 1;
+      });
+      orderChanged = true;
+      continue;
+    }
     const p = readPayload<UpdateAccountPayload>('update_account', op.payloadJson);
     if (p.order !== undefined) {
       order[p.accountId] = p.order;

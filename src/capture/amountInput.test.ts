@@ -1,4 +1,4 @@
-import { applyDigit, trimToScale } from './amountInput';
+import { applyDigit, applyFirstKey, trimToScale } from './amountInput';
 
 describe('applyDigit', () => {
   it('collapses leading zeros', () => {
@@ -57,5 +57,18 @@ describe('FF3-scale amounts', () => {
     expect(applyDigit('12.000000000000', '5', 2)).toBe('125');
     expect(applyDigit('12.000000000000', '⌫', 2)).toBe('1');
     expect(applyDigit('12.500000000000', '0', 2)).toBe('12.50');
+  });
+});
+
+describe('applyFirstKey', () => {
+  it('a digit replaces the whole amount', () => {
+    expect(applyFirstKey('12.50', '7', 2)).toBe('7');
+    expect(applyFirstKey('12.50', '00', 2)).toBe('0');
+    expect(applyFirstKey('12.50', ',', 2)).toBe('0.');
+  });
+
+  it('backspace keeps the amount and edits it', () => {
+    expect(applyFirstKey('12.50', '⌫', 2)).toBe('12.5');
+    expect(applyFirstKey('12.000000000000', '⌫', 2)).toBe('1');
   });
 });

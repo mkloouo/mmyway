@@ -49,6 +49,9 @@ export function subjectsOf(op: {
     case 'update_account':
       add('account', p.accountId);
       break;
+    case 'reorder_accounts':
+      for (const id of p.orderedIds as string[]) add('account', id);
+      break;
     case 'save_planned':
     case 'delete_planned':
       add('planned', p.key);

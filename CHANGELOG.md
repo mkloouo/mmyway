@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+### Capture
+
+- Typing on an amount that already has a figure in it — a transaction's, a draft's, a split's —
+  now replaces it: the first digit you press starts the sum over. Press ⌫ first to keep the
+  amount and edit it from the end instead. Before, the first digit was appended, and on an amount
+  that already had its two decimals it did nothing at all.
+
+### Accounts
+
+- **Settings → Accounts → Reorder accounts** is now hold-and-drag: hold an account and drag it
+  where you want it. The ▲▼ arrows are gone.
+- Nothing is sent until you tap **Done**, and the whole list then goes to Firefly III as one
+  change instead of one per account. Sending them one at a time let Firefly III renumber the rest
+  between updates, which is why accounts sometimes ended up in places you never put them.
+
 ## [1.5.1] - 2026-10-01
 
 ### Cash count

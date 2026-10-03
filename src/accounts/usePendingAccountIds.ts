@@ -1,20 +1,26 @@
 // Which accounts have an edit queued for FF3 that hasn't landed yet (the account page, the
 // active/envelope switches, Reorder) — every account card shows a yellow dot for these.
 import { useMemo } from 'react';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, inArray } from 'drizzle-orm';
 import { useDb } from '../providers/DbProvider';
 import { useLiveQuery } from '../db/useLiveQuery';
 import { outboxOperations } from '../db/schema';
 import { readPayload } from '../sync/payloadJson';
-import type { UpdateAccountPayload } from '../sync/outbox';
+import type { ReorderAccountsPayload, UpdateAccountPayload } from '../sync/outbox';
 
-/** Pure half, for tests: account ids named by queued update_account operations. */
+/** Pure half, for tests: account ids named by queued account operations. */
 export function pendingAccountIds(ops: { kind: string; payloadJson: string }[]): Set<string> {
   const ids = new Set<string>();
   for (const op of ops) {
-    if (op.kind !== 'update_account') continue;
     try {
-      ids.add(readPayload<UpdateAccountPayload>('update_account', op.payloadJson).accountId);
+      // A queued reorder carries every account, so every card shows the dot until it lands —
+      // which is honest: FF3 is given all of their positions, not just the ones that moved.
+      if (op.kind === 'reorder_accounts')
+        for (const id of readPayload<ReorderAccountsPayload>('reorder_accounts', op.payloadJson)
+          .orderedIds)
+          ids.add(id);
+      else if (op.kind === 'update_account')
+        ids.add(readPayload<UpdateAccountPayload>('update_account', op.payloadJson).accountId);
     } catch {
       // an unreadable payload fails its own operation; it just can't mark a card
     }
@@ -30,7 +36,7 @@ export function usePendingAccountIds(): Set<string> {
       .from(outboxOperations)
       .where(
         and(
-          eq(outboxOperations.kind, 'update_account'),
+          inArray(outboxOperations.kind, ['update_account', 'reorder_accounts']),
           inArray(outboxOperations.status, ['pending', 'in_flight', 'failed']),
         ),
       ),

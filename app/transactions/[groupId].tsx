@@ -1,7 +1,7 @@
 // Transaction detail (design §6.5) — the same editing vocabulary as the draft screen: hero
 // amount + DetailRows, one picker implementation for both. A split transaction shows its tracked
 // total and one page per split, swiped through; Split adds one (src/splits/).
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { appLocale } from '../../src/i18n';
 import { Pressable, ScrollView, Text, View } from 'react-native';
@@ -37,7 +37,7 @@ import {
 } from '../../src/ui/AllocationSheet';
 import { currencyOf } from '../../src/ui/money';
 import { relativeTime } from '../../src/ui/relativeTime';
-import { applyDigit, type KeypadKey } from '../../src/capture/amountInput';
+import { applyDigit, applyFirstKey, type KeypadKey } from '../../src/capture/amountInput';
 import { cachedTransactions, inboxItems, outboxOperations } from '../../src/db/schema';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { queueTransactionDelete, queueTransactionEdit } from '../../src/transactions/queueEdit';
@@ -189,6 +189,9 @@ function TransactionEditor({ row }: { row: CachedRow }) {
     base: EditableSplit[];
   } | null>(null);
   const [keypadFor, setKeypadFor] = useState<number | 'total' | null>(null);
+  // The keypad always opens on an amount that is already there. False until the first key of this
+  // visit lands: a digit then replaces the whole sum, ⌫ keeps and edits it (amountInput.ts).
+  const keypadTouched = useRef(false);
   const [textFor, setTextFor] = useState<number | 'title' | 'description' | null>(null);
   const [payeeFor, setPayeeFor] = useState<number | null>(null);
   const [removed, setRemoved] = useState<string[]>([]);
@@ -598,7 +601,7 @@ function TransactionEditor({ row }: { row: CachedRow }) {
         type={type}
         description={split.description}
         payee={payeeOf(split)}
-        onAmountPress={() => setKeypadFor(index)}
+        onAmountPress={() => openKeypad(index)}
         onDescriptionPress={() => setTextFor(index)}
         onPayeePress={() => setPayeeFor(index)}
         onRemove={splits.length > 1 ? () => removeSplit(index) : undefined}
@@ -628,9 +631,18 @@ function TransactionEditor({ row }: { row: CachedRow }) {
           ? (splits[keypadFor]?.amount ?? '0')
           : effectiveAmount;
 
+  function openKeypad(target: number | 'total') {
+    keypadTouched.current = false;
+    setKeypadFor(target);
+  }
+
   function typeAmountDigit(key: KeypadKey) {
+    const first = !keypadTouched.current;
+    keypadTouched.current = true;
+    const type = (current: string) =>
+      first ? applyFirstKey(current, key, dp) : applyDigit(current, key, dp);
     if (keypadFor === 'total') {
-      setTotalEdit(applyDigit(total, key, dp));
+      setTotalEdit(type(total));
       return;
     }
     if (typeof keypadFor !== 'number') return;
@@ -638,11 +650,11 @@ function TransactionEditor({ row }: { row: CachedRow }) {
     if (keypadFor === 0 && !splitMode) {
       setChanges((prev) => ({
         ...prev,
-        amount: applyDigit(prev.amount ?? pendingEdit?.changes.amount ?? row.amount, key, dp),
+        amount: type(prev.amount ?? pendingEdit?.changes.amount ?? row.amount),
       }));
       return;
     }
-    editSplit(keypadFor, { amount: applyDigit(splits[keypadFor]!.amount, key, dp) });
+    editSplit(keypadFor, { amount: type(splits[keypadFor]!.amount) });
   }
 
   return (
@@ -701,7 +713,7 @@ function TransactionEditor({ row }: { row: CachedRow }) {
                 currency={currency}
                 type={type}
                 leftover={rest}
-                onTotalPress={() => setKeypadFor('total')}
+                onTotalPress={() => openKeypad('total')}
                 onReassign={() =>
                   askLeftover(
                     splits.map((s) => s.amount),
@@ -724,7 +736,7 @@ function TransactionEditor({ row }: { row: CachedRow }) {
                   paddingHorizontal: t.space.xl,
                 }}
               >
-                <Pressable onPress={() => setKeypadFor(0)} disabled={splitsLoading}>
+                <Pressable onPress={() => openKeypad(0)} disabled={splitsLoading}>
                   <Money
                     amount={effectiveAmount}
                     currency={currency}

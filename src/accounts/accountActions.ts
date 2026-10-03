@@ -59,25 +59,22 @@ export async function updateAccount(
 }
 
 /**
- * Saves a new order for the user's asset accounts, given in display order: positions 1..n,
- * cached locally at once and sent to FF3 (its `order` attribute) for each account whose
- * position changed.
+ * Saves a new order for the user's asset accounts, given in display order: positions 1..n, cached
+ * locally at once and queued for FF3 as one operation carrying the whole list. One operation, not
+ * one per account that moved: FF3 renumbers the others around each account it is given a position
+ * for, so separate updates landed accounts in places the user never put them.
  */
 export async function reorderAccounts(db: OutboxDb, orderedIds: string[]): Promise<void> {
   const current = await getAccountOrder(db);
+  if (orderedIds.every((id, index) => current[id] === index + 1)) return;
   const next = { ...current };
-  const changed: string[] = [];
   orderedIds.forEach((id, index) => {
-    if (current[id] !== index + 1) changed.push(id);
     next[id] = index + 1;
   });
-  if (changed.length === 0) return;
   await setAccountOrder(db, next);
-  for (const accountId of changed) {
-    await enqueueOperation(db, {
-      id: generateId(),
-      kind: 'update_account',
-      payload: { accountId, order: next[accountId] },
-    });
-  }
+  await enqueueOperation(db, {
+    id: generateId(),
+    kind: 'reorder_accounts',
+    payload: { orderedIds },
+  });
 }

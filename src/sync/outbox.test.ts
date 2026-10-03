@@ -267,7 +267,25 @@ describe('replayOutbox', () => {
     ]);
   });
 
-  it('update_account sends a new position (Reorder) to FF3', async () => {
+  it('reorder_accounts walks the whole list, position by position from the top', async () => {
+    const db = createTestDb();
+    await enqueueOperation(db, {
+      id: 'op-1',
+      kind: 'reorder_accounts',
+      payload: { orderedIds: ['acc-3', 'acc-1', 'acc-2'] },
+    });
+    const client = fakeClient({ '/v1/accounts/': async () => ({}) });
+    const result = await replayOutbox(db as any, client as any);
+    expect(result.succeeded).toEqual(['op-1']);
+    expect(client.request.mock.calls).toEqual([
+      ['/v1/accounts/acc-3', { method: 'PUT', body: JSON.stringify({ order: 1 }) }],
+      ['/v1/accounts/acc-1', { method: 'PUT', body: JSON.stringify({ order: 2 }) }],
+      ['/v1/accounts/acc-2', { method: 'PUT', body: JSON.stringify({ order: 3 }) }],
+    ]);
+    expect(await db.select().from(outboxOperations)).toEqual([]);
+  });
+
+  it('update_account sends a new position (Reorder queued before 1.5.2) to FF3', async () => {
     const db = createTestDb();
     await enqueueOperation(db, {
       id: 'op-1',

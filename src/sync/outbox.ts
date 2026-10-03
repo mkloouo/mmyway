@@ -47,6 +47,7 @@ export type OutboxKind =
   | 'attach_receipt'
   | 'recurring_review'
   | 'update_account'
+  | 'reorder_accounts'
   | 'save_planned'
   | 'delete_planned';
 
@@ -96,8 +97,15 @@ export interface UpdateAccountPayload {
   accountId: string;
   setEnvelopeMarker?: boolean; // the desired on/off state; the notes text itself is read fresh at replay
   active?: boolean; // FF3's account `active` flag
-  order?: number; // FF3's account `order` (position among the user's asset accounts)
+  /** @deprecated One account's new position — only still read for operations queued before 1.5.2
+   * (Reorder now sends the whole list as one `reorder_accounts`). */
+  order?: number;
   edit?: AccountEdit; // the account page's changed fields (src/accounts/accountEdit.ts)
+}
+
+export interface ReorderAccountsPayload {
+  /** Every asset account, in the order the user left them in: positions 1..n. */
+  orderedIds: string[];
 }
 
 // Both the expo-sqlite and better-sqlite3 Drizzle instances (src/db/client.ts, src/db/testDb.ts)
@@ -114,6 +122,7 @@ export interface NewOutboxOperation {
     | DeleteTransactionPayload
     | AttachReceiptPayload
     | UpdateAccountPayload
+    | ReorderAccountsPayload
     | SavePlannedPayload
     | DeletePlannedPayload
     | Record<string, unknown>;
@@ -760,6 +769,23 @@ async function replayOne(
         method: 'PUT',
         body: JSON.stringify(body),
       });
+      await db.delete(outboxOperations).where(eq(outboxOperations.id, row.id));
+      return 'done';
+    }
+
+    if (row.kind === 'reorder_accounts') {
+      // The whole list, position by position from the top, in one operation. FF3's account `order`
+      // is an insert and not an assignment — giving one account a position shifts the others — so
+      // sending only the accounts that moved, each against an already-stale picture of the
+      // server's order, dropped accounts in places the user never put them. Walking 1..n is
+      // idempotent: a retry after a failure half-way through re-walks it and ends up the same.
+      const p = payload as ReorderAccountsPayload;
+      for (const [index, accountId] of p.orderedIds.entries()) {
+        await client.request(`/v1/accounts/${accountId}`, {
+          method: 'PUT',
+          body: JSON.stringify({ order: index + 1 }),
+        });
+      }
       await db.delete(outboxOperations).where(eq(outboxOperations.id, row.id));
       return 'done';
     }

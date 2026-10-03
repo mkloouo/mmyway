@@ -53,6 +53,10 @@ const SCHEMAS = {
     order: z.number().optional(),
     edit: changes.optional(),
   }),
+  reorder_accounts: z.looseObject({
+    v: version,
+    orderedIds: z.array(z.string()),
+  }),
   save_planned: z.looseObject({
     v: version,
     key: z.string(),

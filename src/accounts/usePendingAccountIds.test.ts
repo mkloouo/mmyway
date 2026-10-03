@@ -11,4 +11,11 @@ describe('pendingAccountIds', () => {
     ]);
     expect([...ids].sort()).toEqual(['a1', 'a2']);
   });
+
+  it('a queued reorder names every account it carries', () => {
+    const ids = pendingAccountIds([
+      { kind: 'reorder_accounts', payloadJson: writePayload({ orderedIds: ['a2', 'a1'] }) },
+    ]);
+    expect([...ids].sort()).toEqual(['a1', 'a2']);
+  });
 });

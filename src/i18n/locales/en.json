@@ -36,11 +36,11 @@
     "envelope": "Envelope",
     "hideInactive": "Hide inactive accounts",
     "inactive": "Inactive",
-    "moveDown": "Move {{name}} down",
-    "moveUp": "Move {{name}} up",
+    "moveDown": "Move down",
+    "moveUp": "Move up",
     "name": "Name",
     "reorder": "Reorder accounts",
-    "reorderHint": "Move accounts up or down. The order is saved to Firefly III and used by every account picker.",
+    "reorderHint": "Hold an account and drag it where you want it. Nothing is sent until you tap Done; the order is then saved to Firefly III and used by every account picker.",
     "showInactive": "Show inactive accounts",
     "title": "Accounts"
   },
@@ -309,6 +309,7 @@
       "delete_transaction": "Deleting a transaction",
       "other": "A change",
       "recurring_review": "Approving a recurring transaction",
+      "reorder_accounts": "Saving the account order",
       "save_planned": "Saving a planned transaction",
       "update_account": "Saving an account",
       "update_transaction": "Saving a transaction edit"

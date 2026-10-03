@@ -7,7 +7,7 @@
 //    last render of the screen (the bug Capture's reducer fixed in 1.4.0).
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { applyDigit, type KeypadKey } from '../capture/amountInput';
+import { applyDigit, applyFirstKey, type KeypadKey } from '../capture/amountInput';
 import { Keypad } from './Keypad';
 import { Money, Sheet } from './components';
 import type { DisplayCurrency } from './money';
@@ -36,7 +36,12 @@ export function AmountSheet({
   const latest = useRef<string | null>(null);
 
   function press(key: KeypadKey) {
-    const next = applyDigit(latest.current ?? initial, key, currency.decimalPlaces);
+    // Nothing typed yet (latest is null): the first key decides whether the amount the sheet
+    // opened with is replaced or edited (src/capture/amountInput.ts).
+    const next =
+      latest.current === null
+        ? applyFirstKey(initial, key, currency.decimalPlaces)
+        : applyDigit(latest.current, key, currency.decimalPlaces);
     latest.current = next;
     setTyped(next);
   }

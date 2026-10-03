@@ -8,18 +8,24 @@ import { setEnvelopeMarker } from './envelopeMarker';
 import { reapplyQueuedAccountEdits } from '../sync/referenceHygiene';
 
 describe('reorderAccounts', () => {
-  it('saves positions 1..n locally and queues an FF3 update only for accounts that moved', async () => {
+  it('saves positions 1..n locally and queues the whole list as one operation', async () => {
     const db = createTestDb();
     await setAccountOrder(db as any, { a: 1, b: 2, c: 3 });
     await reorderAccounts(db as any, ['b', 'a', 'c']);
     expect(await getAccountOrder(db as any)).toEqual({ b: 1, a: 2, c: 3 });
-    const payloads = (await db.select().from(outboxOperations)).map((op) =>
-      readPayload(op.kind, op.payloadJson),
-    );
-    expect(payloads).toEqual([
-      { accountId: 'b', order: 1 },
-      { accountId: 'a', order: 2 },
-    ]);
+    const ops = await db.select().from(outboxOperations);
+    expect(ops).toHaveLength(1);
+    expect(ops[0]!.kind).toBe('reorder_accounts');
+    expect(readPayload(ops[0]!.kind, ops[0]!.payloadJson)).toEqual({
+      orderedIds: ['b', 'a', 'c'],
+    });
+  });
+
+  it('queues nothing when the order is unchanged', async () => {
+    const db = createTestDb();
+    await setAccountOrder(db as any, { a: 1, b: 2 });
+    await reorderAccounts(db as any, ['a', 'b']);
+    expect(await db.select().from(outboxOperations)).toHaveLength(0);
   });
   it('keeps a queued move over the server order a pull just wrote', async () => {
     const db = createTestDb();

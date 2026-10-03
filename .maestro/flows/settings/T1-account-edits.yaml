@@ -26,7 +26,10 @@ tags:
 - tapOn: 'Show inactive accounts'
 - assertVisible: 'Savings EUR ${RUN_ID}'
 - tapOn: 'Reorder accounts'
-- tapOn: 'Move Savings EUR ${RUN_ID} up'
+# The move itself is a hold-and-drag Maestro can't drive (the pan only activates after a long
+# press held still); this covers entering and leaving the mode. Done with nothing dragged sends
+# nothing, so the account order below is the seed's.
+- assertVisible: 'Hold an account and drag it where you want it.*'
 - tapOn: 'Done'
 - runScript:
     file: ../../scripts/ff3.js

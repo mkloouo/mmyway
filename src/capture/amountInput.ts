@@ -46,3 +46,13 @@ export function applyDigit(rawCurrent: string, key: KeypadKey, decimalPlaces: nu
   if (room <= 0) return current;
   return `${whole}.${fraction}${digits.slice(0, room)}`;
 }
+
+/**
+ * The first key pressed on a keypad that opened on an amount already there (a transaction's, a
+ * draft's, a split's): a digit or separator starts the sum over, the way tapping a number field
+ * selects what's in it, and ⌫ keeps the amount and trims it from the end. Every key after that
+ * goes through `applyDigit` as usual — only the first one decides replace or edit.
+ */
+export function applyFirstKey(current: string, key: KeypadKey, decimalPlaces: number): string {
+  return applyDigit(key === '⌫' ? current : '0', key, decimalPlaces);
+}
