@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.5.4] - 2026-10-03
+
 ### Fixed
 
 - An entry in a currency your account doesn't hold is now booked as the amount your account was
