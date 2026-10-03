@@ -11,9 +11,17 @@ coverage floor on the money path; `static-analysis.yml` runs the checks below on
 | `npm run analyze:dead`   | [knip](https://knip.dev)                     | Unused files, exports, types and dependencies                                     |
 | `npm run analyze:dupes`  | [jscpd](https://github.com/kucherenko/jscpd) | Copy-paste; fails above 1% duplicated lines                                       |
 | `npm run analyze:cycles` | [dpdm](https://github.com/acrazing/dpdm)     | Import cycles that exist at runtime (type-only imports are skipped)               |
-| `npm run analyze:deps`   | `npm audit`                                  | High or critical advisories in what ships in the app (dev tools excluded)         |
+| `npm run analyze:deps`   | `npm audit` via `scripts/audit.mjs`          | High or critical advisories, minus the reviewed ones in its `ALLOWED` list        |
 | `npm run analyze:doctor` | `expo-doctor`                                | Expo config problems and packages off the SDK's versions                          |
 | `npm run analyze`        | all of the above                             | One summary; `-- --strict` exits 1 on any finding; `-- lint cycles` runs a subset |
+
+`npm audit` asks GitHub's advisory service when it runs, so a bare `--audit-level=high` fails
+commits that changed no dependency, the day an advisory is published or its affected range widened.
+It also can't tell what ships: `expo` is a production dependency and pulls in `@expo/cli` (Metro,
+prebuild, code signing), none of which is in the APK's JS bundle. `scripts/audit.mjs` keeps the
+gate — anything new still fails — and skips only the advisories written down in its `ALLOWED` list
+with the path they reach us through and why. Re-check that list whenever the Expo SDK is bumped;
+the run prints an entry that is no longer reported so it can be deleted.
 
 Config: `eslint.config.js` (Expo's rules plus the strict ones), `knip.json`, `.jscpd.json`,
 `jest.config.js` (coverage floors), `.github/dependabot.yml` (grouped, weekly). In CI the cycles,

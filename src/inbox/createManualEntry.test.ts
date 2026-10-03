@@ -2,7 +2,8 @@ import { createTestDb } from '../db/testDb';
 import { upsertAlias } from '../lookup/aliases';
 import * as aliases from '../lookup/aliases';
 import { createManualEntry, confirmInboxItem, undoConfirm } from './createManualEntry';
-import { outboxOperations, inboxItems } from '../db/schema';
+import { outboxOperations, inboxItems, referenceAccounts } from '../db/schema';
+import { readPayload } from '../sync/payloadJson';
 import { eq } from 'drizzle-orm';
 
 describe('createManualEntry + confirmInboxItem', () => {
@@ -186,5 +187,89 @@ describe('createManualEntry + confirmInboxItem', () => {
     expect(outcome).toBe('already_sent');
     const ops = await db.select().from(outboxOperations);
     expect(ops).toHaveLength(1); // untouched
+  });
+});
+
+// The bug this guards: a 15 EUR receipt paid from a PLN account was queued as "15 EUR" with
+// 68.63 PLN as the foreign side. FF3 books `amount` in the asset leg's own currency and ignores
+// a currency_code that says otherwise, so it booked 15 zł — the receipt's figure, the account's
+// currency, and the real charge lost.
+describe('confirmInboxItem puts a foreign entry the right way round for FF3', () => {
+  async function seedPlnAccount(db: ReturnType<typeof createTestDb>) {
+    await db.insert(referenceAccounts).values({
+      id: 'acc-pko',
+      name: 'PKO',
+      type: 'asset',
+      currencyCode: 'PLN',
+      active: true,
+      syncedAt: '2026-01-01T00:00:00.000Z',
+    } as never);
+  }
+  const queuedSplit = async (db: ReturnType<typeof createTestDb>) => {
+    const [op] = await db.select().from(outboxOperations);
+    return (readPayload(op!.kind, op!.payloadJson) as { splits: Record<string, unknown>[] })
+      .splits[0]!;
+  };
+
+  it('a receipt read in EUR, charged in PLN: the PLN charge is the amount', async () => {
+    const db = createTestDb();
+    await seedPlnAccount(db);
+    const { inboxItemId } = await createManualEntry(db as any, {
+      type: 'withdrawal',
+      amount: '15.00',
+      currencyCode: 'EUR',
+      date: new Date().toISOString(),
+      description: 'LOGINN Hotel',
+      merchantRawInput: 'LOGINN Hotel',
+      sourceId: 'acc-pko',
+      foreignAmount: '68.63',
+      foreignCurrencyCode: 'PLN',
+    });
+    await confirmInboxItem(db as any, inboxItemId);
+    expect(await queuedSplit(db)).toMatchObject({
+      amount: '68.63',
+      currency_code: 'PLN',
+      foreign_amount: '15.00',
+      foreign_currency_code: 'EUR',
+    });
+  });
+
+  it("leaves Capture's own entry alone — it already stores the charge as the amount", async () => {
+    const db = createTestDb();
+    await seedPlnAccount(db);
+    const { inboxItemId } = await createManualEntry(db as any, {
+      type: 'withdrawal',
+      amount: '68.63',
+      currencyCode: 'PLN',
+      date: new Date().toISOString(),
+      description: 'LOGINN Hotel',
+      merchantRawInput: 'LOGINN Hotel',
+      sourceId: 'acc-pko',
+      foreignAmount: '15.00',
+      foreignCurrencyCode: 'EUR',
+    });
+    await confirmInboxItem(db as any, inboxItemId);
+    expect(await queuedSplit(db)).toMatchObject({
+      amount: '68.63',
+      currency_code: 'PLN',
+      foreign_amount: '15.00',
+      foreign_currency_code: 'EUR',
+    });
+  });
+
+  it('an entry in the account currency is sent as it stands', async () => {
+    const db = createTestDb();
+    await seedPlnAccount(db);
+    const { inboxItemId } = await createManualEntry(db as any, {
+      type: 'withdrawal',
+      amount: '30.00',
+      currencyCode: 'PLN',
+      date: new Date().toISOString(),
+      description: 'Żabka',
+      merchantRawInput: 'Żabka',
+      sourceId: 'acc-pko',
+    });
+    await confirmInboxItem(db as any, inboxItemId);
+    expect(await queuedSplit(db)).toMatchObject({ amount: '30.00', currency_code: 'PLN' });
   });
 });

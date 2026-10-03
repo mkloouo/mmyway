@@ -42,6 +42,7 @@ import { pickableCurrencies } from '../../src/ui/currencies';
 import { PickerSheet } from '../../src/ui/PickerSheet';
 import { haptics } from '../../src/ui/haptics';
 import { inboxItems, outboxOperations } from '../../src/db/schema';
+import { useSharedPeople } from '../../src/lookup/sharedPeople';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { confirmInboxItem } from '../../src/inbox/createManualEntry';
 import { discardOperation } from '../../src/sync/outbox';
@@ -116,6 +117,7 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
   const accountRows = useAssetAccounts({ includeLiabilities: true });
   const assetAccounts = accountRows ?? [];
   const categories = useCategories();
+  const sharedPeople = useSharedPeople();
   // undefined until each table's first read lands: a spinner stands in for "—" and for the
   // currency code that would otherwise replace its symbol.
   const budgetRows = useBudgetRows();
@@ -394,6 +396,7 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
       readOnly={readOnly}
       accounts={assetAccounts}
       currencies={currencies}
+      sharedPeople={sharedPeople}
       categories={categories}
       budgets={budgets}
       loading={referenceLoading}
@@ -431,6 +434,7 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
             readOnly={readOnly}
             accounts={assetAccounts}
             currencies={currencies}
+            sharedPeople={sharedPeople}
             categories={categories}
             budgets={budgets}
             loading={referenceLoading}

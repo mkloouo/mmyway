@@ -27,7 +27,7 @@
     "analyze:dead": "knip",
     "analyze:dupes": "jscpd --config .jscpd.json",
     "analyze:cycles": "dpdm --no-warning --no-tree -T --exit-code circular:1 \"app/**/*.tsx\" \"src/**/*.ts\" \"src/**/*.tsx\"",
-    "analyze:deps": "npm audit --omit=dev --audit-level=high",
+    "analyze:deps": "node scripts/audit.mjs",
     "analyze:doctor": "npx -y expo-doctor"
   },
   "dependencies": {

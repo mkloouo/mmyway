@@ -3,8 +3,13 @@
 // Set here, before Jest starts its workers, which inherit it.
 process.env.TZ = 'Europe/Warsaw';
 
+// The preset transforms `.js`/`.ts` but not `.mjs`, so a `scripts/*.mjs` imported by a test is
+// handed to Node as-is and dies on its first `import`. Same transform, one more extension.
+const preset = require('jest-expo/jest-preset');
+
 module.exports = {
   preset: 'jest-expo',
+  transform: { ...preset.transform, '\\.mjs$': preset.transform['\\.[jt]sx?$'] },
   transformIgnorePatterns: [
     'node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg)',
   ],

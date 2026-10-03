@@ -37,6 +37,7 @@ import {
   peekMerchantLookup,
   type MerchantHistory,
 } from '../src/lookup/merchantLookup';
+import { useSharedPeople } from '../src/lookup/sharedPeople';
 import { matchAlias, PAYEE } from '../src/lookup/aliases';
 import { rankCandidates } from '../src/suggest/rank';
 import { divideDecimal, isNegative, parseDecimalInput } from '../src/api/ff3/decimal';
@@ -45,6 +46,7 @@ import { Snackbar, type SnackbarEntry } from '../src/ui/Snackbar';
 import type { Draft } from '../src/inbox/draft';
 import { needsLabel } from '../src/ui/readinessLabel';
 import { TextField } from '../src/ui/TextField';
+import { SharedWithField } from '../src/ui/SharedWithField';
 import { PickerSheet } from '../src/ui/PickerSheet';
 import { useAction } from '../src/ui/useAction';
 import { logLine } from '../src/utils/log';
@@ -180,6 +182,7 @@ export default function CaptureScreen() {
   const assetAccountRows = useAssetAccounts({ includeLiabilities: true });
   const assetAccounts = useMemo(() => assetAccountRows ?? [], [assetAccountRows]);
   const categories = useCategories();
+  const sharedPeople = useSharedPeople();
   const budgets = useBudgets();
   const currencies = useCurrencies();
 
@@ -807,10 +810,11 @@ export default function CaptureScreen() {
           value={notes}
           onChangeText={(notes) => set({ notes })}
         />
-        <TextField
-          placeholder={tr('capture.sharedWithPlaceholder')}
+        <SharedWithField
+          live
           value={sharedWith}
-          onChangeText={(sharedWith) => set({ sharedWith })}
+          people={sharedPeople}
+          onApply={(sharedWith) => set({ sharedWith })}
         />
         <Row
           first

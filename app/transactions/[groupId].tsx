@@ -39,6 +39,7 @@ import { currencyOf } from '../../src/ui/money';
 import { relativeTime } from '../../src/ui/relativeTime';
 import { applyDigit, applyFirstKey, type KeypadKey } from '../../src/capture/amountInput';
 import { cachedTransactions, inboxItems, outboxOperations } from '../../src/db/schema';
+import { useSharedPeople } from '../../src/lookup/sharedPeople';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { queueTransactionDelete, queueTransactionEdit } from '../../src/transactions/queueEdit';
 import { confirmDestructive } from '../../src/ui/confirm';
@@ -129,6 +130,7 @@ function TransactionEditor({ row }: { row: CachedRow }) {
   const allAssetAccounts = allAccountRows ?? [];
   const activeAssetAccounts = useAssetAccounts({ includeLiabilities: true }) ?? [];
   const categories = useCategories();
+  const sharedPeople = useSharedPeople();
   // undefined until each table's first read lands: the screen shows a spinner for what it
   // can't resolve yet, not "—" or a currency code standing in for its symbol.
   const budgetRows = useBudgetRows();
@@ -647,6 +649,7 @@ function TransactionEditor({ row }: { row: CachedRow }) {
           accounts={allAssetAccounts}
           pickableAccounts={activeAssetAccounts}
           currencies={currencies}
+          sharedPeople={sharedPeople}
           categories={categories}
           budgets={budgets}
           loading={referenceLoading}
@@ -813,6 +816,7 @@ function TransactionEditor({ row }: { row: CachedRow }) {
                 accounts={allAssetAccounts}
                 pickableAccounts={activeAssetAccounts}
                 currencies={currencies}
+                sharedPeople={sharedPeople}
                 categories={categories}
                 budgets={budgets}
                 loading={referenceLoading}

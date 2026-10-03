@@ -1,4 +1,11 @@
-import { sharedNames, sharedTags, sharedWithFromTags, withSharedWith } from './sharedWith';
+import {
+  sharedNames,
+  sharedNamesFromTags,
+  sharedTags,
+  sharedWithFromTags,
+  toggleSharedName,
+  withSharedWith,
+} from './sharedWith';
 
 describe('shared with', () => {
   it('splits names on commas, trimmed, without blanks or repeats', () => {
@@ -33,5 +40,27 @@ describe('shared with', () => {
       'mmyway-shared-Bob',
     ]);
     expect(withSharedWith(['mmyway-shared-Anna', 'trip'], null)).toEqual(['trip']);
+  });
+});
+
+describe('toggleSharedName', () => {
+  it('adds a name that is not there and takes out one that is', () => {
+    expect(toggleSharedName('', 'Anna')).toBe('Anna');
+    expect(toggleSharedName('Anna', 'Bob')).toBe('Anna, Bob');
+    expect(toggleSharedName('Anna, Bob', 'Anna')).toBe('Bob');
+    expect(toggleSharedName('Anna, Bob', 'Bob')).toBe('Anna');
+  });
+
+  it('matches the person however the name is cased or spaced', () => {
+    expect(toggleSharedName('Anna, Bob', ' anna ')).toBe('Bob');
+    expect(toggleSharedName(null, ' Anna ')).toBe('Anna');
+  });
+});
+
+describe('sharedNamesFromTags', () => {
+  it('reads the people out, ignoring every other tag', () => {
+    expect(
+      sharedNamesFromTags(['mmyway-reconcile', 'mmyway-shared-Anna', 'holiday', 'mmyway-shared-']),
+    ).toEqual(['Anna']);
   });
 });

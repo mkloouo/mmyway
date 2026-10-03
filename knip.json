@@ -10,6 +10,7 @@
   "project": ["app/**/*.{ts,tsx}", "src/**/*.{ts,tsx}", "scripts/**/*.{mjs,ts}", "plugins/*.js"],
   "ignore": ["src/api/ff3/types.ts"],
   "ignoreDependencies": [
+    "babel-jest",
     "babel-plugin-inline-import",
     "babel-preset-expo",
     "react-native-worklets",

@@ -21,12 +21,25 @@ export function sharedTags(text: string | null | undefined): string[] {
   return sharedNames(text).map((name) => `${SHARED_TAG_PREFIX}${name}`);
 }
 
+/** The people named by a transaction's tags. */
+export function sharedNamesFromTags(tags: readonly string[]): string[] {
+  return tags
+    .filter((tag) => tag.startsWith(SHARED_TAG_PREFIX))
+    .map((tag) => tag.slice(SHARED_TAG_PREFIX.length))
+    .filter((name) => name.length > 0);
+}
+
 /** Every shared-with tag's name, as the field shows them ("Anna, Bob"); null when there is none. */
 export function sharedWithFromTags(tags: readonly string[]): string | null {
-  const names = tags
-    .filter((tag) => tag.startsWith(SHARED_TAG_PREFIX))
-    .map((tag) => tag.slice(SHARED_TAG_PREFIX.length));
+  const names = sharedNamesFromTags(tags);
   return names.length > 0 ? names.join(', ') : null;
+}
+
+/** `text` with `name` added if it isn't there and taken out if it is — what a suggestion chip does. */
+export function toggleSharedName(text: string | null | undefined, name: string): string {
+  const names = sharedNames(text);
+  const without = names.filter((n) => n.toLowerCase() !== name.trim().toLowerCase());
+  return (without.length === names.length ? [...names, name.trim()] : without).join(', ');
 }
 
 /** `tags` with its shared-with tags replaced by the names in `text`; every other tag is kept. */

@@ -1,8 +1,9 @@
 import { and, eq } from 'drizzle-orm';
-import { inboxItems, outboxOperations } from '../db/schema';
+import { inboxItems, outboxOperations, referenceAccounts } from '../db/schema';
 import { resolvePayeeAlias } from '../lookup/aliases';
 import { transition, type InboxState } from './state';
 import { draftToTransactionPayload, type Draft } from './draft';
+import { bookingLegAccountId } from './fx';
 import { enqueueOperationSync, neverSent } from '../sync/outbox';
 import { requestSync, SYNC_DELAY } from '../sync/syncTrigger';
 import type { OutboxDb } from '../sync/outbox';
@@ -117,6 +118,16 @@ export async function confirmInboxItem(db: OutboxDb, inboxItemId: string): Promi
   const previousState = item.state;
   const nextState = transition(previousState, 'confirm');
   const draft = readDraft(item.draftJson);
+  // FF3 books `amount` in the asset leg's own currency and ignores a `currency_code` saying
+  // otherwise, so the entry's two figures are put the right way round here — the one place every
+  // draft, from Capture or a receipt, is queued (src/inbox/fx.ts).
+  const legId = bookingLegAccountId(draft);
+  const [leg] = legId
+    ? await db
+        .select({ currencyCode: referenceAccounts.currencyCode })
+        .from(referenceAccounts)
+        .where(eq(referenceAccounts.id, legId))
+    : [];
 
   const outboxOperationId = generateId();
   // One transaction: a failure between the two writes used to leave the item `confirmed` with no
@@ -130,7 +141,7 @@ export async function confirmInboxItem(db: OutboxDb, inboxItemId: string): Promi
       id: outboxOperationId,
       inboxItemId,
       kind: 'create_transaction',
-      payload: draftToTransactionPayload(inboxItemId, draft),
+      payload: draftToTransactionPayload(inboxItemId, draft, leg?.currencyCode),
     });
   });
   requestSync(SYNC_DELAY.afterConfirm);

@@ -44,3 +44,45 @@ export function draftAccountCurrency(
     currencyOfAccount(draft.destinationId),
   );
 }
+
+/**
+ * The account whose currency FF3 books `amount` in: the one the money leaves, or the one it lands
+ * in for an income. Not `accountLegCurrency`, which deliberately answers with a transfer's *other*
+ * leg — the one the conversion is asked about.
+ */
+export function bookingLegAccountId(draft: Draft): string | undefined {
+  return draft.type === 'deposit' ? draft.destinationId : draft.sourceId;
+}
+
+interface MoneyPair {
+  amount: string;
+  currencyCode: string;
+  foreignAmount?: string;
+  foreignCurrencyCode?: string;
+}
+
+/**
+ * The two figures the right way round for FF3, which books `amount` in the asset leg's own
+ * currency and ignores a `currency_code` that says otherwise — so a 15 EUR receipt paid from a
+ * PLN account, sent as "15 EUR", was booked as 15 PLN.
+ *
+ * Which way round a draft arrives in depends on where it came from: Capture already stores what
+ * the account was charged as the amount, while a receipt (and anything the draft screen's
+ * "Account charged" row fills in) stores what was read, with the charge as the foreign side. So
+ * this doesn't flip, it *orients*: whichever side is in the booking currency becomes the amount.
+ * A pair with no foreign side, or with neither side in the booking currency, is left alone.
+ */
+export function orientForBooking(
+  pair: MoneyPair,
+  bookingCurrencyCode: string | undefined,
+): MoneyPair {
+  if (!pair.foreignAmount || !pair.foreignCurrencyCode || !bookingCurrencyCode) return pair;
+  if (pair.currencyCode === bookingCurrencyCode) return pair;
+  if (pair.foreignCurrencyCode !== bookingCurrencyCode) return pair;
+  return {
+    amount: pair.foreignAmount,
+    currencyCode: pair.foreignCurrencyCode,
+    foreignAmount: pair.amount,
+    foreignCurrencyCode: pair.currencyCode,
+  };
+}

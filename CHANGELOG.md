@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- An entry in a currency your account doesn't hold is now booked as the amount your account was
+  actually charged, with the entry's own figure kept beside it as the foreign amount. A 15 € receipt
+  paid from a złoty account was sent as "15 EUR" — and Firefly III, which always books in the
+  account's own currency, recorded it as 15 zł. Receipts and anything confirmed from the Inbox were
+  affected; an entry typed straight into Capture was already right.
+
+### Capture
+
+- **Shared with** offers the people you have shared with before as chips, newest first — tap one to
+  add them, tap again to take them out. The names come from the transactions already on your phone,
+  so there is nothing to set up and nothing extra asked of Firefly III. The field still takes
+  anyone new. The same chips are on a draft's and a transaction's **Shared with**.
+
 ## [1.5.3] - 2026-10-03
 
 ### Activity

@@ -3,6 +3,7 @@ import type { CreateTransactionPayload, OutboxDb } from '../sync/outbox';
 import type { TransactionSplit } from '../api/ff3/types';
 import { inboxItems } from '../db/schema';
 import { sharedTags } from '../transactions/sharedWith';
+import { orientForBooking } from './fx';
 
 export interface Draft {
   type: 'withdrawal' | 'deposit' | 'transfer';
@@ -101,19 +102,23 @@ function payeeGatedEnd(draft: Draft): {
   };
 }
 
+/**
+ * `bookingCurrencyCode` is the currency of the asset leg FF3 books in (src/inbox/fx.ts): the
+ * entry's two figures are put the right way round against it. Left out, they go as they are —
+ * which is only right for a draft with no foreign side.
+ */
 export function draftToTransactionPayload(
   clientId: string,
   draft: Draft,
+  bookingCurrencyCode?: string,
 ): CreateTransactionPayload {
+  const split = (d: Draft) => draftSplitPayload(d, bookingCurrencyCode);
   const extras = draft.extraSplits ?? [];
-  if (extras.length === 0) return { clientId, splits: [draftSplitPayload(draft)] };
+  if (extras.length === 0) return { clientId, splits: [split(draft)] };
   return {
     clientId,
     groupTitle: draft.groupTitle || draft.description,
-    splits: [
-      draftSplitPayload(draft),
-      ...extras.map((s) => draftSplitPayload(extraSplitAsDraft(draft, s))),
-    ],
+    splits: [split(draft), ...extras.map((s) => split(extraSplitAsDraft(draft, s)))],
   };
 }
 
@@ -145,18 +150,19 @@ function extraSplitAsDraft(draft: Draft, split: DraftSplit): Draft {
   };
 }
 
-function draftSplitPayload(draft: Draft): TransactionSplit {
+function draftSplitPayload(draft: Draft, bookingCurrencyCode?: string): TransactionSplit {
   const tags: string[] = [...(draft.extraTags ?? [])];
   tags.push(...sharedTags(draft.sharedWith));
   const { source, destination } = payeeGatedEnd(draft);
+  const money = orientForBooking(draft, bookingCurrencyCode);
 
   return {
     type: draft.type,
     date: draft.date,
-    amount: draft.amount,
-    currency_code: draft.currencyCode,
-    foreign_amount: draft.foreignAmount,
-    foreign_currency_code: draft.foreignCurrencyCode,
+    amount: money.amount,
+    currency_code: money.currencyCode,
+    foreign_amount: money.foreignAmount,
+    foreign_currency_code: money.foreignCurrencyCode,
     description: draft.description,
     source_id: source.id,
     source_name: source.name,

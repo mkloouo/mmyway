@@ -8,6 +8,7 @@ import { useTheme } from './theme';
 import { categoryColor } from './categoryColor';
 import { AccountPickerSheet, type AccountPickerAccount } from './AccountPickerSheet';
 import { TextField } from './TextField';
+import { SharedWithField } from './SharedWithField';
 import { PickerSheet } from './PickerSheet';
 import { TX_TYPES, txTypeLabelKey } from '../transactions/txTypes';
 
@@ -49,6 +50,8 @@ interface DetailRowsProps {
   currencies: { code: string; symbol: string; decimalPlaces: number }[];
   categories: { id: string; name: string }[];
   budgets: { id: string; name: string }[];
+  /** People already shared with, for the chips under "Shared with" (src/lookup/sharedPeople.ts). */
+  sharedPeople?: string[];
   /** The accounts and budgets are still loading: their rows show a spinner, not "—". */
   loading?: boolean;
 }
@@ -77,6 +80,7 @@ export function DetailRows({
   loading,
   payee,
   unsure,
+  sharedPeople,
   typeEditable,
 }: DetailRowsProps) {
   const t = useTheme();
@@ -256,10 +260,10 @@ export function DetailRows({
           <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.sm }]}>
             {tr('fields.sharedWith')}
           </Text>
-          <TextField
+          <SharedWithField
             value={value.sharedWith ?? ''}
-            onCommit={(v) => onChange({ sharedWith: v })}
-            placeholder={tr('details.sharedWithPlaceholder')}
+            onApply={(sharedWith) => onChange({ sharedWith })}
+            people={sharedPeople ?? []}
           />
         </Sheet>
       )}
