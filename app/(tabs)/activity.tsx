@@ -1,7 +1,13 @@
 // Activity (design §6.4) — balances, grouped-by-day history with totals, paging, search.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { SectionList, Text, View } from 'react-native';
+import {
+  SectionList,
+  Text,
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from 'react-native';
 import { Collapsible, leaveThen } from '../../src/ui/Collapsible';
 import { useNavigation } from 'expo-router';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
@@ -83,6 +89,10 @@ export default function ActivityScreen() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [accountFilter, setAccountFilter] = useState<string | null>(null);
+  // The account cards show their balances at the top of the list and shrink to name-only pills
+  // once it is scrolled. The strip sits above the list, not inside it, so collapsing it changes
+  // nothing about the scroll offset — no feedback loop, no need for an animation.
+  const [scrolledList, setScrolledList] = useState<string | null>(null);
 
   const assetAccounts = useAssetAccounts() ?? [];
   const currencies = useCurrencies();
@@ -405,6 +415,20 @@ export default function ActivityScreen() {
 
   const hasResults = displaySections.length > 0;
 
+  // Which list is scrolled, not just "is scrolled": a filter change remounts the list
+  // (key={dataKey}) and an emptied one unmounts it, both putting it back at the top without a
+  // scroll event following, and the strip would otherwise stay collapsed over an unscrolled list.
+  const listKey = `${dataKey}:${hasResults}`;
+  const collapsed = scrolledList === listKey;
+  // The dead band between the two thresholds keeps momentum around the edge from flapping it.
+  const onScroll = useCallback(
+    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const y = e.nativeEvent.contentOffset.y;
+      setScrolledList((cur) => (y > (cur === listKey ? 8 : 32) ? listKey : null));
+    },
+    [listKey],
+  );
+
   return (
     <Screen>
       <View style={{ flex: 1 }}>
@@ -475,7 +499,9 @@ export default function ActivityScreen() {
               accounts={assetAccounts}
               selectedId={accountFilter}
               onToggle={toggleAccountFilter}
+              currencies={currencies}
               pendingAccounts={pendingAccounts}
+              collapsed={collapsed}
             />
           )}
 
@@ -529,6 +555,8 @@ export default function ActivityScreen() {
             onRefresh={pull.onRefresh}
             onEndReached={handleEndReached}
             onEndReachedThreshold={0.4}
+            onScroll={onScroll}
+            scrollEventThrottle={32}
             contentContainerStyle={{ paddingBottom: 140 }}
             renderSectionHeader={renderSectionHeader}
             renderItem={renderItem}

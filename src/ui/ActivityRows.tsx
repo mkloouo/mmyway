@@ -1,7 +1,7 @@
-// Activity's rows (design §6.4): one transaction's row, the account filter pills above the list,
-// and a day's header. All memoized — a filter tap or a sync used to redraw every one of them.
-// The pills are names only: the balances they used to show made the header a third of the
-// screen, and an account's own page (long-press a pill) has them.
+// Activity's rows (design §6.4): one transaction's row, the account cards above the list, and a
+// day's header. All memoized — a filter tap or a sync used to redraw every one of them.
+// A card shows its balance at the top of the list and shrinks to a name-only pill once the list
+// is scrolled, where the strip would otherwise eat a third of the screen.
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n, { appLocale } from '../i18n';
@@ -9,10 +9,12 @@ import { Animated, Pressable, ScrollView, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { usePopOnChange } from './feedback';
 import { useTheme } from './theme';
-import { Chip, Dot, Money, PRESSED_OPACITY, SectionHeader } from './components';
+import { Card, Chip, Dot, Money, PRESSED_OPACITY, SectionHeader } from './components';
 import { currencyOf, formatMoney } from './money';
 import { categoryColor } from './categoryColor';
+import { relativeTime } from './relativeTime';
 import { navigateOnce } from './navigateOnce';
+import { PendingDot } from './PendingDot';
 import type { ReferenceAccountRow } from '../accounts/useAssetAccounts';
 import type { PendingEditStatus } from '../transactions/pendingEdits';
 import {
@@ -23,7 +25,7 @@ import {
   type Currencies,
   type DisplaySection,
 } from '../transactions/activityRows';
-import { dayDate, localDay } from '../utils/day';
+import { dayDate, isBalanceStale, localDay } from '../utils/day';
 
 const PENDING_LABEL_KEYS: Record<PendingEditStatus, string> = {
   queued: 'draft.queued',
@@ -155,24 +157,29 @@ export const ActivityRow = memo(function ActivityRow({
 
 /**
  * The balance cards above the list. Memoized, as is each card: a filter tap used to redraw every
- * card (and restart none of their rolls, but format all their dates), when only two change.
+ * card (and format all their dates) when only two change.
  */
 export const BalanceStrip = memo(function BalanceStrip({
   accounts,
   selectedId,
   onToggle,
+  currencies,
   pendingAccounts,
+  collapsed,
 }: {
   accounts: ReferenceAccountRow[];
   selectedId: string | null;
   onToggle: (id: string) => void;
+  currencies: Currencies;
   pendingAccounts: Set<string>;
+  collapsed: boolean;
 }) {
   const t = useTheme();
   const { t: tr } = useTranslation();
   return (
-    // A ScrollView defaults to flexGrow/flexShrink 1, so this row competed with the SectionList
-    // for height and had its pills clipped along the bottom edge.
+    // A ScrollView defaults to flexGrow/flexShrink 1, so this row competed with the SectionList for
+    // height and had its cards clipped along the bottom edge. The top padding is the room a card's
+    // long-press pop grows into: without it the ScrollView clipped the card's top edge.
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
@@ -180,22 +187,81 @@ export const BalanceStrip = memo(function BalanceStrip({
       contentContainerStyle={{
         paddingHorizontal: t.space.lg,
         gap: t.space.sm,
+        paddingTop: collapsed ? 0 : t.space.xs,
         paddingBottom: t.space.sm,
       }}
     >
-      {accounts.map((a) => (
-        <Chip
-          key={a.id}
-          label={a.name}
-          selected={selectedId === a.id}
-          // The same warning dot the account's own card carries while its changes are queued.
-          dotColor={pendingAccounts.has(a.id) ? t.color.warn : undefined}
-          onPress={() => onToggle(a.id)}
-          onLongPress={() => navigateOnce(`/accounts/${a.id}`)}
-          accessibilityHint={tr('account.openHint')}
-        />
-      ))}
+      {accounts.map((a) =>
+        collapsed ? (
+          <Chip
+            key={a.id}
+            label={a.name}
+            selected={selectedId === a.id}
+            // The same warning dot the card below carries while the account's changes are queued.
+            dotColor={pendingAccounts.has(a.id) ? t.color.warn : undefined}
+            onPress={() => onToggle(a.id)}
+            onLongPress={() => navigateOnce(`/accounts/${a.id}`)}
+            accessibilityHint={tr('account.openHint')}
+          />
+        ) : (
+          <BalanceCard
+            key={a.id}
+            account={a}
+            selected={selectedId === a.id}
+            pending={pendingAccounts.has(a.id)}
+            currencies={currencies}
+            onToggle={onToggle}
+          />
+        ),
+      )}
     </ScrollView>
+  );
+});
+
+const BalanceCard = memo(function BalanceCard({
+  account: a,
+  selected,
+  pending,
+  currencies,
+  onToggle,
+}: {
+  account: ReferenceAccountRow;
+  selected: boolean;
+  pending: boolean;
+  currencies: Currencies;
+  onToggle: (id: string) => void;
+}) {
+  const t = useTheme();
+  const { t: tr } = useTranslation();
+  const stale = isBalanceStale(a.currentBalanceDate);
+  return (
+    <Card
+      onPress={() => onToggle(a.id)}
+      onLongPress={() => navigateOnce(`/accounts/${a.id}`)}
+      delayLongPress={300}
+      longPressPop
+      accessibilityHint={tr('account.openHint')}
+      style={{
+        borderColor: selected ? t.color.accent : t.color.border,
+        minWidth: 120,
+        opacity: stale ? 0.5 : 1,
+      }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.xs }}>
+        <Text style={[t.type.label, { color: t.color.textMuted, flexShrink: 1 }]} numberOfLines={1}>
+          {a.name}
+        </Text>
+        <PendingDot visible={pending} />
+      </View>
+      <Money
+        amount={a.currentBalance ?? '0'}
+        currency={currencyOf(currencies, a.currencyCode)}
+        size="heading"
+      />
+      <Text style={[t.type.label, { color: t.color.textFaint }]}>
+        {tr('count.asOf', { time: relativeTime(a.currentBalanceDate) })}
+      </Text>
+    </Card>
   );
 });
 

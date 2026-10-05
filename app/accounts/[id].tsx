@@ -1,6 +1,8 @@
 // One asset account's page (design §6.6): everything FF3 lets you set on it, saved together and
 // queued like any other write. Opened from Settings → Accounts (tap or long-press) and from a
-// balance card on Activity (long-press).
+// balance card on Activity (long-press). The balance itself isn't here — it is on the card that
+// opens this page, and repeating it above fields that edit the opening balance only confused the
+// two.
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, Text, View } from 'react-native';
@@ -18,14 +20,11 @@ import {
   Card,
   Row,
   Button,
-  Money,
   Toast,
   CloseButton,
 } from '../../src/ui/components';
 import { Checkbox } from '../../src/ui/Checkbox';
 import { TextField } from '../../src/ui/TextField';
-import { currencyOf } from '../../src/ui/money';
-import { relativeTime } from '../../src/ui/relativeTime';
 import { useAction } from '../../src/ui/useAction';
 import { useConfirmDiscard } from '../../src/ui/useConfirmDiscard';
 import { useToast } from '../../src/ui/useToast';
@@ -170,7 +169,6 @@ export default function AccountScreen() {
     );
   }
 
-  const currency = currencyOf(currencies, account.currencyCode);
   const problemText =
     problem === 'name'
       ? tr('account.problemName')
@@ -185,7 +183,6 @@ export default function AccountScreen() {
       <View style={{ flex: 1 }}>
         <AppBar
           title={account.name}
-          subtitle={tr('count.asOf', { time: relativeTime(account.currentBalanceDate) })}
           left={<CloseButton onPress={close} />}
           right={<PendingDot visible={pendingAccounts.has(account.id)} />}
         />
@@ -193,10 +190,6 @@ export default function AccountScreen() {
           contentContainerStyle={{ paddingBottom: t.space.xl }}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={{ alignItems: 'center', paddingVertical: t.space.md }}>
-            <Money amount={account.currentBalance ?? '0'} currency={currency} size="heading" />
-          </View>
-
           <SectionHeader title={tr('account.sectionAccount')} />
           <Card style={{ marginHorizontal: t.space.lg, gap: t.space.sm }}>
             <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('accounts.name')}</Text>
