@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.6.4] - 2026-10-05
+
 ### Look and feel
 
 - **The line under a header has room under it now**, so the first thing on a screen no longer sits
