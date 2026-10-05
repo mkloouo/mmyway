@@ -2,31 +2,39 @@
 
 ## [Unreleased]
 
-## [1.6.3] - 2026-10-05
-
 ### Look and feel
 
-- **Every screen now draws a line under its header**, so a list scrolling up ends at something
-  instead of simply disappearing, with the same gap under it everywhere. On Activity the line sits
-  below the accounts and filters — the part that actually scrolls starts there.
-- **Switching tab and opening a screen both cross-fade** instead of cutting or sliding in from the
-  side. Capture, a receipt, a draft and Count still rise from the bottom, so a modal still looks
-  like a modal.
+- **The line under a header has room under it now**, so the first thing on a screen no longer sits
+  on the line — and it is the same gap on every screen.
+- **Switching tab cross-fades too**, the same as opening a screen; it used to slide along the bar.
 
 ### Activity
 
+- **The line sits below the accounts and the filters**, where the list that scrolls actually
+  starts, rather than under the title.
 - **The accounts along the top are pills with just the name**, instead of cards carrying the
   balance and how old it was — the header took a third of the screen before the first transaction.
   They still filter the list by tap, and still open the account on a long press, where the balance
   is.
 
-## [1.6.2] - 2026-10-05
+## [1.6.3] - 2026-10-05
+
+### Look and feel
+
+- **Every screen now draws a line under its top bar**, so a list scrolling up ends at something
+  instead of simply disappearing.
+- **Opening a screen fades instead of sliding in from the side.** Capture, a receipt, a draft and
+  Count still rise from the bottom, so a modal still looks like a modal.
 
 ### Fixed
 
 - **Dragging an account into place no longer shoves the row above it out of line.** A row with an
   "Envelope" or "Inactive" chip is taller than a plain one, and the reorder list assumed they were
   all the same height, so rows slid too far and overlapped.
+
+## [1.6.2] - 2026-10-05
+
+### Fixed
 
 - **Moving a repeating planned transaction's date works again.** Changing when a repeating
   subscription falls due (or its frequency) failed with "The end date is not a valid date" and the
