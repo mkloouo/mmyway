@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.6.3] - 2026-10-05
+
 ### Look and feel
 
 - **Every screen now draws a line under its top bar**, so a list scrolling up ends at something
