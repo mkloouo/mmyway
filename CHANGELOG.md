@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **Moving a repeating planned transaction's date works again.** Changing when a repeating
+  subscription falls due (or its frequency) failed with "The end date is not a valid date" and the
+  save sat in the queue. Retry a failed one and it goes through.
+
 ## [1.6.1] - 2026-10-03
 
 ### Fixed

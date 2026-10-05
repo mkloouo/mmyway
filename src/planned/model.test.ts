@@ -121,6 +121,16 @@ describe('planned model', () => {
     });
   });
 
+  it('leaves end_date out of a repeating bill and sets it on a one-off', () => {
+    const fields = fieldsOf(groupPlanned([bill, rule, recurrence])[0]!, '2026-09-28');
+    const moved: PlannedFields = { ...fields, date: '2026-11-08' };
+    // FF3's bill update refuses end_date: null ("The end date is not a valid date.").
+    expect(billBody(moved, fields)).not.toHaveProperty('end_date');
+    expect(billBody({ ...moved, repeats: false }, fields)).toMatchObject({
+      end_date: '2026-11-09',
+    });
+  });
+
   it('keeps the note on the bill and only the time on the recurrence', () => {
     const fields = { ...fieldsOf(groupPlanned([bill, rule, recurrence])[0]!, '2026-09-28') };
     const blank: PlannedFields = { ...fields, notes: '', time: null };

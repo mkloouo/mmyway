@@ -202,7 +202,12 @@ export function billBody(f: PlannedFields, before: PlannedFields | null): Record
           date: f.date,
           repeat_freq: f.repeats ? f.frequency : 'yearly',
           skip: f.repeats ? f.every - 1 : 0,
-          end_date: f.repeats ? null : addDays(f.date, 1),
+          // A one-off ends the day after it's due. A repeating one has no end, and the key is left
+          // out rather than sent as null: stock FF3's bill *update* rule lacks the `nullable` its
+          // create rule has (as with notes above), so a null fails with "The end date is not a
+          // valid date." and three more. An end date left from a one-off later switched to
+          // repeating therefore stays on the bill until FF3 can be sent a null.
+          ...(f.repeats ? {} : { end_date: addDays(f.date, 1) }),
         }
       : {}),
   };
