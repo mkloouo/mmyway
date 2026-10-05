@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.6.5] - 2026-10-06
+
 ### Activity
 
 - **The accounts along the top shrink out of the way as you scroll.** They start as cards with
