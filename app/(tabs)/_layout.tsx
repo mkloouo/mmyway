@@ -16,9 +16,9 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         // Tabs default to no animation at all: switching was a hard cut between two full screens,
-        // the most-used move in the app. `shift` slides the incoming tab in from the side it sits
-        // on, so it reads as moving along the bar rather than the screen being replaced.
-        animation: 'shift',
+        // the most-used move in the app. A cross-fade, the same as a push (app/_layout.tsx), so
+        // every move in the app reads the same way.
+        animation: 'fade',
         tabBarActiveTintColor: t.color.accent,
         tabBarInactiveTintColor: t.color.textFaint,
         tabBarStyle: {

@@ -77,7 +77,7 @@ const BAR_HEIGHT = 72;
 const BAR_CONTROL_SIZE = 40;
 
 /** The row every top bar is laid out in; AppBar uses it, and so does a bar that swaps in a search field. */
-export function BarRow({ children }: { children: ReactNode }) {
+export function BarRow({ children, divider = true }: { children: ReactNode; divider?: boolean }) {
   const t = useTheme();
   return (
     <View
@@ -87,10 +87,11 @@ export function BarRow({ children }: { children: ReactNode }) {
         alignItems: 'center',
         gap: t.space.md,
         paddingHorizontal: t.space.lg,
-        // The hairline every screen's content scrolls under, so a list that runs off the top ends
-        // somewhere rather than simply stopping.
-        borderBottomWidth: 1,
-        borderBottomColor: t.color.border,
+        // The hairline a screen's content scrolls under, so a list that runs off the top ends
+        // somewhere rather than simply stopping, and the breathing room under it that keeps the
+        // first thing below from sitting on the line. A screen whose bar is followed by more
+        // header (Activity's accounts and filters) turns it off and draws it below that instead.
+        ...(divider ? barDivider(t.color.border, t.space.sm) : null),
       }}
     >
       {children}
@@ -98,20 +99,28 @@ export function BarRow({ children }: { children: ReactNode }) {
   );
 }
 
+/** The hairline under a screen's header, wherever that header ends. */
+export function barDivider(border: string, gap: number): ViewStyle {
+  return { borderBottomWidth: 1, borderBottomColor: border, marginBottom: gap };
+}
+
 export function AppBar({
   title,
   subtitle,
   left,
   right,
+  divider,
 }: {
   title: string;
   subtitle?: string;
   left?: ReactNode;
   right?: ReactNode;
+  /** See BarRow: off when the screen draws the line under more header of its own. */
+  divider?: boolean;
 }) {
   const t = useTheme();
   return (
-    <BarRow>
+    <BarRow divider={divider}>
       {left}
       <View style={{ flex: 1 }}>
         <Text style={[t.type.title, { color: t.color.text }]} numberOfLines={1}>
@@ -348,17 +357,21 @@ export function Chip({
   label,
   selected,
   onPress,
+  onLongPress,
   tone,
   dotColor,
   accessibilityLabel,
+  accessibilityHint,
 }: {
   label: string;
   selected?: boolean;
   onPress?: () => void;
+  onLongPress?: () => void;
   tone?: 'default' | 'warn';
   dotColor?: string;
   /** Required when `label` is a bare glyph rather than real text. */
   accessibilityLabel?: string;
+  accessibilityHint?: string;
 }) {
   const t = useTheme();
   const border = tone === 'warn' ? t.color.warn : selected ? t.color.accent : t.color.border;
@@ -368,10 +381,12 @@ export function Chip({
   return (
     <Pressable
       onPress={onPress}
+      onLongPress={onLongPress}
       // A chip is drawn 36 dp tall; the touch area reaches the kit's 44 above and below it.
       hitSlop={{ top: CHIP_SLOP, bottom: CHIP_SLOP }}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
+      accessibilityHint={accessibilityHint}
       accessibilityState={{ selected: !!selected }}
       style={({ pressed }) => ({
         flexDirection: 'row',

@@ -15,6 +15,7 @@ import {
   BarRow,
   BarIconButton,
   Chip,
+  barDivider,
   EmptyState,
   Sheet,
   Row,
@@ -411,6 +412,7 @@ export default function ActivityScreen() {
             does not shove the balances and the list down the screen. */}
         {selecting ? (
           <AppBar
+            divider={false}
             title={tr('inbox.selected', { count: selectedIds.size })}
             left={
               <BarIconButton
@@ -429,7 +431,7 @@ export default function ActivityScreen() {
             }
           />
         ) : searchOpen ? (
-          <BarRow>
+          <BarRow divider={false}>
             <SearchField
               value={search}
               onChangeText={setSearch}
@@ -446,6 +448,7 @@ export default function ActivityScreen() {
           </BarRow>
         ) : (
           <AppBar
+            divider={false}
             title={tr('activity.title')}
             right={
               <>
@@ -464,32 +467,35 @@ export default function ActivityScreen() {
           />
         )}
 
-        {assetAccounts.length > 0 && (
-          <BalanceStrip
-            accounts={assetAccounts}
-            selectedId={accountFilter}
-            onToggle={toggleAccountFilter}
-            currencies={currencies}
-            pendingAccounts={pendingAccounts}
-          />
-        )}
-
-        <View
-          style={{
-            flexDirection: 'row',
-            paddingHorizontal: t.space.lg,
-            gap: t.space.sm,
-            paddingBottom: t.space.sm,
-          }}
-        >
-          {FILTERS.map((f) => (
-            <Chip
-              key={f.type}
-              label={tr(f.labelKey)}
-              selected={type === f.type}
-              onPress={() => setType(f.type)}
+        {/* The accounts and the filters are header too, so the line goes under them rather than
+            under the bar — the list is what scrolls, and it is what the line has to cut off. */}
+        <View style={barDivider(t.color.border, t.space.sm)}>
+          {assetAccounts.length > 0 && (
+            <BalanceStrip
+              accounts={assetAccounts}
+              selectedId={accountFilter}
+              onToggle={toggleAccountFilter}
+              pendingAccounts={pendingAccounts}
             />
-          ))}
+          )}
+
+          <View
+            style={{
+              flexDirection: 'row',
+              paddingHorizontal: t.space.lg,
+              gap: t.space.sm,
+              paddingBottom: t.space.sm,
+            }}
+          >
+            {FILTERS.map((f) => (
+              <Chip
+                key={f.type}
+                label={tr(f.labelKey)}
+                selected={type === f.type}
+                onPress={() => setType(f.type)}
+              />
+            ))}
+          </View>
         </View>
 
         {hasSyncedBefore === false && !hasResults && (

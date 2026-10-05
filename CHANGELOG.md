@@ -6,10 +6,19 @@
 
 ### Look and feel
 
-- **Every screen now draws a line under its top bar**, so a list scrolling up ends at something
-  instead of simply disappearing.
-- **Opening a screen fades instead of sliding in from the side.** Capture, a receipt, a draft and
-  Count still rise from the bottom, so a modal still looks like a modal.
+- **Every screen now draws a line under its header**, so a list scrolling up ends at something
+  instead of simply disappearing, with the same gap under it everywhere. On Activity the line sits
+  below the accounts and filters — the part that actually scrolls starts there.
+- **Switching tab and opening a screen both cross-fade** instead of cutting or sliding in from the
+  side. Capture, a receipt, a draft and Count still rise from the bottom, so a modal still looks
+  like a modal.
+
+### Activity
+
+- **The accounts along the top are pills with just the name**, instead of cards carrying the
+  balance and how old it was — the header took a third of the screen before the first transaction.
+  They still filter the list by tap, and still open the account on a long press, where the balance
+  is.
 
 ## [1.6.2] - 2026-10-05
 
