@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.6.2] - 2026-10-05
+
 ### Fixed
 
 - **Moving a repeating planned transaction's date works again.** Changing when a repeating
