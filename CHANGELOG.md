@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Activity
+
+- **The accounts along the top shrink out of the way as you scroll.** They start as cards with
+  the balance and how old it is, and once the list moves they become pills with just the name, so
+  the history gets the screen instead of the header. They still filter the list by tap and open
+  the account on a long press.
+- **An account's own page no longer repeats its balance**, which only muddled it with the opening
+  balance you edit there. The balance is on the card on Activity.
+
 ## [1.6.4] - 2026-10-05
 
 ### Look and feel
@@ -14,12 +23,10 @@
 
 - **The line sits below the accounts and the filters**, where the list that scrolls actually
   starts, rather than under the title.
-- **The accounts along the top shrink out of the way as you scroll.** They start as cards with
-  the balance and how old it is, and once the list moves they become pills with just the name, so
-  the history gets the screen instead of the header. They still filter the list by tap and open
-  the account on a long press.
-- **An account's own page no longer repeats its balance**, which only muddled it with the opening
-  balance you edit there. The balance is on the card on Activity.
+- **The accounts along the top are pills with just the name**, instead of cards carrying the
+  balance and how old it was — the header took a third of the screen before the first transaction.
+  They still filter the list by tap, and still open the account on a long press, where the balance
+  is.
 
 ## [1.6.3] - 2026-10-05
 
