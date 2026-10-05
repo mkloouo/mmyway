@@ -87,6 +87,10 @@ export function BarRow({ children }: { children: ReactNode }) {
         alignItems: 'center',
         gap: t.space.md,
         paddingHorizontal: t.space.lg,
+        // The hairline every screen's content scrolls under, so a list that runs off the top ends
+        // somewhere rather than simply stopping.
+        borderBottomWidth: 1,
+        borderBottomColor: t.color.border,
       }}
     >
       {children}

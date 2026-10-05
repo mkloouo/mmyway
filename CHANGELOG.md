@@ -2,9 +2,20 @@
 
 ## [Unreleased]
 
+### Look and feel
+
+- **Every screen now draws a line under its top bar**, so a list scrolling up ends at something
+  instead of simply disappearing.
+- **Opening a screen fades instead of sliding in from the side.** Capture, a receipt, a draft and
+  Count still rise from the bottom, so a modal still looks like a modal.
+
 ## [1.6.2] - 2026-10-05
 
 ### Fixed
+
+- **Dragging an account into place no longer shoves the row above it out of line.** A row with an
+  "Envelope" or "Inactive" chip is taller than a plain one, and the reorder list assumed they were
+  all the same height, so rows slid too far and overlapped.
 
 - **Moving a repeating planned transaction's date works again.** Changing when a repeating
   subscription falls due (or its frequency) failed with "The end date is not a valid date" and the

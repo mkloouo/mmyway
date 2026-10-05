@@ -2,12 +2,13 @@
 // activates after a long press, so a short drag still scrolls the list, and until the finger has
 // held, a row's own press keeps working.
 //
-// Rows are all one height, measured from the first one rather than passed in, so following the
-// finger is arithmetic instead of measuring and caching every row: the row under it has moved
-// round(draggedBy / rowHeight) places, and the rows it passed slide out of its way by one.
+// Every row measures itself, because rows are not all one height: an account with an "Envelope"
+// or "Inactive" chip is taller than a plain one. Measuring the first row and multiplying (what
+// this did) made the rows a drag passed slide by the wrong amount, overlapping the row above.
+// src/ui/dragSlots.ts turns those heights into where a drag lands and how far it travelled.
 // ponytail: no auto-scroll while dragging at an edge — only the rows on screen can be reached.
 // Add it if this list ever outgrows a screen or two.
-import { useState, type ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -18,6 +19,7 @@ import Animated, {
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
+import { landsAt, slotOf } from './dragSlots';
 import { haptics } from './haptics';
 
 const HOLD_MS = 250;
@@ -28,14 +30,6 @@ const SETTLE_MS = 170;
 const SHIFT_MS = 150;
 const LIFT_SCALE = 0.04;
 const EASE = { duration: SETTLE_MS, easing: Easing.out(Easing.cubic) };
-
-/** The slot a row dragged `y` from `from` lands in. Runs on the UI thread and in the gesture. */
-function landsAt(from: number, count: number, rowHeight: number, y: number): number {
-  'worklet';
-  if (rowHeight <= 0) return from;
-  const to = from + Math.round(y / rowHeight);
-  return to < 0 ? 0 : to > count - 1 ? count - 1 : to;
-}
 
 export function DragList<T>({
   items,
@@ -61,11 +55,21 @@ export function DragList<T>({
   /** For TalkBack, which can't drag: each row's "move up" / "move down" actions. */
   moveLabels: { up: string; down: string };
 }) {
-  const [rowHeight, setRowHeight] = useState(0);
-  // Which row is being dragged (-1: none), how far, and how far off the list it is held. Shared by
-  // every row's animated style, and written only here — a row asks for the change through
-  // begin/drag/release, because the react-hooks lint rules (rightly) don't let a component write
-  // to a shared value it was handed.
+  // Each row's height, in the order the rows are in — read by the gesture and by every row's
+  // animated style. Kept by key, because a reorder keeps the heights and only moves them about;
+  // the whole list is published on every row layout, which is also how the new order gets in: a
+  // reorder moves rows, every row it moved reports its layout, and `items` is the new order by then.
+  const measured = useRef(new Map<string, number>());
+  const heights = useSharedValue<number[]>([]);
+  const measure = (key: string, height: number) => {
+    measured.current.set(key, height);
+    heights.value = items.map((item) => measured.current.get(keyOf(item)) ?? 0);
+  };
+
+  // Which row is being dragged (-1: none) and how far, and how far off the list it is held.
+  // Shared by every row's animated style, and written only here — a row asks for the change
+  // through begin/drag/release, because the react-hooks lint rules (rightly) don't let a
+  // component write to a shared value it was handed.
   const dragging = useSharedValue(-1);
   const dragY = useSharedValue(0);
   const lift = useSharedValue(0);
@@ -106,26 +110,29 @@ export function DragList<T>({
 
   return (
     <View>
-      {items.map((item, index) => (
-        <DragRow
-          key={keyOf(item)}
-          index={index}
-          count={items.length}
-          rowHeight={rowHeight}
-          onMeasure={index === 0 ? setRowHeight : undefined}
-          dragging={dragging}
-          dragY={dragY}
-          lift={lift}
-          begin={begin}
-          drag={drag}
-          release={release}
-          move={commit}
-          gap={gap}
-          labels={moveLabels}
-        >
-          {renderItem(item, index)}
-        </DragRow>
-      ))}
+      {items.map((item, index) => {
+        const key = keyOf(item);
+        return (
+          <DragRow
+            key={key}
+            index={index}
+            heights={heights}
+            onMeasure={(height) => measure(key, height)}
+            dragging={dragging}
+            dragY={dragY}
+            lift={lift}
+            begin={begin}
+            drag={drag}
+            release={release}
+            move={commit}
+            count={items.length}
+            gap={gap}
+            labels={moveLabels}
+          >
+            {renderItem(item, index)}
+          </DragRow>
+        );
+      })}
     </View>
   );
 }
@@ -134,7 +141,7 @@ function DragRow({
   children,
   index,
   count,
-  rowHeight,
+  heights,
   onMeasure,
   dragging,
   dragY,
@@ -149,8 +156,8 @@ function DragRow({
   children: ReactNode;
   index: number;
   count: number;
-  rowHeight: number;
-  onMeasure?: (height: number) => void;
+  heights: SharedValue<number[]>;
+  onMeasure: (height: number) => void;
   dragging: SharedValue<number>;
   dragY: SharedValue<number>;
   lift: SharedValue<number>;
@@ -170,8 +177,8 @@ function DragRow({
     })
     .onUpdate((e) => drag(e.translationY))
     .onEnd((e) => {
-      const to = landsAt(index, count, rowHeight, e.translationY);
-      release(index, to, (to - index) * rowHeight);
+      const to = landsAt(index, heights.value, e.translationY);
+      release(index, to, slotOf(index, to, heights.value));
     })
     // A cancelled drag travels home the same way instead of blinking back.
     .onFinalize((_e, success) => {
@@ -188,13 +195,15 @@ function DragRow({
     const atRest = { transform: [{ translateY: 0 }, { scale: 1 }], zIndex: 0 };
     // Nothing held: the commit has just reordered the list, so every row is already where it
     // belongs — animating back to 0 from here would undo the move it just made visible.
-    if (from < 0 || rowHeight <= 0) return atRest;
-    const to = landsAt(from, count, rowHeight, dragY.value);
+    if (from < 0 || heights.value.length === 0) return atRest;
+    const to = landsAt(from, heights.value, dragY.value);
+    // A row slides out of the way by the height of the row being dragged over it, not its own.
+    const held = heights.value[from] ?? 0;
     const shift =
       from < to && index > from && index <= to
-        ? -rowHeight
+        ? -held
         : from > to && index >= to && index < from
-          ? rowHeight
+          ? held
           : 0;
     return {
       transform: [{ translateY: withTiming(shift, { duration: SHIFT_MS }) }, { scale: 1 }],
@@ -206,7 +215,7 @@ function DragRow({
     <GestureDetector gesture={pan}>
       <Animated.View
         style={[{ paddingBottom: gap }, style]}
-        onLayout={onMeasure && ((e) => onMeasure(e.nativeEvent.layout.height))}
+        onLayout={(e) => onMeasure(e.nativeEvent.layout.height)}
         accessibilityActions={[
           { name: 'moveUp', label: labels.up },
           { name: 'moveDown', label: labels.down },

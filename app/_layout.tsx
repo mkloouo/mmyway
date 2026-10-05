@@ -20,6 +20,8 @@ import { registerBackgroundSync } from '../src/sync/backgroundSync';
 
 installLogCapture();
 
+const MODAL = { presentation: 'modal', animation: 'slide_from_bottom' } as const;
+
 function ShareIntentBridge() {
   useSharedImages();
   return null;
@@ -110,12 +112,15 @@ export default function RootLayout() {
             <SyncOnReconnect />
             <BackgroundSyncRegistration />
             <ShareIntentBridge />
-            <Stack screenOptions={{ headerShown: false }}>
+            {/* A push fades rather than sliding in from the side: these screens are a drill-down
+                into what the tab already showed, and the slide read as a different place. The
+                modals keep rising from the bottom — that is what tells them apart from a push. */}
+            <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
               <Stack.Screen name="(tabs)" />
-              <Stack.Screen name="capture" options={{ presentation: 'modal' }} />
-              <Stack.Screen name="receipt" options={{ presentation: 'modal' }} />
-              <Stack.Screen name="draft/[id]" options={{ presentation: 'modal' }} />
-              <Stack.Screen name="count" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="capture" options={MODAL} />
+              <Stack.Screen name="receipt" options={MODAL} />
+              <Stack.Screen name="draft/[id]" options={MODAL} />
+              <Stack.Screen name="count" options={MODAL} />
             </Stack>
           </DbProvider>
         </QueryClientProvider>
