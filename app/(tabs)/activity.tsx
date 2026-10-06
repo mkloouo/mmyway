@@ -1,7 +1,7 @@
 // Activity (design §6.4) — balances, grouped-by-day history with totals, paging, search.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, SectionList, Text, View } from 'react-native';
+import { SectionList, Text, View } from 'react-native';
 import { Collapsible, leaveThen } from '../../src/ui/Collapsible';
 import { useNavigation } from 'expo-router';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
@@ -19,7 +19,6 @@ import {
   Sheet,
   Row,
   Button,
-  SectionHeader,
   SCREEN_TOP_PADDING,
 } from '../../src/ui/components';
 import { CaptureDock } from '../../src/ui/CaptureDock';
@@ -53,7 +52,7 @@ import {
   type RemoteResultRow,
 } from '../../src/transactions/activityRows';
 import { useRemoteSearch } from '../../src/transactions/useRemoteSearch';
-import { ActivityRow, BalanceCard, BalanceStrip, DayHeader } from '../../src/ui/ActivityRows';
+import { ActivityRow, BalanceStrip, DayHeader } from '../../src/ui/ActivityRows';
 import { useSelection } from '../../src/ui/useSelection';
 import { useHasSyncedBefore } from '../../src/sync/useHasSyncedBefore';
 import { localDay } from '../../src/utils/day';
@@ -617,49 +616,35 @@ export default function ActivityScreen() {
         onClose={() => setFilterOpen(false)}
         title={tr('activity.filters')}
       >
-        <SectionHeader
-          title={tr('activity.filterAccounts')}
-          style={{ paddingHorizontal: 0, paddingTop: 0 }}
-        />
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          style={{ flexGrow: 0, flexShrink: 0, marginHorizontal: -t.space.lg }}
-          contentContainerStyle={{
-            paddingHorizontal: t.space.lg,
-            gap: t.space.sm,
-            paddingTop: t.space.xs,
-            paddingBottom: t.space.sm,
-          }}
-        >
+        <Text style={[t.type.caption, { color: t.color.textMuted, textTransform: 'uppercase' }]}>
+          {tr('activity.filterAccounts')}
+        </Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
+          <Chip
+            label={tr('activity.allAccounts')}
+            selected={accountFilter === null}
+            onPress={() => setAccountFilter(null)}
+          />
           {assetAccounts.map((a) => (
-            <BalanceCard
+            <Chip
               key={a.id}
-              account={a}
+              label={a.name}
               selected={accountFilter === a.id}
-              pending={pendingAccounts.has(a.id)}
-              currencies={currencies}
-              onToggle={toggleAccountFilter}
-              onLongPress={() => {
-                setFilterOpen(false);
-                navigateOnce(`/accounts/${a.id}`);
-              }}
+              dotColor={pendingAccounts.has(a.id) ? t.color.warn : undefined}
+              onPress={() => toggleAccountFilter(a.id)}
             />
           ))}
-        </ScrollView>
+        </View>
 
-        <SectionHeader
-          title={tr('activity.filterType')}
-          style={{ paddingHorizontal: 0, paddingTop: t.space.sm }}
-        />
-        <View
-          style={{
-            flexDirection: 'row',
-            gap: t.space.sm,
-            paddingTop: t.space.xs,
-            paddingBottom: t.space.lg,
-          }}
+        <Text
+          style={[
+            t.type.caption,
+            { color: t.color.textMuted, textTransform: 'uppercase', marginTop: t.space.xs },
+          ]}
         >
+          {tr('activity.filterType')}
+        </Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
           {FILTERS.map((f) => (
             <Chip
               key={f.type}

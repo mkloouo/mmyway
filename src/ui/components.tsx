@@ -77,9 +77,10 @@ export const BAR_HEIGHT = 72;
 const BAR_CONTROL_SIZE = 40;
 /**
  * The standard top breathing room between the hairline divider and where screen content begins
- * (whether section headers, chips, balance cards, or cards), matching the Inbox screen.
+ * (whether section headers, chips, balance cards, or cards), normalized to the spacing between
+ * account chips and filter chips (12px).
  */
-export const SCREEN_TOP_PADDING = 28;
+export const SCREEN_TOP_PADDING = 12;
 
 /** The row every top bar is laid out in; AppBar uses it, and so does a bar that swaps in a search field. */
 export function BarRow({ children, divider = true }: { children: ReactNode; divider?: boolean }) {

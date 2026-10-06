@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Look and feel
+
+- **Normalized header breathing room across all screens.** Content below the top bar now starts with a compact 12px breathing room matching the spacing between account and filter chips, eliminating excessive empty space below the header.
+- **Activity filter sheet standardized.** The filter sheet now uses the standard wrapped chip picker style matching other sheets in the app, with balanced spacing and clean section headers.
+
 ### Activity
 
 - **Remote search respects transaction type and account filters.** Paging past cached history in search now passes the active type and account filters to Firefly III and filters remote results, so spending searches no longer show transfers or deposits.
