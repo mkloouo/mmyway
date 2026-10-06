@@ -65,26 +65,13 @@ export default function PlannedScreen() {
     .filter((o) => o.kind === kind)
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  return (
-    <Screen>
-      <AppBar
-        title={tr('planned.title')}
-        right={
-          mode === 'simple' ? (
-            <BarIconButton
-              icon="add"
-              label={tr('planned.add')}
-              onPress={() => navigateOnce('/planned/new')}
-            />
-          ) : undefined
-        }
-      />
+  const listHeader = (
+    <View style={{ gap: t.space.sm, paddingTop: t.space.xs, paddingBottom: t.space.xs }}>
       <View
         style={{
           flexDirection: 'row',
           gap: t.space.sm,
           paddingHorizontal: t.space.lg,
-          paddingBottom: t.space.sm,
         }}
       >
         <Chip
@@ -104,7 +91,6 @@ export default function PlannedScreen() {
             flexDirection: 'row',
             gap: t.space.sm,
             paddingHorizontal: t.space.lg,
-            paddingBottom: t.space.sm,
           }}
         >
           {KIND_TABS.map((k) => (
@@ -117,12 +103,35 @@ export default function PlannedScreen() {
           ))}
         </View>
       )}
+    </View>
+  );
+
+  return (
+    <Screen>
+      <AppBar
+        title={tr('planned.title')}
+        subtitle={
+          mode === 'detailed'
+            ? tr(KIND_TABS.find((k) => k.kind === kind)?.labelKey ?? '')
+            : undefined
+        }
+        right={
+          mode === 'simple' ? (
+            <BarIconButton
+              icon="add"
+              label={tr('planned.add')}
+              onPress={() => navigateOnce('/planned/new')}
+            />
+          ) : undefined
+        }
+      />
 
       {mode === 'simple' ? (
         <FlatList
           data={items}
           keyExtractor={(item) => item.key}
           refreshControl={refresh}
+          ListHeaderComponent={listHeader}
           contentContainerStyle={{ paddingBottom: t.space.xxl, gap: t.space.sm }}
           ListEmptyComponent={
             loaded ? (
@@ -197,6 +206,7 @@ export default function PlannedScreen() {
           data={objectsOfKind}
           keyExtractor={(o) => o.key}
           refreshControl={refresh}
+          ListHeaderComponent={listHeader}
           contentContainerStyle={{ paddingBottom: t.space.xxl, gap: t.space.sm }}
           ListEmptyComponent={
             loaded ? (

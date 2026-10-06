@@ -205,7 +205,7 @@ export default function SettingsScreen() {
   return (
     <Screen>
       <AppBar title={tr('settings.title')} />
-      <ScrollView contentContainerStyle={{ paddingBottom: t.space.xxl }}>
+      <ScrollView contentContainerStyle={{ paddingBottom: t.space.xxl, paddingTop: t.space.sm }}>
         <SectionHeader title={tr('settings.sectionConnection')} />
         <Card style={{ marginHorizontal: t.space.lg }}>
           <Row

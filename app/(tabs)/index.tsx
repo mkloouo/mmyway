@@ -445,7 +445,7 @@ export default function InboxScreen() {
           keyExtractor={(row) => row.id}
           refreshing={pull.refreshing}
           onRefresh={pull.onRefresh}
-          contentContainerStyle={{ paddingBottom: 140 }}
+          contentContainerStyle={{ paddingBottom: 140, paddingTop: t.space.sm }}
           ListEmptyComponent={
             <>
               {hasCredentials === false && (

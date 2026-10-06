@@ -187,7 +187,7 @@ export default function AccountScreen() {
           right={<PendingDot visible={pendingAccounts.has(account.id)} />}
         />
         <ScrollView
-          contentContainerStyle={{ paddingBottom: t.space.xl }}
+          contentContainerStyle={{ paddingBottom: t.space.xl, paddingTop: t.space.sm }}
           keyboardShouldPersistTaps="handled"
         >
           <SectionHeader title={tr('account.sectionAccount')} />

@@ -136,29 +136,14 @@ export default function AccountsScreen() {
           space for the length of the fade, and the list would jump as they handed it over. The
           keys are what makes React mount a new one, so `entering` runs at all. */}
       {reordering ? (
-        <Animated.Text
-          key="hint"
-          entering={FadeIn.duration(FADE_MS)}
-          style={[t.type.label, { color: t.color.textMuted, paddingHorizontal: t.space.lg }]}
-        >
-          {tr('accounts.reorderHint')}
-        </Animated.Text>
-      ) : (
-        <Animated.View
-          key="search"
-          entering={FadeIn.duration(FADE_MS)}
-          style={{ paddingHorizontal: t.space.lg }}
-        >
-          <SearchField
-            value={search}
-            onChangeText={setSearch}
-            placeholder={tr('pickers.searchAccounts')}
-          />
-        </Animated.View>
-      )}
-      {reordering ? (
         <Animated.View key="drag" entering={FadeIn.duration(FADE_MS)} style={{ flex: 1 }}>
-          <ScrollView contentContainerStyle={{ padding: t.space.lg }} scrollEnabled={!holding}>
+          <ScrollView
+            contentContainerStyle={{ padding: t.space.lg, gap: t.space.sm }}
+            scrollEnabled={!holding}
+          >
+            <Text style={[t.type.label, { color: t.color.textMuted, paddingBottom: t.space.xs }]}>
+              {tr('accounts.reorderHint')}
+            </Text>
             {visible.length === 0 ? (
               empty
             ) : (
@@ -180,6 +165,15 @@ export default function AccountsScreen() {
             data={visible}
             keyExtractor={(a) => a.id}
             keyboardShouldPersistTaps="handled"
+            ListHeaderComponent={
+              <View style={{ paddingBottom: t.space.sm }}>
+                <SearchField
+                  value={search}
+                  onChangeText={setSearch}
+                  placeholder={tr('pickers.searchAccounts')}
+                />
+              </View>
+            }
             contentContainerStyle={{ padding: t.space.lg, gap: t.space.sm }}
             renderItem={({ item }) => row(item)}
             ListEmptyComponent={empty}

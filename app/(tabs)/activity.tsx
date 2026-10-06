@@ -1,13 +1,7 @@
 // Activity (design §6.4) — balances, grouped-by-day history with totals, paging, search.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  SectionList,
-  Text,
-  View,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-} from 'react-native';
+import { ScrollView, SectionList, Text, View } from 'react-native';
 import { Collapsible, leaveThen } from '../../src/ui/Collapsible';
 import { useNavigation } from 'expo-router';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
@@ -21,11 +15,11 @@ import {
   BarRow,
   BarIconButton,
   Chip,
-  barDivider,
   EmptyState,
   Sheet,
   Row,
   Button,
+  SectionHeader,
 } from '../../src/ui/components';
 import { CaptureDock } from '../../src/ui/CaptureDock';
 import {
@@ -87,12 +81,9 @@ export default function ActivityScreen() {
   const [type, setType] = useState<ActivityTypeFilter>('all');
   const [searchOpen, setSearchOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [accountFilter, setAccountFilter] = useState<string | null>(null);
-  // The account cards show their balances at the top of the list and shrink to name-only pills
-  // once it is scrolled. The strip sits above the list, not inside it, so collapsing it changes
-  // nothing about the scroll offset — no feedback loop, no need for an animation.
-  const [scrolledList, setScrolledList] = useState<string | null>(null);
 
   const assetAccounts = useAssetAccounts() ?? [];
   const currencies = useCurrencies();
@@ -418,15 +409,43 @@ export default function ActivityScreen() {
   // Which list is scrolled, not just "is scrolled": a filter change remounts the list
   // (key={dataKey}) and an emptied one unmounts it, both putting it back at the top without a
   // scroll event following, and the strip would otherwise stay collapsed over an unscrolled list.
-  const listKey = `${dataKey}:${hasResults}`;
-  const collapsed = scrolledList === listKey;
-  // The dead band between the two thresholds keeps momentum around the edge from flapping it.
-  const onScroll = useCallback(
-    (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const y = e.nativeEvent.contentOffset.y;
-      setScrolledList((cur) => (y > (cur === listKey ? 8 : 32) ? listKey : null));
-    },
-    [listKey],
+  const isFiltered = accountFilter !== null || type !== 'all';
+  const selectedAccount = assetAccounts.find((a) => a.id === accountFilter);
+  const activeType = FILTERS.find((f) => f.type === type);
+  const typeSubtitle = type !== 'all' && activeType ? tr(activeType.labelKey) : null;
+  const activeFilterSubtitle = [selectedAccount?.name, typeSubtitle].filter(Boolean).join(' · ');
+
+  const listHeader = (
+    <View style={{ paddingTop: t.space.xs, paddingBottom: t.space.xs }}>
+      {assetAccounts.length > 0 && (
+        <BalanceStrip
+          accounts={assetAccounts}
+          selectedId={accountFilter}
+          onToggle={toggleAccountFilter}
+          currencies={currencies}
+          pendingAccounts={pendingAccounts}
+        />
+      )}
+
+      <View
+        style={{
+          flexDirection: 'row',
+          paddingHorizontal: t.space.lg,
+          gap: t.space.sm,
+          paddingTop: t.space.xs,
+          paddingBottom: t.space.sm,
+        }}
+      >
+        {FILTERS.map((f) => (
+          <Chip
+            key={f.type}
+            label={tr(f.labelKey)}
+            selected={type === f.type}
+            onPress={() => setType(f.type)}
+          />
+        ))}
+      </View>
+    </View>
   );
 
   return (
@@ -436,7 +455,6 @@ export default function ActivityScreen() {
             does not shove the balances and the list down the screen. */}
         {selecting ? (
           <AppBar
-            divider={false}
             title={tr('inbox.selected', { count: selectedIds.size })}
             left={
               <BarIconButton
@@ -455,7 +473,7 @@ export default function ActivityScreen() {
             }
           />
         ) : searchOpen ? (
-          <BarRow divider={false}>
+          <BarRow>
             <SearchField
               value={search}
               onChangeText={setSearch}
@@ -472,14 +490,20 @@ export default function ActivityScreen() {
           </BarRow>
         ) : (
           <AppBar
-            divider={false}
             title={tr('activity.title')}
+            subtitle={activeFilterSubtitle || undefined}
             right={
               <>
                 <BarIconButton
                   icon="search"
                   label={tr('activity.search')}
                   onPress={() => setSearchOpen(true)}
+                />
+                <BarIconButton
+                  icon={isFiltered ? 'funnel' : 'funnel-outline'}
+                  label={tr('activity.filter')}
+                  active={isFiltered}
+                  onPress={() => setFilterOpen(true)}
                 />
                 <BarIconButton
                   icon="ellipsis-horizontal"
@@ -491,38 +515,7 @@ export default function ActivityScreen() {
           />
         )}
 
-        {/* The accounts and the filters are header too, so the line goes under them rather than
-            under the bar — the list is what scrolls, and it is what the line has to cut off. */}
-        <View style={barDivider(t.color.border, t.space.sm)}>
-          {assetAccounts.length > 0 && (
-            <BalanceStrip
-              accounts={assetAccounts}
-              selectedId={accountFilter}
-              onToggle={toggleAccountFilter}
-              currencies={currencies}
-              pendingAccounts={pendingAccounts}
-              collapsed={collapsed}
-            />
-          )}
-
-          <View
-            style={{
-              flexDirection: 'row',
-              paddingHorizontal: t.space.lg,
-              gap: t.space.sm,
-              paddingBottom: t.space.sm,
-            }}
-          >
-            {FILTERS.map((f) => (
-              <Chip
-                key={f.type}
-                label={tr(f.labelKey)}
-                selected={type === f.type}
-                onPress={() => setType(f.type)}
-              />
-            ))}
-          </View>
-        </View>
+        {!hasResults && listHeader}
 
         {hasSyncedBefore === false && !hasResults && (
           <EmptyState
@@ -555,9 +548,8 @@ export default function ActivityScreen() {
             onRefresh={pull.onRefresh}
             onEndReached={handleEndReached}
             onEndReachedThreshold={0.4}
-            onScroll={onScroll}
-            scrollEventThrottle={32}
             contentContainerStyle={{ paddingBottom: 140 }}
+            ListHeaderComponent={listHeader}
             renderSectionHeader={renderSectionHeader}
             renderItem={renderItem}
             // A filter change remounts the list (key above), so what it mounts is what a tap costs.
@@ -604,6 +596,59 @@ export default function ActivityScreen() {
 
         <CaptureDock />
       </View>
+
+      <Sheet
+        visible={filterOpen}
+        onClose={() => setFilterOpen(false)}
+        title={tr('activity.filters')}
+      >
+        <SectionHeader title={tr('activity.filterAccounts')} />
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ flexGrow: 0, flexShrink: 0 }}
+          contentContainerStyle={{
+            paddingHorizontal: t.space.lg,
+            gap: t.space.sm,
+            paddingVertical: t.space.sm,
+          }}
+        >
+          <Chip
+            label={tr('activity.allAccounts')}
+            selected={accountFilter === null}
+            onPress={() => setAccountFilter(null)}
+          />
+          {assetAccounts.map((a) => (
+            <Chip
+              key={a.id}
+              label={a.name}
+              selected={accountFilter === a.id}
+              dotColor={pendingAccounts.has(a.id) ? t.color.warn : undefined}
+              onPress={() => toggleAccountFilter(a.id)}
+            />
+          ))}
+        </ScrollView>
+
+        <SectionHeader title={tr('activity.filterType')} />
+        <View
+          style={{
+            flexDirection: 'row',
+            paddingHorizontal: t.space.lg,
+            gap: t.space.sm,
+            paddingTop: t.space.xs,
+            paddingBottom: t.space.lg,
+          }}
+        >
+          {FILTERS.map((f) => (
+            <Chip
+              key={f.type}
+              label={tr(f.labelKey)}
+              selected={type === f.type}
+              onPress={() => setType(f.type)}
+            />
+          ))}
+        </View>
+      </Sheet>
 
       <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={tr('activity.title')}>
         <Row
