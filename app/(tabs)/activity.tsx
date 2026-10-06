@@ -14,15 +14,14 @@ import {
   AppBar,
   BarRow,
   BarIconButton,
-  Card,
   Chip,
   EmptyState,
   Sheet,
   Row,
   Button,
   SectionHeader,
+  SCREEN_TOP_PADDING,
 } from '../../src/ui/components';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { CaptureDock } from '../../src/ui/CaptureDock';
 import {
   useTransactionPage,
@@ -418,7 +417,7 @@ export default function ActivityScreen() {
   const activeFilterSubtitle = [selectedAccount?.name, typeSubtitle].filter(Boolean).join(' · ');
 
   const listHeader = (
-    <View style={{ paddingTop: t.space.xs, paddingBottom: t.space.xs }}>
+    <View style={{ paddingTop: SCREEN_TOP_PADDING - t.space.xs, paddingBottom: t.space.xs }}>
       {assetAccounts.length > 0 && (
         <BalanceStrip
           accounts={assetAccounts}
@@ -502,7 +501,7 @@ export default function ActivityScreen() {
                   onPress={() => setSearchOpen(true)}
                 />
                 <BarIconButton
-                  icon="filter"
+                  icon="funnel"
                   label={tr('activity.filter')}
                   active={isFiltered}
                   onPress={() => setFilterOpen(true)}
@@ -604,7 +603,10 @@ export default function ActivityScreen() {
         onClose={() => setFilterOpen(false)}
         title={tr('activity.filters')}
       >
-        <SectionHeader title={tr('activity.filterAccounts')} />
+        <SectionHeader
+          title={tr('activity.filterAccounts')}
+          style={{ paddingHorizontal: 0, paddingTop: 0 }}
+        />
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
@@ -616,40 +618,6 @@ export default function ActivityScreen() {
             paddingBottom: t.space.sm,
           }}
         >
-          <Card
-            selected={accountFilter === null}
-            onPress={() => setAccountFilter(null)}
-            style={{ minWidth: 120, justifyContent: 'center' }}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.xs }}>
-              <Ionicons
-                name="wallet-outline"
-                size={14}
-                color={accountFilter === null ? t.color.accent : t.color.textMuted}
-              />
-              <Text
-                style={[
-                  t.type.label,
-                  { color: accountFilter === null ? t.color.accent : t.color.textMuted },
-                ]}
-                numberOfLines={1}
-              >
-                {tr('activity.allAccounts')}
-              </Text>
-            </View>
-            <Text
-              style={[
-                t.type.heading,
-                {
-                  color: accountFilter === null ? t.color.accent : t.color.text,
-                  marginTop: t.space.xs,
-                },
-              ]}
-            >
-              {tr('activity.filterAll')}
-            </Text>
-            <Text style={[t.type.label, { color: t.color.textFaint }]}>{tr('accounts.title')}</Text>
-          </Card>
           {assetAccounts.map((a) => (
             <BalanceCard
               key={a.id}
@@ -666,11 +634,13 @@ export default function ActivityScreen() {
           ))}
         </ScrollView>
 
-        <SectionHeader title={tr('activity.filterType')} />
+        <SectionHeader
+          title={tr('activity.filterType')}
+          style={{ paddingHorizontal: 0, paddingTop: t.space.sm }}
+        />
         <View
           style={{
             flexDirection: 'row',
-            paddingHorizontal: t.space.lg,
             gap: t.space.sm,
             paddingTop: t.space.xs,
             paddingBottom: t.space.lg,
@@ -691,7 +661,7 @@ export default function ActivityScreen() {
         <Row
           first
           label={tr('count.title')}
-          icon="cash-outline"
+          icon="cash"
           onPress={() => {
             setMenuOpen(false);
             navigateOnce('/count');

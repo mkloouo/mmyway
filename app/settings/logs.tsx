@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, Share, Text, View } from 'react-native';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, AppBar, Button, EmptyState } from '../../src/ui/components';
+import { Screen, AppBar, Button, EmptyState, SCREEN_TOP_PADDING } from '../../src/ui/components';
 import { confirmDestructive } from '../../src/ui/confirm';
 import { readLog, clearLog, shareableLog } from '../../src/utils/log';
 import { useAction } from '../../src/ui/useAction';
@@ -34,7 +34,7 @@ export default function LogsScreen() {
         keyExtractor={(_, i) => String(i)}
         contentContainerStyle={{
           paddingHorizontal: t.space.lg,
-          paddingTop: t.space.sm,
+          paddingTop: SCREEN_TOP_PADDING,
           paddingBottom: t.space.lg,
           gap: t.space.sm,
         }}

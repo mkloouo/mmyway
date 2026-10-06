@@ -22,6 +22,7 @@ import {
   Row,
   Sheet,
   CloseButton,
+  SCREEN_TOP_PADDING,
 } from '../../src/ui/components';
 import { DetailRows, type DetailRowsValue } from '../../src/ui/DetailRows';
 import { Keypad } from '../../src/ui/Keypad';
@@ -731,7 +732,7 @@ function TransactionEditor({ row }: { row: CachedRow }) {
           right={
             <>
               <BarIconButton
-                icon="copy-outline"
+                icon="copy"
                 label={tr('transaction.duplicate')}
                 onPress={onDuplicate}
               />
@@ -748,7 +749,7 @@ function TransactionEditor({ row }: { row: CachedRow }) {
           style={{ flex: 1 }}
           contentContainerStyle={{
             gap: t.space.md,
-            paddingTop: t.space.sm,
+            paddingTop: SCREEN_TOP_PADDING,
             paddingBottom: t.space.lg,
           }}
         >
@@ -756,7 +757,7 @@ function TransactionEditor({ row }: { row: CachedRow }) {
             <>
               <Pressable
                 onPress={() => setTextFor('title')}
-                style={{ paddingHorizontal: t.space.xl, paddingTop: t.space.md }}
+                style={{ paddingHorizontal: t.space.xl }}
                 accessibilityRole="button"
                 accessibilityLabel={tr('splits.title')}
               >
@@ -794,7 +795,7 @@ function TransactionEditor({ row }: { row: CachedRow }) {
               <View
                 style={{
                   alignItems: 'center',
-                  paddingVertical: t.space.lg,
+                  paddingBottom: t.space.lg,
                   paddingHorizontal: t.space.xl,
                 }}
               >
@@ -999,8 +1000,8 @@ function TransactionEditor({ row }: { row: CachedRow }) {
       )}
 
       <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={tr('transaction.title')}>
-        <Row first label={tr('transaction.duplicate')} icon="copy-outline" onPress={onDuplicate} />
-        <Row label={tr('common.delete')} icon="trash-outline" tone="danger" onPress={onDelete} />
+        <Row first label={tr('transaction.duplicate')} icon="copy" onPress={onDuplicate} />
+        <Row label={tr('common.delete')} icon="trash" tone="danger" onPress={onDelete} />
       </Sheet>
       <PhotoViewer
         uri={photo?.uri ?? null}

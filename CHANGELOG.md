@@ -4,7 +4,8 @@
 
 ### Look and feel
 
-- **Unified compact header across all screens.** Top bars now share a normalized 72px height, solid icon weights, and consistent breathing room below the hairline divider.
+- **Unified compact header across all screens.** Top bars now share a normalized 72px height, solid icon weights across bars, menus, and tabs, and a consistent 28px breathing room below the hairline divider.
+- **Icon style and weight normalized across the app.** Top bar buttons, action sheets, bottom tabs, and queue status indicators now use uniform solid-style icons.
 - **Search moves into the header bar** across Activity, Accounts, and Aliases, opening seamlessly without shoving content down.
 - **Scrolling lists touch the hairline divider directly**, eliminating premature clipping when scrolling.
 

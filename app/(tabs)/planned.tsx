@@ -19,6 +19,7 @@ import {
   EmptyState,
   Money,
   Dot,
+  SCREEN_TOP_PADDING,
 } from '../../src/ui/components';
 import { PendingDot } from '../../src/ui/PendingDot';
 import { currencyOf } from '../../src/ui/money';
@@ -66,7 +67,7 @@ export default function PlannedScreen() {
     .sort((a, b) => a.name.localeCompare(b.name));
 
   const listHeader = (
-    <View style={{ gap: t.space.sm, paddingTop: t.space.xs, paddingBottom: t.space.xs }}>
+    <View style={{ gap: t.space.sm, paddingTop: SCREEN_TOP_PADDING, paddingBottom: t.space.xs }}>
       <View
         style={{
           flexDirection: 'row',

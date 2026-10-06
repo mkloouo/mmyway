@@ -17,6 +17,7 @@ import {
   Row,
   SectionHeader,
   CloseButton,
+  SCREEN_TOP_PADDING,
 } from '../../src/ui/components';
 import { TextField } from '../../src/ui/TextField';
 import { PickerSheet } from '../../src/ui/PickerSheet';
@@ -256,12 +257,12 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
         left={<CloseButton onPress={() => router.back()} />}
         right={
           item ? (
-            <BarIconButton icon="trash-outline" label={tr('common.delete')} onPress={onDelete} />
+            <BarIconButton icon="trash" label={tr('common.delete')} onPress={onDelete} />
           ) : undefined
         }
       />
       <ScrollView
-        contentContainerStyle={{ paddingTop: t.space.sm, paddingBottom: t.space.xxl }}
+        contentContainerStyle={{ paddingTop: SCREEN_TOP_PADDING, paddingBottom: t.space.xxl }}
         keyboardShouldPersistTaps="handled"
       >
         <View style={{ flexDirection: 'row', gap: t.space.sm, paddingHorizontal: t.space.lg }}>
@@ -349,7 +350,7 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
           {!!fields.time && (
             <Row
               label={tr('planned.clearTime')}
-              icon="close-circle-outline"
+              icon="close-circle"
               onPress={() => set({ time: null })}
             />
           )}

@@ -24,6 +24,7 @@ import {
   Row,
   Banner,
   CloseButton,
+  SCREEN_TOP_PADDING,
 } from '../../src/ui/components';
 import { DetailRows, type DetailRowsValue } from '../../src/ui/DetailRows';
 import { PayeeSheet } from '../../src/ui/PayeeSheet';
@@ -513,7 +514,8 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
           <View
             style={{
               alignItems: 'center',
-              paddingVertical: t.space.lg,
+              paddingTop: SCREEN_TOP_PADDING,
+              paddingBottom: t.space.lg,
               paddingHorizontal: t.space.xl,
             }}
           >
@@ -564,7 +566,11 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
 
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ gap: t.space.md, paddingBottom: t.space.lg }}
+          contentContainerStyle={{
+            paddingTop: splitMode ? SCREEN_TOP_PADDING : 0,
+            gap: t.space.md,
+            paddingBottom: t.space.lg,
+          }}
         >
           {!!row.errorMessage && !readOnly && <Banner inset>{row.errorMessage}</Banner>}
           {unsure.length > 0 && (
@@ -853,7 +859,7 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
           <Row
             first
             label={tr('draft.openInActivity')}
-            icon="open-outline"
+            icon="open"
             onPress={() => {
               closeSheet();
               navigateOnce(`/transactions/${row.ff3GroupId}`);
@@ -872,7 +878,7 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
         <Row
           first={readOnly && !row.ff3GroupId}
           label={tr('draft.deleteDraft')}
-          icon="trash-outline"
+          icon="trash"
           tone="danger"
           onPress={handleDeleteDraft}
         />
