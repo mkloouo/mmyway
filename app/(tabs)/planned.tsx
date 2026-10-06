@@ -110,11 +110,6 @@ export default function PlannedScreen() {
     <Screen>
       <AppBar
         title={tr('planned.title')}
-        subtitle={
-          mode === 'detailed'
-            ? tr(KIND_TABS.find((k) => k.kind === kind)?.labelKey ?? '')
-            : undefined
-        }
         right={
           mode === 'simple' ? (
             <BarIconButton

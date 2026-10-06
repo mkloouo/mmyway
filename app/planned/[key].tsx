@@ -261,7 +261,7 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
         }
       />
       <ScrollView
-        contentContainerStyle={{ paddingBottom: t.space.xxl }}
+        contentContainerStyle={{ paddingTop: t.space.sm, paddingBottom: t.space.xxl }}
         keyboardShouldPersistTaps="handled"
       >
         <View style={{ flexDirection: 'row', gap: t.space.sm, paddingHorizontal: t.space.lg }}>

@@ -34,6 +34,7 @@ export default function LogsScreen() {
         keyExtractor={(_, i) => String(i)}
         contentContainerStyle={{
           paddingHorizontal: t.space.lg,
+          paddingTop: t.space.sm,
           paddingBottom: t.space.lg,
           gap: t.space.sm,
         }}

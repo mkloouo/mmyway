@@ -9,7 +9,16 @@ import { useLiveQuery } from '../../src/db/useLiveQuery';
 import { useDb } from '../../src/providers/DbProvider';
 import { SearchField } from '../../src/ui/SearchField';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, AppBar, BarIconButton, Button, Fab, Sheet, Row } from '../../src/ui/components';
+import {
+  Screen,
+  AppBar,
+  BarRow,
+  BarIconButton,
+  Button,
+  Fab,
+  Sheet,
+  Row,
+} from '../../src/ui/components';
 import { TargetPickerSheet, type AliasTarget } from '../../src/ui/TargetPickerSheet';
 import { aliases } from '../../src/db/schema';
 import { upsertAlias, removeAlias, PAYEE } from '../../src/lookup/aliases';
@@ -27,6 +36,7 @@ export default function AliasesScreen() {
   const { data } = useLiveQuery(db.select().from(aliases).where(eq(aliases.kind, PAYEE)));
 
   const [search, setSearch] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
   const [addSheetOpen, setAddSheetOpen] = useState(false);
   const [targetSheetOpen, setTargetSheetOpen] = useState(false);
   const [rawInput, setRawInput] = useState('');
@@ -95,24 +105,44 @@ export default function AliasesScreen() {
 
   return (
     <Screen bottom>
-      <AppBar
-        title={tr('aliases.title')}
-        right={
-          <BarIconButton
-            icon="ellipsis-horizontal"
-            label={tr('aliases.exportOrImport')}
-            onPress={onExport}
+      {searchOpen ? (
+        <BarRow>
+          <SearchField
+            value={search}
+            onChangeText={setSearch}
+            placeholder={tr('aliases.search')}
+            autoFocus
+            onClear={() => {
+              setSearch('');
+              setSearchOpen(false);
+            }}
+            style={{ flex: 1 }}
           />
-        }
-      />
-      <View style={{ paddingHorizontal: t.space.lg, gap: t.space.sm }}>
-        <SearchField value={search} onChangeText={setSearch} placeholder={tr('aliases.search')} />
-      </View>
+        </BarRow>
+      ) : (
+        <AppBar
+          title={tr('aliases.title')}
+          right={
+            <>
+              <BarIconButton
+                icon="search"
+                label={tr('aliases.search')}
+                onPress={() => setSearchOpen(true)}
+              />
+              <BarIconButton
+                icon="ellipsis-horizontal"
+                label={tr('aliases.exportOrImport')}
+                onPress={onExport}
+              />
+            </>
+          }
+        />
+      )}
 
       <FlatList
         data={visible}
         keyExtractor={(row) => row.id}
-        contentContainerStyle={{ padding: t.space.lg, gap: t.space.xs }}
+        contentContainerStyle={{ padding: t.space.lg, paddingTop: t.space.sm, gap: t.space.xs }}
         renderItem={({ item }) => (
           <View
             style={{
