@@ -45,13 +45,18 @@
     "title": "Accounts"
   },
   "activity": {
+    "allAccounts": "All accounts",
     "deleteBody": "They are deleted in Firefly III too.",
     "deleteTitle_one": "Delete {{count, number}} transaction?",
     "deleteTitle_other": "Delete {{count, number}} transactions?",
+    "filter": "Filter",
+    "filterAccounts": "Accounts",
     "filterAll": "All",
     "filterIncome": "Income",
     "filterMoves": "Moves",
     "filterSpending": "Spending",
+    "filterType": "Type",
+    "filters": "Filters",
     "fromFf3": "FROM FIREFLY III",
     "loadingMore": "Loading more…",
     "noResultsHint": "Try a different search or filter.",

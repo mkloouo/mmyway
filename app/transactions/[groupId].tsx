@@ -746,7 +746,11 @@ function TransactionEditor({ row }: { row: CachedRow }) {
 
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ gap: t.space.md, paddingBottom: t.space.lg }}
+          contentContainerStyle={{
+            gap: t.space.md,
+            paddingTop: t.space.sm,
+            paddingBottom: t.space.lg,
+          }}
         >
           {splitMode ? (
             <>

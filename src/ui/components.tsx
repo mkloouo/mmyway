@@ -88,10 +88,9 @@ export function BarRow({ children, divider = true }: { children: ReactNode; divi
         gap: t.space.md,
         paddingHorizontal: t.space.lg,
         // The hairline a screen's content scrolls under, so a list that runs off the top ends
-        // somewhere rather than simply stopping, and the breathing room under it that keeps the
-        // first thing below from sitting on the line. A screen whose bar is followed by more
-        // header (Activity's accounts and filters) turns it off and draws it below that instead.
-        ...(divider ? barDivider(t.color.border, t.space.sm) : null),
+        // somewhere rather than simply stopping. The list touches this line directly; any
+        // breathing room before the first row belongs in its contentContainerStyle.
+        ...(divider ? barDivider(t.color.border) : null),
       }}
     >
       {children}
@@ -100,8 +99,12 @@ export function BarRow({ children, divider = true }: { children: ReactNode; divi
 }
 
 /** The hairline under a screen's header, wherever that header ends. */
-export function barDivider(border: string, gap: number): ViewStyle {
-  return { borderBottomWidth: 1, borderBottomColor: border, marginBottom: gap };
+export function barDivider(border: string, gap?: number): ViewStyle {
+  return {
+    borderBottomWidth: 1,
+    borderBottomColor: border,
+    ...(gap ? { marginBottom: gap } : null),
+  };
 }
 
 export function AppBar({
@@ -144,10 +147,12 @@ export function BarIconButton({
   icon,
   label,
   onPress,
+  active,
 }: {
   icon: keyof typeof Ionicons.glyphMap;
   label: string;
   onPress: () => void;
+  active?: boolean;
 }) {
   const t = useTheme();
   return (
@@ -163,9 +168,10 @@ export function BarIconButton({
         alignItems: 'center',
         justifyContent: 'center',
         opacity: pressed ? PRESSED_OPACITY : 1,
+        backgroundColor: active ? t.color.accentSoft : undefined,
       })}
     >
-      <Ionicons name={icon} size={24} color={t.color.text} />
+      <Ionicons name={icon} size={24} color={active ? t.color.accent : t.color.text} />
     </Pressable>
   );
 }

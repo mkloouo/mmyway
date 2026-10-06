@@ -165,17 +165,14 @@ export const BalanceStrip = memo(function BalanceStrip({
   onToggle,
   currencies,
   pendingAccounts,
-  collapsed,
 }: {
   accounts: ReferenceAccountRow[];
   selectedId: string | null;
   onToggle: (id: string) => void;
   currencies: Currencies;
   pendingAccounts: Set<string>;
-  collapsed: boolean;
 }) {
   const t = useTheme();
-  const { t: tr } = useTranslation();
   return (
     // A ScrollView defaults to flexGrow/flexShrink 1, so this row competed with the SectionList for
     // height and had its cards clipped along the bottom edge. The top padding is the room a card's
@@ -187,33 +184,20 @@ export const BalanceStrip = memo(function BalanceStrip({
       contentContainerStyle={{
         paddingHorizontal: t.space.lg,
         gap: t.space.sm,
-        paddingTop: collapsed ? 0 : t.space.xs,
+        paddingTop: t.space.xs,
         paddingBottom: t.space.sm,
       }}
     >
-      {accounts.map((a) =>
-        collapsed ? (
-          <Chip
-            key={a.id}
-            label={a.name}
-            selected={selectedId === a.id}
-            // The same warning dot the card below carries while the account's changes are queued.
-            dotColor={pendingAccounts.has(a.id) ? t.color.warn : undefined}
-            onPress={() => onToggle(a.id)}
-            onLongPress={() => navigateOnce(`/accounts/${a.id}`)}
-            accessibilityHint={tr('account.openHint')}
-          />
-        ) : (
-          <BalanceCard
-            key={a.id}
-            account={a}
-            selected={selectedId === a.id}
-            pending={pendingAccounts.has(a.id)}
-            currencies={currencies}
-            onToggle={onToggle}
-          />
-        ),
-      )}
+      {accounts.map((a) => (
+        <BalanceCard
+          key={a.id}
+          account={a}
+          selected={selectedId === a.id}
+          pending={pendingAccounts.has(a.id)}
+          currencies={currencies}
+          onToggle={onToggle}
+        />
+      ))}
     </ScrollView>
   );
 });
