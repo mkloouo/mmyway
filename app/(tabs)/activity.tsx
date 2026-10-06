@@ -14,6 +14,7 @@ import {
   AppBar,
   BarRow,
   BarIconButton,
+  Card,
   Chip,
   EmptyState,
   Sheet,
@@ -21,6 +22,7 @@ import {
   Button,
   SectionHeader,
 } from '../../src/ui/components';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { CaptureDock } from '../../src/ui/CaptureDock';
 import {
   useTransactionPage,
@@ -52,7 +54,7 @@ import {
   type RemoteResultRow,
 } from '../../src/transactions/activityRows';
 import { useRemoteSearch } from '../../src/transactions/useRemoteSearch';
-import { ActivityRow, BalanceStrip, DayHeader } from '../../src/ui/ActivityRows';
+import { ActivityRow, BalanceCard, BalanceStrip, DayHeader } from '../../src/ui/ActivityRows';
 import { useSelection } from '../../src/ui/useSelection';
 import { useHasSyncedBefore } from '../../src/sync/useHasSyncedBefore';
 import { localDay } from '../../src/utils/day';
@@ -500,7 +502,7 @@ export default function ActivityScreen() {
                   onPress={() => setSearchOpen(true)}
                 />
                 <BarIconButton
-                  icon={isFiltered ? 'funnel' : 'funnel-outline'}
+                  icon="filter"
                   label={tr('activity.filter')}
                   active={isFiltered}
                   onPress={() => setFilterOpen(true)}
@@ -606,25 +608,60 @@ export default function ActivityScreen() {
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
-          style={{ flexGrow: 0, flexShrink: 0 }}
+          style={{ flexGrow: 0, flexShrink: 0, marginHorizontal: -t.space.lg }}
           contentContainerStyle={{
             paddingHorizontal: t.space.lg,
             gap: t.space.sm,
-            paddingVertical: t.space.sm,
+            paddingTop: t.space.xs,
+            paddingBottom: t.space.sm,
           }}
         >
-          <Chip
-            label={tr('activity.allAccounts')}
+          <Card
             selected={accountFilter === null}
             onPress={() => setAccountFilter(null)}
-          />
+            style={{ minWidth: 120, justifyContent: 'center' }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.xs }}>
+              <Ionicons
+                name="wallet-outline"
+                size={14}
+                color={accountFilter === null ? t.color.accent : t.color.textMuted}
+              />
+              <Text
+                style={[
+                  t.type.label,
+                  { color: accountFilter === null ? t.color.accent : t.color.textMuted },
+                ]}
+                numberOfLines={1}
+              >
+                {tr('activity.allAccounts')}
+              </Text>
+            </View>
+            <Text
+              style={[
+                t.type.heading,
+                {
+                  color: accountFilter === null ? t.color.accent : t.color.text,
+                  marginTop: t.space.xs,
+                },
+              ]}
+            >
+              {tr('activity.filterAll')}
+            </Text>
+            <Text style={[t.type.label, { color: t.color.textFaint }]}>{tr('accounts.title')}</Text>
+          </Card>
           {assetAccounts.map((a) => (
-            <Chip
+            <BalanceCard
               key={a.id}
-              label={a.name}
+              account={a}
               selected={accountFilter === a.id}
-              dotColor={pendingAccounts.has(a.id) ? t.color.warn : undefined}
-              onPress={() => toggleAccountFilter(a.id)}
+              pending={pendingAccounts.has(a.id)}
+              currencies={currencies}
+              onToggle={toggleAccountFilter}
+              onLongPress={() => {
+                setFilterOpen(false);
+                navigateOnce(`/accounts/${a.id}`);
+              }}
             />
           ))}
         </ScrollView>

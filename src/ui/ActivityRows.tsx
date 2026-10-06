@@ -202,18 +202,20 @@ export const BalanceStrip = memo(function BalanceStrip({
   );
 });
 
-const BalanceCard = memo(function BalanceCard({
+export const BalanceCard = memo(function BalanceCard({
   account: a,
   selected,
   pending,
   currencies,
   onToggle,
+  onLongPress,
 }: {
   account: ReferenceAccountRow;
   selected: boolean;
   pending: boolean;
   currencies: Currencies;
   onToggle: (id: string) => void;
+  onLongPress?: () => void;
 }) {
   const t = useTheme();
   const { t: tr } = useTranslation();
@@ -221,12 +223,12 @@ const BalanceCard = memo(function BalanceCard({
   return (
     <Card
       onPress={() => onToggle(a.id)}
-      onLongPress={() => navigateOnce(`/accounts/${a.id}`)}
+      onLongPress={onLongPress ?? (() => navigateOnce(`/accounts/${a.id}`))}
       delayLongPress={300}
       longPressPop
       accessibilityHint={tr('account.openHint')}
+      selected={selected}
       style={{
-        borderColor: selected ? t.color.accent : t.color.border,
         minWidth: 120,
         opacity: stale ? 0.5 : 1,
       }}

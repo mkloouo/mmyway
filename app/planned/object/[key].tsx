@@ -83,7 +83,7 @@ export default function PlannedObjectScreen() {
         subtitle={object ? tr(KIND_LABEL_KEYS[object.kind]) : undefined}
         left={<CloseButton onPress={() => router.back()} />}
       />
-      <ScrollView contentContainerStyle={{ paddingBottom: t.space.xxl }}>
+      <ScrollView contentContainerStyle={{ paddingTop: t.space.sm, paddingBottom: t.space.xxl }}>
         {object ? (
           <Fields value={{ id: object.id, ...object.attributes }} />
         ) : loaded ? (

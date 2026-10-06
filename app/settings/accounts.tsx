@@ -8,7 +8,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useDb } from '../../src/providers/DbProvider';
 import { SearchField } from '../../src/ui/SearchField';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, AppBar, BarIconButton, Card, Chip, Button } from '../../src/ui/components';
+import { Screen, AppBar, BarRow, BarIconButton, Card, Chip, Button } from '../../src/ui/components';
 import { DragList } from '../../src/ui/DragList';
 import { hasEnvelopeMarker } from '../../src/accounts/envelopeMarker';
 import { useAssetAccounts, type ReferenceAccountRow } from '../../src/accounts/useAssetAccounts';
@@ -31,6 +31,7 @@ export default function AccountsScreen() {
   // In FF3's own order — the order every account picker in the app uses, set with Reorder.
   const allAccounts = useAssetAccounts({ includeInactive: true }) ?? [];
   const [search, setSearch] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
   // Every account id in the order the user is dragging them into, or null when not reordering.
   // Nothing is sent until Done: FF3 is given the whole list at once (src/accounts/accountActions.ts).
   const [draft, setDraft] = useState<string[] | null>(null);
@@ -107,30 +108,52 @@ export default function AccountsScreen() {
 
   return (
     <Screen bottom>
-      <AppBar
-        title={tr('accounts.title')}
-        right={
-          <>
-            <BarIconButton
-              icon={showInactive ? 'eye-outline' : 'eye-off-outline'}
-              label={showInactive ? tr('accounts.hideInactive') : tr('accounts.showInactive')}
-              onPress={() => setShowInactive((v) => !v)}
-            />
-            {reordering ? (
-              <Button title={tr('common.done')} variant="ghost" size="bar" onPress={done} />
-            ) : (
+      {searchOpen ? (
+        <BarRow>
+          <SearchField
+            value={search}
+            onChangeText={setSearch}
+            placeholder={tr('pickers.searchAccounts')}
+            autoFocus
+            onClear={() => {
+              setSearch('');
+              setSearchOpen(false);
+            }}
+            style={{ flex: 1 }}
+          />
+        </BarRow>
+      ) : (
+        <AppBar
+          title={tr('accounts.title')}
+          right={
+            <>
               <BarIconButton
-                icon="swap-vertical"
-                label={tr('accounts.reorder')}
-                onPress={() => {
-                  setDraft(allAccounts.map((a) => a.id));
-                  setSearch('');
-                }}
+                icon="search"
+                label={tr('pickers.searchAccounts')}
+                onPress={() => setSearchOpen(true)}
               />
-            )}
-          </>
-        }
-      />
+              <BarIconButton
+                icon={showInactive ? 'eye-outline' : 'eye-off-outline'}
+                label={showInactive ? tr('accounts.hideInactive') : tr('accounts.showInactive')}
+                onPress={() => setShowInactive((v) => !v)}
+              />
+              {reordering ? (
+                <Button title={tr('common.done')} variant="ghost" size="bar" onPress={done} />
+              ) : (
+                <BarIconButton
+                  icon="swap-vertical"
+                  label={tr('accounts.reorder')}
+                  onPress={() => {
+                    setDraft(allAccounts.map((a) => a.id));
+                    setSearch('');
+                    setSearchOpen(false);
+                  }}
+                />
+              )}
+            </>
+          }
+        />
+      )}
       {/* Reorder swaps both the line under the bar and the list itself. Each side fades in on
           its own (the old one just goes): two of them animating at once would both claim the
           space for the length of the fade, and the list would jump as they handed it over. The
@@ -138,7 +161,7 @@ export default function AccountsScreen() {
       {reordering ? (
         <Animated.View key="drag" entering={FadeIn.duration(FADE_MS)} style={{ flex: 1 }}>
           <ScrollView
-            contentContainerStyle={{ padding: t.space.lg, gap: t.space.sm }}
+            contentContainerStyle={{ padding: t.space.lg, paddingTop: t.space.sm, gap: t.space.sm }}
             scrollEnabled={!holding}
           >
             <Text style={[t.type.label, { color: t.color.textMuted, paddingBottom: t.space.xs }]}>
@@ -165,16 +188,7 @@ export default function AccountsScreen() {
             data={visible}
             keyExtractor={(a) => a.id}
             keyboardShouldPersistTaps="handled"
-            ListHeaderComponent={
-              <View style={{ paddingBottom: t.space.sm }}>
-                <SearchField
-                  value={search}
-                  onChangeText={setSearch}
-                  placeholder={tr('pickers.searchAccounts')}
-                />
-              </View>
-            }
-            contentContainerStyle={{ padding: t.space.lg, gap: t.space.sm }}
+            contentContainerStyle={{ padding: t.space.lg, paddingTop: t.space.sm, gap: t.space.sm }}
             renderItem={({ item }) => row(item)}
             ListEmptyComponent={empty}
           />
