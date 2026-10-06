@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.6.7] - 2026-10-06
+
 ### Look and feel
 
 - **Unified compact header across all screens.** Top bars now share a normalized 72px height, solid icon weights, and consistent breathing room below the hairline divider.
