@@ -616,43 +616,42 @@ export default function ActivityScreen() {
         onClose={() => setFilterOpen(false)}
         title={tr('activity.filters')}
       >
-        <Text style={[t.type.caption, { color: t.color.textMuted, textTransform: 'uppercase' }]}>
-          {tr('activity.filterAccounts')}
-        </Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
-          <Chip
-            label={tr('activity.allAccounts')}
-            selected={accountFilter === null}
-            onPress={() => setAccountFilter(null)}
-          />
-          {assetAccounts.map((a) => (
+        <View style={{ gap: t.space.xs }}>
+          <Text style={[t.type.label, { color: t.color.textMuted }]}>
+            {tr('activity.filterAccounts')}
+          </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
             <Chip
-              key={a.id}
-              label={a.name}
-              selected={accountFilter === a.id}
-              dotColor={pendingAccounts.has(a.id) ? t.color.warn : undefined}
-              onPress={() => toggleAccountFilter(a.id)}
+              label={tr('activity.allAccounts')}
+              selected={accountFilter === null}
+              onPress={() => setAccountFilter(null)}
             />
-          ))}
+            {assetAccounts.map((a) => (
+              <Chip
+                key={a.id}
+                label={a.name}
+                selected={accountFilter === a.id}
+                dotColor={pendingAccounts.has(a.id) ? t.color.warn : undefined}
+                onPress={() => toggleAccountFilter(a.id)}
+              />
+            ))}
+          </View>
         </View>
 
-        <Text
-          style={[
-            t.type.caption,
-            { color: t.color.textMuted, textTransform: 'uppercase', marginTop: t.space.xs },
-          ]}
-        >
-          {tr('activity.filterType')}
-        </Text>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
-          {FILTERS.map((f) => (
-            <Chip
-              key={f.type}
-              label={tr(f.labelKey)}
-              selected={type === f.type}
-              onPress={() => setType(f.type)}
-            />
-          ))}
+        <View style={{ gap: t.space.xs }}>
+          <Text style={[t.type.label, { color: t.color.textMuted }]}>
+            {tr('activity.filterType')}
+          </Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
+            {FILTERS.map((f) => (
+              <Chip
+                key={f.type}
+                label={tr(f.labelKey)}
+                selected={type === f.type}
+                onPress={() => setType(f.type)}
+              />
+            ))}
+          </View>
         </View>
       </Sheet>
 

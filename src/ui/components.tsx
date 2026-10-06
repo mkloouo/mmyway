@@ -185,10 +185,12 @@ export function BarIconButton({
 export function SectionHeader({
   title,
   action,
+  first = false,
   style,
 }: {
   title: string;
   action?: ReactNode;
+  first?: boolean;
   style?: StyleProp<ViewStyle>;
 }) {
   const t = useTheme();
@@ -200,7 +202,7 @@ export function SectionHeader({
           alignItems: 'center',
           justifyContent: 'space-between',
           paddingHorizontal: t.space.lg,
-          paddingTop: t.space.xl,
+          paddingTop: first ? 0 : t.space.xl,
           paddingBottom: t.space.sm,
         },
         style,

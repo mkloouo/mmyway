@@ -20,6 +20,7 @@ import {
   StatusPill,
   EmptyState,
   Banner,
+  SCREEN_TOP_PADDING,
 } from '../../src/ui/components';
 import { CaptureDock } from '../../src/ui/CaptureDock';
 import { SyncSheet } from '../../src/ui/SyncSheet';
@@ -445,7 +446,7 @@ export default function InboxScreen() {
           keyExtractor={(row) => row.id}
           refreshing={pull.refreshing}
           onRefresh={pull.onRefresh}
-          contentContainerStyle={{ paddingBottom: 140, paddingTop: t.space.sm }}
+          contentContainerStyle={{ paddingBottom: 140, paddingTop: SCREEN_TOP_PADDING }}
           ListEmptyComponent={
             <>
               {hasCredentials === false && (
@@ -493,6 +494,7 @@ export default function InboxScreen() {
           }
           renderSectionHeader={({ section }) => (
             <SectionHeader
+              first={section === sections[0]}
               title={section.title}
               action={
                 section.key === 'confirm' && readyToConfirm.length >= 2 ? (

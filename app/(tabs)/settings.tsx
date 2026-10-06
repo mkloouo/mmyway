@@ -18,6 +18,7 @@ import {
   Button,
   Sheet,
   Toast,
+  SCREEN_TOP_PADDING,
 } from '../../src/ui/components';
 import { AddressesSheet } from '../../src/ui/AddressesSheet';
 import { relativeTime } from '../../src/ui/relativeTime';
@@ -205,8 +206,10 @@ export default function SettingsScreen() {
   return (
     <Screen>
       <AppBar title={tr('settings.title')} />
-      <ScrollView contentContainerStyle={{ paddingBottom: t.space.xxl, paddingTop: t.space.sm }}>
-        <SectionHeader title={tr('settings.sectionConnection')} />
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: t.space.xxl, paddingTop: SCREEN_TOP_PADDING }}
+      >
+        <SectionHeader first title={tr('settings.sectionConnection')} />
         <Card style={{ marginHorizontal: t.space.lg }}>
           <Row
             first

@@ -22,6 +22,7 @@ import {
   Button,
   Toast,
   CloseButton,
+  SCREEN_TOP_PADDING,
 } from '../../src/ui/components';
 import { Checkbox } from '../../src/ui/Checkbox';
 import { TextField } from '../../src/ui/TextField';
@@ -187,10 +188,10 @@ export default function AccountScreen() {
           right={<PendingDot visible={pendingAccounts.has(account.id)} />}
         />
         <ScrollView
-          contentContainerStyle={{ paddingBottom: t.space.xl, paddingTop: t.space.sm }}
+          contentContainerStyle={{ paddingBottom: t.space.xl, paddingTop: SCREEN_TOP_PADDING }}
           keyboardShouldPersistTaps="handled"
         >
-          <SectionHeader title={tr('account.sectionAccount')} />
+          <SectionHeader first title={tr('account.sectionAccount')} />
           <Card style={{ marginHorizontal: t.space.lg, gap: t.space.sm }}>
             <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('accounts.name')}</Text>
             <TextField
