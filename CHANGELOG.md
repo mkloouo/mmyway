@@ -2,8 +2,6 @@
 
 ## [Unreleased]
 
-## [1.6.6] - 2026-10-06
-
 ### Look and feel
 
 - **Unified compact header across all screens.** Top bars now share a normalized 72px height, solid icon weights, and consistent breathing room below the hairline divider.
@@ -17,6 +15,24 @@
 ### Planned
 
 - **Mode and kind chips scroll away with the list**, leaving a standard compact top bar.
+
+## [1.6.6] - 2026-10-06
+
+### Look and feel
+
+- **Scrolling lists no longer clip early under the header line.** Every list now scrolls seamlessly all the way up to the header's hairline divider without an empty gap.
+
+### Activity
+
+- **Headers collapse cleanly to a uniform size on scroll.** Balance cards and filter chips move naturally with the list with zero stutter. A filter button in the top bar opens a quick sheet to switch accounts or transaction types from anywhere in the list, and the active filter shows in the header subtitle.
+
+### Planned
+
+- **Mode and kind chips scroll away with the list**, leaving a standard-sized header with the active kind in the subtitle.
+
+### Accounts
+
+- **Account search scrolls with the list**, giving the accounts screen the same compact header as every other screen.
 
 ## [1.6.5] - 2026-10-06
 
