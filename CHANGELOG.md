@@ -2,18 +2,26 @@
 
 ## [Unreleased]
 
+### Look and feel
+
+- **Normalized top offset across all screens.** Content below the top bar now starts with a uniform 28px breathing room, matching the Inbox spacing across Activity, Planned, Accounts, Aliases, Count, Draft, and Transaction details.
+- **Icon style and weight normalized across the app.** Top bar buttons, action sheets, bottom tabs, and queue status indicators now use uniform solid-style icons, eliminating mismatched stroke weights.
+
+### Activity
+
+- **Filter sheet improvements.** The filter sheet scrolls edge-to-edge smoothly, uses full account balance cards with long-press to open account details, and aligns section headers cleanly.
+
 ## [1.6.7] - 2026-10-06
 
 ### Look and feel
 
-- **Unified compact header across all screens.** Top bars now share a normalized 72px height, solid icon weights across bars, menus, and tabs, and a consistent 28px breathing room below the hairline divider.
-- **Icon style and weight normalized across the app.** Top bar buttons, action sheets, bottom tabs, and queue status indicators now use uniform solid-style icons.
+- **Unified compact header across all screens.** Top bars now share a normalized 72px height and consistent breathing room below the hairline divider.
 - **Search moves into the header bar** across Activity, Accounts, and Aliases, opening seamlessly without shoving content down.
 - **Scrolling lists touch the hairline divider directly**, eliminating premature clipping when scrolling.
 
 ### Activity
 
-- **Clean header collapse with zero stutter.** Balance cards and filter chips scroll away naturally with the list. A filter button in the top bar opens a filter sheet featuring full account balance cards (with long-press to view account details) and smooth edge-to-edge scrolling.
+- **Clean header collapse with zero stutter.** Balance cards and filter chips scroll away naturally with the list. A filter button in the top bar opens a filter sheet.
 
 ### Planned
 
