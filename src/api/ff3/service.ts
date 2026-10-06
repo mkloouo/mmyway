@@ -8,8 +8,8 @@ import { referenceAccounts, referenceCategories } from '../../db/schema';
 import type { OutboxDb } from '../../sync/outbox';
 import type { TransactionRead } from './types';
 
-export type TxType = 'withdrawal' | 'deposit' | 'transfer';
-export type End = 'source' | 'destination';
+type TxType = 'withdrawal' | 'deposit' | 'transfer';
+type End = 'source' | 'destination';
 
 const PAYEE_TYPES = ['expense', 'revenue'];
 
@@ -22,7 +22,7 @@ function payeeTypeOf(type: TxType, end: End): 'expense' | 'revenue' | null {
 type AccountFound = { id: string; attributes: { name: string; type: string } };
 type Read<T> = { data: { id: string; attributes: T } };
 
-export class FF3Service {
+class FF3Service {
   constructor(
     public readonly client: FF3Client,
     public readonly db?: OutboxDb,
