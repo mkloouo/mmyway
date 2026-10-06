@@ -47,25 +47,41 @@ export interface RemoteResultRow {
   amount: string;
   currencyCode: string;
   type: ActivityRowType;
+  sourceId: string | null;
+  destinationId: string | null;
   sourceName: string | null;
   destinationName: string | null;
   categoryName: string | null;
 }
 
 export function mapRemoteResult(group: TransactionRead): RemoteResultRow | null {
-  const journal = group.attributes.transactions[0];
+  const splits = group.attributes.transactions;
+  const journal = splits[0];
   if (!journal) return null;
+  const sameCurrency = splits.every((s) => s.currency_code === journal.currency_code);
+  const amount =
+    splits.length > 1 && sameCurrency
+      ? splits.map((s) => s.amount).reduce((a, b) => addDecimal(a, b))
+      : journal.amount;
+  const groupTitle = (group.attributes as { group_title?: string | null }).group_title;
+  const description = splits.length > 1 && groupTitle ? groupTitle : journal.description;
+  const extra = journal as {
+    source_id?: string | number | null;
+    destination_id?: string | number | null;
+  };
   return {
     remote: true,
     group,
     groupId: group.id,
-    description: journal.description,
-    amount: journal.amount,
+    description,
+    amount,
     currencyCode: journal.currency_code ?? '',
     type: journal.type as ActivityRowType,
+    sourceId: extra.source_id != null ? String(extra.source_id) : null,
+    destinationId: extra.destination_id != null ? String(extra.destination_id) : null,
     sourceName: journal.source_name ?? null,
     destinationName: journal.destination_name ?? null,
-    categoryName: journal.category_name ?? null,
+    categoryName: splits.length > 1 ? null : (journal.category_name ?? null),
   };
 }
 

@@ -145,7 +145,10 @@ export default function ActivityScreen() {
   // Once local search runs out of cached rows to page through, FF3's own search covers what
   // hasn't been pulled into cachedTransactions yet — kept as a separate section rather than
   // written into the cache, so local search stays a predictable, offline-first read.
-  const remoteSearch = useRemoteSearch(reachedRealEnd ? search.trim() : '');
+  const remoteSearch = useRemoteSearch(reachedRealEnd ? search.trim() : '', {
+    type,
+    accountId: accountFilter,
+  });
 
   // Everything read from the outbox, parsed once per outbox change rather than on every render —
   // a selection tap re-renders this screen, and re-parsing every queued payload each time was
@@ -258,17 +261,6 @@ export default function ActivityScreen() {
   );
 
   const remoteRows = remoteSearch.status === 'done' ? remoteSearch.rows : null;
-  /** What the list's footer says about the FF3-side search, if anything. */
-  const searchFooter: { key: string; warn?: boolean } | null =
-    remoteSearch.status === 'loading'
-      ? { key: 'activity.searching' }
-      : remoteSearch.status === 'offline'
-        ? { key: 'activity.searchOffline' }
-        : remoteSearch.status === 'error'
-          ? { key: 'activity.searchFailed', warn: true }
-          : remoteSearch.status === 'done' && remoteSearch.rows.length === 0
-            ? { key: 'activity.nothingMore' }
-            : null;
   const displaySections = useMemo(() => {
     const todayKey = localDay();
     const queuedInbox = new Set(queuedRows.map((r) => r.inboxItemId));
@@ -307,7 +299,16 @@ export default function ActivityScreen() {
       else result.unshift({ key: todayKey, totals: [], data: pinned });
     }
     if (remoteRows && remoteRows.length > 0) {
-      result.push({ key: REMOTE_SECTION_KEY, totals: [], data: remoteRows });
+      const existingGroupIds = new Set(result.flatMap((s) => s.data.map((row) => row.groupId)));
+      const extraRemoteRows = remoteRows.filter(
+        (r) =>
+          !existingGroupIds.has(r.groupId) &&
+          (type === 'all' || r.type === type) &&
+          (!accountFilter || r.sourceId === accountFilter || r.destinationId === accountFilter),
+      );
+      if (extraRemoteRows.length > 0) {
+        result.push({ key: REMOTE_SECTION_KEY, totals: [], data: extraRemoteRows });
+      }
     }
     return result;
   }, [
@@ -323,6 +324,19 @@ export default function ActivityScreen() {
     accountFilter,
     search,
   ]);
+
+  const hasRemoteSection = displaySections.some((s) => s.key === REMOTE_SECTION_KEY);
+  /** What the list's footer says about the FF3-side search, if anything. */
+  const searchFooter: { key: string; warn?: boolean } | null =
+    remoteSearch.status === 'loading'
+      ? { key: 'activity.searching' }
+      : remoteSearch.status === 'offline'
+        ? { key: 'activity.searchOffline' }
+        : remoteSearch.status === 'error'
+          ? { key: 'activity.searchFailed', warn: true }
+          : remoteSearch.status === 'done' && !hasRemoteSection
+            ? { key: 'activity.nothingMore' }
+            : null;
 
   // Rows get callbacks that only change when selection mode starts or ends (when every row
   // re-renders anyway), so a memoized row re-renders only when its own selected state changes —

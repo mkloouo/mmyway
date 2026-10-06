@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Activity
+
+- **Remote search respects transaction type and account filters.** Paging past cached history in search now passes the active type and account filters to Firefly III and filters remote results, so spending searches no longer show transfers or deposits.
+
 ## [1.6.8] - 2026-10-07
 
 ### Look and feel
