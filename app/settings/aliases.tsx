@@ -18,6 +18,7 @@ import {
   Fab,
   Sheet,
   Row,
+  SCREEN_TOP_PADDING,
 } from '../../src/ui/components';
 import { TargetPickerSheet, type AliasTarget } from '../../src/ui/TargetPickerSheet';
 import { aliases } from '../../src/db/schema';
@@ -142,7 +143,11 @@ export default function AliasesScreen() {
       <FlatList
         data={visible}
         keyExtractor={(row) => row.id}
-        contentContainerStyle={{ padding: t.space.lg, paddingTop: t.space.sm, gap: t.space.xs }}
+        contentContainerStyle={{
+          padding: t.space.lg,
+          paddingTop: SCREEN_TOP_PADDING,
+          gap: t.space.xs,
+        }}
         renderItem={({ item }) => (
           <View
             style={{

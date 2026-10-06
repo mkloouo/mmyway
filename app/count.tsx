@@ -25,6 +25,7 @@ import {
   useKeyboardHeight,
   Banner,
   CloseButton,
+  SCREEN_TOP_PADDING,
 } from '../src/ui/components';
 import { currencyOf, formatMoney } from '../src/ui/money';
 import { parseDecimalInput } from '../src/api/ff3/decimal';
@@ -225,7 +226,7 @@ export default function CountScreen() {
           left={<CloseButton onPress={() => router.back()} />}
           right={
             <BarIconButton
-              icon="settings-outline"
+              icon="settings"
               label={tr('count.settingsLabel')}
               onPress={() => setSettingsOpen(true)}
             />
@@ -263,7 +264,8 @@ export default function CountScreen() {
           <ScrollView
             style={{ flex: 1 }}
             contentContainerStyle={{
-              padding: t.space.lg,
+              paddingHorizontal: t.space.lg,
+              paddingTop: SCREEN_TOP_PADDING,
               gap: t.space.sm,
               paddingBottom: t.space.lg + keyboardHeight,
             }}

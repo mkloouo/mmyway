@@ -72,9 +72,14 @@ export function Screen({
  * Every top bar is this tall, whatever it holds (a title with a subtitle, a search field, a
  * selection count and its actions), so switching between them never moves the screen below.
  */
-const BAR_HEIGHT = 72;
+export const BAR_HEIGHT = 72;
 /** Icon buttons and buttons in a top bar are all this tall. */
 const BAR_CONTROL_SIZE = 40;
+/**
+ * The standard top breathing room between the hairline divider and where screen content begins
+ * (whether section headers, chips, balance cards, or cards), matching the Inbox screen.
+ */
+export const SCREEN_TOP_PADDING = 28;
 
 /** The row every top bar is laid out in; AppBar uses it, and so does a bar that swaps in a search field. */
 export function BarRow({ children, divider = true }: { children: ReactNode; divider?: boolean }) {
@@ -176,18 +181,29 @@ export function BarIconButton({
   );
 }
 
-export function SectionHeader({ title, action }: { title: string; action?: ReactNode }) {
+export function SectionHeader({
+  title,
+  action,
+  style,
+}: {
+  title: string;
+  action?: ReactNode;
+  style?: StyleProp<ViewStyle>;
+}) {
   const t = useTheme();
   return (
     <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: t.space.lg,
-        paddingTop: t.space.xl,
-        paddingBottom: t.space.sm,
-      }}
+      style={[
+        {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingHorizontal: t.space.lg,
+          paddingTop: t.space.xl,
+          paddingBottom: t.space.sm,
+        },
+        style,
+      ]}
     >
       <Text style={[t.type.caption, { color: t.color.textMuted, textTransform: 'uppercase' }]}>
         {title}

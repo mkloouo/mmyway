@@ -49,18 +49,14 @@ export default function TabsLayout() {
         name="planned"
         options={{
           title: tr('planned.title'),
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="calendar-outline" color={color} size={size} />
-          ),
+          tabBarIcon: ({ color, size }) => <Ionicons name="calendar" color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="settings"
         options={{
           title: tr('settings.title'),
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="settings-outline" color={color} size={size} />
-          ),
+          tabBarIcon: ({ color, size }) => <Ionicons name="settings" color={color} size={size} />,
         }}
       />
     </Tabs>

@@ -231,7 +231,7 @@ export default function SettingsScreen() {
           {(signedIn || !settings) && (
             <Row
               label={tr('settings.signOut')}
-              icon="log-out-outline"
+              icon="log-out"
               tone="danger"
               onPress={settings ? onSignOut : undefined}
             />
@@ -333,7 +333,7 @@ export default function SettingsScreen() {
           <Row label={tr('settings.lastSync')} value={relativeTime(lastSyncedAt)} />
           <Row
             label={tr('logs.title')}
-            icon="document-text-outline"
+            icon="document-text"
             onPress={() => router.push('/settings/logs')}
           />
         </Card>

@@ -355,11 +355,7 @@ export function QueuedCard({
       {/* The status sits under the subject, not beside the kind: next to a long pill ("Очікування на
           відправку") the kind was cut to its first word. */}
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
-        <Ionicons
-          name={sending ? 'cloud-upload-outline' : 'time-outline'}
-          size={16}
-          color={t.color.textMuted}
-        />
+        <Ionicons name={sending ? 'cloud-upload' : 'time'} size={16} color={t.color.textMuted} />
         <Text style={[t.type.label, { color: t.color.textMuted, flex: 1 }]} numberOfLines={2}>
           {tr(`inbox.opKind.${op.kind}`, { defaultValue: tr('inbox.opKind.other') })}
         </Text>

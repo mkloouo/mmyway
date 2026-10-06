@@ -8,7 +8,16 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useDb } from '../../src/providers/DbProvider';
 import { SearchField } from '../../src/ui/SearchField';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, AppBar, BarRow, BarIconButton, Card, Chip, Button } from '../../src/ui/components';
+import {
+  Screen,
+  AppBar,
+  BarRow,
+  BarIconButton,
+  Card,
+  Chip,
+  Button,
+  SCREEN_TOP_PADDING,
+} from '../../src/ui/components';
 import { DragList } from '../../src/ui/DragList';
 import { hasEnvelopeMarker } from '../../src/accounts/envelopeMarker';
 import { useAssetAccounts, type ReferenceAccountRow } from '../../src/accounts/useAssetAccounts';
@@ -133,7 +142,7 @@ export default function AccountsScreen() {
                 onPress={() => setSearchOpen(true)}
               />
               <BarIconButton
-                icon={showInactive ? 'eye-outline' : 'eye-off-outline'}
+                icon={showInactive ? 'eye' : 'eye-off'}
                 label={showInactive ? tr('accounts.hideInactive') : tr('accounts.showInactive')}
                 onPress={() => setShowInactive((v) => !v)}
               />
@@ -161,7 +170,11 @@ export default function AccountsScreen() {
       {reordering ? (
         <Animated.View key="drag" entering={FadeIn.duration(FADE_MS)} style={{ flex: 1 }}>
           <ScrollView
-            contentContainerStyle={{ padding: t.space.lg, paddingTop: t.space.sm, gap: t.space.sm }}
+            contentContainerStyle={{
+              padding: t.space.lg,
+              paddingTop: SCREEN_TOP_PADDING,
+              gap: t.space.sm,
+            }}
             scrollEnabled={!holding}
           >
             <Text style={[t.type.label, { color: t.color.textMuted, paddingBottom: t.space.xs }]}>
@@ -188,7 +201,11 @@ export default function AccountsScreen() {
             data={visible}
             keyExtractor={(a) => a.id}
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{ padding: t.space.lg, paddingTop: t.space.sm, gap: t.space.sm }}
+            contentContainerStyle={{
+              padding: t.space.lg,
+              paddingTop: SCREEN_TOP_PADDING,
+              gap: t.space.sm,
+            }}
             renderItem={({ item }) => row(item)}
             ListEmptyComponent={empty}
           />
