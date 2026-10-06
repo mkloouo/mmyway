@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.6.8] - 2026-10-07
+
 ### Look and feel
 
 - **Normalized top offset across all screens.** Content below the top bar now starts with a uniform 28px breathing room, matching the Inbox spacing across Activity, Planned, Accounts, Aliases, Count, Draft, and Transaction details.
