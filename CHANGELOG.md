@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.6.6] - 2026-10-06
+
 ### Look and feel
 
 - **Scrolling lists no longer clip early under the header line.** Every list now scrolls seamlessly all the way up to the header's hairline divider without an empty gap.
