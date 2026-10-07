@@ -9,6 +9,7 @@ import { generateId } from '../utils/id';
 import type { PlannedItem } from './items';
 import { withScheduleOf, type PlannedFields } from './model';
 import type { SavePlannedPayload } from './replay';
+import { syncPlannedNotifications } from './notifications';
 
 /** The queued save of a planned transaction that isn't in FF3 yet, while it can still be changed. */
 async function queuedSaveFor(db: OutboxDb, key: string) {
@@ -54,6 +55,7 @@ export async function savePlanned(
         })
         .where(eq(outboxOperations.id, op.id));
       requestSync();
+      void syncPlannedNotifications(db);
       return;
     }
   }
@@ -67,6 +69,7 @@ export async function savePlanned(
     recurrenceId: group?.recurrence?.id ?? null,
   };
   await enqueueOperation(db, { id: generateId(), kind: 'save_planned', payload });
+  void syncPlannedNotifications(db);
 }
 
 /**
@@ -114,4 +117,5 @@ export async function deletePlanned(db: OutboxDb, item: PlannedItem): Promise<vo
     kind: 'delete_planned',
     payload: { key: item.key, name: item.fields.name, ...ids },
   });
+  void syncPlannedNotifications(db);
 }

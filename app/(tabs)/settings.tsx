@@ -39,6 +39,7 @@ import {
   describeQueuedOperations,
   queuedOperationCount,
 } from '../../src/sync/instanceData';
+import * as Notifications from 'expo-notifications';
 import {
   setLocalModelBaseUrls,
   setLocalModelName,
@@ -47,7 +48,9 @@ import {
   setCashAccountId,
   setLocale,
   setRecordLocation,
+  setPlannedNotificationsEnabled,
 } from '../../src/settings/appSettings';
+import { syncPlannedNotifications } from '../../src/planned/notifications';
 import type { AppLocale } from '../../src/i18n';
 import { TextField } from '../../src/ui/TextField';
 import { PickerSheet } from '../../src/ui/PickerSheet';
@@ -109,6 +112,7 @@ export default function SettingsScreen() {
   const lastSyncedAt = settings?.lastSyncedAt ?? null;
   const locale: AppLocale = settings?.locale ?? 'system';
   const recordLocation = settings?.recordLocation ?? true;
+  const plannedNotifications = settings?.plannedNotifications ?? false;
   // The one setting that is typed before it's saved, so it needs a draft of its own.
   const [localModelNameInput, setLocalModelNameInput] = useState<string | null>(null);
   const localModelName = localModelNameInput ?? settings?.localModelName ?? '';
@@ -142,6 +146,24 @@ export default function SettingsScreen() {
     if (recordLocation) forgetPosition();
     else startPositionRequest(db);
     reload();
+  });
+  const togglePlannedNotifications = act(tr('settings.plannedNotifications'), async () => {
+    const next = !plannedNotifications;
+    if (next) {
+      const { status } = await Notifications.getPermissionsAsync();
+      let granted = status === 'granted';
+      if (!granted) {
+        const req = await Notifications.requestPermissionsAsync();
+        granted = req.status === 'granted';
+      }
+      if (!granted) {
+        Alert.alert(tr('common.error'), tr('settings.notificationsPermissionDenied'));
+        return;
+      }
+    }
+    await setPlannedNotificationsEnabled(db, next);
+    await reload();
+    await syncPlannedNotifications(db, currencies);
   });
   const signingIn = act.pending(tr('settings.signIn'));
 
@@ -294,6 +316,16 @@ export default function SettingsScreen() {
             onPress={() => void toggleLocation()}
             label={tr('settings.recordLocation')}
             hint={tr('settings.recordLocationHint')}
+          />
+        </Card>
+
+        <SectionHeader title={tr('settings.sectionNotifications')} />
+        <Card style={{ marginHorizontal: t.space.lg }}>
+          <Checkbox
+            checked={plannedNotifications}
+            onPress={() => void togglePlannedNotifications()}
+            label={tr('settings.plannedNotifications')}
+            hint={tr('settings.plannedNotificationsHint')}
           />
         </Card>
 

@@ -44,6 +44,7 @@ import { pullUnreviewedRecurring } from './recurringReview';
 import { retryPendingReceipts } from '../receipt/toDraft';
 import { logLine } from '../utils/log';
 import { pullPlanned } from '../planned/objects';
+import { syncPlannedNotifications } from '../planned/notifications';
 import { errorMessage } from '../utils/errorMessage';
 
 export interface SyncSummary {
@@ -279,6 +280,7 @@ async function doSync(db: OutboxDb, mode: SyncMode): Promise<SyncSummary> {
       if (full) {
         try {
           await pullPlanned(db, client);
+          await syncPlannedNotifications(db);
         } catch (err) {
           logLine('warn', `planned pull failed: ${errorMessage(err)}`);
         }

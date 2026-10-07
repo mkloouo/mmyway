@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AppState, Text, View } from 'react-native';
 import { Stack } from 'expo-router';
@@ -6,9 +6,13 @@ import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider, initialWindowMetrics } from 'react-native-safe-area-context';
 import { QueryClientProvider } from '@tanstack/react-query';
+import * as Notifications from 'expo-notifications';
 import { queryClient } from '../src/providers/queryClient';
-import { DbProvider } from '../src/providers/DbProvider';
+import { DbProvider, useDb } from '../src/providers/DbProvider';
 import { useSync } from '../src/sync/useSync';
+import { useCurrencies } from '../src/db/useReferenceData';
+import { syncPlannedNotifications } from '../src/planned/notifications';
+import { navigateOnce } from '../src/ui/navigateOnce';
 import { useTheme } from '../src/ui/theme';
 import { Button } from '../src/ui/components';
 import { useSharedImages } from '../src/receipt/useSharedImages';
@@ -19,6 +23,15 @@ import NetInfo from '@react-native-community/netinfo';
 import { registerBackgroundSync } from '../src/sync/backgroundSync';
 
 installLogCapture();
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 const MODAL = { presentation: 'modal', animation: 'slide_from_bottom' } as const;
 
@@ -67,6 +80,43 @@ function BackgroundSyncRegistration() {
   return null;
 }
 
+function PlannedNotificationListener() {
+  const db = useDb();
+  const currencies = useCurrencies();
+  const handledResponseId = useRef<string | null>(null);
+
+  useEffect(() => {
+    void syncPlannedNotifications(db, currencies);
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        void syncPlannedNotifications(db, currencies);
+      }
+    });
+    return () => subscription.remove();
+  }, [db, currencies]);
+
+  useEffect(() => {
+    const handleResponse = (response: Notifications.NotificationResponse | null) => {
+      if (!response) return;
+      const id = response.notification.request.identifier;
+      if (handledResponseId.current === id) return;
+      handledResponseId.current = id;
+
+      const data = response.notification.request.content.data;
+      if (data && typeof data.plannedKey === 'string') {
+        navigateOnce(`/planned/${encodeURIComponent(data.plannedKey)}`);
+      }
+    };
+
+    void Notifications.getLastNotificationResponseAsync().then(handleResponse);
+
+    const subscription = Notifications.addNotificationResponseReceivedListener(handleResponse);
+    return () => subscription.remove();
+  }, []);
+
+  return null;
+}
+
 /** This build has no dev tools attached — a crash must never be a blank screen (design §7). */
 export function ErrorBoundary({ error, retry }: { error: Error; retry: () => void }) {
   const t = useTheme();
@@ -111,6 +161,7 @@ export default function RootLayout() {
             <SyncOnResume />
             <SyncOnReconnect />
             <BackgroundSyncRegistration />
+            <PlannedNotificationListener />
             <ShareIntentBridge />
             {/* A push fades rather than sliding in from the side: these screens are a drill-down
                 into what the tab already showed, and the slide read as a different place. The

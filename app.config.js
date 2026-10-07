@@ -30,6 +30,13 @@ module.exports = {
       '@react-native-community/datetimepicker',
       'expo-localization',
       [
+        'expo-notifications',
+        {
+          icon: './assets/icon.png',
+          color: '#3746BB',
+        },
+      ],
+      [
         // Foreground only (#67): a position is read while Capture or the camera is open, so no
         // background permission and no foreground service go into the manifest.
         'expo-location',
@@ -81,6 +88,8 @@ module.exports = {
         'android.permission.CAMERA',
         'android.permission.ACCESS_COARSE_LOCATION',
         'android.permission.ACCESS_FINE_LOCATION',
+        'android.permission.POST_NOTIFICATIONS',
+        'android.permission.RECEIVE_BOOT_COMPLETED',
       ],
       // Off on purpose: the database holds every cached transaction and account balance, and
       // Android backups copy it into Google Drive. A new phone signs in and re-syncs from Firefly

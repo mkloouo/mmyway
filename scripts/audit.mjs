@@ -33,6 +33,18 @@ export const ALLOWED = [
     through: 'expo → @expo/cli (and @expo/code-signing-certificates)',
     why: 'Expo CLI tooling — signing expo-updates manifests on a build machine. No fix is published for node-forge.',
   },
+  {
+    id: 'GHSA-pqg4-j6r4-53mv',
+    package: 'shell-quote',
+    through: 'react-native → react-devtools-core → shell-quote',
+    why: 'React Native devtools dependency used only in development/build tooling; not included in app JS bundle.',
+  },
+  {
+    id: 'GHSA-68fv-2mgg-jv7q',
+    package: 'source-map-js',
+    through: 'expo → @expo/metro-config → postcss → source-map-js',
+    why: 'PostCSS sourcemap parser used only by Metro bundler at build time; not included in app JS bundle.',
+  },
 ];
 
 const RANK = { info: 0, low: 1, moderate: 2, high: 3, critical: 4 };

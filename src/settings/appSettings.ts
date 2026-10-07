@@ -24,6 +24,7 @@ const KEYS = {
   locale: 'locale',
   plannedMode: 'planned_mode',
   recordLocation: 'record_location',
+  plannedNotificationsEnabled: 'planned_notifications_enabled',
 } as const;
 
 async function getSetting(db: OutboxDb, key: string): Promise<string | null> {
@@ -199,3 +200,9 @@ export async function getRecordLocation(db: OutboxDb): Promise<boolean> {
 }
 export const setRecordLocation = (db: OutboxDb, value: boolean) =>
   setSetting(db, KEYS.recordLocation, value ? '1' : '0');
+
+export async function getPlannedNotificationsEnabled(db: OutboxDb): Promise<boolean> {
+  return (await getSetting(db, KEYS.plannedNotificationsEnabled)) === '1';
+}
+export const setPlannedNotificationsEnabled = (db: OutboxDb, value: boolean) =>
+  setSetting(db, KEYS.plannedNotificationsEnabled, value ? '1' : '0');

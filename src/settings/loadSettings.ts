@@ -16,6 +16,7 @@ import {
   getLocalModelBaseUrls,
   getLocalModelName,
   getLocale,
+  getPlannedNotificationsEnabled,
   getRecordLocation,
 } from './appSettings';
 
@@ -33,6 +34,7 @@ interface AppSettingsSnapshot {
   lastSyncedAt: string | null;
   locale: AppLocale;
   recordLocation: boolean;
+  plannedNotifications: boolean;
 }
 
 export const SETTINGS_QUERY_KEY = ['settings'] as const;
@@ -52,6 +54,7 @@ export async function loadSettings(db: OutboxDb): Promise<AppSettingsSnapshot> {
     lastSyncedAt,
     locale,
     recordLocation,
+    plannedNotifications,
   ] = await Promise.all([
     readStoredCredentials(),
     readHosts(),
@@ -66,6 +69,7 @@ export async function loadSettings(db: OutboxDb): Promise<AppSettingsSnapshot> {
     getLastSyncedAt(db),
     getLocale(db),
     getRecordLocation(db),
+    getPlannedNotificationsEnabled(db),
   ]);
   return {
     signedIn: !!creds,
@@ -81,5 +85,6 @@ export async function loadSettings(db: OutboxDb): Promise<AppSettingsSnapshot> {
     lastSyncedAt,
     locale,
     recordLocation,
+    plannedNotifications,
   };
 }
