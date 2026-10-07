@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.6.9] - 2026-10-07
+
 ### Look and feel
 
 - **Normalized header breathing room across all screens.** Content below the top bar now starts with a uniform 12px breathing room matching the spacing between account and filter chips (including screens starting with section headers such as Inbox, Settings, and Account details), eliminating bloated empty space below headers throughout the app.
