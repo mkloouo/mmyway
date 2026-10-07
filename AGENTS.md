@@ -50,7 +50,7 @@ pipeline.
 - `src/api/ff3/` — hand-written FF3 client (fetch-based, no generated types — see note below).
 - `src/sync/` — outbox (queued writes) and reference-data pulls. Read `src/sync/outbox.ts`'s
   header comment before changing replay order or retry semantics.
-- `src/lookup/` — user aliases + merchant→category/account/budget history, pure functions.
+- `src/lookup/` — merchant→category/account/budget history, pure functions.
 - `src/suggest/` — ranks candidate values for an in-progress entry. Pure, offline, no tokens.
 - `src/receipt/` — provider chain (local OpenAI-compatible model, then Gemini) that turns a
   photo into a draft. Never call a provider with a live key from a test — mock `fetch`.

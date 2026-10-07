@@ -1,7 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { createTestDb } from '../db/testDb';
 import { inboxItems } from '../db/schema';
-import { upsertAlias } from '../lookup/aliases';
 import { parseReceiptItem } from './toDraft';
 import { buildChain } from './buildChain';
 import type { ReceiptExtraction } from './types';
@@ -50,28 +49,8 @@ async function draftOf(db: ReturnType<typeof createTestDb>) {
   return JSON.parse(row!.draftJson);
 }
 
-describe('parseReceiptItem payee aliases', () => {
-  it('books a merchant corrected before to the payee it was corrected to', async () => {
-    const db = createTestDb();
-    await capturedReceipt(db);
-    await upsertAlias(db, {
-      kind: 'payee',
-      rawInput: 'ZABKA POLSKA SP Z O O',
-      targetId: null,
-      targetName: 'Żabka',
-    });
-    readingAs('ZABKA POLSKA SP. Z O.O.');
-
-    expect(await parseReceiptItem(db as any, 'r1', 'base64')).toBe('parsed');
-
-    expect(await draftOf(db)).toMatchObject({
-      destinationName: 'Żabka',
-      isNewPayee: false,
-      payeeReadAs: 'ZABKA POLSKA SP. Z O.O.',
-    });
-  });
-
-  it('leaves a merchant with no alias as a new payee, as read', async () => {
+describe('parseReceiptItem payee', () => {
+  it('sets merchant as a new payee, as read', async () => {
     const db = createTestDb();
     await capturedReceipt(db);
     readingAs('Some New Shop');

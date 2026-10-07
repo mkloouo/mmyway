@@ -138,13 +138,3 @@ export const appSettings = sqliteTable('app_settings', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
 });
-
-export const aliases = sqliteTable('aliases', {
-  id: text('id').primaryKey(),
-  kind: text('kind').notNull(), // payee | account | budget | currency
-  normalizedKey: text('normalized_key').notNull(),
-  rawInput: text('raw_input').notNull(),
-  targetId: text('target_id'), // FF3 id when known
-  targetName: text('target_name').notNull(),
-  createdAt: text('created_at').notNull(),
-});

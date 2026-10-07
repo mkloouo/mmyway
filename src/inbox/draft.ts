@@ -20,8 +20,7 @@ export interface Draft {
   destinationName?: string;
   destinationId?: string;
   isNewPayee: boolean; // surfaced explicitly, never silently created (Global Constraints)
-  // The payee text a payee alias replaced (src/lookup/aliases.ts), e.g. a receipt's printed
-  // "ZABKA POLSKA SP Z O O" now booked as "Żabka". Shown on the draft screen; never sent to FF3.
+  // Historical payee text read from receipt before correction; never sent to FF3.
   payeeReadAs?: string;
   categoryName?: string;
   budgetId?: string;
@@ -88,7 +87,7 @@ export function withoutInstanceIds(draft: Draft): Draft {
 // Which end of the split is the free-text payee differs by type (defect (1)): a withdrawal's
 // payee is the destination, a deposit's payee is the source, and a transfer has no payee at
 // all — both ends are known asset accounts, so isNewPayee never gates them. A known payee with
-// no id (picked from history, or an alias stored by name) is queued by name: sending neither left
+// no id (picked from history) is queued by name: sending neither left
 // the transaction with no payee at all. The name becomes an id when it's sent (src/sync/accountIds.ts).
 function payeeGatedEnd(draft: Draft): {
   source: { id?: string; name?: string };

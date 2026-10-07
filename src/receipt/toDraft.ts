@@ -9,7 +9,6 @@ import type { OutboxDb } from '../sync/outbox';
 import type { Draft, DraftLocation } from '../inbox/draft';
 import type { ReceiptExtraction } from './types';
 import { logLine } from '../utils/log';
-import { resolvePayeeAlias } from '../lookup/aliases';
 import { readDraft, writeDraft } from '../inbox/draftJson';
 import { errorMessage } from '../utils/errorMessage';
 import i18n from '../i18n';
@@ -217,8 +216,7 @@ export async function parseReceiptItem(
   }
 
   logLine('info', `receipt ${itemId}: read by ${result.providerName} (${result.providerModel})`);
-  // A merchant read before and corrected since books to the corrected payee (src/lookup/aliases.ts).
-  const draft = await resolvePayeeAlias(db, {
+  const draft = {
     ...receiptToDraft(result.extraction, reference, capturedDate(before)),
     // receiptToDraft builds a fresh draft from what was read; where the photo was taken is the
     // stub's and has to survive it (#67).
@@ -228,7 +226,7 @@ export async function parseReceiptItem(
       model: result.providerModel,
       at: new Date().toISOString(),
     },
-  });
+  };
   // Only if nothing touched the item while the provider was working (a parse takes seconds; the
   // user may already have opened the card and typed an amount) — their edits win.
   const updated = await db

@@ -62,13 +62,6 @@ import { unsureFields } from '../../src/inbox/unsure';
 import { useMerchantHistories } from '../../src/lookup/useMerchantHistories';
 import { confirmDestructive } from '../../src/ui/confirm';
 import { reportErrors } from '../../src/ui/reportError';
-import {
-  matchAlias,
-  rememberPayeeAlias,
-  removeAlias,
-  upsertAlias,
-  PAYEE,
-} from '../../src/lookup/aliases';
 import { Snackbar, type SnackbarEntry } from '../../src/ui/Snackbar';
 import { generateId } from '../../src/utils/id';
 import type { Draft, DraftSplit } from '../../src/inbox/draft';
@@ -175,10 +168,6 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
 
   const readOnly = row.state === 'confirmed' || row.state === 'synced';
   const payeeName = draft.type === 'deposit' ? draft.sourceName : draft.destinationName;
-  const aliasCaption =
-    draft.payeeReadAs && draft.payeeReadAs !== payeeName
-      ? tr('draft.viaAlias', { alias: draft.payeeReadAs })
-      : null;
 
   const currency = currencyOf(currencies, draft.currencyCode);
   const dp = currency.decimalPlaces;
@@ -238,37 +227,20 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
     );
   }
 
-  // Replacing a payee name that didn't come from FF3 (what a receipt read, a name typed as new,
-  // or an alias's earlier guess) teaches an alias, so that text books to this payee next time.
   const choosePayee = act(tr('capture.payee'), async (d: Draft, name: string, isNew: boolean) => {
-    const raw = d.payeeReadAs ?? (d.isNewPayee ? payeeName : undefined);
-    const previous = raw ? await matchAlias(db, PAYEE, raw) : null;
-    const learned = raw ? await rememberPayeeAlias(db, raw, name) : false;
     patch(
       d.type === 'deposit'
         ? {
             sourceName: name,
             sourceId: undefined,
             isNewPayee: isNew,
-            payeeReadAs: learned ? raw : undefined,
           }
         : {
             destinationName: name,
             destinationId: undefined,
             isNewPayee: isNew,
-            payeeReadAs: learned ? raw : undefined,
           },
     );
-    if (!learned || !raw) return;
-    setSnackbar({
-      id: generateId(),
-      message: tr('draft.willBookTo', { raw, name }),
-      actionLabel: tr('common.undo'),
-      onAction: () => {
-        if (previous?.matched) void upsertAlias(db, previous.alias);
-        else void removeAlias(db, PAYEE, raw);
-      },
-    });
   });
 
   function handleDetailChange(change: Partial<DetailRowsValue>) {
@@ -551,11 +523,6 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
                 {draft.description || tr('fields.description')}
               </Text>
             </Pressable>
-            {!!aliasCaption && (
-              <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]}>
-                {aliasCaption}
-              </Text>
-            )}
             {draft.isNewPayee && draft.type !== 'transfer' && (
               <View style={{ marginTop: t.space.sm }}>
                 <Chip label={`⚑ ${tr('draft.newPayeeWillBeCreated')}`} tone="warn" />

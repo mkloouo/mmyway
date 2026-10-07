@@ -39,7 +39,6 @@ import {
   type MerchantHistory,
 } from '../src/lookup/merchantLookup';
 import { useSharedPeople } from '../src/lookup/sharedPeople';
-import { matchAlias, PAYEE } from '../src/lookup/aliases';
 import { rankCandidates } from '../src/suggest/rank';
 import { divideDecimal, isNegative, parseDecimalInput } from '../src/api/ff3/decimal';
 import { useToast } from '../src/ui/useToast';
@@ -290,32 +289,6 @@ export default function CaptureScreen() {
   const effectiveSourceId =
     sourceId ?? (type === 'withdrawal' || type === 'transfer' ? defaultAccountId : null);
 
-  const [matchedFor, setMatchedFor] = useState<{ text: string; caption: string | null } | null>(
-    null,
-  );
-  useEffect(() => {
-    if (!isPayeeType || !merchantRawInput.trim()) return;
-    let cancelled = false;
-    matchAlias(db, PAYEE, merchantRawInput)
-      .then((match) => {
-        if (cancelled) return;
-        const caption =
-          match.matched && match.alias.targetName !== merchantRawInput
-            ? i18n.t('capture.booksViaAlias', { name: match.alias.targetName })
-            : null;
-        setMatchedFor({ text: merchantRawInput, caption });
-      })
-      .catch((err) => logLine('warn', `alias match failed: ${errorMessage(err)}`));
-    return () => {
-      cancelled = true;
-    };
-  }, [db, isPayeeType, merchantRawInput]);
-  // A payee created explicitly as new skips alias matching (createManualEntry), so no caption then.
-  const aliasCaption =
-    isPayeeType && !forceNewPayee && matchedFor?.text === merchantRawInput
-      ? matchedFor.caption
-      : null;
-
   const rankedPayees = useMemo(
     () =>
       rankCandidates(histories, {})
@@ -547,11 +520,6 @@ export default function CaptureScreen() {
           {summaryParts.length > 0 && !short && (
             <Text style={[t.type.body, { color: t.color.textMuted, marginTop: t.space.xs }]}>
               {summaryParts.join(' · ')}
-            </Text>
-          )}
-          {!!aliasCaption && (
-            <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]}>
-              {aliasCaption}
             </Text>
           )}
         </View>

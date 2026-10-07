@@ -48,7 +48,7 @@ Activity (`app/(tabs)/activity.tsx`) and the transaction screen (`app/transactio
 ## Data layer
 
 - **SQLite is the source of truth for the UI.** `src/db/schema.ts` defines the tables; `src/db/client.ts` opens them with expo-sqlite and runs migrations; `DbProvider` gates every screen until migrations finish and shows a blocking error (with Share diagnostics) if one fails.
-- **Tables.** `reference_accounts`, `reference_categories`, `reference_budgets`, `reference_currencies` (synced from FF3, never hardcoded); `cached_transactions` (Activity, payee history; includes `search_key` for accent- and case-insensitive search); `inbox_items`; `outbox_operations`; `planned_objects` (FF3 bills, rules, recurrences); `app_settings` (key/value preferences); `aliases` (payee text → FF3 payee).
+- **Tables.** `reference_accounts`, `reference_categories`, `reference_budgets`, `reference_currencies` (synced from FF3, never hardcoded); `cached_transactions` (Activity, payee history; includes `search_key` for accent- and case-insensitive search); `inbox_items`; `outbox_operations`; `planned_objects` (FF3 bills, rules, recurrences); `app_settings` (key/value preferences).
 - **Stored JSON is versioned.** `inbox_items.draft_json` and `outbox_operations.payload_json` outlive app versions, so they are written with `v: 1` and validated with zod on read: `src/inbox/draftJson.ts`, `src/sync/payloadJson.ts`. Never `JSON.parse` and cast.
 - **Live reads.** Screens read tables through `src/db/useLiveQuery.ts`, a drop-in for drizzle's hook that coalesces change events (at most one re-run per 100 ms, never two in flight). It returns `undefined` until the first read lands, so a screen can tell loading from empty. Pass `deps` when the query depends on a prop.
 - **Money is a string.** FF3 amounts stay decimal strings; arithmetic goes through `src/api/ff3/decimal.ts`, and split allocation works in minor units as `BigInt` (`src/splits/allocate.ts`).
@@ -87,14 +87,13 @@ A confirm waits `SYNC_DELAY.afterConfirm` (6 s) so Undo in the 5 s snackbar can 
 
 ### One instance at a time
 
-Queued operations and cached rows carry one FF3 instance's ids. Signing out, or signing in at an address not already stored, is refused while anything is queued and otherwise clears that instance's reference data, cache and reviews (`src/sync/instanceData.ts`). Drafts and aliases stay with their names but lose the instance's ids (they re-resolve against the next instance), the settings that name an account by id (default, cash and cash-count accounts) are reset, and the other preferences stay. The clearing runs inside `withSyncPaused` (`src/sync/runSync.ts`) so a sync still running with the old token can't refill what was just cleared.
+Queued operations and cached rows carry one FF3 instance's ids. Signing out, or signing in at an address not already stored, is refused while anything is queued and otherwise clears that instance's reference data, cache and reviews (`src/sync/instanceData.ts`). Drafts stay with their names but lose the instance's ids (they re-resolve against the next instance), the settings that name an account by id (default, cash and cash-count accounts) are reset, and the other preferences stay. The clearing runs inside `withSyncPaused` (`src/sync/runSync.ts`) so a sync still running with the old token can't refill what was just cleared.
 
 ## Features outside the main pipeline
 
 - **Splits** (`src/splits/`, `src/inbox/draftSplits.ts`, `src/transactions/queueSplitEdit.ts`): a tracked total plus one page per split. When splits and total disagree, split 1 absorbs the difference; if it can't, `AllocationSheet` shows sliders. A split edit sends every split; a removed split is deleted by its journal id.
 - **Planned** (`src/planned/`, `app/(tabs)/planned.tsx`): FF3 bills, rules and recurrences cached in `planned_objects`. The simple view edits the name-matched trio as one item and queues `save_planned`/`delete_planned` (`src/planned/replay.ts`); the detailed view is read-only.
 - **Cash count** (`app/count.tsx`, `src/reconcile/`): counts every account marked as a cash envelope and books one adjustment per envelope that differs, only when the balances are known to be current.
-- **Aliases** (`src/lookup/aliases.ts`): payee text as it arrives (a receipt's printed merchant, a bank's legal name) mapped to the FF3 payee it books to; learned when a draft's payee is corrected.
 - **Suggestions** (`src/lookup/merchantLookup.ts`, `src/suggest/rank.ts`): payee history from the cache pre-fills category, account and budget. Pure and offline; warmed at startup so the first Capture opens fast.
 
 ## UI layer

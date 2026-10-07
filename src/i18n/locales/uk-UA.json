@@ -86,32 +86,9 @@
     "testAll": "Перевірте все",
     "testing": "Тестування…"
   },
-  "aliases": {
-    "add": "Додати псевдонім",
-    "empty": "Поки що немає псевдонімів",
-    "exportOrImport": "Експорт або імпорт",
-    "importButton": "Імпортувати з тексту нижче",
-    "importComplete": "Імпортовано {{imported}}. Збережено існуюче відображення (зіткнень): {{collisions}}.",
-    "importCompleteTitle": "Імпорт завершено",
-    "importSkipped_one": "Пропущено {{count, number}} псевдонім облікового запису, бюджету або валюти — використовуються лише псевдоніми отримувача платежу.",
-    "importSkipped_few": "Пропущено {{count, number}} псевдоніми облікового запису, бюджету або валюти — використовуються лише псевдоніми отримувача платежу.",
-    "importSkipped_many": "Пропущено {{count, number}} псевдоніми облікового запису, бюджету або валюти — використовуються лише псевдоніми отримувача платежу.",
-    "importSkipped_other": "Пропущено псевдоніми облікового запису, бюджету або валюти {{count, number}} — використовуються лише псевдоніми отримувача платежу.",
-    "mapsTo": "Карти до",
-    "newTitle": "Новий псевдонім отримувача платежу",
-    "rawPlaceholder": "наприклад, жабка",
-    "removeAlias": "Видалити аліас {{raw}}",
-    "removeBody": "Він більше не буде відповідати {{target}}.",
-    "removeTitle": "Видалити \"{{raw}}\"?",
-    "search": "Пошук псевдонімів",
-    "title": "Псевдоніми",
-    "transferPlaceholder": "Експортований JSON відображається тут — вставте JSON сюди для імпорту",
-    "transferTitle": "Експорт / імпорт"
-  },
   "capture": {
     "attach": "Прикріпити",
     "attached": "Додано ✓",
-    "booksViaAlias": "підʼєднано до {{name}} через псевдонім",
     "changeCurrency": "Змінити валюту",
     "confirmedLabel": "Підтверджено · {{label}}",
     "convertsTo": "+ {{amount}} {{currency}} → перетворюється на",
@@ -250,9 +227,7 @@
     "receipt": "Квитанція",
     "showPhoto": "Покажіть фотографію чека",
     "synced": "Синхронізовано",
-    "title": "Огляд",
-    "viaAlias": "через псевдонім «{{alias}}»",
-    "willBookTo": "«{{raw}}» забронює для {{name}}"
+    "title": "Огляд"
   },
   "errorBoundary": {
     "reload": "Перезавантажити",
@@ -411,8 +386,7 @@
       "choose": "Виберіть платника",
       "createNew": "Створити нового платника \"{{name}}\"",
       "search": "Пошук платників"
-    },
-    "viaAlias": "псевдонім «{{alias}}»"
+    }
   },
   "photo": {
     "addReceiptPhoto": "Додати фотографію чека",
@@ -588,7 +562,6 @@
     "recordLocationHint": "",
     "sectionAbout": "Про нас",
     "sectionConnection": "З'єднання",
-    "sectionData": "Дані",
     "sectionDefaults": "Значення за замовчуванням",
     "sectionLanguage": "Мова",
     "sectionNotifications": "",

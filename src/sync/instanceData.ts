@@ -5,7 +5,6 @@
 // and payee history.
 import { eq, inArray, ne, sql } from 'drizzle-orm';
 import {
-  aliases,
   appSettings,
   cachedTransactions,
   inboxItems,
@@ -43,7 +42,7 @@ export function isSameInstance(storedHosts: string[], host: string): boolean {
 
 /**
  * Removes everything synced from the current instance: reference data, cached transactions, its
- * recurring-transaction reviews and its sync bookkeeping. The user's own drafts, aliases and
+ * recurring-transaction reviews and its sync bookkeeping. The user's own drafts and
  * preferences stay, minus the instance's ids: FF3 ids are small per-instance integers, so an old
  * `3` would book to whatever the new instance calls `3`. The names stay and re-resolve there.
  * Callers check queuedOperationCount first — this never touches the outbox, and they wrap the call
@@ -76,7 +75,6 @@ export async function clearInstanceData(db: OutboxDb): Promise<void> {
       }
       tx.update(inboxItems).set({ draftJson: stripped }).where(eq(inboxItems.id, id)).run();
     }
-    tx.update(aliases).set({ targetId: null }).run();
     tx.delete(appSettings)
       .where(inArray(appSettings.key, [...INSTANCE_SETTING_KEYS]))
       .run();

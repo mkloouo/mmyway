@@ -1,13 +1,11 @@
 import { createTestDb } from '../db/testDb';
-import { upsertAlias } from '../lookup/aliases';
-import * as aliases from '../lookup/aliases';
 import { createManualEntry, confirmInboxItem, undoConfirm } from './createManualEntry';
 import { outboxOperations, inboxItems, referenceAccounts } from '../db/schema';
 import { readPayload } from '../sync/payloadJson';
 import { eq } from 'drizzle-orm';
 
 describe('createManualEntry + confirmInboxItem', () => {
-  it('flags a merchant with no alias as a new payee and only enqueues after confirm', async () => {
+  it('flags a merchant as a new payee and only enqueues after confirm', async () => {
     const db = createTestDb();
     const { inboxItemId, isNewPayee } = await createManualEntry(db as any, {
       type: 'withdrawal',
@@ -30,25 +28,6 @@ describe('createManualEntry + confirmInboxItem', () => {
     expect(item?.state).toBe('confirmed');
   });
 
-  it('resolves an existing alias to destination_id, not a fresh payee', async () => {
-    const db = createTestDb();
-    await upsertAlias(db as any, {
-      kind: 'payee',
-      rawInput: 'Żabka',
-      targetId: 'acc-99',
-      targetName: 'Żabka',
-    });
-    const { isNewPayee } = await createManualEntry(db as any, {
-      type: 'withdrawal',
-      amount: '15.90',
-      currencyCode: 'PLN',
-      date: new Date().toISOString(),
-      description: 'snacks',
-      merchantRawInput: 'zabka',
-    });
-    expect(isNewPayee).toBe(false);
-  });
-
   it('puts a deposit payee on the source side, asset account on destination (defect fix)', async () => {
     const db = createTestDb();
     const { draft } = await createManualEntry(db as any, {
@@ -66,17 +45,8 @@ describe('createManualEntry + confirmInboxItem', () => {
     expect(draft.isNewPayee).toBe(true);
   });
 
-  it('runs no payee alias lookup for a transfer and never flags it a new payee', async () => {
+  it('transfers are never flagged as a new payee', async () => {
     const db = createTestDb();
-    // Even a matching alias for the raw text must be irrelevant — a transfer has no payee.
-    await upsertAlias(db as any, {
-      kind: 'payee',
-      rawInput: 'acc-2',
-      targetId: 'should-not-be-used',
-      targetName: 'should-not-be-used',
-    });
-    const matchAliasSpy = jest.spyOn(aliases, 'matchAlias');
-
     const { draft, isNewPayee } = await createManualEntry(db as any, {
       type: 'transfer',
       amount: '100.00',
@@ -87,21 +57,13 @@ describe('createManualEntry + confirmInboxItem', () => {
       destinationId: 'acc-2',
     });
 
-    expect(matchAliasSpy).not.toHaveBeenCalled();
     expect(isNewPayee).toBe(false);
     expect(draft.sourceId).toBe('acc-1');
     expect(draft.destinationId).toBe('acc-2');
-    matchAliasSpy.mockRestore();
   });
 
-  it('skips alias matching and forces a new payee when the screen checkbox is set', async () => {
+  it('forces a new payee when the screen checkbox is set', async () => {
     const db = createTestDb();
-    await upsertAlias(db as any, {
-      kind: 'payee',
-      rawInput: 'Żabka',
-      targetId: 'acc-99',
-      targetName: 'Żabka',
-    });
     const { isNewPayee, draft } = await createManualEntry(db as any, {
       type: 'withdrawal',
       amount: '15.90',

@@ -1,6 +1,5 @@
 import { and, eq } from 'drizzle-orm';
 import { inboxItems, outboxOperations, referenceAccounts } from '../db/schema';
-import { resolvePayeeAlias } from '../lookup/aliases';
 import { transition, type InboxState } from './state';
 import { draftToTransactionPayload, type Draft, type DraftLocation } from './draft';
 import { bookingLegAccountId } from './fx';
@@ -19,8 +18,7 @@ export interface ManualEntryInput {
   // Payee text: the merchant for a withdrawal, the payer for a deposit. Ignored for a transfer,
   // which has no payee (defect (1)).
   merchantRawInput?: string;
-  // The screen's "new payee" checkbox (brief §3.4: new payee stays explicit) — when set, skips
-  // alias matching entirely rather than relying on "no alias found" to imply newness.
+  // The screen's "new payee" checkbox (brief §3.4: new payee stays explicit).
   forceNewPayee?: boolean;
   sourceId?: string; // asset account id: source for withdrawal/transfer
   sourceName?: string;
@@ -58,14 +56,13 @@ export async function createManualEntry(
   let isNewPayee: boolean;
 
   if (input.type === 'withdrawal' || input.type === 'deposit') {
-    // The payee end starts as the typed text, marked new; a matching alias (unless the screen's
-    // "new payee" was chosen explicitly) points it at the alias target instead.
-    const typed: Draft =
+    const isNew = input.forceNewPayee ?? true;
+    draft =
       input.type === 'withdrawal'
         ? {
             ...shared,
             type: 'withdrawal',
-            isNewPayee: true,
+            isNewPayee: isNew,
             sourceId: input.sourceId,
             sourceName: input.sourceName,
             destinationName: input.merchantRawInput,
@@ -73,12 +70,11 @@ export async function createManualEntry(
         : {
             ...shared,
             type: 'deposit',
-            isNewPayee: true,
+            isNewPayee: isNew,
             sourceName: input.merchantRawInput,
             destinationId: input.destinationId,
             destinationName: input.destinationName,
           };
-    draft = input.forceNewPayee ? typed : await resolvePayeeAlias(db, typed);
     isNewPayee = draft.isNewPayee;
   } else {
     // transfer: both ends are known asset accounts, no payee alias lookup at all (defect (1)).

@@ -5,7 +5,6 @@ import { enqueueOperation } from './outbox';
 import { readDraft, writeDraft } from '../inbox/draftJson';
 import type { Draft } from '../inbox/draft';
 import {
-  aliases,
   cachedTransactions,
   inboxItems,
   referenceAccounts,
@@ -68,7 +67,7 @@ describe('queuedOperationCount', () => {
 });
 
 describe('clearInstanceData', () => {
-  it("removes what was synced from the instance and keeps the user's drafts, aliases and other preferences", async () => {
+  it("removes what was synced from the instance and keeps the user's drafts and other preferences", async () => {
     const db = createTestDb() as any;
     await db
       .insert(referenceAccounts)
@@ -107,14 +106,6 @@ describe('clearInstanceData', () => {
         updatedAt: T,
       },
     ]);
-    await db.insert(aliases).values({
-      id: 'al',
-      kind: 'payee',
-      normalizedKey: 'k',
-      rawInput: 'k',
-      targetName: 'K',
-      createdAt: T,
-    });
     await setLastSyncedAt(db, T);
     await setFf3ActiveHost(db, 'https://ff3.example.com');
     await setBalancesStale(db, true);
@@ -139,7 +130,6 @@ describe('clearInstanceData', () => {
     expect((await db.select().from(inboxItems)).map((i: { id: string }) => i.id)).toEqual([
       'draft',
     ]);
-    expect(await db.select().from(aliases)).toHaveLength(1);
     expect(await getLastSyncedAt(db)).toBeNull();
     expect(await getFf3ActiveHost(db)).toBeNull();
     expect(await getBalancesStale(db)).toBe(false);
@@ -152,7 +142,7 @@ describe('clearInstanceData', () => {
     expect(await getLocalModelName(db)).toBe('qwen');
   });
 
-  it('takes the ids out of drafts and aliases and keeps the names they resolve again by', async () => {
+  it('takes the ids out of drafts and keeps the names they resolve again by', async () => {
     const db = createTestDb() as any;
     const draft: Draft = {
       type: 'withdrawal',
@@ -189,15 +179,6 @@ describe('clearInstanceData', () => {
     await db
       .insert(inboxItems)
       .values([row('open', 'captured'), row('failed', 'error'), row('done', 'synced')]);
-    await db.insert(aliases).values({
-      id: 'al',
-      kind: 'payee',
-      normalizedKey: 'zabka',
-      rawInput: 'zabka',
-      targetId: '7',
-      targetName: 'Żabka',
-      createdAt: T,
-    });
 
     await clearInstanceData(db);
 
@@ -219,7 +200,5 @@ describe('clearInstanceData', () => {
     }
     // History of what was sent isn't a draft anyone can confirm again.
     expect(await read('done')).toMatchObject({ sourceId: '3', destinationId: '7' });
-    const [alias] = await db.select().from(aliases);
-    expect(alias).toMatchObject({ targetId: null, targetName: 'Żabka' });
   });
 });

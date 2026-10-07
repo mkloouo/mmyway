@@ -108,13 +108,6 @@ export const FLOWS = [
     ],
   },
   {
-    id: 'C4',
-    tier: 'release',
-    title: 'Payee alias is learned',
-    steps: ['capture/C4-payee-alias.yaml'],
-    areas: ['app/draft/', 'src/lookup/', 'src/inbox/', 'app/settings/aliases.tsx'],
-  },
-  {
     id: 'C5',
     tier: 'release',
     title: 'Typing in a draft',

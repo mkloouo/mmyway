@@ -84,30 +84,9 @@
     "testAll": "Test all",
     "testing": "Testing…"
   },
-  "aliases": {
-    "add": "Add alias",
-    "empty": "No aliases yet",
-    "exportOrImport": "Export or import",
-    "importButton": "Import from text below",
-    "importComplete": "Imported {{imported}}. {{collisions}} collision(s) kept the existing mapping.",
-    "importCompleteTitle": "Import complete",
-    "importSkipped_one": "Skipped {{count, number}} account, budget or currency alias — only payee aliases are used.",
-    "importSkipped_other": "Skipped {{count, number}} account, budget or currency aliases — only payee aliases are used.",
-    "mapsTo": "Maps to",
-    "newTitle": "New payee alias",
-    "rawPlaceholder": "e.g. zabka",
-    "removeAlias": "Remove alias {{raw}}",
-    "removeBody": "It will no longer map to {{target}}.",
-    "removeTitle": "Remove \"{{raw}}\"?",
-    "search": "Search aliases",
-    "title": "Aliases",
-    "transferPlaceholder": "Exported JSON appears here — paste JSON here to import",
-    "transferTitle": "Export / import"
-  },
   "capture": {
     "attach": "Attach",
     "attached": "Attached ✓",
-    "booksViaAlias": "books to {{name}} via alias",
     "changeCurrency": "Change currency",
     "confirmedLabel": "Confirmed · {{label}}",
     "convertsTo": "+ {{amount}} {{currency}} → converts to",
@@ -238,9 +217,7 @@
     "removePhotoTitle": "Remove this photo?",
     "showPhoto": "Show the receipt photo",
     "synced": "Synced",
-    "title": "Review",
-    "viaAlias": "via alias “{{alias}}”",
-    "willBookTo": "“{{raw}}” will book to {{name}}"
+    "title": "Review"
   },
   "errorBoundary": {
     "reload": "Reload",
@@ -367,7 +344,7 @@
     "title": "Diagnostics"
   },
   "migrationFailed": {
-    "body": "The app stopped here so it doesn’t work on a broken database. Share the diagnostics log so the problem can be fixed; reinstalling the app starts over from Firefly III (drafts and aliases on this phone are lost).",
+    "body": "The app stopped here so it doesn’t work on a broken database. Share the diagnostics log so the problem can be fixed; reinstalling the app starts over from Firefly III (drafts on this phone are lost).",
     "share": "Share diagnostics",
     "title": " Money My Way couldn’t update its database"
   },
@@ -381,8 +358,7 @@
       "choose": "Choose a payer",
       "createNew": "Create new payer \"{{name}}\"",
       "search": "Search payers"
-    },
-    "viaAlias": "alias “{{alias}}”"
+    }
   },
   "photo": {
     "addReceiptPhoto": "Add a receipt photo",
@@ -538,7 +514,6 @@
     "recordLocationHint": "A new entry keeps the spot it was made in, shown on Firefly III's map. Nothing waits for the position, and nothing is recorded in the background.",
     "sectionAbout": "About",
     "sectionConnection": "Connection",
-    "sectionData": "Data",
     "sectionDefaults": "Defaults",
     "sectionLanguage": "Language",
     "sectionNotifications": "Notifications",

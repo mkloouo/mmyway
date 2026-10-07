@@ -852,7 +852,7 @@ export function Banner({
 }
 
 /**
- * The round floating button: the dock's two secondary actions and the aliases screen's ＋. `accent`
+ * The round floating button: the dock's two secondary actions. `accent`
  * is the filled one; the rest sit on the surface with a hairline border.
  */
 export function Fab({

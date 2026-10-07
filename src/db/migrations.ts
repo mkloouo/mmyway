@@ -16,6 +16,7 @@ import m0008 from './migrations/0008_blue_surge.sql';
 import m0009 from './migrations/0009_milky_sinister_six.sql';
 import m0010 from './migrations/0010_plain_bastion.sql';
 import m0011 from './migrations/0011_reviews_parsed.sql';
+import m0012 from './migrations/0012_glamorous_plazm.sql';
 
 export default {
   journal,
@@ -32,5 +33,6 @@ export default {
     m0009,
     m0010,
     m0011,
+    m0012,
   },
 };

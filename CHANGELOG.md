@@ -15,6 +15,10 @@
 
 - **Reminders for planned transactions.** Optional local notifications remind you on the day of a planned transaction and two days before it is due. Tapping a reminder opens the planned transaction directly. Configurable under Settings → Notifications.
 
+### Settings
+
+- **Removed Payee Aliases.** The legacy payee aliases feature and its configuration screen have been removed in favor of direct payee selection and merchant history ranking.
+
 ## [1.6.8] - 2026-10-07
 
 ### Look and feel
