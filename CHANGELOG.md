@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-10-07
+
 ### Planned
 
 - **Reminders for planned transactions.** Optional local notifications remind you on the day of a planned transaction and two days before it is due. Tapping a reminder opens the planned transaction directly. Configurable under Settings → Notifications.
