@@ -74,26 +74,36 @@ export function DragList<T>({
   const dragY = useSharedValue(0);
   const lift = useSharedValue(0);
 
-  // Changes the order, and only then puts everything back to rest: by now the dropped row has
-  // already travelled into its new slot and the rows it passed are holding the gap open, so the
-  // re-render that reorders them lands each one exactly where it already is on screen.
-  // Delaying the reset to the next animation frame allows React to commit the new order first,
-  // preventing a single-frame blink back to the old positions.
+  // Reset drag transforms once React renders the reordered items, landing each row seamlessly
+  // exactly where it just settled on screen without any single-frame blink or stale index shifts.
+  const prevItemsRef = useRef(items);
+  // eslint-disable-next-line react-hooks/refs
+  if (prevItemsRef.current !== items) {
+    // eslint-disable-next-line react-hooks/refs
+    prevItemsRef.current = items;
+    dragging.value = -1;
+    dragY.value = 0;
+    lift.value = 0;
+  }
+
+  // Changes the order and keeps heights aligned with the new order. The drag values are left
+  // holding the row in its settled slot until React renders the new items order above, so the
+  // transition between animated transforms and native view layout is completely seamless.
   const commit = (from: number, to: number) => {
     if (to !== from) {
+      const nextHeights = [...heights.value];
+      const [movedHeight] = nextHeights.splice(from, 1);
+      if (movedHeight !== undefined) {
+        nextHeights.splice(to, 0, movedHeight);
+        heights.value = nextHeights;
+      }
       onMove(from, to);
-      requestAnimationFrame(() => {
-        dragging.value = -1;
-        dragY.value = 0;
-        lift.value = 0;
-        onDragChange?.(false);
-      });
     } else {
       dragging.value = -1;
       dragY.value = 0;
       lift.value = 0;
-      onDragChange?.(false);
     }
+    onDragChange?.(false);
   };
 
   const begin = (index: number) => {
@@ -179,25 +189,33 @@ function DragRow({
   gap: number;
   labels: { up: string; down: string };
 }) {
+  const currentIndex = useSharedValue(index);
+  currentIndex.value = index;
+
   const pan = Gesture.Pan()
     .activateAfterLongPress(HOLD_MS)
     .onStart(() => {
-      begin(index);
+      begin(currentIndex.value);
       runOnJS(haptics.tick)();
     })
     .onUpdate((e) => drag(e.translationY))
     .onEnd((e) => {
-      const to = landsAt(index, heights.value, e.translationY);
-      release(index, to, slotOf(index, to, heights.value));
+      const from = currentIndex.value;
+      const to = landsAt(from, heights.value, e.translationY);
+      release(from, to, slotOf(from, to, heights.value));
     })
     // A cancelled drag travels home the same way instead of blinking back.
     .onFinalize((_e, success) => {
-      if (!success) release(index, index, 0);
+      if (!success) {
+        const from = currentIndex.value;
+        release(from, from, 0);
+      }
     });
 
   const style = useAnimatedStyle(() => {
     const from = dragging.value;
-    if (from === index)
+    const myIndex = currentIndex.value;
+    if (from === myIndex)
       return {
         transform: [{ translateY: dragY.value }, { scale: 1 + LIFT_SCALE * lift.value }],
         zIndex: 2,
@@ -210,9 +228,9 @@ function DragRow({
     // A row slides out of the way by the height of the row being dragged over it, not its own.
     const held = heights.value[from] ?? 0;
     const shift =
-      from < to && index > from && index <= to
+      from < to && myIndex > from && myIndex <= to
         ? -held
-        : from > to && index >= to && index < from
+        : from > to && myIndex >= to && myIndex < from
           ? held
           : 0;
     return {
