@@ -4,9 +4,14 @@
 
 ### Look and feel
 
+- **Seamless and reliable account reordering.** Repeatedly dragging accounts around now preserves exact item indices and heights without unexpected shifts or jumps, and releasing a row holds its landing position cleanly until the new order commits without any flicker.
+
+## [1.7.2] - 2026-10-08
+
+### Look and feel
+
 - **Smooth spring bottom sheet transitions.** Action and picker sheets now glide into view with a native spring slide-up transition while the backdrop gently fades in, giving bottom sheets a natural Material feel.
 - **Fluid swipe-to-dismiss in Inbox.** Confirming or deleting an inbox card now stays smoothly exposed as the row collapses away, eliminating the jarring horizontal snapback.
-- **Seamless and reliable account reordering.** Repeatedly dragging accounts around now preserves exact item indices and heights without unexpected shifts or jumps, and releasing a row holds its landing position cleanly until the new order commits without any flicker.
 
 ## [1.7.1] - 2026-10-08
 
