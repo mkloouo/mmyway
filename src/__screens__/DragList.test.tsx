@@ -1,19 +1,46 @@
 import { useState } from 'react';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react-native';
 import { Text } from 'react-native';
+import { DragList } from '../ui/DragList';
 
 afterEach(cleanup);
+
+const panHandlers: {
+  onStart?: () => void;
+  onUpdate?: (e: { translationY: number }) => void;
+  onEnd?: (e: { translationY: number }) => void;
+  onFinalize?: (e: any, success: boolean) => void;
+}[] = [];
 
 jest.mock('react-native-gesture-handler', () => ({
   GestureDetector: ({ children }: any) => children,
   Gesture: {
     Pan: () => {
+      const handlers: {
+        onStart?: () => void;
+        onUpdate?: (e: { translationY: number }) => void;
+        onEnd?: (e: { translationY: number }) => void;
+        onFinalize?: (e: any, success: boolean) => void;
+      } = {};
+      panHandlers.push(handlers);
       const pan: any = {
         activateAfterLongPress: () => pan,
-        onStart: () => pan,
-        onUpdate: () => pan,
-        onEnd: () => pan,
-        onFinalize: () => pan,
+        onStart: (fn: any) => {
+          handlers.onStart = fn;
+          return pan;
+        },
+        onUpdate: (fn: any) => {
+          handlers.onUpdate = fn;
+          return pan;
+        },
+        onEnd: (fn: any) => {
+          handlers.onEnd = fn;
+          return pan;
+        },
+        onFinalize: (fn: any) => {
+          handlers.onFinalize = fn;
+          return pan;
+        },
       };
       return pan;
     },
@@ -34,7 +61,10 @@ jest.mock('react-native-reanimated', () => {
     },
     useAnimatedStyle: (fn: any) => fn(),
     useEvent: () => jest.fn(),
-    withTiming: (to: any) => to,
+    withTiming: (to: any, _config?: any, cb?: any) => {
+      if (typeof cb === 'function') cb(true);
+      return to;
+    },
     runOnJS: (fn: any) => fn,
     Easing: {
       out: (f: any) => f,
@@ -42,7 +72,6 @@ jest.mock('react-native-reanimated', () => {
     },
   };
 });
-import { DragList } from '../ui/DragList';
 
 interface Item {
   id: string;
@@ -115,6 +144,60 @@ describe('DragList', () => {
     expect(getByText('Savings')).toBeTruthy();
     expect(getByText('Checking')).toBeTruthy();
     expect(getByText('Cash')).toBeTruthy();
+    await unmount();
+  });
+
+  it('preserves active drag across re-renders with identical key order', async () => {
+    panHandlers.length = 0;
+    const onDragChange = jest.fn();
+    const onMove = jest.fn();
+
+    const { getByText, rerender, unmount } = await render(
+      <DragList
+        items={items}
+        keyOf={(i) => i.id}
+        renderItem={(i) => <Text>{i.name}</Text>}
+        onMove={onMove}
+        onDragChange={onDragChange}
+        gap={8}
+        moveLabels={{ up: 'Move up', down: 'Move down' }}
+      />,
+    );
+
+    // Measure rows so heights.value is populated
+    fireEvent(getByText('Checking'), 'layout', { nativeEvent: { layout: { height: 50 } } });
+    fireEvent(getByText('Savings'), 'layout', { nativeEvent: { layout: { height: 50 } } });
+    fireEvent(getByText('Cash'), 'layout', { nativeEvent: { layout: { height: 50 } } });
+
+    expect(panHandlers.length).toBe(3);
+
+    // Start dragging first item
+    panHandlers[0]?.onStart?.();
+
+    expect(onDragChange).toHaveBeenCalledWith(true);
+
+    // Parent re-renders with a brand-new array reference but identical keys (e.g. holding changed)
+    rerender(
+      <DragList
+        items={[...items]}
+        keyOf={(i) => i.id}
+        renderItem={(i) => <Text>{i.name}</Text>}
+        onMove={onMove}
+        onDragChange={onDragChange}
+        gap={8}
+        moveLabels={{ up: 'Move up', down: 'Move down' }}
+      />,
+    );
+
+    // onDragChange should not have been called with false (drag must not abort)
+    expect(onDragChange).not.toHaveBeenCalledWith(false);
+
+    // Release drag
+    panHandlers[0]?.onEnd?.({ translationY: 80 });
+
+    expect(onMove).toHaveBeenCalled();
+    expect(onDragChange).toHaveBeenCalledWith(false);
+
     await unmount();
   });
 });

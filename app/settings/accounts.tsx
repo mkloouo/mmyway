@@ -1,6 +1,6 @@
 // Asset accounts in FF3's order (design §6.6). Tap or long-press one to open its page
 // (app/accounts/[id].tsx); Reorder turns the list into a drag list, and Done saves it.
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, ScrollView, Text, View } from 'react-native';
 import Animated, { FadeIn } from 'react-native-reanimated';
@@ -30,6 +30,7 @@ import { PendingDot } from '../../src/ui/PendingDot';
 import { usePendingAccountIds } from '../../src/accounts/usePendingAccountIds';
 
 const FADE_MS = 160;
+const EMPTY_ACCOUNTS: ReferenceAccountRow[] = [];
 
 export default function AccountsScreen() {
   const db = useDb();
@@ -38,7 +39,7 @@ export default function AccountsScreen() {
   const act = useAction();
   const pendingAccounts = usePendingAccountIds();
   // In FF3's own order — the order every account picker in the app uses, set with Reorder.
-  const allAccounts = useAssetAccounts({ includeInactive: true }) ?? [];
+  const allAccounts = useAssetAccounts({ includeInactive: true }) ?? EMPTY_ACCOUNTS;
   const [search, setSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   // Every account id in the order the user is dragging them into, or null when not reordering.
@@ -49,17 +50,27 @@ export default function AccountsScreen() {
   // Hiding inactive accounts makes a reorder quicker on a long list; they keep their places.
   const [showInactive, setShowInactive] = useState(true);
 
-  const byId = new Map(allAccounts.map((a) => [a.id, a]));
+  const byId = useMemo(() => new Map(allAccounts.map((a) => [a.id, a])), [allAccounts]);
   // While reordering, the draft order wins over the live query's; an account a sync added
   // meanwhile (not in the draft) goes at the end rather than disappearing.
-  const ordered = draft
-    ? [
-        ...draft.flatMap((id) => byId.get(id) ?? []),
-        ...allAccounts.filter((a) => !draft.includes(a.id)),
-      ]
-    : allAccounts;
-  const shown = showInactive ? ordered : ordered.filter((a) => a.active);
-  const visible = reordering ? shown : filterAccounts(shown, search);
+  const ordered = useMemo(
+    () =>
+      draft
+        ? [
+            ...draft.flatMap((id) => byId.get(id) ?? []),
+            ...allAccounts.filter((a) => !draft.includes(a.id)),
+          ]
+        : allAccounts,
+    [allAccounts, byId, draft],
+  );
+  const shown = useMemo(
+    () => (showInactive ? ordered : ordered.filter((a) => a.active)),
+    [ordered, showInactive],
+  );
+  const visible = useMemo(
+    () => (reordering ? shown : filterAccounts(shown, search)),
+    [reordering, search, shown],
+  );
 
   // The drag rearranges the accounts on screen; the hidden ones keep their slots in the full list.
   function move(from: number, to: number) {

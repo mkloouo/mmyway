@@ -74,13 +74,16 @@ export function DragList<T>({
   const dragY = useSharedValue(0);
   const lift = useSharedValue(0);
 
-  // Reset drag transforms once React renders the reordered items, landing each row seamlessly
-  // exactly where it just settled on screen without any single-frame blink or stale index shifts.
-  const prevItemsRef = useRef(items);
+  // Track the actual order of item keys so that re-renders with the same items in the same order
+  // (such as when the parent toggles scrollEnabled on drag start) do not cancel an in-progress drag.
+  // When React commits a new key order, reset drag transforms synchronously in render so rows land
+  // seamlessly in their native positions with zero flicker or single-frame blink.
+  const currentKeyOrder = items.map(keyOf).join(',');
+  const prevKeyOrderRef = useRef(currentKeyOrder);
   // eslint-disable-next-line react-hooks/refs
-  if (prevItemsRef.current !== items) {
+  if (prevKeyOrderRef.current !== currentKeyOrder) {
     // eslint-disable-next-line react-hooks/refs
-    prevItemsRef.current = items;
+    prevKeyOrderRef.current = currentKeyOrder;
     dragging.value = -1;
     dragY.value = 0;
     lift.value = 0;
