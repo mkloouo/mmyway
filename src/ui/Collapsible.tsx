@@ -1,7 +1,7 @@
 // A list row that leaves smoothly (design §3.4 motion): when `collapsed` turns on it fades and
 // shrinks its own height to zero, so the rows below slide up instead of jumping. Screens set it
 // first and remove the row from the data after COLLAPSE_MS (leaveThen below).
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Animated, Easing } from 'react-native';
 
 const COLLAPSE_MS = 260;
@@ -13,6 +13,7 @@ export function Collapsible({ collapsed, children }: { collapsed: boolean; child
   // Activity filter switch).
   const [measured] = useState(() => new Animated.Value(0));
   const [height] = useState(() => Animated.multiply(anim, measured));
+  const lastHeight = useRef(0);
 
   useEffect(() => {
     if (!collapsed) {
@@ -31,8 +32,18 @@ export function Collapsible({ collapsed, children }: { collapsed: boolean; child
 
   return (
     <Animated.View
-      onLayout={collapsed ? undefined : (e) => measured.setValue(e.nativeEvent.layout.height)}
-      style={collapsed ? { height, opacity: anim, overflow: 'hidden' } : { opacity: anim }}
+      onLayout={
+        collapsed
+          ? undefined
+          : (e) => {
+              const h = e.nativeEvent.layout.height;
+              if (h > 0 && h !== lastHeight.current) {
+                lastHeight.current = h;
+                measured.setValue(h);
+              }
+            }
+      }
+      style={collapsed ? { height, opacity: anim, overflow: 'hidden' } : undefined}
     >
       {children}
     </Animated.View>

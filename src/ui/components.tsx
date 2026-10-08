@@ -72,7 +72,7 @@ export function Screen({
  * Every top bar is this tall, whatever it holds (a title with a subtitle, a search field, a
  * selection count and its actions), so switching between them never moves the screen below.
  */
-export const BAR_HEIGHT = 72;
+const BAR_HEIGHT = 72;
 /** Icon buttons and buttons in a top bar are all this tall. */
 const BAR_CONTROL_SIZE = 40;
 /**
@@ -105,7 +105,7 @@ export function BarRow({ children, divider = true }: { children: ReactNode; divi
 }
 
 /** The hairline under a screen's header, wherever that header ends. */
-export function barDivider(border: string, gap?: number): ViewStyle {
+function barDivider(border: string, gap?: number): ViewStyle {
   return {
     borderBottomWidth: 1,
     borderBottomColor: border,
@@ -685,10 +685,23 @@ export function Sheet({
               {children}
             </ScrollView>
           ) : (
-            <View style={[bodyPadding, { flex: 1 }]}>{children}</View>
+            <View style={[bodyPadding, { flex: 1 }, footer ? { paddingBottom: 0 } : null]}>
+              {children}
+            </View>
           )}
           {!!footer && (
-            <View style={{ paddingHorizontal: t.space.lg, paddingTop: t.space.md }}>{footer}</View>
+            <View
+              style={{
+                borderTopWidth: 1,
+                borderTopColor: t.color.border,
+                backgroundColor: t.color.surface,
+                paddingHorizontal: t.space.lg,
+                paddingTop: t.space.sm,
+                paddingBottom: t.space.xs,
+              }}
+            >
+              {footer}
+            </View>
           )}
         </View>
       </View>
@@ -806,7 +819,7 @@ export function Dot({ color, size = 8 }: { color: string; size?: number }) {
 export const PRESSED_OPACITY = 0.6;
 
 /** `style={({ pressed }) => pressedStyle(pressed)}` on a bare Pressable. */
-export function pressedStyle(pressed: boolean, style?: ViewStyle): ViewStyle {
+function pressedStyle(pressed: boolean, style?: ViewStyle): ViewStyle {
   return { ...style, opacity: pressed ? PRESSED_OPACITY : 1 };
 }
 

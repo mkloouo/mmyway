@@ -6,6 +6,10 @@
 
 - **Reminders for planned transactions.** Optional local notifications remind you on the day of a planned transaction and two days before it is due. Tapping a reminder opens the planned transaction directly. Configurable under Settings → Notifications.
 
+### Look and feel
+
+- **Cleaner sheet footers with hairline divider.** Searchable selection sheets (such as Payee picker) now frame bottom actions with a subtle divider line and styled button, preventing list items from cutting off abruptly over empty space when scrolling or when the keyboard is open.
+
 ### Settings
 
 - **Removed Payee Aliases.** The legacy payee aliases feature and its configuration screen have been removed in favor of direct payee selection and merchant history ranking.

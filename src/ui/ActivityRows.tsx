@@ -202,7 +202,7 @@ export const BalanceStrip = memo(function BalanceStrip({
   );
 });
 
-export const BalanceCard = memo(function BalanceCard({
+const BalanceCard = memo(function BalanceCard({
   account: a,
   selected,
   pending,

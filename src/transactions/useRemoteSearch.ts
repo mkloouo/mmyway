@@ -8,12 +8,12 @@ import { searchTransactions } from './remoteSearch';
 import { mapRemoteResult, type RemoteResultRow } from './activityRows';
 import type { ActivityTypeFilter } from './useTransactionPage';
 
-export interface UseRemoteSearchOptions {
+interface UseRemoteSearchOptions {
   type?: ActivityTypeFilter;
   accountId?: string | null;
 }
 
-export type RemoteSearchState =
+type RemoteSearchState =
   | { status: 'idle' }
   | { status: 'loading'; query: string }
   | { status: 'done'; query: string; rows: RemoteResultRow[] }

@@ -13,7 +13,6 @@
     "babel-jest",
     "babel-plugin-inline-import",
     "babel-preset-expo",
-    "react-native-worklets",
     "expo-updates"
   ],
   "ignoreBinaries": ["eas"]

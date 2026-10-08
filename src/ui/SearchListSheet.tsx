@@ -5,7 +5,7 @@
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, Pressable, Text } from 'react-native';
-import { PRESSED_OPACITY, pressedStyle, Sheet } from './components';
+import { Button, PRESSED_OPACITY, Sheet } from './components';
 import { SearchField } from './SearchField';
 import { useTheme } from './theme';
 
@@ -65,8 +65,9 @@ export function SearchListSheet<T>({
         data={results}
         keyExtractor={keyOf}
         style={{ flex: 1 }}
+        keyboardShouldPersistTaps="handled"
         // Keeps the right-aligned column clear of Android's scrollbar, which draws over the content.
-        contentContainerStyle={{ paddingRight: t.space.md }}
+        contentContainerStyle={{ paddingRight: t.space.md, paddingBottom: t.space.sm }}
         renderItem={({ item }) => (
           <Pressable
             onPress={() => {
@@ -100,14 +101,5 @@ export function SearchListSheet<T>({
 
 /** The sheets' shared footer action: "Use <name> (will be created)". */
 export function UseNewFooter({ label, onPress }: { label: string; onPress: () => void }) {
-  const t = useTheme();
-  return (
-    <Pressable
-      onPress={onPress}
-      accessibilityRole="button"
-      style={({ pressed }) => pressedStyle(pressed, { paddingVertical: t.space.md })}
-    >
-      <Text style={[t.type.body, { color: t.color.accent, fontWeight: '600' }]}>{label}</Text>
-    </Pressable>
-  );
+  return <Button title={label} onPress={onPress} variant="secondary" style={{ width: '100%' }} />;
 }

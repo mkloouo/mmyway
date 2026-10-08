@@ -10,7 +10,6 @@ import * as Notifications from 'expo-notifications';
 import { queryClient } from '../src/providers/queryClient';
 import { DbProvider, useDb } from '../src/providers/DbProvider';
 import { useSync } from '../src/sync/useSync';
-import { useCurrencies } from '../src/db/useReferenceData';
 import { syncPlannedNotifications } from '../src/planned/notifications';
 import { navigateOnce } from '../src/ui/navigateOnce';
 import { useTheme } from '../src/ui/theme';
@@ -82,18 +81,17 @@ function BackgroundSyncRegistration() {
 
 function PlannedNotificationListener() {
   const db = useDb();
-  const currencies = useCurrencies();
   const handledResponseId = useRef<string | null>(null);
 
   useEffect(() => {
-    void syncPlannedNotifications(db, currencies);
+    void syncPlannedNotifications(db);
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
-        void syncPlannedNotifications(db, currencies);
+        void syncPlannedNotifications(db);
       }
     });
     return () => subscription.remove();
-  }, [db, currencies]);
+  }, [db]);
 
   useEffect(() => {
     const handleResponse = (response: Notifications.NotificationResponse | null) => {

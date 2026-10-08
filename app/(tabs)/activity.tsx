@@ -429,37 +429,40 @@ export default function ActivityScreen() {
   const typeSubtitle = type !== 'all' && activeType ? tr(activeType.labelKey) : null;
   const activeFilterSubtitle = [selectedAccount?.name, typeSubtitle].filter(Boolean).join(' · ');
 
-  const listHeader = (
-    <View style={{ paddingTop: SCREEN_TOP_PADDING - t.space.xs, paddingBottom: t.space.xs }}>
-      {assetAccounts.length > 0 && (
-        <BalanceStrip
-          accounts={assetAccounts}
-          selectedId={accountFilter}
-          onToggle={toggleAccountFilter}
-          currencies={currencies}
-          pendingAccounts={pendingAccounts}
-        />
-      )}
-
-      <View
-        style={{
-          flexDirection: 'row',
-          paddingHorizontal: t.space.lg,
-          gap: t.space.sm,
-          paddingTop: t.space.xs,
-          paddingBottom: t.space.sm,
-        }}
-      >
-        {FILTERS.map((f) => (
-          <Chip
-            key={f.type}
-            label={tr(f.labelKey)}
-            selected={type === f.type}
-            onPress={() => setType(f.type)}
+  const listHeader = useMemo(
+    () => (
+      <View style={{ paddingTop: SCREEN_TOP_PADDING - t.space.xs, paddingBottom: t.space.xs }}>
+        {assetAccounts.length > 0 && (
+          <BalanceStrip
+            accounts={assetAccounts}
+            selectedId={accountFilter}
+            onToggle={toggleAccountFilter}
+            currencies={currencies}
+            pendingAccounts={pendingAccounts}
           />
-        ))}
+        )}
+
+        <View
+          style={{
+            flexDirection: 'row',
+            paddingHorizontal: t.space.lg,
+            gap: t.space.sm,
+            paddingTop: t.space.xs,
+            paddingBottom: t.space.sm,
+          }}
+        >
+          {FILTERS.map((f) => (
+            <Chip
+              key={f.type}
+              label={tr(f.labelKey)}
+              selected={type === f.type}
+              onPress={() => setType(f.type)}
+            />
+          ))}
+        </View>
       </View>
-    </View>
+    ),
+    [assetAccounts, accountFilter, toggleAccountFilter, currencies, pendingAccounts, type, t, tr],
   );
 
   return (

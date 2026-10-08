@@ -141,6 +141,7 @@ async function cancelPlannedNotifications(): Promise<void> {
   try {
     const scheduled = await Notifications.getAllScheduledNotificationsAsync();
     const planned = scheduled.filter((n) => n.identifier.startsWith(NOTIFICATION_PREFIX));
+    if (planned.length === 0) return;
     await Promise.all(
       planned.map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)),
     );
@@ -149,16 +150,19 @@ async function cancelPlannedNotifications(): Promise<void> {
   }
 }
 
-export async function syncPlannedNotifications(
+async function doSyncPlannedNotifications(
   db: OutboxDb,
   currencies: Currencies = [],
   now = new Date(),
 ): Promise<void> {
   try {
     const enabled = await getPlannedNotificationsEnabled(db);
-    await cancelPlannedNotifications();
-    if (!enabled) return;
+    if (!enabled) {
+      await cancelPlannedNotifications();
+      return;
+    }
 
+    await cancelPlannedNotifications();
     await setupNotificationChannel();
 
     const rows = await db.select().from(plannedObjects);
@@ -196,4 +200,31 @@ export async function syncPlannedNotifications(
   } catch (err) {
     logLine('warn', `could not sync planned notifications: ${errorMessage(err)}`);
   }
+}
+
+let inFlightSync: Promise<void> | null = null;
+let queuedRerun: { db: OutboxDb; currencies: Currencies; now: Date } | null = null;
+
+export async function syncPlannedNotifications(
+  db: OutboxDb,
+  currencies: Currencies = [],
+  now = new Date(),
+): Promise<void> {
+  if (inFlightSync) {
+    queuedRerun = { db, currencies, now };
+    return inFlightSync;
+  }
+  inFlightSync = (async () => {
+    try {
+      await doSyncPlannedNotifications(db, currencies, now);
+      while (queuedRerun) {
+        const next = queuedRerun;
+        queuedRerun = null;
+        await doSyncPlannedNotifications(next.db, next.currencies, next.now);
+      }
+    } finally {
+      inFlightSync = null;
+    }
+  })();
+  return inFlightSync;
 }

@@ -201,4 +201,14 @@ describe('syncPlannedNotifications', () => {
       }),
     );
   });
+
+  it('serializes concurrent sync calls', async () => {
+    await setPlannedNotificationsEnabled(db, true);
+    await Promise.all([
+      syncPlannedNotifications(db),
+      syncPlannedNotifications(db),
+      syncPlannedNotifications(db),
+    ]);
+    expect(Notifications.getAllScheduledNotificationsAsync).toHaveBeenCalled();
+  });
 });

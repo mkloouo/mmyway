@@ -3,7 +3,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Text } from 'react-native';
 import type { ReactElement } from 'react';
 import '../i18n';
-import { SearchListSheet } from '../ui/SearchListSheet';
+import { SearchListSheet, UseNewFooter } from '../ui/SearchListSheet';
 
 const metrics = {
   frame: { x: 0, y: 0, width: 390, height: 844 },
@@ -66,5 +66,37 @@ describe('SearchListSheet', () => {
     await wrap(<Sheet onSelect={onSelect} />);
     await fireEvent.press(screen.getByText('Żabka'));
     expect(onSelect).toHaveBeenCalledWith('Żabka');
+  });
+
+  it('renders footer action and handles pressing it', async () => {
+    const onCreate = jest.fn();
+    await wrap(
+      <SearchListSheet
+        visible
+        onClose={jest.fn()}
+        title="Payee"
+        placeholder="Search"
+        items={() => []}
+        keyOf={(n) => n}
+        renderRow={(n) => <Text>{n}</Text>}
+        onSelect={jest.fn()}
+        footer={(trimmed, close) =>
+          trimmed ? (
+            <UseNewFooter
+              label={`Create new "${trimmed}"`}
+              onPress={() => {
+                onCreate(trimmed);
+                close();
+              }}
+            />
+          ) : undefined
+        }
+      />,
+    );
+
+    await fireEvent.changeText(screen.getByPlaceholderText('Search'), 'New Shop');
+    expect(screen.getByText('Create new "New Shop"')).toBeTruthy();
+    await fireEvent.press(screen.getByText('Create new "New Shop"'));
+    expect(onCreate).toHaveBeenCalledWith('New Shop');
   });
 });

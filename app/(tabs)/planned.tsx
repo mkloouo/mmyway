@@ -1,7 +1,7 @@
 // Planned (subscriptions, rules and recurring transactions). The simple view lists one planned
 // transaction per name — the three FF3 objects edited together (app/planned/[key].tsx); the
 // detailed view lists each kind as FF3 has it, read-only (app/planned/object/[key].tsx).
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { eq } from 'drizzle-orm';
 import { FlatList, RefreshControl, Text, View } from 'react-native';
@@ -66,27 +66,9 @@ export default function PlannedScreen() {
     .filter((o) => o.kind === kind)
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  const listHeader = (
-    <View style={{ gap: t.space.sm, paddingTop: SCREEN_TOP_PADDING, paddingBottom: t.space.xs }}>
-      <View
-        style={{
-          flexDirection: 'row',
-          gap: t.space.sm,
-          paddingHorizontal: t.space.lg,
-        }}
-      >
-        <Chip
-          label={tr('planned.simple')}
-          selected={mode === 'simple'}
-          onPress={() => chooseMode('simple')}
-        />
-        <Chip
-          label={tr('planned.detailed')}
-          selected={mode === 'detailed'}
-          onPress={() => chooseMode('detailed')}
-        />
-      </View>
-      {mode === 'detailed' && (
+  const listHeader = useMemo(
+    () => (
+      <View style={{ gap: t.space.sm, paddingTop: SCREEN_TOP_PADDING, paddingBottom: t.space.xs }}>
         <View
           style={{
             flexDirection: 'row',
@@ -94,17 +76,38 @@ export default function PlannedScreen() {
             paddingHorizontal: t.space.lg,
           }}
         >
-          {KIND_TABS.map((k) => (
-            <Chip
-              key={k.kind}
-              label={tr(k.labelKey)}
-              selected={kind === k.kind}
-              onPress={() => setKind(k.kind)}
-            />
-          ))}
+          <Chip
+            label={tr('planned.simple')}
+            selected={mode === 'simple'}
+            onPress={() => chooseMode('simple')}
+          />
+          <Chip
+            label={tr('planned.detailed')}
+            selected={mode === 'detailed'}
+            onPress={() => chooseMode('detailed')}
+          />
         </View>
-      )}
-    </View>
+        {mode === 'detailed' && (
+          <View
+            style={{
+              flexDirection: 'row',
+              gap: t.space.sm,
+              paddingHorizontal: t.space.lg,
+            }}
+          >
+            {KIND_TABS.map((k) => (
+              <Chip
+                key={k.kind}
+                label={tr(k.labelKey)}
+                selected={kind === k.kind}
+                onPress={() => setKind(k.kind)}
+              />
+            ))}
+          </View>
+        )}
+      </View>
+    ),
+    [t, tr, mode, chooseMode, kind],
   );
 
   return (
