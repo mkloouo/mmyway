@@ -641,6 +641,21 @@ export function Sheet({
   // the keyboard (adjustResize no longer applies), so a text field low in a sheet sat under it.
   // The panel lifts itself by the keyboard's reported height instead — on both platforms, so
   // there is no KeyboardAvoidingView to double it up.
+  const [slideAnim] = useState(() => new Animated.Value(0));
+
+  useEffect(() => {
+    if (visible) {
+      slideAnim.setValue(220);
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        damping: 24,
+        stiffness: 260,
+        mass: 0.8,
+        useNativeDriver: true,
+      }).start();
+    }
+  }, [visible, slideAnim]);
+
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={{ flex: 1, justifyContent: 'flex-end' }}>
@@ -649,8 +664,9 @@ export function Sheet({
           onPress={onClose}
           accessibilityLabel={tr('common.close')}
         />
-        <View
+        <Animated.View
           style={{
+            transform: [{ translateY: slideAnim }],
             // A `scroll={false}` body hands us a flex: 1 FlatList that needs a resolved height to
             // fill, not just a ceiling — `maxHeight` alone leaves it collapsed to 0.
             [scroll ? 'maxHeight' : 'height']: '85%',
@@ -703,7 +719,7 @@ export function Sheet({
               {footer}
             </View>
           )}
-        </View>
+        </Animated.View>
       </View>
     </Modal>
   );

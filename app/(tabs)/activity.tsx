@@ -28,7 +28,7 @@ import {
 } from '../../src/transactions/useTransactionPage';
 import { useLoadOlderHistory, usePullToRefresh } from '../../src/sync/useSync';
 import { outboxOperations, cachedTransactions, inboxItems } from '../../src/db/schema';
-import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
+import { useAssetAccounts, type ReferenceAccountRow } from '../../src/accounts/useAssetAccounts';
 import type { CreateTransactionPayload } from '../../src/sync/outbox';
 import { navigateOnce } from '../../src/ui/navigateOnce';
 import { confirmDestructive } from '../../src/ui/confirm';
@@ -56,6 +56,8 @@ import { ActivityRow, BalanceStrip, DayHeader } from '../../src/ui/ActivityRows'
 import { useSelection } from '../../src/ui/useSelection';
 import { useHasSyncedBefore } from '../../src/sync/useHasSyncedBefore';
 import { localDay } from '../../src/utils/day';
+
+const EMPTY_ACCOUNTS: ReferenceAccountRow[] = [];
 
 const FILTERS: { labelKey: string; type: ActivityTypeFilter }[] = [
   { labelKey: 'activity.filterAll', type: 'all' },
@@ -85,7 +87,8 @@ export default function ActivityScreen() {
   const [search, setSearch] = useState('');
   const [accountFilter, setAccountFilter] = useState<string | null>(null);
 
-  const assetAccounts = useAssetAccounts() ?? [];
+  const rawAssetAccounts = useAssetAccounts();
+  const assetAccounts = rawAssetAccounts ?? EMPTY_ACCOUNTS;
   const currencies = useCurrencies();
   const { data: outbox } = useLiveQuery(
     db.select().from(outboxOperations).where(ne(outboxOperations.kind, 'update_account')),

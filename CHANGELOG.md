@@ -5,6 +5,8 @@
 ### Look and feel
 
 - **Cleaner sheet footers with hairline divider.** Searchable selection sheets (such as Payee picker) now frame bottom actions with a subtle divider line and styled button, preventing list items from cutting off abruptly over empty space when scrolling or when the keyboard is open.
+- **Smooth spring bottom sheet transitions.** Action and picker sheets now glide into view with a native spring slide-up transition while the backdrop gently fades in, giving bottom sheets a natural Material feel.
+- **Fluid swipe-to-dismiss in Inbox.** Confirming or deleting an inbox card now stays smoothly exposed as the row collapses away, eliminating the jarring horizontal snapback.
 
 ## [1.7.0] - 2026-10-07
 

@@ -2,7 +2,7 @@
 // when the window is too short for both (a pop-up or split-screen window, landscape, a big font).
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import i18n, { appLocale } from '../src/i18n';
+import { appLocale } from '../src/i18n';
 import { Animated, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
 import { useFlyAway, useShake } from '../src/ui/feedback';
 import { pickDateTime } from '../src/ui/pickDate';

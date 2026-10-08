@@ -81,13 +81,12 @@ export function SwipeableCard({
           if (!confirmEnabled) {
             shake();
             onRefused?.();
+            ref.current?.close();
           } else {
             onConfirm?.();
           }
-          ref.current?.close();
         } else {
           onDelete?.();
-          ref.current?.close();
         }
       }}
     >

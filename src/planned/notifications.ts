@@ -5,7 +5,7 @@ import * as Notifications from 'expo-notifications';
 import { SchedulableTriggerInputTypes } from 'expo-notifications';
 import { outboxOperations, plannedObjects, referenceCurrencies } from '../db/schema';
 import type { OutboxDb } from '../sync/outbox';
-import { plannedItems, type PlannedItem } from './items';
+import { plannedItems } from './items';
 import { readPlannedRow, type PlannedObject } from './objects';
 import { getPlannedNotificationsEnabled } from '../settings/appSettings';
 import { localDay } from '../utils/day';

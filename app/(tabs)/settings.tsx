@@ -1,10 +1,8 @@
 // Settings (design §6.6) — grouped Card/Row layout, every › opens a Sheet. No nested FlatLists.
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { eq } from 'drizzle-orm';
 import { Alert, ScrollView, Text } from 'react-native';
 import { router } from 'expo-router';
-import { useLiveQuery } from '../../src/db/useLiveQuery';
 import { useCurrencies } from '../../src/db/useReferenceData';
 import Constants from 'expo-constants';
 import { useDb } from '../../src/providers/DbProvider';
