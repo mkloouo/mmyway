@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.7.2] - 2026-10-08
+
 ### Look and feel
 
 - **Smooth spring bottom sheet transitions.** Action and picker sheets now glide into view with a native spring slide-up transition while the backdrop gently fades in, giving bottom sheets a natural Material feel.
