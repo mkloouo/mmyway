@@ -76,14 +76,24 @@ export function DragList<T>({
 
   // Changes the order, and only then puts everything back to rest: by now the dropped row has
   // already travelled into its new slot and the rows it passed are holding the gap open, so the
-  // re-render that reorders them lands each one exactly where it already is on screen. Resetting
-  // any earlier is the snap this list used to end every drag with.
+  // re-render that reorders them lands each one exactly where it already is on screen.
+  // Delaying the reset to the next animation frame allows React to commit the new order first,
+  // preventing a single-frame blink back to the old positions.
   const commit = (from: number, to: number) => {
-    if (to !== from) onMove(from, to);
-    dragging.value = -1;
-    dragY.value = 0;
-    lift.value = 0;
-    onDragChange?.(false);
+    if (to !== from) {
+      onMove(from, to);
+      requestAnimationFrame(() => {
+        dragging.value = -1;
+        dragY.value = 0;
+        lift.value = 0;
+        onDragChange?.(false);
+      });
+    } else {
+      dragging.value = -1;
+      dragY.value = 0;
+      lift.value = 0;
+      onDragChange?.(false);
+    }
   };
 
   const begin = (index: number) => {
