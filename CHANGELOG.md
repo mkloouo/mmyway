@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.7.1] - 2026-10-08
+
 ### Look and feel
 
 - **Cleaner sheet footers with hairline divider.** Searchable selection sheets (such as Payee picker) now frame bottom actions with a subtle divider line and styled button, preventing list items from cutting off abruptly over empty space when scrolling or when the keyboard is open.
