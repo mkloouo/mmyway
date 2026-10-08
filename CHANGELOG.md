@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.7.3] - 2026-10-09
+
 ### Look and feel
 
 - **Seamless and reliable account reordering.** Repeatedly dragging accounts around now preserves exact item indices and heights without unexpected shifts or jumps, and releasing a row holds its landing position cleanly until the new order commits without any flicker.
