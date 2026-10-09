@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-10-09
+
 ### Settings
 
 - **Payee Aliases (N-to-1).** Map multiple raw names, OCR variations, or receipt model hallucinations to a single canonical payee. Resolves automatically during receipt scanning and manual capture (with live match feedback), learns new aliases when you correct a payee on a draft (with quick undo), and provides full alias group management, search, and JSON export/import under Settings → Payee Aliases.
