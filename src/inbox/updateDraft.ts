@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, ne } from 'drizzle-orm';
 import { inboxItems, outboxOperations } from '../db/schema';
 import type { Draft } from './draft';
 import type { OutboxDb } from '../sync/outbox';
@@ -47,7 +47,18 @@ export async function removeReceiptImage(db: OutboxDb, inboxItemId: string): Pro
     .update(inboxItems)
     .set({ receiptImagePath: null, updatedAt: new Date().toISOString() })
     .where(eq(inboxItems.id, inboxItemId));
-  deletePersistedReceiptImage(item.receiptImagePath);
+  if (item.receiptImagePath) {
+    const [stillUsed] = await db
+      .select({ id: inboxItems.id })
+      .from(inboxItems)
+      .where(
+        and(eq(inboxItems.receiptImagePath, item.receiptImagePath), ne(inboxItems.id, inboxItemId)),
+      )
+      .limit(1);
+    if (!stillUsed) {
+      deletePersistedReceiptImage(item.receiptImagePath);
+    }
+  }
 }
 
 export async function updateDraft(
@@ -79,5 +90,14 @@ export async function deleteInboxItem(db: OutboxDb, inboxItemId: string): Promis
   const [item] = await db.select().from(inboxItems).where(eq(inboxItems.id, inboxItemId));
   await db.delete(outboxOperations).where(eq(outboxOperations.inboxItemId, inboxItemId));
   await db.delete(inboxItems).where(eq(inboxItems.id, inboxItemId));
-  deletePersistedReceiptImage(item?.receiptImagePath);
+  if (item?.receiptImagePath) {
+    const [stillUsed] = await db
+      .select({ id: inboxItems.id })
+      .from(inboxItems)
+      .where(eq(inboxItems.receiptImagePath, item.receiptImagePath))
+      .limit(1);
+    if (!stillUsed) {
+      deletePersistedReceiptImage(item.receiptImagePath);
+    }
+  }
 }

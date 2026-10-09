@@ -1,5 +1,5 @@
 import { parseDecimalInput } from '../../api/ff3/decimal';
-import type { ReceiptExtraction, ReceiptProvider } from '../types';
+import type { ReceiptCurrencyExchange, ReceiptExtraction, ReceiptProvider } from '../types';
 import { receiptJsonSchema, receiptPrompt } from '../prompt';
 
 /** Whether an OpenAI-compatible server answers at this address (Settings' address test, sync's probe). */
@@ -112,6 +112,46 @@ function textOf(value: unknown): string | null {
 function normalizeExtraction(raw: any): ReceiptExtraction {
   const value = raw && typeof raw === 'object' ? raw : {};
   const items = Array.isArray(value.items) ? value.items : [];
+  const rawExchanges = Array.isArray(value.currency_exchanges)
+    ? value.currency_exchanges
+    : Array.isArray(value.currencyExchanges)
+      ? value.currencyExchanges
+      : [];
+  const currencyExchanges: ReceiptCurrencyExchange[] = rawExchanges.flatMap((ex: any) => {
+    if (!ex || typeof ex !== 'object') return [];
+    const fromAmount = amountOf(ex.from_amount ?? ex.fromAmount);
+    const fromCurrency = matching(
+      typeof (ex.from_currency ?? ex.fromCurrency) === 'string'
+        ? (ex.from_currency ?? ex.fromCurrency).trim().toUpperCase()
+        : null,
+      /^[A-Z]{3}$/,
+    );
+    const toAmount = amountOf(ex.to_amount ?? ex.toAmount);
+    const toCurrency = matching(
+      typeof (ex.to_currency ?? ex.toCurrency) === 'string'
+        ? (ex.to_currency ?? ex.toCurrency).trim().toUpperCase()
+        : null,
+      /^[A-Z]{3}$/,
+    );
+    const feeAmount = amountOf(ex.fee_amount ?? ex.feeAmount);
+    const feeCurrency = matching(
+      typeof (ex.fee_currency ?? ex.feeCurrency) === 'string'
+        ? (ex.fee_currency ?? ex.feeCurrency).trim().toUpperCase()
+        : null,
+      /^[A-Z]{3}$/,
+    );
+    if (!fromAmount && !toAmount) return [];
+    return [
+      {
+        fromAmount,
+        fromCurrency,
+        toAmount,
+        toCurrency,
+        feeAmount,
+        feeCurrency: feeCurrency ?? fromCurrency ?? toCurrency,
+      },
+    ];
+  });
   return {
     amount: amountOf(value.amount),
     currency: matching(
@@ -128,6 +168,7 @@ function normalizeExtraction(raw: any): ReceiptExtraction {
       const count = typeof item.count === 'number' && Number.isFinite(item.count) ? item.count : 1;
       return price === null ? [] : [{ title: item.title, count, price }];
     }),
+    currencyExchanges: currencyExchanges.length > 0 ? currencyExchanges : undefined,
     confidence: confidenceOf(value.confidence),
     paymentMethod:
       value.payment_method === 'cash' || value.payment_method === 'card'

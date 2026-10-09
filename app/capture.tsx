@@ -20,11 +20,11 @@ import { haptics } from '../src/ui/haptics';
 
 import { askPhotoSource, pickPhoto } from '../src/receipt/pickPhoto';
 import { useAssetAccounts } from '../src/accounts/useAssetAccounts';
-import type { KeypadKey } from '../src/capture/amountInput';
+import { isDirtyAmount, type KeypadKey } from '../src/capture/amountInput';
 import { buildEntryDate, yesterday } from '../src/capture/entryDate';
 import { buildManualEntryInput, type CaptureFormState } from '../src/capture/buildManualEntryInput';
 import { useCaptureDefaults } from '../src/capture/useCaptureDefaults';
-import { useCaptureForm } from '../src/capture/useCaptureForm';
+import { useCaptureForm, type CaptureForm } from '../src/capture/useCaptureForm';
 import { recentPosition, startPositionRequest } from '../src/capture/position';
 import { captureKeyHeight } from '../src/capture/keyHeight';
 import { attachReceiptImage } from '../src/inbox/updateDraft';
@@ -108,10 +108,6 @@ function ChipRow({
       </View>
     </View>
   );
-}
-
-function isDirtyAmount(amount: string): boolean {
-  return !/^0*[.,]?0*$/.test(amount);
 }
 
 function labelKeyForType(t: Draft['type']): string {
@@ -400,8 +396,12 @@ export default function CaptureScreen() {
     if (h.topAccountName) {
       const acc = assetAccounts.find((a) => a.name === h.topAccountName);
       if (acc) {
-        if (type === 'withdrawal') set({ sourceId: acc.id });
-        else if (type === 'deposit') set({ destinationId: acc.id });
+        const patch: Partial<CaptureForm> =
+          type === 'withdrawal' ? { sourceId: acc.id } : { destinationId: acc.id };
+        if (!isDirty && acc.currencyCode) {
+          patch.currencyCode = acc.currencyCode;
+        }
+        set(patch);
       }
     }
     if (h.topBudgetName) {
@@ -640,7 +640,14 @@ export default function CaptureScreen() {
                   accounts={recentAccounts}
                   selectedId={effectiveSourceId}
                   onSearch={() => setSheet('accountSource')}
-                  onSelect={(id) => set({ sourceId: id })}
+                  onSelect={(id) => {
+                    const acct = assetAccounts.find((a) => a.id === id);
+                    const patch: Partial<CaptureForm> = { sourceId: id };
+                    if (!isDirty && acct?.currencyCode) {
+                      patch.currencyCode = acct.currencyCode;
+                    }
+                    set(patch);
+                  }}
                 />
                 <AccountChipRow
                   label={tr('fields.to')}
@@ -661,9 +668,15 @@ export default function CaptureScreen() {
                   onSearch={() =>
                     setSheet(type === 'withdrawal' ? 'accountSource' : 'accountDestination')
                   }
-                  onSelect={(id) =>
-                    type === 'withdrawal' ? set({ sourceId: id }) : set({ destinationId: id })
-                  }
+                  onSelect={(id) => {
+                    const acct = assetAccounts.find((a) => a.id === id);
+                    const patch: Partial<CaptureForm> =
+                      type === 'withdrawal' ? { sourceId: id } : { destinationId: id };
+                    if (!isDirty && acct?.currencyCode) {
+                      patch.currencyCode = acct.currencyCode;
+                    }
+                    set(patch);
+                  }}
                 />
                 <ChipRow>
                   <Chip
@@ -805,9 +818,18 @@ export default function CaptureScreen() {
         excludeId={
           accountSheetTarget === 'destination' && type === 'transfer' ? effectiveSourceId : null
         }
-        onSelect={(a) =>
-          accountSheetTarget === 'source' ? set({ sourceId: a.id }) : set({ destinationId: a.id })
-        }
+        onSelect={(a) => {
+          const patch: Partial<CaptureForm> =
+            accountSheetTarget === 'source' ? { sourceId: a.id } : { destinationId: a.id };
+          if (
+            !isDirty &&
+            a.currencyCode &&
+            (type !== 'transfer' || accountSheetTarget === 'source')
+          ) {
+            patch.currencyCode = a.currencyCode;
+          }
+          set(patch);
+        }}
       />
 
       <Sheet

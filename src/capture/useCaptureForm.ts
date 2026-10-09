@@ -7,7 +7,7 @@ import { applyDigit, type KeypadKey } from './amountInput';
 
 type DateMode = 'today' | 'yesterday' | 'custom';
 
-interface CaptureForm {
+export interface CaptureForm {
   type: Draft['type'];
   amount: string;
   currencyCode: string | null;

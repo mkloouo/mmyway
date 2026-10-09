@@ -1,3 +1,12 @@
+export interface ReceiptCurrencyExchange {
+  fromAmount: string | null; // decimal string: amount sold/given by customer
+  fromCurrency: string | null; // ISO code
+  toAmount: string | null; // decimal string: amount bought/received by customer
+  toCurrency: string | null; // ISO code
+  feeAmount: string | null; // decimal string: dedicated commission/fee if charged
+  feeCurrency: string | null; // ISO code: currency of the fee
+}
+
 export interface ReceiptExtraction {
   amount: string | null; // decimal string
   currency: string | null; // ISO code, validated by the caller against synced currencies
@@ -6,6 +15,7 @@ export interface ReceiptExtraction {
   time: string | null; // HH:mm
   category: string | null;
   items: { title: string; count: number; price: string }[];
+  currencyExchanges?: ReceiptCurrencyExchange[];
   confidence: number; // 0..1
   paymentMethod: 'cash' | 'card' | 'unknown';
   cardNetwork: string | null;

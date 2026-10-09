@@ -266,9 +266,32 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
   function handleDetailChange(change: Partial<DetailRowsValue>) {
     const draftPatch: Partial<Draft> = {};
     if ('categoryName' in change) draftPatch.categoryName = change.categoryName ?? undefined;
-    if ('sourceAccountId' in change) draftPatch.sourceId = change.sourceAccountId ?? undefined;
-    if ('destinationAccountId' in change)
+    if ('sourceAccountId' in change) {
+      draftPatch.sourceId = change.sourceAccountId ?? undefined;
+      if (
+        (!draft.amount || draft.amount === '0') &&
+        change.sourceAccountId &&
+        draft.type !== 'deposit'
+      ) {
+        const acc = assetAccounts.find((a) => a.id === change.sourceAccountId);
+        if (acc?.currencyCode) {
+          draftPatch.currencyCode = acc.currencyCode;
+        }
+      }
+    }
+    if ('destinationAccountId' in change) {
       draftPatch.destinationId = change.destinationAccountId ?? undefined;
+      if (
+        (!draft.amount || draft.amount === '0') &&
+        change.destinationAccountId &&
+        draft.type === 'deposit'
+      ) {
+        const acc = assetAccounts.find((a) => a.id === change.destinationAccountId);
+        if (acc?.currencyCode) {
+          draftPatch.currencyCode = acc.currencyCode;
+        }
+      }
+    }
     if ('budgetId' in change) draftPatch.budgetId = change.budgetId ?? undefined;
     if ('notes' in change) draftPatch.notes = change.notes ?? undefined;
     if ('tags' in change) draftPatch.extraTags = change.tags ?? [];

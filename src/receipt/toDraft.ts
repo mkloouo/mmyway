@@ -12,6 +12,7 @@ import { logLine } from '../utils/log';
 import { readDraft, writeDraft } from '../inbox/draftJson';
 import { resolvePayeeAlias } from '../lookup/aliases';
 import { errorMessage } from '../utils/errorMessage';
+import { generateId } from '../utils/id';
 import i18n from '../i18n';
 
 // Below this confidence, guessing a field the model wasn't sure about does more harm than
@@ -86,11 +87,110 @@ export function receiptDate(
 // Maps a receipt extraction onto a draft. Never throws on a field it doesn't recognize —
 // normalizeExtraction (src/receipt/providers/local.ts) already dropped anything unexpected;
 // this only has to cope with values it can't trust (unsynced currency, low confidence).
-export function receiptToDraft(
+function isZeroAmount(amount: string): boolean {
+  return /^0+(\.0+)?$/.test(amount);
+}
+
+// Maps a receipt extraction onto one or more drafts. Currency exchange receipts create a transfer
+// draft for each exchange, plus dedicated withdrawal drafts for any fees charged. Standard receipts
+// create a single withdrawal draft.
+export function receiptToDrafts(
   extraction: ReceiptExtraction,
   reference: ReceiptDraftReference,
   takenAt: Date,
-): Draft {
+): Draft[] {
+  if (extraction.currencyExchanges && extraction.currencyExchanges.length > 0) {
+    const drafts: Draft[] = [];
+    const date = receiptDate(extraction, takenAt).toISOString();
+    const category =
+      extraction.category && reference.categoryNames.includes(extraction.category)
+        ? extraction.category
+        : undefined;
+    const sourceId =
+      extraction.paymentMethod === 'cash'
+        ? reference.cashAccountId
+        : extraction.paymentMethod === 'card'
+          ? reference.cardAccountId
+          : undefined;
+
+    for (const exchange of extraction.currencyExchanges) {
+      const fromTrusted =
+        !!exchange.fromCurrency &&
+        reference.currencyCodes.includes(exchange.fromCurrency) &&
+        extraction.confidence >= LOW_CONFIDENCE_THRESHOLD;
+      const toTrusted =
+        !!exchange.toCurrency &&
+        reference.currencyCodes.includes(exchange.toCurrency) &&
+        extraction.confidence >= LOW_CONFIDENCE_THRESHOLD;
+
+      const pair =
+        exchange.fromCurrency && exchange.toCurrency
+          ? `${exchange.fromCurrency} → ${exchange.toCurrency}`
+          : '';
+      const transferDesc = extraction.merchant
+        ? pair
+          ? `${extraction.merchant} (${pair})`
+          : extraction.merchant
+        : pair || i18n.t('draft.currencyExchange');
+
+      const lowConf: string[] = [];
+      if (extraction.confidence < LOW_CONFIDENCE_THRESHOLD) {
+        if (exchange.fromAmount) lowConf.push('amount');
+        if (exchange.toAmount) lowConf.push('foreignAmount');
+        if (extraction.merchant) lowConf.push('payee');
+        if (extraction.date) lowConf.push('date');
+      }
+
+      drafts.push({
+        type: 'transfer',
+        amount: exchange.fromAmount ?? '',
+        currencyCode: fromTrusted ? exchange.fromCurrency! : '',
+        foreignAmount: exchange.toAmount ?? undefined,
+        foreignCurrencyCode: toTrusted ? exchange.toCurrency! : (exchange.toCurrency ?? undefined),
+        date,
+        description: transferDesc,
+        sourceId,
+        isNewPayee: false,
+        categoryName: category,
+        lowConfidenceFields: lowConf.length > 0 ? lowConf : undefined,
+      });
+
+      if (exchange.feeAmount && !isZeroAmount(exchange.feeAmount)) {
+        const feeCurr = exchange.feeCurrency ?? exchange.fromCurrency;
+        const feeCurrTrusted =
+          !!feeCurr &&
+          reference.currencyCodes.includes(feeCurr) &&
+          extraction.confidence >= LOW_CONFIDENCE_THRESHOLD;
+
+        const feeLowConf: string[] = [];
+        if (extraction.confidence < LOW_CONFIDENCE_THRESHOLD) {
+          if (exchange.feeAmount) feeLowConf.push('amount');
+          if (extraction.merchant) feeLowConf.push('payee');
+          if (extraction.date) feeLowConf.push('date');
+        }
+
+        const feeDesc = extraction.merchant
+          ? `${extraction.merchant} - ${i18n.t('draft.exchangeFee')}`
+          : i18n.t('draft.exchangeFee');
+
+        drafts.push({
+          type: 'withdrawal',
+          amount: exchange.feeAmount,
+          currencyCode: feeCurrTrusted ? feeCurr! : '',
+          date,
+          description: feeDesc,
+          destinationName: extraction.merchant ?? undefined,
+          isNewPayee: true,
+          categoryName: category,
+          sourceId,
+          lowConfidenceFields: feeLowConf.length > 0 ? feeLowConf : undefined,
+        });
+      }
+    }
+
+    if (drafts.length > 0) return drafts;
+  }
+
   const category =
     extraction.category && reference.categoryNames.includes(extraction.category)
       ? extraction.category
@@ -111,19 +211,29 @@ export function receiptToDraft(
       : undefined;
   const date = receiptDate(extraction, takenAt).toISOString();
 
-  return {
-    type: 'withdrawal',
-    amount: extraction.amount ?? '',
-    currencyCode: currencyTrusted ? extraction.currency! : '',
-    date,
-    description: extraction.merchant ?? i18n.t('draft.receipt'),
-    destinationName: extraction.merchant ?? undefined,
-    isNewPayee: true, // a payee alias (parseReceiptItem) or the draft screen's payee picker corrects this
-    categoryName: category,
-    sourceId,
-    notes,
-    lowConfidenceFields: lowConfidenceFields(extraction),
-  };
+  return [
+    {
+      type: 'withdrawal',
+      amount: extraction.amount ?? '',
+      currencyCode: currencyTrusted ? extraction.currency! : '',
+      date,
+      description: extraction.merchant ?? i18n.t('draft.receipt'),
+      destinationName: extraction.merchant ?? undefined,
+      isNewPayee: true, // a payee alias (parseReceiptItem) or the draft screen's payee picker corrects this
+      categoryName: category,
+      sourceId,
+      notes,
+      lowConfidenceFields: lowConfidenceFields(extraction),
+    },
+  ];
+}
+
+export function receiptToDraft(
+  extraction: ReceiptExtraction,
+  reference: ReceiptDraftReference,
+  takenAt: Date,
+): Draft {
+  return receiptToDrafts(extraction, reference, takenAt)[0]!;
 }
 
 export type ParseOutcome = 'parsed' | 'waiting' | 'failed';
@@ -217,16 +327,22 @@ export async function parseReceiptItem(
   }
 
   logLine('info', `receipt ${itemId}: read by ${result.providerName} (${result.providerModel})`);
+  const rawDrafts = receiptToDrafts(result.extraction, reference, capturedDate(before));
+  const [firstRaw, ...extraRaws] = rawDrafts;
+  if (!firstRaw) return 'waiting';
+
+  const readByMeta = {
+    provider: result.providerName,
+    model: result.providerModel,
+    at: new Date().toISOString(),
+  };
+
   const rawDraft = {
-    ...receiptToDraft(result.extraction, reference, capturedDate(before)),
+    ...firstRaw,
     // receiptToDraft builds a fresh draft from what was read; where the photo was taken is the
     // stub's and has to survive it (#67).
     location: capturedLocation(before),
-    readBy: {
-      provider: result.providerName,
-      model: result.providerModel,
-      at: new Date().toISOString(),
-    },
+    readBy: readByMeta,
   };
   const draft = await resolvePayeeAlias(db, rawDraft);
   // Only if nothing touched the item while the provider was working (a parse takes seconds; the
@@ -246,7 +362,28 @@ export async function parseReceiptItem(
       ),
     )
     .returning({ id: inboxItems.id });
-  return updated.length > 0 ? 'parsed' : 'waiting';
+
+  if (updated.length === 0) return 'waiting';
+
+  for (const extraRaw of extraRaws) {
+    const extraDraft = await resolvePayeeAlias(db, {
+      ...extraRaw,
+      location: capturedLocation(before),
+      readBy: readByMeta,
+    });
+    await db.insert(inboxItems).values({
+      id: generateId(),
+      kind: 'receipt',
+      state: 'parsed',
+      draftJson: writeDraft(extraDraft),
+      receiptImagePath: before.receiptImagePath,
+      receiptContentHash: null,
+      createdAt: before.createdAt,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  return 'parsed';
 }
 
 // Lazy require, not a module-scope import — same reasoning as outbox.ts's attach_receipt

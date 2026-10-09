@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Receipts
+
+- **Currency exchange receipt recognition.** Scanning a currency exchange receipt (such as from a kantor, exchange desk, or bank) now extracts currency conversion amounts and currencies to suggest a transfer transaction between asset accounts. If the exchange includes a dedicated commission or service fee, it is automatically captured as a separate withdrawal transaction. Receipts containing multiple conversions generate corresponding transfers and fee drafts.
+- **Bottle deposit refund voucher handling.** Supermarket receipts with bottle return or packaging refund vouchers (such as Biedronka's "BON - zwrot opak" vouchers under payment settlement) now deduct the vouchers from the total so that the transaction amount accurately reflects the net out-of-pocket amount paid.
+
+### Capture
+
+- **Automatic currency matching on account switch.** When switching accounts on the capture screen (or draft screen) before typing an amount, the transaction currency now automatically switches to match the newly selected account's currency.
+
 ## [1.9.0] - 2026-10-09
 
 ### Settings

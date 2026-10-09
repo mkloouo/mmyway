@@ -56,3 +56,10 @@ export function applyDigit(rawCurrent: string, key: KeypadKey, decimalPlaces: nu
 export function applyFirstKey(current: string, key: KeypadKey, decimalPlaces: number): string {
   return applyDigit(key === '⌫' ? current : '0', key, decimalPlaces);
 }
+
+/**
+ * Whether the user has typed a meaningful amount: "0", "0.", "0,0" count as untouched.
+ */
+export function isDirtyAmount(amount: string): boolean {
+  return !/^0*[.,]?0*$/.test(amount);
+}

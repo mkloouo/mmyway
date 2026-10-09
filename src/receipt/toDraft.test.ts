@@ -1,5 +1,6 @@
 import {
   receiptToDraft,
+  receiptToDrafts,
   receiptDate,
   receiptLocalDate,
   buildReceiptDraftReference,
@@ -136,6 +137,122 @@ describe('receiptToDraft', () => {
     });
     const draft = receiptToDraft(extraction, reference, takenAt);
     expect(draft.description).toBe('Receipt');
+  });
+
+  it('maps a currency exchange receipt to a transfer draft with amounts', () => {
+    const extraction = normalizeExtraction({
+      amount: '100.00',
+      currency: 'EUR',
+      merchant: 'Kantor Wielkopolski',
+      date: '2026-09-15',
+      category: null,
+      items: [],
+      currency_exchanges: [
+        {
+          from_amount: '100.00',
+          from_currency: 'EUR',
+          to_amount: '430.50',
+          to_currency: 'PLN',
+        },
+      ],
+      confidence: 0.9,
+      payment_method: 'cash',
+    });
+    const draft = receiptToDraft(extraction, reference, takenAt);
+    expect(draft).toMatchObject({
+      type: 'transfer',
+      amount: '100.00',
+      currencyCode: 'EUR',
+      foreignAmount: '430.50',
+      foreignCurrencyCode: 'PLN',
+      description: 'Kantor Wielkopolski (EUR → PLN)',
+      sourceId: 'acc-cash',
+      isNewPayee: false,
+    });
+  });
+
+  it('creates a dedicated withdrawal draft for an exchange fee', () => {
+    const extraction = normalizeExtraction({
+      amount: '100.00',
+      currency: 'EUR',
+      merchant: 'Kantor Wielkopolski',
+      date: '2026-09-15',
+      category: 'Food',
+      items: [],
+      currency_exchanges: [
+        {
+          from_amount: '100.00',
+          from_currency: 'EUR',
+          to_amount: '430.50',
+          to_currency: 'PLN',
+          fee_amount: '5.00',
+          fee_currency: 'PLN',
+        },
+      ],
+      confidence: 0.9,
+      payment_method: 'cash',
+    });
+    const drafts = receiptToDrafts(extraction, reference, takenAt);
+    expect(drafts).toHaveLength(2);
+
+    expect(drafts[0]!).toMatchObject({
+      type: 'transfer',
+      amount: '100.00',
+      currencyCode: 'EUR',
+      foreignAmount: '430.50',
+      foreignCurrencyCode: 'PLN',
+      description: 'Kantor Wielkopolski (EUR → PLN)',
+      isNewPayee: false,
+    });
+
+    expect(drafts[1]!).toMatchObject({
+      type: 'withdrawal',
+      amount: '5.00',
+      currencyCode: 'PLN',
+      description: 'Kantor Wielkopolski - Exchange fee',
+      destinationName: 'Kantor Wielkopolski',
+      isNewPayee: true,
+      categoryName: 'Food',
+      sourceId: 'acc-cash',
+    });
+  });
+
+  it('handles multiple currency exchanges on one receipt with respective fees', () => {
+    const extraction = normalizeExtraction({
+      amount: '100.00',
+      currency: 'EUR',
+      merchant: 'Kantor',
+      date: '2026-09-15',
+      category: null,
+      items: [],
+      currency_exchanges: [
+        {
+          from_amount: '100.00',
+          from_currency: 'EUR',
+          to_amount: '430.00',
+          to_currency: 'PLN',
+          fee_amount: '5.00',
+          fee_currency: 'PLN',
+        },
+        {
+          from_amount: '200.00',
+          from_currency: 'PLN',
+          to_amount: '45.00',
+          to_currency: 'EUR',
+        },
+      ],
+      confidence: 0.9,
+      payment_method: 'card',
+    });
+    const drafts = receiptToDrafts(extraction, reference, takenAt);
+    expect(drafts).toHaveLength(3);
+    expect(drafts[0]!.type).toBe('transfer');
+    expect(drafts[0]!.amount).toBe('100.00');
+    expect(drafts[1]!.type).toBe('withdrawal'); // fee for exchange 1
+    expect(drafts[1]!.amount).toBe('5.00');
+    expect(drafts[2]!.type).toBe('transfer'); // exchange 2
+    expect(drafts[2]!.amount).toBe('200.00');
+    expect(drafts[2]!.foreignAmount).toBe('45.00');
   });
 });
 

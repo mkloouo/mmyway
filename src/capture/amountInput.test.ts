@@ -1,4 +1,4 @@
-import { applyDigit, applyFirstKey, trimToScale } from './amountInput';
+import { applyDigit, applyFirstKey, isDirtyAmount, trimToScale } from './amountInput';
 
 describe('applyDigit', () => {
   it('collapses leading zeros', () => {
@@ -70,5 +70,22 @@ describe('applyFirstKey', () => {
   it('backspace keeps the amount and edits it', () => {
     expect(applyFirstKey('12.50', '⌫', 2)).toBe('12.5');
     expect(applyFirstKey('12.000000000000', '⌫', 2)).toBe('1');
+  });
+});
+
+describe('isDirtyAmount', () => {
+  it('considers empty, zero, and zero with separators as not dirty', () => {
+    expect(isDirtyAmount('0')).toBe(false);
+    expect(isDirtyAmount('00')).toBe(false);
+    expect(isDirtyAmount('0.')).toBe(false);
+    expect(isDirtyAmount('0,')).toBe(false);
+    expect(isDirtyAmount('0.00')).toBe(false);
+    expect(isDirtyAmount('0,0')).toBe(false);
+  });
+
+  it('considers any non-zero amount as dirty', () => {
+    expect(isDirtyAmount('1')).toBe(true);
+    expect(isDirtyAmount('0.01')).toBe(true);
+    expect(isDirtyAmount('10.50')).toBe(true);
   });
 });
