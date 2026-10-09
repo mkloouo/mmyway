@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-10-09
+
 ### Transactions
 
 - **Transaction tags as interactive chips.** Add, remove, and edit tags across manual capture, receipt drafts, split transactions, and existing transactions. Active tags render as removable chips, with quick suggestion chips for recently used tags. Tag editing in planned transactions now also matches this chip-based design.
