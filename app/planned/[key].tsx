@@ -20,6 +20,7 @@ import {
   SCREEN_TOP_PADDING,
 } from '../../src/ui/components';
 import { TextField } from '../../src/ui/TextField';
+import { TagsField } from '../../src/ui/TagsField';
 import { PickerSheet } from '../../src/ui/PickerSheet';
 import { AccountPickerSheet } from '../../src/ui/AccountPickerSheet';
 import { PayeeSheet } from '../../src/ui/PayeeSheet';
@@ -33,6 +34,7 @@ import { referenceCurrencies } from '../../src/db/schema';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import type { MerchantHistory } from '../../src/lookup/merchantLookup';
 import { useMerchantHistories } from '../../src/lookup/useMerchantHistories';
+import { useRecentTags } from '../../src/lookup/recentTags';
 import { getDefaultCurrencyCode, getDefaultSourceAccountId } from '../../src/settings/appSettings';
 import { usePlanned } from '../../src/planned/usePlanned';
 import {
@@ -109,7 +111,7 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
   const currencies = currencyRows ?? [];
 
   const [fields, setFields] = useState<PlannedFields>(() => item?.fields ?? blank());
-  const [tagsText, setTagsText] = useState(() => item?.fields.tags.join(', ') ?? '');
+  const recentTags = useRecentTags();
   const [sheet, setSheet] = useState<
     'amount' | 'currency' | 'own' | 'ownTo' | 'payee' | 'category' | 'frequency' | null
   >(null);
@@ -198,10 +200,7 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
   const next: PlannedFields = {
     ...fields,
     name: fields.name.trim(),
-    tags: tagsText
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean),
+    tags: fields.tags,
   };
   // Save stays off until something differs from what Firefly III holds (or a queued save does).
   const unchanged = !!item && samePlannedFields(item.fields, next);
@@ -428,11 +427,10 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
             style={{ minHeight: 60 }}
           />
           <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('fields.tags')}</Text>
-          <TextField
-            value={tagsText}
-            onChangeText={setTagsText}
-            placeholder={tr('planned.tagsPlaceholder')}
-            autoCapitalize="none"
+          <TagsField
+            tags={fields.tags}
+            onChange={(tags) => set({ tags })}
+            suggestions={recentTags}
           />
         </Card>
       </ScrollView>

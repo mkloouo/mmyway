@@ -44,6 +44,7 @@ import { PickerSheet } from '../../src/ui/PickerSheet';
 import { haptics } from '../../src/ui/haptics';
 import { inboxItems, outboxOperations } from '../../src/db/schema';
 import { useSharedPeople } from '../../src/lookup/sharedPeople';
+import { useRecentTags } from '../../src/lookup/recentTags';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { confirmInboxItem } from '../../src/inbox/createManualEntry';
 import { discardOperation } from '../../src/sync/outbox';
@@ -117,6 +118,7 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
   const assetAccounts = accountRows ?? [];
   const categories = useCategories();
   const sharedPeople = useSharedPeople();
+  const recentTags = useRecentTags();
   // undefined until each table's first read lands: a spinner stands in for "—" and for the
   // currency code that would otherwise replace its symbol.
   const budgetRows = useBudgetRows();
@@ -251,6 +253,7 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
       draftPatch.destinationId = change.destinationAccountId ?? undefined;
     if ('budgetId' in change) draftPatch.budgetId = change.budgetId ?? undefined;
     if ('notes' in change) draftPatch.notes = change.notes ?? undefined;
+    if ('tags' in change) draftPatch.extraTags = change.tags ?? [];
     if ('sharedWith' in change) draftPatch.sharedWith = change.sharedWith ?? undefined;
     patch(draftPatch);
   }
@@ -262,6 +265,7 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
     if ('categoryName' in change) own.categoryName = change.categoryName ?? undefined;
     if ('budgetId' in change) own.budgetId = change.budgetId ?? undefined;
     if ('notes' in change) own.notes = change.notes ?? undefined;
+    if ('tags' in change) own.extraTags = change.tags ?? [];
     if ('sharedWith' in change) own.sharedWith = change.sharedWith ?? undefined;
     if ('sourceAccountId' in change) shared.sourceId = change.sourceAccountId ?? undefined;
     if ('destinationAccountId' in change)
@@ -374,6 +378,7 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
       minute: '2-digit',
     }),
     notes: draft.notes ?? null,
+    tags: draft.extraTags ?? [],
     sharedWith: draft.sharedWith ?? null,
   };
 
@@ -392,6 +397,7 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
       accounts={assetAccounts}
       currencies={currencies}
       sharedPeople={sharedPeople}
+      tagsSuggestions={recentTags}
       categories={categories}
       budgets={budgets}
       loading={referenceLoading}
@@ -422,6 +428,7 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
               categoryName: split.categoryName ?? null,
               budgetId: split.budgetId ?? null,
               notes: split.notes ?? null,
+              tags: split.extraTags ?? [],
               sharedWith: split.sharedWith ?? null,
             }}
             onChange={(change) => handleExtraDetailChange(index, change)}
@@ -430,6 +437,7 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
             accounts={assetAccounts}
             currencies={currencies}
             sharedPeople={sharedPeople}
+            tagsSuggestions={recentTags}
             categories={categories}
             budgets={budgets}
             loading={referenceLoading}

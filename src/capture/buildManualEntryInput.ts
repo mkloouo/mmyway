@@ -17,6 +17,7 @@ export interface CaptureFormState {
   categoryName: string | null;
   budgetId: string | null;
   notes: string;
+  tags?: string[];
   sharedWith: string;
   foreignAmount: string;
   foreignCurrencyCode: string | null;
@@ -86,6 +87,7 @@ export function buildManualEntryInput(
     categoryName: state.categoryName ?? undefined,
     budgetId: state.budgetId ?? undefined,
     notes: state.notes || undefined,
+    tags: state.tags?.length ? state.tags : undefined,
     foreignAmount: fx?.foreignAmount,
     foreignCurrencyCode: fx?.foreignCurrencyCode,
     sharedWith: state.sharedWith || undefined,

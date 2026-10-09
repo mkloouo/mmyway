@@ -183,6 +183,7 @@
   },
   "details": {
     "noteAndSharedWith": "Description & shared with",
+    "noteTagsAndSharedWith": "Description, tags & shared with",
     "sharedWithPlaceholder": "Names, separated by commas"
   },
   "dock": {
@@ -235,6 +236,9 @@
     "notes": "Description",
     "sharedWith": "Shared with",
     "tags": "Tags",
+    "tagsPlaceholder": "Add tags, comma-separated",
+    "addTag": "Add tag {{tag}}",
+    "removeTag": "Remove tag {{tag}}",
     "to": "To",
     "type": "Type"
   },

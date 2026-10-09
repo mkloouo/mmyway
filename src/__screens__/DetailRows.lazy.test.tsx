@@ -62,6 +62,24 @@ describe('DetailRows sheets', () => {
     expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenCalledWith({ notes: 'Bought milk' });
   });
+
+  it('displays tags in a row and allows updating them in the sheet', async () => {
+    const onChange = jest.fn();
+    await render(
+      <SafeAreaProvider initialMetrics={metrics}>
+        <DetailRows
+          value={{ ...value, tags: ['food', 'lunch'] }}
+          onChange={onChange}
+          onDatePress={jest.fn()}
+          accounts={[]}
+          currencies={[]}
+          categories={[]}
+          budgets={[]}
+        />
+      </SafeAreaProvider>,
+    );
+    expect(screen.getByText('food, lunch')).toBeTruthy();
+  });
 });
 
 describe('DetailRows payee row', () => {

@@ -724,7 +724,11 @@ async function replayOne(
             { transaction_journal_id: u.transactionJournalId, ...u.changes },
           ]) {
             const resolved = await withAccountIds(resolve, split, groupType);
-            transactions.push(sanitizeSplit(resolved));
+            const sanitized = sanitizeSplit(resolved);
+            // FF3 /v1/transactions PUT accepts tags: [] to clear tags (sanitizeSplit drops empty arrays
+            // because /v1/recurrences rejects []). Keep an explicit tags array when updating.
+            if (Array.isArray(split.tags)) (sanitized as { tags?: string[] }).tags = split.tags;
+            transactions.push(sanitized);
           }
           const body = u.splits
             ? { ...(u.groupTitle !== undefined ? { group_title: u.groupTitle } : {}), transactions }

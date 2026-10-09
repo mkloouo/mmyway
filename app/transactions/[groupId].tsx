@@ -82,17 +82,10 @@ import { ConflictView } from '../../src/ui/ConflictView';
 import { txTypeLabelKey } from '../../src/transactions/txTypes';
 import { endsReady, rewireForType, type TxEnds } from '../../src/transactions/changeType';
 import { sharedWithFromTags, withSharedWith } from '../../src/transactions/sharedWith';
+import { userTags, withUserTags, parseTags } from '../../src/transactions/tags';
+import { useRecentTags } from '../../src/lookup/recentTags';
 
 type TxType = 'withdrawal' | 'deposit' | 'transfer';
-
-function parseTags(tagsJson: string): string[] {
-  try {
-    const tags: unknown = JSON.parse(tagsJson);
-    return Array.isArray(tags) ? tags.filter((t): t is string => typeof t === 'string') : [];
-  } catch {
-    return [];
-  }
-}
 
 export default function TransactionDetailScreen() {
   const { groupId } = useLocalSearchParams<{ groupId: string }>();
@@ -134,6 +127,7 @@ function TransactionEditor({ row }: { row: CachedRow }) {
   const activeAssetAccounts = useAssetAccounts({ includeLiabilities: true }) ?? [];
   const categories = useCategories();
   const sharedPeople = useSharedPeople();
+  const recentTags = useRecentTags();
   // undefined until each table's first read lands: the screen shows a spinner for what it
   // can't resolve yet, not "—" or a currency code standing in for its symbol.
   const budgetRows = useBudgetRows();
@@ -383,8 +377,9 @@ function TransactionEditor({ row }: { row: CachedRow }) {
         next.destination_id = change.destinationAccountId ?? undefined;
       if ('budgetId' in change) next.budget_id = change.budgetId ?? null;
       if ('notes' in change) next.notes = change.notes ?? undefined;
+      if ('tags' in change) next.tags = withUserTags(next.tags ?? effectiveTags, change.tags ?? []);
       if ('sharedWith' in change)
-        next.tags = withSharedWith(effectiveTags, change.sharedWith ?? null);
+        next.tags = withSharedWith(next.tags ?? effectiveTags, change.sharedWith ?? null);
       return next;
     });
   }
@@ -416,7 +411,9 @@ function TransactionEditor({ row }: { row: CachedRow }) {
     }
     if ('budgetId' in change) patch.budgetId = change.budgetId ?? null;
     if ('notes' in change) patch.notes = change.notes ?? null;
-    if ('sharedWith' in change) patch.tags = withSharedWith(split.tags, change.sharedWith ?? null);
+    if ('tags' in change) patch.tags = withUserTags(patch.tags ?? split.tags, change.tags ?? []);
+    if ('sharedWith' in change)
+      patch.tags = withSharedWith(patch.tags ?? split.tags, change.sharedWith ?? null);
     editSplit(index, patch);
   }
 
@@ -627,6 +624,7 @@ function TransactionEditor({ row }: { row: CachedRow }) {
     budgetId: effectiveBudgetId,
     dateLabel,
     notes: effectiveNotes,
+    tags: userTags(effectiveTags),
     sharedWith: effectiveSharedWith,
   };
 
@@ -643,6 +641,7 @@ function TransactionEditor({ row }: { row: CachedRow }) {
       budgetId: split.budgetId,
       dateLabel,
       notes: split.notes,
+      tags: userTags(split.tags),
       sharedWith: sharedWithFromTags(split.tags),
     };
   }
@@ -672,6 +671,7 @@ function TransactionEditor({ row }: { row: CachedRow }) {
           pickableAccounts={activeAssetAccounts}
           currencies={currencies}
           sharedPeople={sharedPeople}
+          tagsSuggestions={recentTags}
           categories={categories}
           budgets={budgets}
           loading={referenceLoading}
@@ -843,6 +843,7 @@ function TransactionEditor({ row }: { row: CachedRow }) {
                 pickableAccounts={activeAssetAccounts}
                 currencies={currencies}
                 sharedPeople={sharedPeople}
+                tagsSuggestions={recentTags}
                 categories={categories}
                 budgets={budgets}
                 loading={referenceLoading}

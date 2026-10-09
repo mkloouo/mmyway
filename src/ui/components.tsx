@@ -383,6 +383,7 @@ export function Chip({
   selected,
   onPress,
   onLongPress,
+  onRemove,
   tone,
   dotColor,
   accessibilityLabel,
@@ -392,6 +393,7 @@ export function Chip({
   selected?: boolean;
   onPress?: () => void;
   onLongPress?: () => void;
+  onRemove?: () => void;
   tone?: 'default' | 'warn';
   dotColor?: string;
   /** Required when `label` is a bare glyph rather than real text. */
@@ -403,9 +405,10 @@ export function Chip({
   const fill =
     tone === 'warn' ? t.color.warnSoft : selected ? t.color.accentSoft : t.color.surfaceAlt;
   const text = tone === 'warn' ? t.color.warn : selected ? t.color.accent : t.color.text;
+  const handlePress = onRemove ?? onPress;
   return (
     <Pressable
-      onPress={onPress}
+      onPress={handlePress}
       onLongPress={onLongPress}
       // A chip is drawn 36 dp tall; the touch area reaches the kit's 44 above and below it.
       hitSlop={{ top: CHIP_SLOP, bottom: CHIP_SLOP }}
@@ -429,6 +432,7 @@ export function Chip({
     >
       {!!dotColor && <Dot color={dotColor} />}
       <Text style={[t.type.label, { color: text }]}>{label}</Text>
+      {!!onRemove && <Ionicons name="close" size={14} color={text} style={{ marginLeft: 2 }} />}
     </Pressable>
   );
 }

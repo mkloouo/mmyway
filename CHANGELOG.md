@@ -2,9 +2,13 @@
 
 ## [Unreleased]
 
+### Transactions
+
+- **Transaction tags as interactive chips.** Add, remove, and edit tags across manual capture, receipt drafts, split transactions, and existing transactions. Active tags render as removable chips, with quick suggestion chips for recently used tags. Tag editing in planned transactions now also matches this chip-based design.
+
 ### Look and feel
 
-- **Seamless and reliable account reordering.** Repeatedly dragging accounts around now preserves exact item indices and heights without unexpected shifts or jumps, and releasing a row holds its landing position cleanly until the new order commits without any flicker.
+- **Fluid and reliable account reordering.** Dragging accounts in Settings → Accounts now smoothly animates rows shifting out of the way on touch, lifts the dragged account over siblings, and drops cleanly into place without cancelling or flickering.
 
 ## [1.7.2] - 2026-10-08
 

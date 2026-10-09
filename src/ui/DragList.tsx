@@ -222,8 +222,9 @@ function DragRow({
       return {
         transform: [{ translateY: dragY.value }, { scale: 1 + LIFT_SCALE * lift.value }],
         zIndex: 2,
+        elevation: 4,
       };
-    const atRest = { transform: [{ translateY: 0 }, { scale: 1 }], zIndex: 0 };
+    const atRest = { transform: [{ translateY: 0 }, { scale: 1 }], zIndex: 0, elevation: 0 };
     // Nothing held: the commit has just reordered the list, so every row is already where it
     // belongs — animating back to 0 from here would undo the move it just made visible.
     if (from < 0 || heights.value.length === 0) return atRest;
@@ -239,6 +240,7 @@ function DragRow({
     return {
       transform: [{ translateY: withTiming(shift, { duration: SHIFT_MS }) }, { scale: 1 }],
       zIndex: 0,
+      elevation: 0,
     };
   });
 

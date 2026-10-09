@@ -10,6 +10,7 @@ import { AccountPickerSheet, type AccountPickerAccount } from './AccountPickerSh
 import { TextField } from './TextField';
 import { SharedWithField } from './SharedWithField';
 import { PickerSheet } from './PickerSheet';
+import { TagsField } from './TagsField';
 import { TX_TYPES, txTypeLabelKey } from '../transactions/txTypes';
 
 export interface DetailRowsValue {
@@ -20,6 +21,7 @@ export interface DetailRowsValue {
   budgetId: string | null;
   dateLabel: string;
   notes: string | null;
+  tags?: string[] | null;
   sharedWith: string | null;
 }
 
@@ -52,6 +54,8 @@ interface DetailRowsProps {
   budgets: { id: string; name: string }[];
   /** People already shared with, for the chips under "Shared with" (src/lookup/sharedPeople.ts). */
   sharedPeople?: string[];
+  /** Suggestions for tags (e.g. from recent transaction tags). */
+  tagsSuggestions?: string[];
   /** The accounts and budgets are still loading: their rows show a spinner, not "—". */
   loading?: boolean;
 }
@@ -81,6 +85,7 @@ export function DetailRows({
   payee,
   unsure,
   sharedPeople,
+  tagsSuggestions,
   typeEditable,
 }: DetailRowsProps) {
   const t = useTheme();
@@ -178,6 +183,11 @@ export function DetailRows({
           {...edit(() => setTextSheetOpen(true))}
         />
         <Row
+          label={tr('fields.tags')}
+          value={value.tags?.length ? value.tags.join(', ') : '—'}
+          {...edit(() => setTextSheetOpen(true))}
+        />
+        <Row
           label={tr('fields.sharedWith')}
           value={value.sharedWith || '—'}
           {...edit(() => setTextSheetOpen(true))}
@@ -247,7 +257,7 @@ export function DetailRows({
         <Sheet
           visible={textSheetOpen}
           onClose={() => setTextSheetOpen(false)}
-          title={tr('details.noteAndSharedWith')}
+          title={tr('details.noteTagsAndSharedWith')}
           footer={<Button title={tr('common.done')} onPress={() => setTextSheetOpen(false)} />}
         >
           <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('fields.note')}</Text>
@@ -256,6 +266,14 @@ export function DetailRows({
             onCommit={(v) => onChange({ notes: v })}
             multiline
             style={{ minHeight: 60 }}
+          />
+          <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.sm }]}>
+            {tr('fields.tags')}
+          </Text>
+          <TagsField
+            tags={value.tags ?? []}
+            onChange={(tags) => onChange({ tags })}
+            suggestions={tagsSuggestions}
           />
           <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.sm }]}>
             {tr('fields.sharedWith')}

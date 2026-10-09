@@ -27,6 +27,7 @@ export interface ManualEntryInput {
   categoryName?: string;
   budgetId?: string;
   notes?: string;
+  tags?: string[];
   foreignAmount?: string;
   foreignCurrencyCode?: string;
   sharedWith?: string;
@@ -46,6 +47,7 @@ export async function createManualEntry(
     categoryName: input.categoryName,
     budgetId: input.budgetId,
     notes: input.notes,
+    extraTags: input.tags?.length ? input.tags : undefined,
     foreignAmount: input.foreignAmount,
     foreignCurrencyCode: input.foreignCurrencyCode,
     sharedWith: input.sharedWith,

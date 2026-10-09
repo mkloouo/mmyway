@@ -1,9 +1,7 @@
 import { useState } from 'react';
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import { Text } from 'react-native';
 import { DragList } from '../ui/DragList';
-
-afterEach(cleanup);
 
 const panHandlers: {
   onStart?: () => void;
@@ -47,6 +45,7 @@ jest.mock('react-native-gesture-handler', () => ({
   },
 }));
 jest.mock('react-native-reanimated', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { View } = require('react-native');
   return {
     __esModule: true,
@@ -56,6 +55,7 @@ jest.mock('react-native-reanimated', () => {
     },
     createAnimatedComponent: (c: any) => c,
     useSharedValue: (init: any) => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const ref = require('react').useRef({ value: init });
       return ref.current;
     },
@@ -126,13 +126,11 @@ describe('DragList', () => {
 
   it('reorders items via accessibility action in stateful list', async () => {
     const onReorder = jest.fn();
-    const { getByText, unmount } = await render(<StatefulDragList onReorder={onReorder} />);
+    const { unmount } = await render(<StatefulDragList onReorder={onReorder} />);
 
     // Savings is at index 1 -> move up to index 0
-    await act(async () => {
-      fireEvent(getByText('Savings'), 'accessibilityAction', {
-        nativeEvent: { actionName: 'moveUp' },
-      });
+    await fireEvent(screen.getByText('Savings'), 'accessibilityAction', {
+      nativeEvent: { actionName: 'moveUp' },
     });
 
     expect(onReorder).toHaveBeenCalledWith([
@@ -141,9 +139,9 @@ describe('DragList', () => {
       { id: '3', name: 'Cash' },
     ]);
 
-    expect(getByText('Savings')).toBeTruthy();
-    expect(getByText('Checking')).toBeTruthy();
-    expect(getByText('Cash')).toBeTruthy();
+    expect(screen.getByText('Savings')).toBeTruthy();
+    expect(screen.getByText('Checking')).toBeTruthy();
+    expect(screen.getByText('Cash')).toBeTruthy();
     await unmount();
   });
 
@@ -152,7 +150,7 @@ describe('DragList', () => {
     const onDragChange = jest.fn();
     const onMove = jest.fn();
 
-    const { getByText, rerender, unmount } = await render(
+    const { rerender, unmount } = await render(
       <DragList
         items={items}
         keyOf={(i) => i.id}
@@ -165,9 +163,15 @@ describe('DragList', () => {
     );
 
     // Measure rows so heights.value is populated
-    fireEvent(getByText('Checking'), 'layout', { nativeEvent: { layout: { height: 50 } } });
-    fireEvent(getByText('Savings'), 'layout', { nativeEvent: { layout: { height: 50 } } });
-    fireEvent(getByText('Cash'), 'layout', { nativeEvent: { layout: { height: 50 } } });
+    await fireEvent(screen.getByText('Checking'), 'layout', {
+      nativeEvent: { layout: { height: 50 } },
+    });
+    await fireEvent(screen.getByText('Savings'), 'layout', {
+      nativeEvent: { layout: { height: 50 } },
+    });
+    await fireEvent(screen.getByText('Cash'), 'layout', {
+      nativeEvent: { layout: { height: 50 } },
+    });
 
     expect(panHandlers.length).toBe(3);
 
@@ -177,7 +181,7 @@ describe('DragList', () => {
     expect(onDragChange).toHaveBeenCalledWith(true);
 
     // Parent re-renders with a brand-new array reference but identical keys (e.g. holding changed)
-    rerender(
+    await rerender(
       <DragList
         items={[...items]}
         keyOf={(i) => i.id}

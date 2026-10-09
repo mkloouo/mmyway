@@ -2,7 +2,8 @@
 // (app/accounts/[id].tsx); Reorder turns the list into a drag list, and Done saves it.
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, ScrollView, Text, View } from 'react-native';
+import { FlatList, Text, View } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 import Animated, { FadeIn } from 'react-native-reanimated';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useDb } from '../../src/providers/DbProvider';
@@ -46,7 +47,6 @@ export default function AccountsScreen() {
   // Nothing is sent until Done: FF3 is given the whole list at once (src/accounts/accountActions.ts).
   const [draft, setDraft] = useState<string[] | null>(null);
   const reordering = draft !== null;
-  const [holding, setHolding] = useState(false);
   // Hiding inactive accounts makes a reorder quicker on a long list; they keep their places.
   const [showInactive, setShowInactive] = useState(true);
 
@@ -186,7 +186,6 @@ export default function AccountsScreen() {
               paddingTop: SCREEN_TOP_PADDING,
               gap: t.space.sm,
             }}
-            scrollEnabled={!holding}
           >
             <Text style={[t.type.label, { color: t.color.textMuted, paddingBottom: t.space.xs }]}>
               {tr('accounts.reorderHint')}
@@ -199,7 +198,6 @@ export default function AccountsScreen() {
                 keyOf={(a) => a.id}
                 renderItem={row}
                 onMove={move}
-                onDragChange={setHolding}
                 gap={t.space.sm}
                 moveLabels={{ up: tr('accounts.moveUp'), down: tr('accounts.moveDown') }}
               />

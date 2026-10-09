@@ -234,4 +234,25 @@ describe('confirmInboxItem puts a foreign entry the right way round for FF3', ()
     await confirmInboxItem(db as any, inboxItemId);
     expect(await queuedSplit(db)).toMatchObject({ amount: '30.00', currency_code: 'PLN' });
   });
+
+  it('saves tags in draft extraTags and carries them to outbox payload', async () => {
+    const db = createTestDb();
+    await seedPlnAccount(db);
+    const { inboxItemId, draft } = await createManualEntry(db as any, {
+      type: 'withdrawal',
+      amount: '50.00',
+      currencyCode: 'PLN',
+      date: new Date().toISOString(),
+      description: 'Bookstore',
+      merchantRawInput: 'Bookstore',
+      sourceId: 'acc-pko',
+      tags: ['books', 'gifts'],
+    });
+    expect(draft.extraTags).toEqual(['books', 'gifts']);
+    await confirmInboxItem(db as any, inboxItemId);
+    expect(await queuedSplit(db)).toMatchObject({
+      amount: '50.00',
+      tags: ['books', 'gifts'],
+    });
+  });
 });

@@ -21,6 +21,7 @@ interface CaptureForm {
   budgetId: string | null;
   description: string;
   notes: string;
+  tags: string[];
   sharedWith: string;
   foreignAmount: string;
   photoUri: string | null; // a receipt photo, uploaded to FF3 once the transaction exists
@@ -46,6 +47,7 @@ export function initialCaptureForm(now: Date = new Date()): CaptureForm {
     budgetId: null,
     description: '',
     notes: '',
+    tags: [],
     sharedWith: '',
     foreignAmount: '',
     photoUri: null,

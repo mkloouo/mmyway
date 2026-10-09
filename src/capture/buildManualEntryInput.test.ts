@@ -166,4 +166,12 @@ describe('buildManualEntryInput', () => {
   it('serialises the date as ISO', () => {
     expect(buildManualEntryInput(base, accounts).date).toBe('2026-09-27T14:02:00.000Z');
   });
+
+  it('passes tags when present and omits when empty', () => {
+    expect(buildManualEntryInput({ ...base, tags: ['food', 'lunch'] }, accounts).tags).toEqual([
+      'food',
+      'lunch',
+    ]);
+    expect(buildManualEntryInput({ ...base, tags: [] }, accounts).tags).toBeUndefined();
+  });
 });

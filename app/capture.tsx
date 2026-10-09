@@ -39,6 +39,7 @@ import {
   type MerchantHistory,
 } from '../src/lookup/merchantLookup';
 import { useSharedPeople } from '../src/lookup/sharedPeople';
+import { useRecentTags } from '../src/lookup/recentTags';
 import { rankCandidates } from '../src/suggest/rank';
 import { divideDecimal, isNegative, parseDecimalInput } from '../src/api/ff3/decimal';
 import { useToast } from '../src/ui/useToast';
@@ -46,6 +47,7 @@ import { Snackbar, type SnackbarEntry } from '../src/ui/Snackbar';
 import type { Draft } from '../src/inbox/draft';
 import { needsLabel } from '../src/ui/readinessLabel';
 import { TextField } from '../src/ui/TextField';
+import { TagsField } from '../src/ui/TagsField';
 import { SharedWithField } from '../src/ui/SharedWithField';
 import { PickerSheet } from '../src/ui/PickerSheet';
 import { useAction } from '../src/ui/useAction';
@@ -183,6 +185,7 @@ export default function CaptureScreen() {
   const assetAccounts = useMemo(() => assetAccountRows ?? [], [assetAccountRows]);
   const categories = useCategories();
   const sharedPeople = useSharedPeople();
+  const recentTags = useRecentTags();
   const budgets = useBudgets();
   const currencies = useCurrencies();
 
@@ -200,6 +203,7 @@ export default function CaptureScreen() {
     budgetId,
     description,
     notes,
+    tags,
     sharedWith,
     foreignAmount,
     photoUri,
@@ -339,6 +343,7 @@ export default function CaptureScreen() {
     categoryName,
     budgetId,
     notes,
+    tags,
     sharedWith,
     foreignAmount: showFx ? parsedForeignAmount : '',
     foreignCurrencyCode: showFx ? (accountCurrencyCode ?? null) : null,
@@ -442,7 +447,7 @@ export default function CaptureScreen() {
   const summaryParts = [merchantRawInput, categoryName].filter(Boolean);
   // What "More" holds besides the title, which has its own field: the key shows a dot when any of
   // it is set.
-  const moreHasValue = !!(notes || sharedWith || photoUri);
+  const moreHasValue = !!(notes || tags.length > 0 || sharedWith || photoUri);
 
   return (
     <Screen bottom>
@@ -785,6 +790,7 @@ export default function CaptureScreen() {
           value={notes}
           onChangeText={(notes) => set({ notes })}
         />
+        <TagsField tags={tags} onChange={(tags) => set({ tags })} suggestions={recentTags} />
         <SharedWithField
           live
           value={sharedWith}
