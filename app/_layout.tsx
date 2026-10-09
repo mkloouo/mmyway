@@ -63,9 +63,15 @@ function SyncOnReconnect() {
   const { syncNow } = useSync();
   useEffect(() => {
     let online: boolean | null = null;
+    let timer: ReturnType<typeof setTimeout> | null = null;
     return NetInfo.addEventListener((state) => {
       const next = state.isConnected === true && state.isInternetReachable !== false;
-      if (online === false && next) void syncNow();
+      if (online === false && next) {
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(() => {
+          void syncNow();
+        }, 1000);
+      }
       online = next;
     });
   }, [syncNow]);

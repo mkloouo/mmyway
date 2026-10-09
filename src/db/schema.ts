@@ -138,3 +138,22 @@ export const appSettings = sqliteTable('app_settings', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),
 });
+
+/**
+ * N payee variations/aliases mapping to 1 true canonical payee.
+ * E.g. "Jeronimo Martins Polska S.A." and "Biedronka 4412" -> "Biedronka".
+ */
+export const payeeAliases = sqliteTable(
+  'payee_aliases',
+  {
+    id: text('id').primaryKey(), // normkey(alias)
+    alias: text('alias').notNull(), // Raw variation, e.g. "Jeronimo Martins Polska"
+    normalizedAlias: text('normalized_alias').notNull(), // normkey(alias)
+    payeeName: text('payee_name').notNull(), // 1 canonical payee, e.g. "Biedronka"
+    createdAt: text('created_at').notNull(),
+  },
+  (t) => [
+    index('payee_aliases_payee_idx').on(t.payeeName),
+    index('payee_aliases_norm_idx').on(t.normalizedAlias),
+  ],
+);

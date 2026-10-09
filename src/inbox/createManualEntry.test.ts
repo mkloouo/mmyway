@@ -1,4 +1,5 @@
 import { createTestDb } from '../db/testDb';
+import { rememberPayeeAlias } from '../lookup/aliases';
 import { createManualEntry, confirmInboxItem, undoConfirm } from './createManualEntry';
 import { outboxOperations, inboxItems, referenceAccounts } from '../db/schema';
 import { readPayload } from '../sync/payloadJson';
@@ -26,6 +27,40 @@ describe('createManualEntry + confirmInboxItem', () => {
 
     const item = (await db.select().from(inboxItems).where(eq(inboxItems.id, inboxItemId)))[0];
     expect(item?.state).toBe('confirmed');
+  });
+
+  it('resolves an alias to the canonical payee when available', async () => {
+    const db = createTestDb();
+    await rememberPayeeAlias(db as any, 'Biedra', 'Biedronka');
+
+    const { draft, isNewPayee } = await createManualEntry(db as any, {
+      type: 'withdrawal',
+      amount: '15.90',
+      currencyCode: 'PLN',
+      date: new Date().toISOString(),
+      description: 'Groceries',
+      merchantRawInput: 'Biedra',
+    });
+    expect(isNewPayee).toBe(false);
+    expect(draft.destinationName).toBe('Biedronka');
+    expect(draft.payeeReadAs).toBe('Biedra');
+  });
+
+  it('skips alias resolution when forceNewPayee is true', async () => {
+    const db = createTestDb();
+    await rememberPayeeAlias(db as any, 'Biedra', 'Biedronka');
+
+    const { draft, isNewPayee } = await createManualEntry(db as any, {
+      type: 'withdrawal',
+      amount: '15.90',
+      currencyCode: 'PLN',
+      date: new Date().toISOString(),
+      description: 'Groceries',
+      merchantRawInput: 'Biedra',
+      forceNewPayee: true,
+    });
+    expect(isNewPayee).toBe(true);
+    expect(draft.destinationName).toBe('Biedra');
   });
 
   it('puts a deposit payee on the source side, asset account on destination (defect fix)', async () => {

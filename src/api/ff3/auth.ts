@@ -28,14 +28,29 @@ function isBelowMin(version: [number, number, number]): boolean {
 export async function probeAbout(
   baseUrl: string,
   apiToken: string,
+  timeoutMs = 8000,
 ): Promise<{ ok: true; apiVersion: string } | { ok: false; reason: AuthErrorReason }> {
   let response: Response;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const url = `${baseUrl.replace(/\/+$/, '')}/api/v1/about`;
+  const headers = { Authorization: `Bearer ${apiToken}`, Accept: 'application/json' };
+
   try {
-    response = await fetch(`${baseUrl.replace(/\/+$/, '')}/api/v1/about`, {
-      headers: { Authorization: `Bearer ${apiToken}`, Accept: 'application/json' },
-    });
+    try {
+      response = await fetch(url, { headers, signal: controller.signal });
+    } catch {
+      // If aborted, don't retry
+      if (controller.signal.aborted) return { ok: false, reason: 'invalid_host' };
+      // Transient socket flap on mobile/reconnect: retry once after 400ms
+      await new Promise((resolve) => setTimeout(resolve, 400));
+      if (controller.signal.aborted) return { ok: false, reason: 'invalid_host' };
+      response = await fetch(url, { headers, signal: controller.signal });
+    }
   } catch {
     return { ok: false, reason: 'invalid_host' };
+  } finally {
+    clearTimeout(timer);
   }
   if (!response.ok) {
     return {

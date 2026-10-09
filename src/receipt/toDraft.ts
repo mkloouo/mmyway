@@ -10,6 +10,7 @@ import type { Draft, DraftLocation } from '../inbox/draft';
 import type { ReceiptExtraction } from './types';
 import { logLine } from '../utils/log';
 import { readDraft, writeDraft } from '../inbox/draftJson';
+import { resolvePayeeAlias } from '../lookup/aliases';
 import { errorMessage } from '../utils/errorMessage';
 import i18n from '../i18n';
 
@@ -216,7 +217,7 @@ export async function parseReceiptItem(
   }
 
   logLine('info', `receipt ${itemId}: read by ${result.providerName} (${result.providerModel})`);
-  const draft = {
+  const rawDraft = {
     ...receiptToDraft(result.extraction, reference, capturedDate(before)),
     // receiptToDraft builds a fresh draft from what was read; where the photo was taken is the
     // stub's and has to survive it (#67).
@@ -227,6 +228,7 @@ export async function parseReceiptItem(
       at: new Date().toISOString(),
     },
   };
+  const draft = await resolvePayeeAlias(db, rawDraft);
   // Only if nothing touched the item while the provider was working (a parse takes seconds; the
   // user may already have opened the card and typed an amount) — their edits win.
   const updated = await db

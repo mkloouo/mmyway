@@ -1,5 +1,6 @@
 import { and, eq } from 'drizzle-orm';
 import { inboxItems, outboxOperations, referenceAccounts } from '../db/schema';
+import { resolvePayeeAlias } from '../lookup/aliases';
 import { transition, type InboxState } from './state';
 import { draftToTransactionPayload, type Draft, type DraftLocation } from './draft';
 import { bookingLegAccountId } from './fx';
@@ -58,13 +59,14 @@ export async function createManualEntry(
   let isNewPayee: boolean;
 
   if (input.type === 'withdrawal' || input.type === 'deposit') {
-    const isNew = input.forceNewPayee ?? true;
-    draft =
+    // The payee end starts as the typed text, marked new; a matching alias (unless the screen's
+    // "new payee" was chosen explicitly) points it at the alias target instead.
+    const typed: Draft =
       input.type === 'withdrawal'
         ? {
             ...shared,
             type: 'withdrawal',
-            isNewPayee: isNew,
+            isNewPayee: true,
             sourceId: input.sourceId,
             sourceName: input.sourceName,
             destinationName: input.merchantRawInput,
@@ -72,11 +74,12 @@ export async function createManualEntry(
         : {
             ...shared,
             type: 'deposit',
-            isNewPayee: isNew,
+            isNewPayee: true,
             sourceName: input.merchantRawInput,
             destinationId: input.destinationId,
             destinationName: input.destinationName,
           };
+    draft = input.forceNewPayee ? typed : await resolvePayeeAlias(db, typed);
     isNewPayee = draft.isNewPayee;
   } else {
     // transfer: both ends are known asset accounts, no payee alias lookup at all (defect (1)).

@@ -44,6 +44,30 @@
     "showInactive": "Show inactive accounts",
     "title": "Accounts"
   },
+  "aliases": {
+    "add": "Add alias",
+    "aliasLabel": "Alias / variation",
+    "aliasPlaceholder": "e.g. Jeronimo Martins Polska",
+    "count_one": "{{count, number}} alias",
+    "count_other": "{{count, number}} aliases",
+    "empty": "No aliases yet",
+    "emptyHint": "Aliases map variations (like receipt merchant names) to your true payee in Firefly III.",
+    "exportOrImport": "Export / import",
+    "importButton": "Import from text",
+    "importComplete": "Imported {{count, number}} alias(es).",
+    "importCompleteTitle": "Import complete",
+    "newTitle": "New payee alias",
+    "payeePlaceholder": "e.g. Biedronka",
+    "removeAliasBody": "“{{alias}}” will no longer map to “{{payee}}”.",
+    "removeAliasTitle": "Remove alias?",
+    "removeGroupBody": "All {{count, number}} alias(es) will be deleted.",
+    "removeGroupTitle": "Remove aliases for {{payee}}?",
+    "search": "Search payees or aliases",
+    "title": "Payee aliases",
+    "transferPlaceholder": "Exported JSON appears here — paste JSON here to import",
+    "transferTitle": "Export / import aliases",
+    "truePayee": "True payee"
+  },
   "activity": {
     "allAccounts": "All accounts",
     "deleteBody": "They are deleted in Firefly III too.",
@@ -87,6 +111,7 @@
   "capture": {
     "attach": "Attach",
     "attached": "Attached ✓",
+    "booksViaAlias": "books to {{name}} via alias",
     "changeCurrency": "Change currency",
     "confirmedLabel": "Confirmed · {{label}}",
     "convertsTo": "+ {{amount}} {{currency}} → converts to",
@@ -218,7 +243,9 @@
     "removePhotoTitle": "Remove this photo?",
     "showPhoto": "Show the receipt photo",
     "synced": "Synced",
-    "title": "Review"
+    "title": "Review",
+    "viaAlias": "via alias “{{alias}}”",
+    "willBookTo": "“{{raw}}” will book to {{name}}"
   },
   "errorBoundary": {
     "reload": "Reload",
@@ -537,6 +564,9 @@
     "signOutTitle": "Sign out?",
     "title": "Settings",
     "tokenPlaceholder": "Personal access token",
+    "aliases": "Payee aliases",
+    "aliasesCount_one": "{{count, number}} alias",
+    "aliasesCount_other": "{{count, number}} aliases",
     "version": "Version"
   },
   "splits": {

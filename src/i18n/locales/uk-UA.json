@@ -44,6 +44,32 @@
     "showInactive": "Показати неактивні облікові записи",
     "title": "Облікові записи"
   },
+  "aliases": {
+    "add": "Додати псевдонім",
+    "aliasLabel": "Псевдонім / варіація",
+    "aliasPlaceholder": "наприклад, Jeronimo Martins Polska",
+    "count_one": "{{count, number}} псевдонім",
+    "count_few": "{{count, number}} псевдоніми",
+    "count_many": "{{count, number}} псевдонімів",
+    "count_other": "{{count, number}} псевдоніма",
+    "empty": "Псевдонімів ще немає",
+    "emptyHint": "Псевдоніми пов'язують варіації назв з чеків зі справжніми контрагентами у Firefly III.",
+    "exportOrImport": "Експорт / імпорт",
+    "importButton": "Імпортувати з тексту",
+    "importComplete": "Імпортовано {{count, number}} псевдонім(ів).",
+    "importCompleteTitle": "Імпорт завершено",
+    "newTitle": "Новий псевдонім контрагента",
+    "payeePlaceholder": "наприклад, Biedronka",
+    "removeAliasBody": "«{{alias}}» більше не буде зіставлятися з «{{payee}}».",
+    "removeAliasTitle": "Видалити псевдонім?",
+    "removeGroupBody": "Усі {{count, number}} псевдонім(ів) будуть видалені.",
+    "removeGroupTitle": "Видалити псевдоніми для {{payee}}?",
+    "search": "Пошук контрагентів або псевдонімів",
+    "title": "Псевдоніми контрагентів",
+    "transferPlaceholder": "Експортований JSON з'явиться тут — вставте JSON сюди для імпорту",
+    "transferTitle": "Експорт / імпорт псевдонімів",
+    "truePayee": "Справжній контрагент"
+  },
   "activity": {
     "allAccounts": "",
     "deleteBody": "Вони також видалені у Firefly III.",
@@ -89,6 +115,7 @@
   "capture": {
     "attach": "Прикріпити",
     "attached": "Додано ✓",
+    "booksViaAlias": "буде записано як {{name}} за псевдонімом",
     "changeCurrency": "Змінити валюту",
     "confirmedLabel": "Підтверджено · {{label}}",
     "convertsTo": "+ {{amount}} {{currency}} → перетворюється на",
@@ -228,7 +255,9 @@
     "receipt": "Квитанція",
     "showPhoto": "Покажіть фотографію чека",
     "synced": "Синхронізовано",
-    "title": "Огляд"
+    "title": "Огляд",
+    "viaAlias": "за псевдонімом «{{alias}}»",
+    "willBookTo": "«{{raw}}» буде записано як {{name}}"
   },
   "errorBoundary": {
     "reload": "Перезавантажити",
@@ -585,6 +614,11 @@
     "signOutTitle": "Вийти?",
     "title": "Налаштування",
     "tokenPlaceholder": "Персональний токен доступу",
+    "aliases": "Псевдоніми контрагентів",
+    "aliasesCount_one": "{{count, number}} псевдонім",
+    "aliasesCount_few": "{{count, number}} псевдоніми",
+    "aliasesCount_many": "{{count, number}} псевдонімів",
+    "aliasesCount_other": "{{count, number}} псевдоніма",
     "version": "Версія"
   },
   "splits": {

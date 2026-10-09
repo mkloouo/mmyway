@@ -28,6 +28,8 @@ import { connectFailureText, connectToInstance } from '../../src/settings/connec
 import { saveGeminiKey } from '../../src/settings/secrets';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { hasEnvelopeMarker } from '../../src/accounts/envelopeMarker';
+import { useLiveQuery } from '../../src/db/useLiveQuery';
+import { payeeAliases } from '../../src/db/schema';
 import { useSync } from '../../src/sync/useSync';
 import { withSyncPaused } from '../../src/sync/runSync';
 import {
@@ -82,6 +84,8 @@ export default function SettingsScreen() {
   const allAssetAccounts = useAssetAccounts({ includeInactive: true }) ?? [];
   const assetAccounts = useAssetAccounts() ?? [];
   const currencies = useCurrencies();
+  const { data: aliasRows } = useLiveQuery(db.select().from(payeeAliases));
+  const aliasesCount = aliasRows?.length ?? 0;
 
   const { data: settings } = useQuery({
     queryKey: SETTINGS_QUERY_KEY,
@@ -330,6 +334,12 @@ export default function SettingsScreen() {
             chevron
             value={`${assetAccounts.length} · ${tr('settings.envelopeCount', { count: envelopeCount })}`}
             onPress={() => router.push('/settings/accounts')}
+          />
+          <Row
+            label={tr('settings.aliases')}
+            chevron
+            value={tr('settings.aliasesCount', { count: aliasesCount })}
+            onPress={() => router.push('/settings/aliases')}
           />
         </Card>
 

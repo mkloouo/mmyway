@@ -57,7 +57,7 @@ export async function resolveAddress(
   return { winner: null, results };
 }
 
-const DEFAULT_TIMEOUT_MS = 4000;
+const DEFAULT_TIMEOUT_MS = 8000;
 
 /**
  * A per-address timeout so one unreachable tailnet address can't hang a sync on mobile data.

@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Settings
+
+- **Payee Aliases (N-to-1).** Map multiple raw names, OCR variations, or receipt model hallucinations to a single canonical payee. Resolves automatically during receipt scanning and manual capture (with live match feedback), learns new aliases when you correct a payee on a draft (with quick undo), and provides full alias group management, search, and JSON export/import under Settings → Payee Aliases.
+
+### Fixed
+
+- **False "host unreachable" errors on reconnect.** Network reconnection now waits for mobile network routing to stabilize before probing Firefly III, extends timeout for high-latency or relayed connections (such as Tailscale DERP), and retries transient socket flaps before marking the host unreachable.
+
+## [1.8.0] - 2026-10-09
+
 ### Transactions
 
 - **Transaction tags as interactive chips.** Add, remove, and edit tags across manual capture, receipt drafts, split transactions, and existing transactions. Active tags render as removable chips, with quick suggestion chips for recently used tags. Tag editing in planned transactions now also matches this chip-based design.
