@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-10-09
+
 ### Receipts
 
 - **Currency exchange receipt recognition.** Scanning a currency exchange receipt (such as from a kantor, exchange desk, or bank) now extracts currency conversion amounts and currencies to suggest a transfer transaction between asset accounts. If the exchange includes a dedicated commission or service fee, it is automatically captured as a separate withdrawal transaction. Receipts containing multiple conversions generate corresponding transfers and fee drafts.
