@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.10.1] - 2026-10-11
+
 ### Fixed
 
 - **"Book now" on a planned recurring transaction.** Triggering a recurring transaction early no longer fails with an HTTP error on some Firefly III versions.
