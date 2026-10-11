@@ -15,7 +15,7 @@ function okResponse() {
     ok: true,
     status: 200,
     headers: { get: () => 'application/json' },
-    json: async () => ({ data: { api_version: '6.3.2' } }),
+    json: async () => ({ data: { api_version: '6.7.0' } }),
     text: async () => '',
   };
 }

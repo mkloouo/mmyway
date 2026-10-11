@@ -33,7 +33,7 @@ jest.mock('../sync/instanceData', () => {
 });
 
 const T = '2026-01-01T00:00:00Z';
-const OK = { ok: true, client: {}, apiVersion: '6.3.2', defaultCurrencyCode: 'PLN' };
+const OK = { ok: true, client: {}, apiVersion: '6.7.0', defaultCurrencyCode: 'PLN' };
 
 async function withSyncedData() {
   const db = createTestDb() as any;

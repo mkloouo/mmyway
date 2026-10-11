@@ -67,7 +67,7 @@ add your own Gemini key; with a local model, they never leave your network. See 
 
 ## Get the app
 
-mmyway runs on **Android** and needs Firefly III with API version 6.3.2 or later. Download
+mmyway runs on **Android** and needs Firefly III with API version 6.7.0 or later. Download
 it from [GitHub Releases](https://github.com/mkloouo/mmyway/releases/latest):
 
 - Download the `arm64-v8a` APK for most phones, or the `armeabi-v7a` APK for older 32-bit

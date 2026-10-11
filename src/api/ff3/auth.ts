@@ -3,7 +3,12 @@ import { createFF3Client, classifyProbeError, type FF3Client } from './client';
 import { readHosts, writeHosts } from './hosts';
 import type { SystemInfo, CurrencyRead, AuthErrorReason } from './types';
 
-const MIN_API_VERSION = [6, 3, 2] as const;
+// 6.7.0 is where FF3 fixed `repetitions.*.moment` validation on a recurrence *update*
+// (`['nullable','string','min:0','max:10']`, where 6.1.25–6.6.x validated it as `numeric`). Below
+// it, a schedule change could not be a plain PUT at all — a yearly moment is a date and a monthly
+// one past the 10th is "greater than 10" — and the app had to delete and recreate the recurring
+// transaction for every edit.
+const MIN_API_VERSION = [6, 7, 0] as const;
 const LEGACY_HOST_KEY = 'ff3_host';
 export const TOKEN_KEY = 'ff3_api_token';
 

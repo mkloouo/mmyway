@@ -13,9 +13,9 @@ function mockFetchOnce(status: number, body: unknown, contentType = 'application
 
 describe('probeAbout', () => {
   it('accepts a modern version', async () => {
-    mockFetchOnce(200, { data: { version: '6.3.2', api_version: '6.3.2' } });
+    mockFetchOnce(200, { data: { version: '6.7.0', api_version: '6.7.0' } });
     const result = await probeAbout('https://ff3.example.com', 'token');
-    expect(result).toEqual({ ok: true, apiVersion: '6.3.2' });
+    expect(result).toEqual({ ok: true, apiVersion: '6.7.0' });
   });
 
   it('treats a develop/ version as high enough', async () => {
@@ -28,6 +28,23 @@ describe('probeAbout', () => {
     mockFetchOnce(200, { data: { version: '5.0.0', api_version: '5.0.0' } });
     const result = await probeAbout('https://ff3.example.com', 'token');
     expect(result).toEqual({ ok: false, reason: 'api_version_too_low' });
+  });
+
+  it('rejects the releases whose recurrence update validates `moment` as a number', async () => {
+    // 6.1.25 → 6.6.x read `repetitions.*.moment` as numeric, which no yearly moment (a date) and
+    // no monthly one past the 10th can satisfy. 6.7.0 fixed it, and the Planned tab's schedule
+    // editor sends both — so those releases are below the floor, not merely limited.
+    for (const version of ['6.3.2', '6.6.0', '6.6.9']) {
+      mockFetchOnce(200, { data: { version, api_version: version } });
+      expect(await probeAbout('https://ff3.example.com', 'token')).toEqual({
+        ok: false,
+        reason: 'api_version_too_low',
+      });
+    }
+    for (const version of ['6.7.0', '6.7.7', '6.8.0', '7.0.0']) {
+      mockFetchOnce(200, { data: { version, api_version: version } });
+      expect((await probeAbout('https://ff3.example.com', 'token')).ok).toBe(true);
+    }
   });
 
   it('flags a 401 as an invalid api key', async () => {

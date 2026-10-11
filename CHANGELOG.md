@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Firefly III
+
+- **Firefly III 6.7.0 or later is now required.** Older servers are refused at sign-in. 6.7.0 is the release that fixed two API bugs this app had to work around: a recurring transaction's schedule could not be updated in place (so every schedule change deleted the recurring transaction and created a replacement), and a subscription's note could not be cleared. If your instance is older, update it before updating the app.
+
 ## [1.10.1] - 2026-10-11
 
 ### Fixed
