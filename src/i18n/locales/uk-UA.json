@@ -144,7 +144,10 @@
     "autofillTitle": "",
     "autofillConfirm": "",
     "autofillBody_one": "",
-    "autofillBody_other": ""
+    "autofillBody_other": "",
+    "fundSet": "",
+    "fundSetTitle": "",
+    "fundReadOnly": ""
   },
   "capture": {
     "attach": "Прикріпити",
@@ -390,6 +393,7 @@
       "reorder_accounts": "",
       "save_planned": "Збереження запланованої транзакції",
       "set_budget_limits": "",
+      "set_piggy_amount": "",
       "trigger_planned": "",
       "update_account": "Збереження облікового запису",
       "update_transaction": "Збереження редагування транзакції"

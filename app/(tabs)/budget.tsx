@@ -1,6 +1,7 @@
 // Budget — envelope budgeting over Firefly III's own primitives (docs/private/ynab-bucket-budgeting-plan.md).
 // The envelopes, the sinking funds, the obligations due, Ready to Assign, and the one-tap auto-fill.
 // Assigning to a single envelope happens on its own page (app/budget/[id].tsx).
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import {
@@ -13,6 +14,7 @@ import {
   SectionHeader,
   SCREEN_TOP_PADDING,
 } from '../../src/ui/components';
+import { AmountSheet } from '../../src/ui/AmountSheet';
 import { PendingDot } from '../../src/ui/PendingDot';
 import { useTheme } from '../../src/ui/theme';
 import { formatMoney } from '../../src/ui/money';
@@ -22,10 +24,11 @@ import { confirmAction } from '../../src/ui/confirm';
 import { usePullToRefresh } from '../../src/sync/useSync';
 import { useDb } from '../../src/providers/DbProvider';
 import { useBucket } from '../../src/bucket/useBucket';
-import { autofill, autofillTotal } from '../../src/bucket/autofill';
-import { assignMany } from '../../src/bucket/actions';
+import { autofill, autofillCount, autofillIsEmpty } from '../../src/bucket/autofill';
+import { assignMany, fundMany, setFundAmount } from '../../src/bucket/actions';
+import type { Fund } from '../../src/bucket/funds';
 import { appLocale } from '../../src/i18n';
-import { dayDate } from '../../src/utils/day';
+import { dayDate, localDay } from '../../src/utils/day';
 
 export default function BudgetScreen() {
   const t = useTheme();
@@ -34,7 +37,7 @@ export default function BudgetScreen() {
   const act = useAction();
   const pull = usePullToRefresh();
   const bucket = useBucket();
-  const { period, envelopes, funds, bills, rta, currency, queued, loaded } = bucket;
+  const { period, envelopes, funds, bills, rta, currency, queued, queuedFunds, loaded } = bucket;
 
   const monthLabel = dayDate(period.start).toLocaleString(appLocale(), {
     month: 'long',
@@ -42,27 +45,35 @@ export default function BudgetScreen() {
   });
   const unsigned = (amount: string) => formatMoney(amount.replace(/^[-−]/, ''), currency);
 
-  // "Do what I did last month", worked out before the button is drawn: no entries, no button.
-  const fill = autofill({
+  // "Do what I did last month", worked out before the button is drawn: nothing planned, no button.
+  const plan = autofill({
     readyToAssign: rta.readyToAssign,
     envelopes,
     lastPeriod: bucket.lastPeriod,
+    funds,
+    today: localDay(),
     decimalPlaces: currency.decimalPlaces,
   });
-  const fillTotal = autofillTotal(fill, envelopes, currency.decimalPlaces);
 
   const runAutofill = act(tr('budget.autofill'), async () => {
-    // It moves real money in the budget across several envelopes at once; it gets a confirmation
-    // with the total and the count, not a bare tap.
+    // It moves real money across several envelopes and funds at once; it gets a confirmation with
+    // the total and the count, not a bare tap.
     const ok = await confirmAction(
       tr('budget.autofillTitle'),
       tr('budget.autofillConfirm'),
       tr('budget.autofillBody', {
-        amount: formatMoney(fillTotal, currency),
-        count: fill.length,
+        amount: formatMoney(plan.total, currency),
+        count: autofillCount(plan),
       }),
     );
-    if (ok) await assignMany(db, period, bucket.currencyCode, fill);
+    if (!ok) return;
+    await assignMany(db, period, bucket.currencyCode, plan.envelopes);
+    await fundMany(db, plan.funds);
+  });
+
+  const [editing, setEditing] = useState<Fund | null>(null);
+  const saveFund = act(tr('budget.fundSet'), async (fund: Fund, amount: string) => {
+    await setFundAmount(db, fund, amount);
   });
 
   return (
@@ -97,9 +108,9 @@ export default function BudgetScreen() {
           <Text style={[t.type.label, { color: t.color.textFaint, marginTop: t.space.xs }]}>
             {tr('budget.differsFromFireflyNote')}
           </Text>
-          {fill.length > 0 && (
+          {!autofillIsEmpty(plan) && (
             <Button
-              title={tr('budget.autofillWith', { amount: formatMoney(fillTotal, currency) })}
+              title={tr('budget.autofillWith', { amount: formatMoney(plan.total, currency) })}
               variant="secondary"
               onPress={() => void runAutofill()}
               disabled={act.pending(tr('budget.autofill'))}
@@ -153,8 +164,14 @@ export default function BudgetScreen() {
           <>
             <SectionHeader title={tr('budget.funds')} />
             {funds.map((fund) => (
-              <Card key={fund.id} style={{ marginHorizontal: t.space.lg }}>
+              <Card
+                key={fund.id}
+                style={{ marginHorizontal: t.space.lg }}
+                // No linked account means no field FF3 would let us write: read-only then.
+                onPress={fund.accountId ? () => setEditing(fund) : undefined}
+              >
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
+                  <PendingDot visible={queuedFunds.has(fund.id)} />
                   <Text
                     style={[t.type.heading, { color: t.color.text, flex: 1 }]}
                     numberOfLines={1}
@@ -207,6 +224,23 @@ export default function BudgetScreen() {
           </>
         )}
       </ScrollView>
+
+      {/* Absolute: the keypad opens on what the fund already holds, and Done sets it to what is
+          typed. FF3 clamps an over-target amount silently, so actions.ts clamps it first. */}
+      {editing && (
+        <AmountSheet
+          visible
+          title={tr('budget.fundSetTitle', { name: editing.name })}
+          initial={editing.saved}
+          currency={currency}
+          type="transfer"
+          onDone={(typed) => {
+            const fund = editing;
+            setEditing(null);
+            if (typed !== null) void saveFund(fund, typed);
+          }}
+        />
+      )}
     </Screen>
   );
 }

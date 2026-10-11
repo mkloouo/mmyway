@@ -61,6 +61,11 @@ export function subjectsOf(op: {
       add('rule', p.ruleId);
       add('recurrence', p.recurrenceId);
       break;
+    case 'set_piggy_amount':
+      // The fund, and the account its money sits in: an account edit queued before it lands first.
+      add('piggy', p.piggyId);
+      add('account', p.accountId);
+      break;
     case 'set_budget_limits':
       // Every budget in the operation, so a second assignment to the same envelope queues behind
       // this one instead of racing it — both are absolute amounts, and the later one must win.

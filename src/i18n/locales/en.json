@@ -140,7 +140,10 @@
     "autofillTitle": "Auto-fill the envelopes?",
     "autofillConfirm": "Auto-fill",
     "autofillBody_one": "{{amount}} goes into {{count}} envelope, bringing it back to what it held last month. Subscriptions due this month are already held back.",
-    "autofillBody_other": "{{amount}} is spread over {{count}} envelopes, bringing each back to what it held last month. Subscriptions due this month are already held back."
+    "autofillBody_other": "{{amount}} is spread over {{count}} envelopes, bringing each back to what it held last month. Subscriptions due this month are already held back.",
+    "fundSet": "Set the fund",
+    "fundSetTitle": "How much is put aside in {{name}}?",
+    "fundReadOnly": "This fund has no linked account in Firefly III, so it can only be read here."
   },
   "capture": {
     "attach": "Attach",
@@ -368,6 +371,7 @@
       "reorder_accounts": "Saving the account order",
       "save_planned": "Saving a planned transaction",
       "set_budget_limits": "Saving a budget assignment",
+      "set_piggy_amount": "Saving a sinking fund",
       "trigger_planned": "Booking a recurring transaction now",
       "update_account": "Saving an account",
       "update_transaction": "Saving a transaction edit"

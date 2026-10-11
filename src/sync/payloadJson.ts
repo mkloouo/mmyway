@@ -113,6 +113,13 @@ const SCHEMAS = {
       }),
     ),
   }),
+  set_piggy_amount: z.looseObject({
+    v: version,
+    piggyId: z.string(),
+    accountId: z.string(),
+    amount: z.string(),
+    expectedUpdatedAt: z.string().optional(),
+  }),
 } satisfies Record<OutboxKind, z.ZodType>;
 
 export function readPayload<T = Record<string, unknown>>(kind: OutboxKind, json: string): T {

@@ -4,7 +4,7 @@ import { bucketObjects, outboxOperations } from '../db/schema';
 import { FF3RequestError } from '../api/ff3/client';
 import { readPayload, writePayload } from '../sync/payloadJson';
 import { bucketRow, cachedLimit } from './objects';
-import { replaySetBudgetLimits, type SetBudgetLimitsPayload } from './replay';
+import { replaySetBudgetLimits, replaySetPiggyAmount, type SetBudgetLimitsPayload } from './replay';
 
 const PERIOD = { start: '2026-10-01', end: '2026-10-31' };
 
@@ -223,5 +223,103 @@ describe('replaySetBudgetLimits', () => {
     await expect(
       replaySetBudgetLimits(db as never, client as never, 'op-1', payload),
     ).rejects.toThrow(FF3RequestError);
+  });
+});
+
+describe('replaySetPiggyAmount', () => {
+  function piggyFF3(attributes: Record<string, unknown>) {
+    const calls: Call[] = [];
+    const request = jest.fn(async (path: string, init?: RequestInit): Promise<unknown> => {
+      const method = init?.method ?? 'GET';
+      const body = init?.body
+        ? (JSON.parse(String(init.body)) as Record<string, unknown>)
+        : undefined;
+      calls.push({ method, path, body });
+      if (method === 'GET') return { data: { id: '7', attributes } };
+      const sent = (body!.accounts as { current_amount: string }[])[0]!;
+      return {
+        data: { id: '7', attributes: { ...attributes, current_amount: sent.current_amount } },
+      };
+    });
+    return { request, calls };
+  }
+
+  const saved = (calls: Call[]) =>
+    (
+      calls.find((c) => c.method === 'PUT')?.body?.accounts as
+        { account_id: string; current_amount: string }[] | undefined
+    )?.[0];
+
+  it('sends the absolute amount through accounts[], the only form that can empty a fund', async () => {
+    const db = createTestDb();
+    const client = piggyFF3({ name: 'New laptop', current_amount: '300.00', target_amount: '0' });
+
+    await replaySetPiggyAmount(db as never, client as never, {
+      piggyId: '7',
+      accountId: '5',
+      amount: '0',
+    });
+
+    // The top-level current_amount is IsValidPositiveAmount (> 0) and could never store this.
+    expect(saved(client.calls)).toEqual({ account_id: '5', current_amount: '0' });
+    expect(client.calls.find((c) => c.method === 'PUT')!.body).not.toHaveProperty('current_amount');
+  });
+
+  it('clamps to the target, because FF3 would clamp it silently', async () => {
+    const db = createTestDb();
+    const client = piggyFF3({ name: 'F', current_amount: '100.00', target_amount: '500.00' });
+
+    await replaySetPiggyAmount(db as never, client as never, {
+      piggyId: '7',
+      accountId: '5',
+      amount: '900.00',
+    });
+
+    expect(saved(client.calls)!.current_amount).toBe('500.00');
+  });
+
+  it('does not clamp an open-ended fund, whose target_amount is 0', async () => {
+    const db = createTestDb();
+    const client = piggyFF3({ name: 'F', current_amount: '0', target_amount: '0' });
+
+    await replaySetPiggyAmount(db as never, client as never, {
+      piggyId: '7',
+      accountId: '5',
+      amount: '900.00',
+    });
+
+    expect(saved(client.calls)!.current_amount).toBe('900.00');
+  });
+
+  it('refuses to overwrite a fund changed in Firefly III since the edit began', async () => {
+    const db = createTestDb();
+    const client = piggyFF3({ name: 'New laptop', current_amount: '300.00', updated_at: 'now' });
+
+    await expect(
+      replaySetPiggyAmount(db as never, client as never, {
+        piggyId: '7',
+        accountId: '5',
+        amount: '400.00',
+        expectedUpdatedAt: 'then',
+      }),
+    ).rejects.toThrow(/New laptop changed in Firefly III/);
+    // Nothing was written: a conflict is a message, not an overwrite.
+    expect(client.calls.some((c) => c.method === 'PUT')).toBe(false);
+  });
+
+  it('goes ahead when the fund has not changed, and caches what FF3 answered', async () => {
+    const db = createTestDb();
+    const client = piggyFF3({ name: 'F', current_amount: '300.00', updated_at: 'same' });
+
+    await replaySetPiggyAmount(db as never, client as never, {
+      piggyId: '7',
+      accountId: '5',
+      amount: '400.00',
+      expectedUpdatedAt: 'same',
+    });
+
+    expect(saved(client.calls)!.current_amount).toBe('400.00');
+    const [row] = await db.select().from(bucketObjects);
+    expect(JSON.parse(row!.attributesJson).current_amount).toBe('400.00');
   });
 });

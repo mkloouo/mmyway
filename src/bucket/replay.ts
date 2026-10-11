@@ -14,6 +14,7 @@
 // second one. If even that was lost, the 422 fallback below re-reads and switches to a PUT.
 import { eq } from 'drizzle-orm';
 import { FF3RequestError, type FF3Client } from '../api/ff3/client';
+import { compareDecimal } from '../api/ff3/decimal';
 import { outboxOperations } from '../db/schema';
 import type { OutboxDb } from '../sync/outbox';
 import { writePayload } from '../sync/payloadJson';
@@ -146,6 +147,73 @@ export async function replaySetBudgetLimits(
         id: String(id ?? entry.limitId ?? ''),
       });
   }
+}
+
+export interface SetPiggyAmountPayload {
+  piggyId: string;
+  /** The asset account the money sits in: FF3 writes a piggy's amount per linked account. */
+  accountId: string;
+  /** Absolute `accounts[].current_amount`, so a replay converges. */
+  amount: string;
+  /** The piggy's `updated_at` when the edit started, for the conflict check. */
+  expectedUpdatedAt?: string;
+}
+
+/**
+ * Funds or empties a sinking fund.
+ *
+ * Absolute, so a retry converges — but this is a read-modify-write against a field Firefly III's
+ * own web UI can change too, so it is conflict-checked first and fails with a readable message
+ * rather than overwriting someone's change (the same rule as a transaction edit).
+ *
+ * Three details of FF3 6.7.7 shape the request:
+ *  - the `accounts[]` form is the only one that can EMPTY a fund. The top-level `current_amount` is
+ *    `IsValidPositiveAmount` (> 0); `accounts.*.current_amount` is `IsValidZeroOrMoreAmount(true)`.
+ *  - `LessThanPiggyTarget` is a no-op stub, so the validator will not stop an over-target amount —
+ *    but `ModifiesPiggyBanks::setCurrentAmount` silently CLAMPS it. Send what fits, or the saved
+ *    amount will not be what was asked for.
+ *  - `accounts.*.current_amount` also runs `IsEnoughInAccounts`: you cannot put aside more than the
+ *    linked account actually holds. That 422 is a message for the user, not something to retry.
+ */
+export async function replaySetPiggyAmount(
+  db: OutboxDb,
+  client: FF3Client,
+  payload: SetPiggyAmountPayload,
+): Promise<void> {
+  const current = await client.request<{
+    data?: { attributes?: Record<string, unknown> };
+  }>(`/v1/piggy-banks/${payload.piggyId}`);
+  const attributes = current?.data?.attributes ?? {};
+  const serverUpdatedAt = typeof attributes.updated_at === 'string' ? attributes.updated_at : null;
+  if (
+    payload.expectedUpdatedAt &&
+    serverUpdatedAt &&
+    serverUpdatedAt !== payload.expectedUpdatedAt
+  ) {
+    throw new Error(
+      `${String(attributes.name ?? 'This fund')} changed in Firefly III since you edited it — open it and set the amount again`,
+    );
+  }
+
+  // FF3 would clamp an over-target amount to the target without saying so; clamp it here instead,
+  // so what is stored in the cache below is what FF3 actually holds.
+  const target = typeof attributes.target_amount === 'string' ? attributes.target_amount : null;
+  const amount =
+    target && compareDecimal(target, '0') > 0 && compareDecimal(payload.amount, target) > 0
+      ? target
+      : payload.amount;
+
+  const answer = await client.request<{ data?: { attributes?: Record<string, unknown> } }>(
+    `/v1/piggy-banks/${payload.piggyId}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify({
+        accounts: [{ account_id: payload.accountId, current_amount: amount }],
+      }),
+    },
+  );
+  if (answer?.data?.attributes)
+    await storeBucketObject(db, 'piggy', payload.piggyId, null, answer.data.attributes);
 }
 
 async function deleteIfPresent(client: FF3Client, path: string): Promise<void> {

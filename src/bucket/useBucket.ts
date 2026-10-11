@@ -10,7 +10,7 @@ import { currencyOf, type DisplayCurrency } from '../ui/money';
 import { billsDueIn, type BillDue } from '../sync/bucketData';
 import { tryReadPayload } from '../sync/payloadJson';
 import { envelopesFor, type Envelope } from './envelopes';
-import type { SetBudgetLimitsPayload } from './replay';
+import type { SetBudgetLimitsPayload, SetPiggyAmountPayload } from './replay';
 import { fundsFrom, type Fund } from './funds';
 import { readBucketRow, type BucketObject } from './objects';
 import { periodOf, previousPeriod, type Period } from './period';
@@ -30,6 +30,8 @@ export interface BucketData {
   currencyCode: string;
   /** Budget ids whose assignment is still waiting in the outbox, for a pending dot. */
   queued: Set<string>;
+  /** The same for sinking funds, by piggy bank id. */
+  queuedFunds: Set<string>;
   loaded: boolean;
 }
 
@@ -44,7 +46,7 @@ export function useBucket(): BucketData {
     db
       .select()
       .from(outboxOperations)
-      .where(inArray(outboxOperations.kind, ['set_budget_limits'])),
+      .where(inArray(outboxOperations.kind, ['set_budget_limits', 'set_piggy_amount'])),
   );
   const budgets = useBudgetRows();
   const currencies = useCurrencies();
@@ -62,7 +64,13 @@ export function useBucket(): BucketData {
     const funds = fundsFrom(objects);
     const bills = billsDueIn(planned ?? [], period);
     const queued = new Set<string>();
+    const queuedFunds = new Set<string>();
     for (const op of ops ?? []) {
+      if (op.kind === 'set_piggy_amount') {
+        const p = tryReadPayload<SetPiggyAmountPayload>(op.kind, op.payloadJson);
+        if (p?.piggyId) queuedFunds.add(p.piggyId);
+        continue;
+      }
       const p = tryReadPayload<SetBudgetLimitsPayload>(op.kind, op.payloadJson);
       for (const entry of p?.entries ?? []) queued.add(entry.budgetId);
     }
@@ -83,6 +91,7 @@ export function useBucket(): BucketData {
       currency,
       currencyCode: code,
       queued,
+      queuedFunds,
       loaded: rows !== undefined && budgets !== undefined,
     };
   }, [rows, planned, accounts, ops, budgets, currencies]);
