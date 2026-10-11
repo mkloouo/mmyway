@@ -366,6 +366,12 @@
     "zeroHint": "Nothing waiting to confirm.",
     "zeroTitle": "Inbox zero"
   },
+  "lock": {
+    "title": "mmyway is locked",
+    "hint": "Unlock with your fingerprint, face, or screen lock to see your money.",
+    "unlock": "Unlock",
+    "prompt": "Unlock mmyway"
+  },
   "logs": {
     "clear": "Clear",
     "clearTitle": "Clear the log?",
@@ -479,6 +485,27 @@
     "triggerNow": "Book it now",
     "triggerTitle": "Book {{name}} now?"
   },
+  "proxy": {
+    "title": "Reverse proxy",
+    "subtitle": "Extra headers sent with every request",
+    "explainer": "If Firefly III sits behind a proxy that authenticates requests itself — Cloudflare Access, for example — add the headers it expects here. They are stored as securely as your API key and sent with every request, sign-in included.\n\nHTTP Basic is not a header here: put those credentials in the address instead, as https://user:password@your-host.",
+    "headersSection": "Headers",
+    "headerCount_one": "{{count, number}} header",
+    "headerCount_other": "{{count, number}} headers",
+    "useCloudflare": "Cloudflare Access",
+    "namePlaceholder": "Header name",
+    "valuePlaceholder": "Value",
+    "addHeader": "Add header",
+    "removeHeader": "Remove",
+    "save": "Save",
+    "clearAll": "Clear all",
+    "clearAllTitle": "Remove every proxy header?",
+    "problems": {
+      "name": "A header name can only use letters, digits and - ! # $ % & ' * + . ^ _ ` | ~",
+      "reserved": "This header is set by the app itself and cannot be overridden.",
+      "value": "A value cannot be empty or contain a line break."
+    }
+  },
   "readiness": {
     "amount": "amount",
     "convertedAmount": "the amount the account was charged",
@@ -569,7 +596,11 @@
     "aliases": "Payee aliases",
     "aliasesCount_one": "{{count, number}} alias",
     "aliasesCount_other": "{{count, number}} aliases",
-    "version": "Version"
+    "version": "Version",
+    "sectionSecurity": "Security",
+    "appLock": "Require unlock",
+    "appLockHint": "Ask for your fingerprint, face, or screen lock when the app opens and after it has been in the background a couple of minutes.",
+    "appLockUnavailable": "This phone has no fingerprint, face unlock, or screen lock set up yet. Add one in the phone's settings first."
   },
   "splits": {
     "assignLeftoverTitle": "Assign the leftover",

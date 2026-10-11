@@ -5,6 +5,7 @@ import type { OutboxDb } from '../sync/outbox';
 import type { AppLocale } from '../i18n';
 import { readStoredCredentials } from '../api/ff3/auth';
 import { readHosts } from '../api/ff3/hosts';
+import { loadProxyHeaders } from '../api/ff3/proxyHeaders';
 import { readGeminiKey } from './secrets';
 import {
   getCashAccountId,
@@ -16,6 +17,7 @@ import {
   getLocalModelBaseUrls,
   getLocalModelName,
   getLocale,
+  getAppLockEnabled,
   getPlannedNotificationsEnabled,
   getRecordLocation,
 } from './appSettings';
@@ -35,6 +37,9 @@ interface AppSettingsSnapshot {
   locale: AppLocale;
   recordLocation: boolean;
   plannedNotifications: boolean;
+  /** How many reverse-proxy headers are stored (src/api/ff3/proxyHeaders.ts); the values are secrets. */
+  proxyHeaderCount: number;
+  appLock: boolean;
 }
 
 export const SETTINGS_QUERY_KEY = ['settings'] as const;
@@ -55,6 +60,8 @@ export async function loadSettings(db: OutboxDb): Promise<AppSettingsSnapshot> {
     locale,
     recordLocation,
     plannedNotifications,
+    proxyHeaders,
+    appLock,
   ] = await Promise.all([
     readStoredCredentials(),
     readHosts(),
@@ -70,6 +77,8 @@ export async function loadSettings(db: OutboxDb): Promise<AppSettingsSnapshot> {
     getLocale(db),
     getRecordLocation(db),
     getPlannedNotificationsEnabled(db),
+    loadProxyHeaders(),
+    getAppLockEnabled(db),
   ]);
   return {
     signedIn: !!creds,
@@ -86,5 +95,7 @@ export async function loadSettings(db: OutboxDb): Promise<AppSettingsSnapshot> {
     locale,
     recordLocation,
     plannedNotifications,
+    proxyHeaderCount: Object.keys(proxyHeaders).length,
+    appLock,
   };
 }

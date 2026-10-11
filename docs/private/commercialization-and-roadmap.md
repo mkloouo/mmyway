@@ -103,45 +103,89 @@ than with the budgeting feature.
   both themes and at phone width, and the shared `src/ui/` kit has no chart primitive yet. That
   absence is the real cost of this item, not the data.
 
-### 2.5 Android Notification Auto-Capture — **still open; the SMS half should be dropped**
+### 2.5 ~~Android Notification & SMS Auto-Capture~~ — **discarded, 2026-10-11**
 
-* **Opportunity:** genuinely the strongest Android differentiator, and `mmyway`'s
-  `capture → inbox → confirm → sync` pipeline is unusually well suited: a bank notification becomes
-  an `inbox_items` row in the `parsed` state, which is a state the machine already has.
-* **Correction — this is not an `expo-notifications` feature.** `expo-notifications` schedules and
-  receives *this app's* notifications (that is what `src/planned/notifications.ts` uses it for). Reading
-  *other apps'* notifications needs `NotificationListenerService`, i.e. a native module behind a
-  config plugin, plus `BIND_NOTIFICATION_LISTENER_SERVICE` and a user trip through a system settings
-  screen. There is no Expo-managed path. Budget it as native work, not as a screen.
-* **Drop the SMS path.** `READ_SMS` is a Play Store restricted permission; a personal finance app is
-  not an eligible use case under the SMS/Call Log policy, and asking for it risks the listing.
-  Notification access has no such restriction.
-* **Play policy still applies to the notification listener:** it needs a prominent disclosure and a
-  privacy policy stating the data never leaves the device — which, with no backend (§4), is true and
-  easy to say.
+**Not building this.** It is written up here so it does not get re-proposed, not as a deferral.
 
-### 2.6 Biometric App Lock — **still open, unchanged**
+The idea was sound on paper — `mmyway`'s `capture → inbox → confirm → sync` pipeline would take a
+parsed bank notification as an `inbox_items` row in the `parsed` state, a state the machine already
+has. Five things kill it:
 
-`expo-local-authentication` is not a dependency and there is no app-level lock. Biometric /
-device-credential authentication on launch and on resume after a timeout. Cheap, visible, and the
-kind of thing a paying user expects of a finance app. The API token already lives in
-`expo-secure-store` (`src/api/ff3/auth.ts` `TOKEN_KEY`), so this is a gate, not a storage change.
+1. **It is an open-ended text-parsing commitment.** A notification listener is only as good as its
+   parser, and the parser is per bank, per locale, per notification format. Every bank that reskins
+   its copy breaks it *silently* — the app simply stops capturing, which is the worst failure mode a
+   finance app has. That is a maintenance treadmill a one-person app cannot win, and it never ends.
+2. **It is native work in an otherwise managed app.** `expo-notifications` schedules and receives
+   *this app's* notifications (`src/planned/notifications.ts`); reading *other apps'* needs
+   `NotificationListenerService`, `BIND_NOTIFICATION_LISTENER_SERVICE` and a config plugin. There is
+   no Expo-managed path, so it also has to be re-validated on every SDK upgrade.
+3. **The SMS half is not even permitted.** `READ_SMS` is a Play restricted permission and a personal
+   finance app is not an eligible use case under the SMS/Call Log policy. Asking risks the listing.
+4. **It is the one feature that would undercut the privacy story.** A background service observing
+   every notification on the device is a hard thing to put in a store listing next to "nothing
+   leaves your phone", even though §4 makes that literally true.
+5. **The marginal gain is small, because the gap is already covered.** Receipts go through the
+   provider chain in `src/receipt/`; predictable spend goes through the Planned trio and the
+   recurring review; and everything else is the amount-first capture screen, which exists precisely
+   so that typing an amount is a two-second job. Automating away those two seconds is not worth
+   items 1–4.
 
-### 2.7 Homelab Network & TLS Realities — **partly shipped, narrowed**
+**If this is ever revisited**, the honest version is not a notification listener: it is Firefly III's
+own Data Importer against a real bank feed (SimpleFIN, Nordigen/GoCardless), which is somebody
+else's parser to maintain and already part of the ecosystem the app sits in.
 
-* **Shipped:** plain `http://` to a LAN IP or tailnet name works in release builds —
-  `usesCleartextTraffic: true` in `app.config.js`'s `expo-build-properties` block. Host
-  reachability probing, multi-host failover and relayed-connection latency are handled
+### 2.6 Biometric App Lock — **done, 2026-10-11**
+
+Settings → Security → Require unlock. `expo-local-authentication` (`~57.0.3`), the decision in
+`src/lock/appLock.ts` (pure, tested), the overlay in `src/lock/LockGate.tsx` mounted once by
+`app/_layout.tsx` after the `<Stack>` so it covers the modals too.
+
+Three choices worth remembering:
+
+- **No custom PIN screen.** `authenticateAsync` already falls back to the device
+  PIN/pattern/password unless `disableDeviceFallback` is set, so a wet finger is an inconvenience
+  rather than a lockout, and there is no second credential for this app to store.
+- **The last-unlock time is never persisted.** It lives in a ref, so a cold start has nothing to
+  compare against and therefore locks — which is what "lock on launch" has to mean. Persisting it
+  would let killing and reopening the app walk straight past the lock.
+- **Enabling it prompts first, and the toggle refuses when nothing is enrolled**
+  (`canUseAppLock()` = hardware *and* enrolled). Both guard the same failure: being shut out of
+  your own ledger by a lock the phone can no longer satisfy. The grace window is a constant
+  (`LOCK_GRACE_MS`, 2 min), not a setting, chosen so that handing off to the camera for a receipt
+  is not a re-lock.
+
+Deliberately not done: `FLAG_SECURE` to blank the app in the recent-apps switcher. Different
+concern (shoulder-surfing a thumbnail, not access) and it breaks screenshots.
+
+### 2.7 Homelab Network & TLS Realities — **done, 2026-10-11**
+
+* **Was already there:** plain `http://` to a LAN IP or tailnet name in release builds
+  (`usesCleartextTraffic: true` in `app.config.js`'s `expo-build-properties` block), plus host
+  reachability probing, multi-host failover and relayed-connection latency
   (`src/api/ff3/hosts.ts`, `src/sync/reachability.ts`, the 1.9.0 fix).
-* **Still open:**
-  - **Self-signed TLS / private CA.** React Native's `fetch` rejects them and there is no setting.
-    This needs a native trust-store change (an Android network security config, or a plugin), not a
-    JS flag — and "allow insecure TLS" is a switch that must be per-host and loudly labelled.
-  - **Reverse-proxy auth headers.** `src/api/ff3/client.ts` merges `...rest.headers` per request but
-    there is no user-configurable header store. Cloudflare Access
-    (`CF-Access-Client-Id` / `CF-Access-Client-Secret`) and HTTP Basic are the two that matter; both
-    are "a saved key/value list applied to every request", which is one settings screen and one line
-    in `createFF3Client`.
+* **Private-CA HTTPS:** `plugins/withUserCaTrust.js` writes an Android network security config
+  trusting `system` **and** `user` CAs, and points `<application>` at it. So a self-hoster whose
+  Firefly III uses their own CA installs that CA on the phone and it works.
+  - It does **not** disable verification, and should not: "trust anything" would put every install
+    one bad Wi-Fi away from a man-in-the-middle on the whole ledger. A self-signed cert that is not
+    installed on the device is still refused — that is the deliberate limit.
+  - The config carries `cleartextTrafficPermitted="true"`. Not optional: once a network security
+    config exists it overrides `android:usesCleartextTraffic` from API 24, so omitting it would
+    have silently broken every plain-http instance. `plugins/withUserCaTrust.test.js` asserts it.
+  - `expo-build-properties` has no option for this (checked), hence the plugin.
+* **Reverse-proxy auth headers:** `src/api/ff3/proxyHeaders.ts` + Settings → Firefly III →
+  Reverse proxy, with a Cloudflare Access preset.
+  - Stored in SecureStore, not `app_settings` — they are credentials, and that file documents
+    itself as non-secret.
+  - Read by `createFF3Client` from a module-level snapshot rather than threaded through its call
+    sites, so the **sign-in probe** and `imageSource` (receipt thumbnails) get them too. The
+    sign-in path awaits `loadProxyHeaders()` itself, being the one moment a request can beat the
+    snapshot.
+  - Reserved names (`Authorization`, `Accept`, `Content-Type`, …) and CRLF-bearing values are
+    refused at the storage boundary and re-filtered on read.
+  - **HTTP Basic is deliberately not a header here.** It wants the same `Authorization` header as
+    the Bearer token, so one would have to lose; the screen points at
+    `https://user:pass@host` instead, which the host list already accepts.
 
 ### 2.8 Google Play Review Requirements — **still open**
 
@@ -209,17 +253,15 @@ step is a marker in a `notes` field, then a file in the user's own storage — n
 
 Not a schedule. An order, with the reason.
 
+~~§2.6 biometric lock~~ and ~~§2.7 homelab network/TLS~~ are done (2026-10-11), as is the §2.5
+discard. What is left, in order:
+
 1. **`planned-transactions-plan.md` Phase 1** — raise the floor to 6.7.0 and delete the
    delete-and-recreate workaround. Pure subtraction, and it unblocks everything else in that plan.
-2. **§2.6 biometric lock** — smallest item in this document with the largest "this is a real
-   product" signal.
-3. **`ynab-bucket-budgeting-plan.md` Phases 1–3** — read-only Budget tab, assign, auto-fill. The
+2. **`ynab-bucket-budgeting-plan.md` Phases 1–3** — read-only Budget tab, assign, auto-fill. The
    headline feature, and Phase 1 cannot break anyone's ledger.
-4. **§2.1 account CRUD** — unblocks §2.3's remainder and the liability work the bucket plan defers.
-5. **`planned-transactions-plan.md` Phases 2–4** — the repetition editor and the skip.
-6. **§2.7 remainder** — custom headers first (one screen), self-signed TLS second (native).
-7. **§2.8 demo mode** — do it before the store listing, not after the rejection.
-8. **§2.4 cash flow + net worth** — needs a chart primitive in `src/ui/` first.
-9. **§2.5 notification listener** — highest ceiling, highest cost, and the only item here that needs
-   a native module and a Play policy disclosure.
-10. **§2.2 rules surface** — real, but the trio already covers the automation most users will set up.
+3. **§2.1 account CRUD** — unblocks §2.3's remainder and the liability work the bucket plan defers.
+4. **`planned-transactions-plan.md` Phases 2–4** — the repetition editor and the skip.
+5. **§2.8 demo mode** — do it before the store listing, not after the rejection.
+6. **§2.4 cash flow + net worth** — needs a chart primitive in `src/ui/` first.
+7. **§2.2 rules surface** — real, but the trio already covers the automation most users will set up.

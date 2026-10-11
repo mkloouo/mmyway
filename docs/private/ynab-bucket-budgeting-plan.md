@@ -60,7 +60,16 @@ Liabilities are out of scope, as §7.5 recommends, and the Budget screen says so
 | :--- | :--- | :--- | :--- |
 | Variable envelope | Budget + budget limit for the period | `set_budget_limits` | `limit.amount + limit.spent` |
 | Sinking fund / goal | Piggy bank (`target_amount: 0` for open-ended) | `set_piggy_amount` | `current_amount` |
-| Fixed obligation | The existing Planned trio | nothing new — read-only roll-up | `paid_dates` vs `pay_dates` |
+| Fixed obligation | The existing Planned trio | nothing new — read-only roll-up | `next_expected_match` (see below) |
+
+**Correction (2026-10-11), found by the agent implementing this plan.** An earlier version of this
+table said "`paid_dates` vs `pay_dates`". Those two arrays are **empty** in what the app caches:
+`SubscriptionEnrichment` returns early unless both a `start` and an `end` are set (L238), and
+`pullPlanned` calls `/v1/bills` with no date range (`src/planned/objects.ts`). Rather than add a
+dated bills pull — `src/planned/` belongs to another workstream — read **`next_expected_match`**
+from the existing cache: it is Firefly III's own "next due date given what has already been paid",
+so a bill settled this period drops out of Allocated by itself. Ceiling to mark with a `ponytail:`
+comment: a bill due twice in one period is counted once.
 
 **Carry-over is always on, and it lives in the amount.** To carry 200 zł of unspent groceries into
 November, November's limit amount must be November's assignment *plus* 200. There is nowhere else to

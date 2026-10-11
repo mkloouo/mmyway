@@ -16,12 +16,19 @@ import { useTheme } from '../src/ui/theme';
 import { Button } from '../src/ui/components';
 import { useSharedImages } from '../src/receipt/useSharedImages';
 import { installLogCapture, logLine } from '../src/utils/log';
+import { loadProxyHeaders } from '../src/api/ff3/proxyHeaders';
 import '../src/i18n';
 import { LocaleSync } from '../src/i18n/LocaleSync';
+import { LockGate } from '../src/lock/LockGate';
 import NetInfo from '@react-native-community/netinfo';
 import { registerBackgroundSync } from '../src/sync/backgroundSync';
 
 installLogCapture();
+
+// Fills the snapshot every FF3 request merges (src/api/ff3/proxyHeaders.ts). At module scope so it
+// is in flight before the first screen mounts; the sign-in path awaits it itself, since that is the
+// only moment a request can beat this.
+void loadProxyHeaders();
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -177,6 +184,8 @@ export default function RootLayout() {
               <Stack.Screen name="draft/[id]" options={MODAL} />
               <Stack.Screen name="count" options={MODAL} />
             </Stack>
+            {/* Last inside the provider, so the overlay covers the modals too, not just the tabs. */}
+            <LockGate />
           </DbProvider>
         </QueryClientProvider>
       </SafeAreaProvider>

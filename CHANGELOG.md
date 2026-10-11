@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Security
+
+- **App lock.** Settings → Security → Require unlock asks for your fingerprint, face, or screen lock when the app opens, and again when it has been in the background for more than a couple of minutes. Switching to the camera or the gallery to add a receipt does not re-lock it. Turning it on prompts once first, so a lock you cannot pass can never be switched on, and the option stays unavailable until the phone has a fingerprint, face unlock, or screen lock of its own.
+
+### Settings
+
+- **Firefly III behind an authenticating reverse proxy.** Settings → Firefly III → Reverse proxy takes extra headers and sends them with every request — the sign-in check and receipt thumbnail downloads included — so an instance behind Cloudflare Access can be reached. There is a one-tap preset for Cloudflare's `CF-Access-Client-Id` and `CF-Access-Client-Secret`. Values are stored as securely as your API key and stay hidden on screen. For HTTP Basic, put the credentials in the address instead, as `https://user:password@your-host`.
+- **HTTPS with your own certificate authority.** If your Firefly III uses a certificate from a private CA — your own, or one your router or NAS issued — the app now accepts it, provided that CA is installed on the phone (Settings → Security → Encryption & credentials → Install a certificate → CA certificate). Certificates are still checked: one that chains to nothing the phone trusts is still refused.
+
 ## [1.10.1] - 2026-10-11
 
 ### Fixed

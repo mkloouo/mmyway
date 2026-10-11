@@ -3,6 +3,7 @@
 // (app/e2e-sign-in.tsx).
 import { readStoredCredentials, signIn } from '../api/ff3/auth';
 import { readHosts } from '../api/ff3/hosts';
+import { loadProxyHeaders } from '../api/ff3/proxyHeaders';
 import type { AuthErrorReason } from '../api/ff3/types';
 import i18n from '../i18n';
 import {
@@ -38,6 +39,10 @@ export async function connectToInstance(
   host: string,
   token: string,
 ): Promise<ConnectResult> {
+  // Awaited rather than left to the snapshot app/_layout.tsx fills: signing in is the one moment
+  // the proxy's headers are needed before anything has had a chance to load them, and without them
+  // an instance behind Cloudflare Access fails sign-in with FF3 never being reached at all.
+  await loadProxyHeaders();
   const switching = !!(await readStoredCredentials()) && !isSameInstance(await readHosts(), host);
   if (switching) {
     const count = await queuedOperationCount(db);
