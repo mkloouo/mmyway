@@ -54,5 +54,3 @@ build-*.apk
 /.ff3-test/
 /e2e-results/
 
-# internal research and docs
-docs/private/
