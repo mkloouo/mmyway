@@ -134,6 +134,18 @@ export const plannedObjects = sqliteTable('planned_objects', {
   syncedAt: text('synced_at').notNull(),
 });
 
+// The Budget tab's envelopes and sinking funds: FF3's budget limits, per-budget spending and piggy
+// banks, cached the same way planned_objects caches bills (read through src/bucket/objects.ts, the
+// whole table replaced on each pull). reference_budgets keeps the names; this keeps the money.
+export const bucketObjects = sqliteTable('bucket_objects', {
+  key: text('key').primaryKey(), // `${kind}:${ff3Id}` or `${kind}:${ff3Id}:${periodStart}`
+  kind: text('kind', { enum: ['budget_limit', 'piggy', 'budget_spent'] }).notNull(),
+  ff3Id: text('ff3_id').notNull(), // the budget's id for budget_limit/budget_spent, the piggy's own otherwise
+  periodStart: text('period_start'), // YYYY-MM-DD; null for a piggy bank, which has no period
+  attributesJson: text('attributes_json').notNull(),
+  syncedAt: text('synced_at').notNull(),
+});
+
 export const appSettings = sqliteTable('app_settings', {
   key: text('key').primaryKey(),
   value: text('value').notNull(),

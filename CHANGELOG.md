@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Budget
+
+- **New Budget tab: envelope budgeting on top of Firefly III.** A fifth tab that shows where this month's money actually is: **Ready to assign** — what your accounts hold minus everything already set aside — one envelope per Firefly III budget with what is left in it, your sinking funds, and the subscriptions due this month. Overspent envelopes are called out. It all reads from your own Firefly III (budgets, budget limits and piggy banks), so Firefly III's web interface keeps showing the same numbers. The tab also says, right where you read the figure, why Firefly III's own "left to budget" is a different number.
+
 ## [1.10.1] - 2026-10-11
 
 ### Fixed

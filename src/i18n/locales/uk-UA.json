@@ -112,6 +112,21 @@
     "testAll": "Перевірте все",
     "testing": "Тестування…"
   },
+  "budget": {
+    "title": "",
+    "readyToAssign": "",
+    "breakdown": "",
+    "differsFromFireflyNote": "",
+    "envelopes": "",
+    "envelopeLine": "",
+    "noEnvelopesTitle": "",
+    "noEnvelopesHint": "",
+    "funds": "",
+    "fundOfTarget": "",
+    "fundOpenEnded": "",
+    "fundBy": "",
+    "dueThisPeriod": ""
+  },
   "capture": {
     "attach": "Прикріпити",
     "attached": "Додано ✓",

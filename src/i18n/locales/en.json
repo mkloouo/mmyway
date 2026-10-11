@@ -108,6 +108,21 @@
     "testAll": "Test all",
     "testing": "Testing…"
   },
+  "budget": {
+    "title": "Budget",
+    "readyToAssign": "Ready to assign",
+    "breakdown": "{{cash}} in accounts · {{allocated}} allocated",
+    "differsFromFireflyNote": "Firefly III's own \"left to budget\" is a different number — the record it rests on can't be kept up over the API, so this is worked out from your accounts, envelopes and funds. Loans and credit cards are left out.",
+    "envelopes": "Envelopes",
+    "envelopeLine": "{{assigned}} available · {{spent}} spent",
+    "noEnvelopesTitle": "No budgets yet",
+    "noEnvelopesHint": "Create a budget in Firefly III and it shows up here as an envelope after the next sync.",
+    "funds": "Sinking funds",
+    "fundOfTarget": "of {{target}}",
+    "fundOpenEnded": "No target",
+    "fundBy": "by {{date}}",
+    "dueThisPeriod": "Due this month"
+  },
   "capture": {
     "attach": "Attach",
     "attached": "Attached ✓",

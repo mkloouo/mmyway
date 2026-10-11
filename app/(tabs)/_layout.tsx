@@ -53,6 +53,13 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="budget"
+        options={{
+          title: tr('budget.title'),
+          tabBarIcon: ({ color, size }) => <Ionicons name="pie-chart" color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
         name="settings"
         options={{
           title: tr('settings.title'),

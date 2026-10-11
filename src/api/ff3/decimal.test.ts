@@ -1,5 +1,7 @@
 import {
   addDecimal,
+  compareDecimal,
+  subtractDecimal,
   isNegative,
   divideDecimal,
   parseDecimalInput,
@@ -16,6 +18,26 @@ describe('addDecimal', () => {
   });
   it('handles negatives', () => {
     expect(addDecimal('-5.00', '2.50')).toBe('-2.50');
+  });
+});
+
+describe('subtractDecimal', () => {
+  it('subtracts across scales and signs', () => {
+    expect(subtractDecimal('16.00', '3.99')).toBe('12.01');
+    expect(subtractDecimal('12', '0.5')).toBe('11.5');
+    expect(subtractDecimal('5.00', '-3.00')).toBe('8.00');
+    expect(subtractDecimal('3.00', '5.00')).toBe('-2.00');
+    expect(subtractDecimal('5.00', '0')).toBe('5.00');
+  });
+});
+
+describe('compareDecimal', () => {
+  it('orders amounts without going through a float', () => {
+    expect(compareDecimal('10.00', '9.999')).toBe(1);
+    expect(compareDecimal('10', '10.000')).toBe(0);
+    expect(compareDecimal('-0.01', '0')).toBe(-1);
+    // 0.1 + 0.2 as doubles is 0.30000000000000004; as strings it is exactly 0.3.
+    expect(compareDecimal(addDecimal('0.1', '0.2'), '0.3')).toBe(0);
   });
 });
 
