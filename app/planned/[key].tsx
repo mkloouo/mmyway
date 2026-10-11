@@ -37,13 +37,12 @@ import { useMerchantHistories } from '../../src/lookup/useMerchantHistories';
 import { useRecentTags } from '../../src/lookup/recentTags';
 import { getDefaultCurrencyCode, getDefaultSourceAccountId } from '../../src/settings/appSettings';
 import { usePlanned } from '../../src/planned/usePlanned';
-import {
-  FREQUENCIES,
-  plannedProblems,
-  samePlannedFields,
-  type PlannedFields,
-} from '../../src/planned/model';
-import { dayLabel, frequencyName } from '../../src/planned/labels';
+import { plannedProblems, samePlannedFields, type PlannedFields } from '../../src/planned/model';
+import { defaultRepetition } from '../../src/planned/repetition';
+import { toggleSkipDay } from '../../src/planned/notes';
+import { dayLabel, endLabel, scheduleLabel } from '../../src/planned/labels';
+import { ScheduleRows } from '../../src/ui/ScheduleRows';
+import { OccurrenceRows } from '../../src/ui/OccurrenceRows';
 import { deletePlanned, savePlanned, triggerPlanned } from '../../src/planned/actions';
 import type { PlannedItem } from '../../src/planned/items';
 import { localDay } from '../../src/utils/day';
@@ -63,10 +62,11 @@ function blank(): PlannedFields {
     currencyCode: '',
     notes: null,
     repeats: true,
-    frequency: 'monthly',
-    every: 1,
+    repetitions: [defaultRepetition(localDay())],
+    end: { kind: 'forever' },
     date: localDay(),
     time: null,
+    skipDays: [],
     categoryName: null,
     tags: [],
   };
@@ -113,7 +113,7 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
   const [fields, setFields] = useState<PlannedFields>(() => item?.fields ?? blank());
   const recentTags = useRecentTags();
   const [sheet, setSheet] = useState<
-    'amount' | 'currency' | 'own' | 'ownTo' | 'payee' | 'category' | 'frequency' | null
+    'amount' | 'currency' | 'own' | 'ownTo' | 'payee' | 'category' | null
   >(null);
   // What the user chose themselves: a payee's history never overwrites those. The default
   // account a new one starts with isn't a choice, so history may replace it.
@@ -224,6 +224,27 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
     await triggerPlanned(db, item);
     router.back();
   });
+
+  /**
+   * Firefly III has no way to miss a single occurrence — `active: false` pauses the whole
+   * recurrence — so a skipped date is recorded in the recurring transaction's notes and the app
+   * deletes the transaction as soon as FF3 books it. Queued as an ordinary save.
+   */
+  function onToggleSkip(day: string) {
+    const skipping = !fields.skipDays.includes(day);
+    const apply = () => set({ skipDays: toggleSkipDay(fields.skipDays, day, localDay()) });
+    if (!skipping) {
+      Alert.alert(tr('planned.unskipTitle', { date: dayLabel(day) }), undefined, [
+        { text: tr('common.cancel'), style: 'cancel' },
+        { text: tr('planned.unskip'), onPress: apply },
+      ]);
+      return;
+    }
+    Alert.alert(tr('planned.skipTitle', { date: dayLabel(day) }), tr('planned.skipBody'), [
+      { text: tr('common.cancel'), style: 'cancel' },
+      { text: tr('planned.skip'), style: 'destructive', onPress: apply },
+    ]);
+  }
 
   function onTrigger() {
     if (!item) return;
@@ -360,39 +381,12 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
             hint={tr('planned.repeatsHint')}
           />
           {fields.repeats && (
-            <>
-              <Row
-                label={tr('planned.frequencyLabel')}
-                value={frequencyName(fields.frequency)}
-                chevron
-                onPress={() => setSheet('frequency')}
-              />
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: t.space.md,
-                  paddingVertical: t.space.sm,
-                  borderTopWidth: 1,
-                  borderTopColor: t.color.border,
-                }}
-              >
-                <Text style={[t.type.body, { color: t.color.textMuted, flex: 1 }]}>
-                  {tr('planned.everyN', { count: fields.every })}
-                </Text>
-                <Button
-                  title="−"
-                  variant="secondary"
-                  onPress={() => set({ every: Math.max(1, fields.every - 1) })}
-                  disabled={fields.every <= 1}
-                />
-                <Button
-                  title="+"
-                  variant="secondary"
-                  onPress={() => set({ every: fields.every + 1 })}
-                />
-              </View>
-            </>
+            <Row
+              label={tr('planned.frequencyLabel')}
+              value={[scheduleLabel(fields, item?.group), endLabel(fields.end)]
+                .filter(Boolean)
+                .join(' · ')}
+            />
           )}
         </Card>
         {!!fields.time && (
@@ -405,6 +399,24 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
             {tr('planned.timeHint')}
           </Text>
         )}
+
+        {fields.repeats && (
+          <ScheduleRows
+            repetitions={fields.repetitions}
+            end={fields.end}
+            date={fields.date}
+            onChange={(patch) => set(patch)}
+          />
+        )}
+
+        <OccurrenceRows
+          repetitions={fields.repetitions}
+          repeats={fields.repeats}
+          date={fields.date}
+          skipDays={fields.skipDays}
+          recurrenceId={item?.group?.recurrence?.id ?? null}
+          onToggleSkip={onToggleSkip}
+        />
 
         <SectionHeader title={tr('planned.sectionMore')} />
         {!!item?.group?.recurrence && (
@@ -515,17 +527,6 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
           set({ categoryName });
         }}
         noneLabel={tr('common.none')}
-      />
-      <PickerSheet
-        visible={sheet === 'frequency'}
-        onClose={() => setSheet(null)}
-        title={tr('planned.frequencyLabel')}
-        options={FREQUENCIES.map((f) => ({ key: f, label: frequencyName(f) }))}
-        selected={fields.frequency}
-        onSelect={(f) => {
-          const found = FREQUENCIES.find((x) => x === f);
-          if (found) set({ frequency: found });
-        }}
       />
     </Screen>
   );

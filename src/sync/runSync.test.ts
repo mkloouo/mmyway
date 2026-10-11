@@ -38,7 +38,7 @@ function signedInWith(hosts: string[], alive: (host: string) => boolean = () => 
   (readStoredCredentials as jest.Mock).mockResolvedValue({ host: hosts[0], apiToken: 'tok' });
   (readHosts as jest.Mock).mockResolvedValue(hosts);
   (probeAbout as jest.Mock).mockImplementation(async (host: string) =>
-    alive(host) ? { ok: true, apiVersion: '6.3.2' } : { ok: false, reason: 'invalid_host' },
+    alive(host) ? { ok: true, apiVersion: '6.7.0' } : { ok: false, reason: 'invalid_host' },
   );
 }
 

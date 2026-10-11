@@ -17,6 +17,7 @@ import {
   getLocalModelName,
   getLocale,
   getPlannedNotificationsEnabled,
+  getPlannedReminderLead,
   getRecordLocation,
 } from './appSettings';
 
@@ -35,6 +36,7 @@ interface AppSettingsSnapshot {
   locale: AppLocale;
   recordLocation: boolean;
   plannedNotifications: boolean;
+  plannedReminderLead: number;
 }
 
 export const SETTINGS_QUERY_KEY = ['settings'] as const;
@@ -55,6 +57,7 @@ export async function loadSettings(db: OutboxDb): Promise<AppSettingsSnapshot> {
     locale,
     recordLocation,
     plannedNotifications,
+    plannedReminderLead,
   ] = await Promise.all([
     readStoredCredentials(),
     readHosts(),
@@ -70,6 +73,7 @@ export async function loadSettings(db: OutboxDb): Promise<AppSettingsSnapshot> {
     getLocale(db),
     getRecordLocation(db),
     getPlannedNotificationsEnabled(db),
+    getPlannedReminderLead(db),
   ]);
   return {
     signedIn: !!creds,
@@ -86,5 +90,6 @@ export async function loadSettings(db: OutboxDb): Promise<AppSettingsSnapshot> {
     locale,
     recordLocation,
     plannedNotifications,
+    plannedReminderLead,
   };
 }

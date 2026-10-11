@@ -45,7 +45,9 @@ tags:
 - runFlow: ../../subflows/home.yaml
 - tapOn: 'Planned'
 - tapOn: 'P1 ${RUN_ID}'
-- tapOn: 'Frequency'
+# The schedule is a list of repetitions now, each with its own type: "How often" is the first
+# row of the first one. 'Repeat' would also match the "Repeats" checkbox above it.
+- tapOn: 'How often'
 - tapOn: 'Weekly'
 - tapOn: 'Save'
 - runScript:

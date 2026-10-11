@@ -13,7 +13,14 @@ import { accountResolver } from '../sync/accountIds';
 import { createFF3Service } from '../api/ff3/service';
 import type { OutboxDb } from '../sync/outbox';
 import { writePayload } from '../sync/payloadJson';
-import { billBody, recurrenceBody, ruleBody, scheduleChanged, type PlannedFields } from './model';
+import {
+  billBody,
+  normalizeFields,
+  recurrenceBody,
+  ruleBody,
+  scheduleChanged,
+  type PlannedFields,
+} from './model';
 import {
   fetchAllOf,
   plannedPath,
@@ -32,10 +39,6 @@ export interface SavePlannedPayload {
   billId?: string | null;
   ruleId?: string | null;
   recurrenceId?: string | null;
-  /** Set once this save replaced the recurring transaction (see replaySavePlanned); not again on a retry. */
-  recurrenceReplaced?: boolean;
-  /** Recurring transactions being replaced, deleted before the new one is created. */
-  replacedRecurrenceIds?: string[];
 }
 
 export interface DeletePlannedPayload {
@@ -112,7 +115,11 @@ export async function replaySavePlanned(
   opId: string,
   payload: SavePlannedPayload,
 ): Promise<void> {
-  const p = { ...payload };
+  const p = {
+    ...payload,
+    fields: normalizeFields(payload.fields),
+    before: payload.before ? normalizeFields(payload.before) : null,
+  };
   const remember = () =>
     db
       .update(outboxOperations)
@@ -147,29 +154,13 @@ export async function replaySavePlanned(
     f.destinationId ?? (await resolve(f.type, 'destination', f.destinationName ?? ''));
   const categoryId = f.categoryName ? await categoryIdFor(db, client, f.categoryName) : null;
 
-  // FF3's recurrence *update* validates a repetition's moment as a number up to 10, where create
-  // takes up to 10 characters: a yearly moment (a date) fails with "must be a number", a monthly
-  // one after the 10th with "may not be greater than 10". So a schedule change replaces the
-  // recurring transaction instead of updating it: the old one is deleted first (never two booking
-  // at once), then a new one is created with the whole schedule. Recorded at each step, so a retry
-  // carries on rather than replacing again.
-  // A new save (no `before`) has nothing to replace: a retry's recurring transaction is its own.
-  if (p.recurrenceId && !p.recurrenceReplaced && p.before && scheduleChanged(p.before, f)) {
-    p.replacedRecurrenceIds = [...(p.replacedRecurrenceIds ?? []), p.recurrenceId];
-    p.recurrenceId = null;
-    p.recurrenceReplaced = true;
-    await remember();
-  }
-  if (p.replacedRecurrenceIds?.length) {
-    for (const old of p.replacedRecurrenceIds) {
-      await deleteIfPresent(client, 'recurrence', old);
-      await storePlanned(db, 'recurrence', old, null);
-    }
-    p.replacedRecurrenceIds = [];
-    await remember();
-  }
+  // A schedule change is a plain PUT. FF3 6.7.0 — the app's floor (src/api/ff3/auth.ts) — validates
+  // a repetition's `moment` as a string on update, as create always did; older releases read it as
+  // a number, which no yearly moment (a date) and no monthly one past the 10th could satisfy, so
+  // the app used to delete the recurring transaction and create a replacement for every schedule
+  // edit, losing its id and with it the `mmyway-` markers kept in its notes.
 
-  // Found by title: an earlier attempt of this save made it, with this very schedule.
+  // Found by title: an earlier attempt of this save made it.
   let adoptedRecurrence = false;
   if (!p.recurrenceId) {
     const adopted = await adoptExisting(client, 'recurrence', f.name);
@@ -180,31 +171,55 @@ export async function replaySavePlanned(
     }
   }
   let transactionId: string | null = null;
-  let repetitionId: string | null = null;
+  let storedRepetitions = 0;
+  let storedNotes: string | null = null;
   if (p.recurrenceId) {
     const current = await client.request<Read<RecurrenceAttributes>>(
       plannedPath('recurrence', p.recurrenceId),
     );
     transactionId = current.data.attributes.transactions?.[0]?.id ?? null;
-    repetitionId = current.data.attributes.repetitions?.[0]?.id ?? null;
+    storedRepetitions = current.data.attributes.repetitions?.length ?? 0;
+    storedNotes = current.data.attributes.notes ?? null;
   }
-  // An existing one is sent what changed; after a replacement, or when found by title, it already
-  // has this schedule (as does a retry of a new save's own).
-  const recurrenceBefore = p.recurrenceId
-    ? p.recurrenceReplaced || adoptedRecurrence || !p.before
-      ? f
-      : p.before
-    : null;
+  // An existing one is sent what changed; one found by title already has this schedule (as does a
+  // retry of a new save's own).
+  const recurrenceBefore = p.recurrenceId ? (adoptedRecurrence || !p.before ? f : p.before) : null;
+  const body = (overrideRepetitions?: readonly PlannedFields['repetitions'][number][]) =>
+    recurrenceBody({ ...f, sourceId, destinationId }, recurrenceBefore, {
+      billId: p.billId,
+      transactionId,
+      categoryId,
+      existingNotes: storedNotes,
+      ...(overrideRepetitions ? { overrideRepetitions } : {}),
+    });
+
+  /**
+   * `updateRepetitions` only *matches* submitted repetitions to stored ones when the stored count
+   * is greater than one and the submitted count equals it — and `matchRepetition` queries on every
+   * field, so a changed `type`, `moment`, `skip` or `weekend` matches nothing and FF3 throws
+   * "Cannot match recurring repetition to existing repetition." Sending one repetition first makes
+   * both counts differ, so each PUT takes the delete-and-recreate branch instead. A failure between
+   * the two leaves a valid single-repetition recurrence, and the replay converges on the next
+   * attempt because the final body is idempotent.
+   */
+  const needsTwoStep =
+    !!p.recurrenceId &&
+    storedRepetitions > 1 &&
+    f.repetitions.length === storedRepetitions &&
+    scheduleChanged(recurrenceBefore, f);
+  if (needsTwoStep && f.repetitions[0])
+    await send<Record<string, unknown>>(
+      client,
+      'recurrence',
+      p.recurrenceId,
+      body([f.repetitions[0]]),
+    );
+
   const recurrence = await send<Record<string, unknown>>(
     client,
     'recurrence',
     p.recurrenceId,
-    recurrenceBody({ ...f, sourceId, destinationId }, recurrenceBefore, {
-      billId: p.billId,
-      transactionId,
-      repetitionId,
-      categoryId,
-    }),
+    needsTwoStep ? body(f.repetitions) : body(),
   );
   if (!p.recurrenceId) {
     p.recurrenceId = String(recurrence.data.id);
@@ -219,15 +234,15 @@ export async function replaySavePlanned(
       await remember();
     }
   }
-  let body: Record<string, unknown>;
+  let rules: Record<string, unknown>;
   if (p.ruleId) {
     // Read now, not when the edit was queued: the rule's own triggers may have changed in FF3.
     const current = await client.request<Read<RuleAttributes>>(plannedPath('rule', p.ruleId));
-    body = ruleBody(f, current.data.attributes, p.before?.name ?? null, null);
+    rules = ruleBody(f, current.data.attributes, p.before?.name ?? null, null);
   } else {
-    body = ruleBody(f, null, null, await ensureRuleGroup(client));
+    rules = ruleBody(f, null, null, await ensureRuleGroup(client));
   }
-  const rule = await send<Record<string, unknown>>(client, 'rule', p.ruleId, body);
+  const rule = await send<Record<string, unknown>>(client, 'rule', p.ruleId, rules);
   if (!p.ruleId) {
     p.ruleId = String(rule.data.id);
     await remember();
@@ -258,6 +273,10 @@ export async function replayDeletePlanned(
  * recurrence that fires nothing for that date simply creates nothing. The booked transaction
  * reaches the Inbox as a review card on the next sync (src/sync/recurringReview.ts), like one the
  * nightly cron booked. A recurrence deleted in the meantime is nothing left to fire.
+ *
+ * The date in the query says *which occurrence* to fire, not what the transaction is dated:
+ * `TriggerController` calls `markGroupsAsNow()`, so the journal FF3 creates is dated **today**
+ * whatever occurrence fired it, and `latest_date` is put back afterwards.
  */
 export async function replayTriggerPlanned(
   client: FF3Client,

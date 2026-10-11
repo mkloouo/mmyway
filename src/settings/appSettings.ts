@@ -25,6 +25,7 @@ const KEYS = {
   plannedMode: 'planned_mode',
   recordLocation: 'record_location',
   plannedNotificationsEnabled: 'planned_notifications_enabled',
+  plannedReminderLead: 'planned_reminder_lead_days',
 } as const;
 
 async function getSetting(db: OutboxDb, key: string): Promise<string | null> {
@@ -206,3 +207,21 @@ export async function getPlannedNotificationsEnabled(db: OutboxDb): Promise<bool
 }
 export const setPlannedNotificationsEnabled = (db: OutboxDb, value: boolean) =>
   setSetting(db, KEYS.plannedNotificationsEnabled, value ? '1' : '0');
+
+/**
+ * How many days before a planned transaction its reminder arrives, besides the one on the day
+ * itself. 2 is what the app shipped with, so an install that never touches this keeps it.
+ */
+export const PLANNED_REMINDER_LEADS: readonly number[] = [0, 1, 2, 3, 7];
+export const DEFAULT_PLANNED_REMINDER_LEAD = 2;
+function parsePlannedReminderLead(raw: string | null | undefined): number {
+  // Not `Number(raw)`: `Number(null)` and `Number('')` are both 0, which is a value the user can
+  // choose ("only on the day") — an unset setting has to mean the default, not that.
+  if (raw == null || raw === '') return DEFAULT_PLANNED_REMINDER_LEAD;
+  const value = Number(raw);
+  return PLANNED_REMINDER_LEADS.includes(value) ? value : DEFAULT_PLANNED_REMINDER_LEAD;
+}
+export const getPlannedReminderLead = async (db: OutboxDb) =>
+  parsePlannedReminderLead(await getSetting(db, KEYS.plannedReminderLead));
+export const setPlannedReminderLead = (db: OutboxDb, value: number) =>
+  setSetting(db, KEYS.plannedReminderLead, String(value));

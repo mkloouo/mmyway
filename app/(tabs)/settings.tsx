@@ -47,9 +47,11 @@ import {
   setLocale,
   setRecordLocation,
   setPlannedNotificationsEnabled,
+  setPlannedReminderLead,
+  PLANNED_REMINDER_LEADS,
 } from '../../src/settings/appSettings';
 import { syncPlannedNotifications } from '../../src/planned/notifications';
-import type { AppLocale } from '../../src/i18n';
+import i18n, { type AppLocale } from '../../src/i18n';
 import { TextField } from '../../src/ui/TextField';
 import { PickerSheet } from '../../src/ui/PickerSheet';
 import { Checkbox } from '../../src/ui/Checkbox';
@@ -72,6 +74,13 @@ function shortLabel(url: string): string {
   } catch {
     return url;
   }
+}
+
+/** "2 days before, and on the day" — or "Only on the day" for no lead at all. */
+function reminderLeadName(days: number): string {
+  return days === 0
+    ? i18n.t('planned.reminderLeadNone')
+    : i18n.t('planned.reminderLead', { count: days });
 }
 
 export default function SettingsScreen() {
@@ -110,6 +119,7 @@ export default function SettingsScreen() {
   const locale: AppLocale = settings?.locale ?? 'system';
   const recordLocation = settings?.recordLocation ?? true;
   const plannedNotifications = settings?.plannedNotifications ?? false;
+  const plannedReminderLead = settings?.plannedReminderLead ?? 2;
   // The one setting that is typed before it's saved, so it needs a draft of its own.
   const [localModelNameInput, setLocalModelNameInput] = useState<string | null>(null);
   const localModelName = localModelNameInput ?? settings?.localModelName ?? '';
@@ -127,6 +137,7 @@ export default function SettingsScreen() {
     | 'currency'
     | 'cashAccount'
     | 'language'
+    | 'reminderLead'
     | null
   >(null);
 
@@ -159,6 +170,11 @@ export default function SettingsScreen() {
       }
     }
     await setPlannedNotificationsEnabled(db, next);
+    await reload();
+    await syncPlannedNotifications(db, currencies);
+  });
+  const chooseReminderLead = act(tr('planned.reminderLead'), async (days: number) => {
+    await setPlannedReminderLead(db, days);
     await reload();
     await syncPlannedNotifications(db, currencies);
   });
@@ -324,6 +340,14 @@ export default function SettingsScreen() {
             label={tr('settings.plannedNotifications')}
             hint={tr('settings.plannedNotificationsHint')}
           />
+          {plannedNotifications && (
+            <Row
+              label={tr('planned.reminderLead')}
+              value={reminderLeadName(plannedReminderLead)}
+              chevron
+              onPress={() => setSheet('reminderLead')}
+            />
+          )}
         </Card>
 
         <SectionHeader title={tr('accounts.title')} />
@@ -553,6 +577,19 @@ export default function SettingsScreen() {
           await setLocale(db, next);
           await reload();
         })}
+      />
+      <PickerSheet
+        visible={sheet === 'reminderLead'}
+        onClose={() => setSheet(null)}
+        title={tr('planned.reminderLead')}
+        options={PLANNED_REMINDER_LEADS.map((days) => ({
+          key: String(days),
+          label: reminderLeadName(days),
+        }))}
+        selected={String(plannedReminderLead)}
+        onSelect={(value) => {
+          if (value != null) void chooseReminderLead(Number(value));
+        }}
       />
     </Screen>
   );

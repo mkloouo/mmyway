@@ -17,10 +17,11 @@ const fields: PlannedFields = {
   currencyCode: 'PLN',
   notes: null,
   repeats: true,
-  frequency: 'monthly',
-  every: 1,
+  repetitions: [{ type: 'monthly', moment: '5', skip: 0, weekend: 1 }],
+  end: { kind: 'forever' },
   date: '2026-10-05',
   time: null,
+  skipDays: [],
   categoryName: null,
   tags: [],
 };
@@ -79,29 +80,33 @@ describe('savePlanned', () => {
     ]);
   });
 
-  it('after the recurring transaction was replaced, replaces it again only if the schedule moves further', async () => {
+  it('keeps `before` as what FF3 holds when a failed save is merged into', async () => {
     const db = createTestDb();
     await savePlanned(db as any, inFF3, { ...fields, date: '2026-10-12' });
-    // A first attempt replaced the recurring transaction (so it has the 12th), then failed on the rule.
+    // A first attempt reached FF3's recurring transaction, then failed on the rule.
     const [op] = await db.select().from(outboxOperations);
     const sent = readPayload<SavePlannedPayload>(op!.kind, op!.payloadJson);
-    await db.update(outboxOperations).set({
-      status: 'failed',
-      payloadJson: JSON.stringify({
-        ...sent,
-        recurrenceId: '30',
-        recurrenceReplaced: true,
-        v: 1,
-      }),
-    });
+    await db
+      .update(outboxOperations)
+      .set({ status: 'failed', payloadJson: JSON.stringify({ ...sent, v: 1 }) });
 
     await savePlanned(db as any, inFF3, { ...fields, date: '2026-10-12', amount: '65' });
     const [merged] = await saves(db);
+    // One operation, the new fields on it, and `before` still FF3's: the schedule diff stays right.
+    expect(await saves(db)).toHaveLength(1);
     expect(merged!.payload).toMatchObject({
-      recurrenceId: '30',
-      recurrenceReplaced: false,
-      before: { date: '2026-10-12', amount: '60' },
+      recurrenceId: '3',
+      fields: { date: '2026-10-12', amount: '65' },
+      before: { date: '2026-10-05', amount: '60' },
     });
+    expect(merged!.status).toBe('pending');
+  });
+
+  it('records a skipped occurrence as an ordinary save', async () => {
+    const db = createTestDb();
+    await savePlanned(db as any, inFF3, { ...fields, skipDays: ['2026-11-05'] });
+    const [queued] = await saves(db);
+    expect(queued!.payload).toMatchObject({ fields: { skipDays: ['2026-11-05'] } });
   });
 
   it('leaves a save that is already being sent alone and queues another', async () => {

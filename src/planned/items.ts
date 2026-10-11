@@ -1,7 +1,14 @@
 // What the Planned tab's simple view lists: FF3's objects grouped by name, with the saves and
 // deletes still waiting in the queue already applied, so an edit made offline shows at once.
 // Pure, no db.
-import { byDate, fieldsOf, groupPlanned, type PlannedFields, type PlannedGroup } from './model';
+import {
+  byDate,
+  fieldsOf,
+  groupPlanned,
+  normalizeFields,
+  type PlannedFields,
+  type PlannedGroup,
+} from './model';
 import type { PlannedObject } from './objects';
 import type { DeletePlannedPayload, SavePlannedPayload } from './replay';
 import { tryReadPayload } from '../sync/payloadJson';
@@ -61,11 +68,11 @@ export function plannedItems(
       continue;
     }
     const save = payload as SavePlannedPayload;
+    // A save queued by an older build carries five presets instead of a repetitions array.
+    const fields = normalizeFields(save.fields);
     if (index >= 0)
-      list = list.map((item, i) =>
-        i === index ? { ...item, fields: save.fields, queued: true } : item,
-      );
-    else list = [...list, { key: save.key, fields: save.fields, group: null, queued: true }];
+      list = list.map((item, i) => (i === index ? { ...item, fields, queued: true } : item));
+    else list = [...list, { key: save.key, fields, group: null, queued: true }];
   }
   // A planned transaction is the whole trio. A subscription, rule or recurring transaction on its
   // own (or a pair) is only in the detailed view — unless a save here is on its way to complete it.

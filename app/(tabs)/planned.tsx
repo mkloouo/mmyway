@@ -189,7 +189,7 @@ export default function PlannedScreen() {
                   >
                     {[
                       f.categoryName,
-                      scheduleLabel(f),
+                      scheduleLabel(f, item.group),
                       tr('planned.next', { date: dayLabel(f.date) }),
                     ]
                       .filter(Boolean)
