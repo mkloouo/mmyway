@@ -55,4 +55,4 @@ build-*.apk
 /e2e-results/
 
 # internal research and docs
-docs/inner/
+docs/private/
