@@ -1,10 +1,5 @@
 {
-  "basedOn": "6.7.6",
-  "patches": [
-    {
-      "file": "BillUpdateRequest.php",
-      "target": "/var/www/html/app/Api/V1/Requests/Models/Bill/UpdateRequest.php",
-      "why": "Lets a bill update send notes: null, so the app can clear a planned transaction's note. Upstream 6.7.6 rejects it ('notes' => ['min:1', ...]). The same file is mounted on the production server."
-    }
-  ]
+  "basedOn": "6.7.7",
+  "patches": [],
+  "why": "Nothing is patched any more. 6.7.7 released the `nullable` on a bill update's `notes` rule (app/Api/V1/Requests/Models/Bill/UpdateRequest.php L92) and the `['nullable','string','min:0','max:10']` on a recurrence update's `repetitions.*.moment` (Recurrence/UpdateRequest.php L100), the two upstream bugs this app used to mount patches for. `basedOn` is the image version an instance is pinned to; keep this list empty unless a new upstream bug needs one."
 }

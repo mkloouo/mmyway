@@ -1,13 +1,14 @@
 #!/usr/bin/env node
-// A throwaway Firefly III for device tests: a patched FF3 in Docker on SQLite, seeded with known
+// A throwaway Firefly III for device tests: a stock FF3 in Docker on SQLite, seeded with known
 // data, snapshotted, and reset in seconds. The Maestro flows (.maestro/, scripts/e2e.mjs) run the
 // app against it instead of your real books. `npm run ff3:test -- --help` for usage.
 //
 // Each instance lives in .ff3-test/<name>/ (gitignored): the rendered docker-compose.yaml,
 // db/database.sqlite, snapshots/*.sqlite and state.json (address, login, API token). The Passport
 // signing keys are generated once per instance and passed in as env, so the token survives the
-// container being recreated. Patches in tools/ff3-test/patches/ are mounted read-only, the same
-// way the production server mounts them.
+// container being recreated. tools/ff3-test/patches/patches.json pins the image version; its patch
+// list is empty (nothing upstream needs patching at the pinned version), and anything in it would
+// be mounted read-only, the same way the production server mounts it.
 //
 // Never point this at a real Firefly III: every command assumes the instance is disposable.
 
@@ -126,6 +127,9 @@ function compose(state, args, opts) {
     opts,
   );
 }
+
+/** How many files this instance mounts over the image: none while `patches.json`'s list is empty. */
+const patchCount = (state) => (state.patches ? PATCHES.patches.length : 0);
 
 /** The compose file for one instance. Exported through `compose --print` for the tests. */
 export function renderCompose(state, keys, patches = state.patches ? PATCHES.patches : []) {
@@ -428,7 +432,9 @@ async function cmdUp(opts) {
     writeState(state);
   }
   writeCompose(state);
-  say(`starting ${state.image} as "${name}" on ${url(state)}${state.patches ? ' (patched)' : ''}`);
+  say(
+    `starting ${state.image} as "${name}" on ${url(state)}${patchCount(state) ? ' (patched)' : ''}`,
+  );
   compose(state, ['up', '-d']);
   await waitHealthy(state);
   await checkPatchBase(state);
@@ -437,13 +443,15 @@ async function cmdUp(opts) {
 }
 
 async function checkPatchBase(state) {
-  if (!state.patches || !state.token) return;
+  if (!state.token) return;
   try {
     const about = await api(state, 'GET', '/about');
     if (about.data.version !== PATCHES.basedOn)
       console.warn(
-        `⚠ the patches were written against ${PATCHES.basedOn}, this is ${about.data.version}; ` +
-          'check tools/ff3-test/patches/ still matches the upstream files',
+        `⚠ this instance pins Firefly III ${PATCHES.basedOn}, this is ${about.data.version}; ` +
+          (patchCount(state)
+            ? 'check tools/ff3-test/patches/ still matches the upstream files'
+            : 'the app is tested against the pinned version'),
       );
   } catch {
     // no token yet; `init` checks again
@@ -578,7 +586,9 @@ async function cmdStatus(opts) {
     );
     const lan = lanAddress();
     if (lan) console.log(`  on Wi-Fi   http://${lan}:${state.port}`);
-    console.log(`  image      ${state.image}${state.patches ? ' + patches' : ' (unpatched)'}`);
+    console.log(
+      `  image      ${state.image}${patchCount(state) ? ` + ${patchCount(state)} patch(es)` : ' (stock)'}`,
+    );
     console.log(`  web login  ${state.email} / ${state.password}`);
     console.log(
       `  token      ${state.token ? (healthy && (await tokenWorks(state)) ? 'works' : 'saved (not checked)') : 'none — run init'}`,
@@ -681,7 +691,7 @@ function cmdCompose(opts) {
   process.stdout.write(renderCompose(state, { privateKey: dummy, publicKey: dummy }));
 }
 
-const HELP = `Throwaway Firefly III for device tests (Docker, SQLite, patched like production).
+const HELP = `Throwaway Firefly III ${PATCHES.basedOn} for device tests (Docker, SQLite, stock image).
 
   npm run ff3:test -- <command> [--name default]
 
@@ -708,7 +718,8 @@ Tests
   compose [--print]     print the compose file an instance would get (dummy keys)
 
 Several instances side by side (e.g. to test switching): --name second --port 8081.
-Patches: tools/ff3-test/patches/patches.json lists files mounted over the image, like production.`;
+Patches: tools/ff3-test/patches/patches.json pins the image version and lists files mounted over
+it, like production. The list is empty — ${PATCHES.basedOn} needs no patches.`;
 
 const COMMANDS = {
   fresh: cmdFresh,

@@ -10,3 +10,4 @@ src/i18n/locales
 package-lock.json
 yarn.lock
 *.apk
+docs/private

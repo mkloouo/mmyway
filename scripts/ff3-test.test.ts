@@ -17,7 +17,7 @@ const run = (...args: string[]) =>
   });
 
 describe('ff3-test compose', () => {
-  it('runs the patched image on SQLite, reachable over IPv4', () => {
+  it('runs the pinned image on SQLite, reachable over IPv4', () => {
     const compose = run('compose', '--port', '8099');
     const patches = JSON.parse(
       fs.readFileSync(
@@ -30,12 +30,14 @@ describe('ff3-test compose', () => {
     expect(compose).toContain('DB_CONNECTION: sqlite');
     expect(compose).toContain('NGINX_LISTEN_IP_PROTOCOL: ipv4');
     expect(compose).toContain('PASSPORT_PRIVATE_KEY: |');
+    // Every listed patch exists and is mounted; an empty list mounts nothing over the image.
     for (const patch of patches.patches) {
       expect(
         fs.existsSync(path.join(__dirname, '..', 'tools', 'ff3-test', 'patches', patch.file)),
       ).toBe(true);
       expect(compose).toContain(`${patch.file}:${patch.target}:ro'`);
     }
+    if (patches.patches.length === 0) expect(compose).not.toContain('/var/www/html/app/');
   });
 
   it('leaves the patches out with --no-patches', () => {
