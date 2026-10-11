@@ -65,6 +65,9 @@ module.exports = {
           },
         },
       ],
+      // HTTPS to a Firefly III behind a private CA, for a self-hoster who installed that CA on
+      // the phone. Also carries the cleartext permission above forward — see the plugin's header.
+      './plugins/withUserCaTrust',
       ...(ABI_SPLITS ? ['./plugins/withAbiSplits'] : []),
     ],
     ios: {

@@ -46,12 +46,14 @@ import {
   setCashAccountId,
   setLocale,
   setRecordLocation,
+  setAppLockEnabled,
   setPlannedNotificationsEnabled,
   setPlannedReminderLead,
   PLANNED_REMINDER_LEADS,
 } from '../../src/settings/appSettings';
 import { syncPlannedNotifications } from '../../src/planned/notifications';
 import i18n, { type AppLocale } from '../../src/i18n';
+import { authenticate, canUseAppLock } from '../../src/lock/appLock';
 import { TextField } from '../../src/ui/TextField';
 import { PickerSheet } from '../../src/ui/PickerSheet';
 import { Checkbox } from '../../src/ui/Checkbox';
@@ -108,6 +110,7 @@ export default function SettingsScreen() {
 
   const signedIn = settings?.signedIn ?? false;
   const ff3Hosts = settings?.ff3Hosts ?? [];
+  const proxyHeaderCount = settings?.proxyHeaderCount ?? 0;
   const ff3ActiveHost = settings?.ff3ActiveHost ?? null;
   const localModelUrls = settings?.localModelUrls ?? [];
   const localModelActiveUrl = settings?.localModelActiveUrl ?? null;
@@ -120,6 +123,7 @@ export default function SettingsScreen() {
   const recordLocation = settings?.recordLocation ?? true;
   const plannedNotifications = settings?.plannedNotifications ?? false;
   const plannedReminderLead = settings?.plannedReminderLead ?? 2;
+  const appLock = settings?.appLock ?? false;
   // The one setting that is typed before it's saved, so it needs a draft of its own.
   const [localModelNameInput, setLocalModelNameInput] = useState<string | null>(null);
   const localModelName = localModelNameInput ?? settings?.localModelName ?? '';
@@ -177,6 +181,20 @@ export default function SettingsScreen() {
     await setPlannedReminderLead(db, days);
     await reload();
     await syncPlannedNotifications(db, currencies);
+  });
+  const toggleAppLock = act(tr('settings.appLock'), async () => {
+    const next = !appLock;
+    if (next) {
+      // Both checks before the setting is stored: enabling a lock the phone cannot satisfy, or
+      // that the user can't actually pass, would shut them out of their own ledger.
+      if (!(await canUseAppLock())) {
+        Alert.alert(tr('common.error'), tr('settings.appLockUnavailable'));
+        return;
+      }
+      if (!(await authenticate(tr('lock.prompt')))) return;
+    }
+    await setAppLockEnabled(db, next);
+    await reload();
   });
   const signingIn = act.pending(tr('settings.signIn'));
 
@@ -264,6 +282,16 @@ export default function SettingsScreen() {
             }
             onPress={() => setSheet('ff3Addresses')}
           />
+          <Row
+            label={tr('proxy.title')}
+            chevron
+            value={
+              proxyHeaderCount > 0
+                ? tr('proxy.headerCount', { count: proxyHeaderCount })
+                : tr('settings.none')
+            }
+            onPress={() => router.push('/settings/proxy')}
+          />
           {/* The row is kept while the settings load, so the section is its final height on the
               first frame — it used to appear once "signed in" was known and shift what's below. */}
           {(signedIn || !settings) && (
@@ -329,6 +357,16 @@ export default function SettingsScreen() {
             onPress={() => void toggleLocation()}
             label={tr('settings.recordLocation')}
             hint={tr('settings.recordLocationHint')}
+          />
+        </Card>
+
+        <SectionHeader title={tr('settings.sectionSecurity')} />
+        <Card style={{ marginHorizontal: t.space.lg }}>
+          <Checkbox
+            checked={appLock}
+            onPress={() => void toggleAppLock()}
+            label={tr('settings.appLock')}
+            hint={tr('settings.appLockHint')}
           />
         </Card>
 

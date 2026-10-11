@@ -436,6 +436,12 @@
     "zeroHint": "Нічого, що чекає на підтвердження.",
     "zeroTitle": "Немає вхідних"
   },
+  "lock": {
+    "title": "",
+    "hint": "",
+    "unlock": "",
+    "prompt": ""
+  },
   "logs": {
     "clear": "Очистити",
     "clearTitle": "Очистити журнал?",
@@ -643,6 +649,29 @@
     "weekendLabel": "",
     "yearlyDateLabel": ""
   },
+  "proxy": {
+    "title": "",
+    "subtitle": "",
+    "explainer": "",
+    "headersSection": "",
+    "headerCount_one": "",
+    "headerCount_few": "",
+    "headerCount_many": "",
+    "headerCount_other": "",
+    "useCloudflare": "",
+    "namePlaceholder": "",
+    "valuePlaceholder": "",
+    "addHeader": "",
+    "removeHeader": "",
+    "save": "",
+    "clearAll": "",
+    "clearAllTitle": "",
+    "problems": {
+      "name": "",
+      "reserved": "",
+      "value": ""
+    }
+  },
   "readiness": {
     "amount": "сума",
     "convertedAmount": "",
@@ -739,7 +768,11 @@
     "aliasesCount_few": "{{count, number}} псевдоніми",
     "aliasesCount_many": "{{count, number}} псевдонімів",
     "aliasesCount_other": "{{count, number}} псевдоніма",
-    "version": "Версія"
+    "version": "Версія",
+    "sectionSecurity": "",
+    "appLock": "",
+    "appLockHint": "",
+    "appLockUnavailable": ""
   },
   "splits": {
     "assignLeftoverTitle": "Призначити залишки",

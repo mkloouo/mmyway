@@ -26,6 +26,7 @@ const KEYS = {
   recordLocation: 'record_location',
   plannedNotificationsEnabled: 'planned_notifications_enabled',
   plannedReminderLead: 'planned_reminder_lead_days',
+  appLockEnabled: 'app_lock_enabled',
 } as const;
 
 async function getSetting(db: OutboxDb, key: string): Promise<string | null> {
@@ -225,3 +226,16 @@ export const getPlannedReminderLead = async (db: OutboxDb) =>
   parsePlannedReminderLead(await getSetting(db, KEYS.plannedReminderLead));
 export const setPlannedReminderLead = (db: OutboxDb, value: number) =>
   setSetting(db, KEYS.plannedReminderLead, String(value));
+
+/** The settings key the app lock lives under, for a live query of it (src/lock/useAppLock.ts). */
+export const APP_LOCK_ENABLED_KEY = KEYS.appLockEnabled;
+
+/**
+ * Settings → Security → Require unlock. Off unless it was turned on: a lock nobody asked for,
+ * on a phone whose biometrics later stop working, is a way to be shut out of your own ledger.
+ */
+export async function getAppLockEnabled(db: OutboxDb): Promise<boolean> {
+  return (await getSetting(db, KEYS.appLockEnabled)) === '1';
+}
+export const setAppLockEnabled = (db: OutboxDb, value: boolean) =>
+  setSetting(db, KEYS.appLockEnabled, value ? '1' : '0');

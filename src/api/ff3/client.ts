@@ -1,4 +1,5 @@
 import type { AuthErrorReason } from './types';
+import { currentProxyHeaders } from './proxyHeaders';
 
 interface FF3ClientConfig {
   baseUrl: string; // e.g. https://firefly.example.com — no trailing slash, no /api suffix
@@ -44,6 +45,10 @@ export function createFF3Client({ baseUrl, apiToken }: FF3ClientConfig): FF3Clie
             ...(rest.method === 'POST' || rest.method === 'PUT' || rest.method === 'PATCH'
               ? { 'Content-Type': 'application/vnd.api+json' }
               : {}),
+            // A reverse proxy in front of FF3 (Cloudflare Access) wants its own headers on every
+            // request, sign-in probe included. Sanitized at the storage boundary, so these can
+            // never be the three above; a per-request header still wins over them.
+            ...currentProxyHeaders(),
             ...rest.headers,
           },
         });
@@ -76,7 +81,13 @@ export function createFF3Client({ baseUrl, apiToken }: FF3ClientConfig): FF3Clie
       // list, and a download sent none.
       return {
         uri: `${apiRoot}${path}`,
-        headers: { Authorization: `Bearer ${apiToken}`, Accept: 'application/json' },
+        headers: {
+          Authorization: `Bearer ${apiToken}`,
+          Accept: 'application/json',
+          // An attachment is fetched by <Image>, not by request(), so it needs the proxy's
+          // headers too or every receipt thumbnail 403s behind Cloudflare Access.
+          ...currentProxyHeaders(),
+        },
       };
     },
   };
