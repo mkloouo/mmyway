@@ -145,7 +145,8 @@
     "fundSetTitle": "How much is put aside in {{name}}?",
     "fundReadOnly": "This fund has no linked account in Firefly III, so it can only be read here.",
     "envelopeLeftIn": "{{name}} · {{amount}} left",
-    "envelopeOverIn": "{{name}} · {{amount}} over"
+    "envelopeOverIn": "{{name}} · {{amount}} over",
+    "coverRow": "Cover {{amount}} from another envelope"
   },
   "capture": {
     "attach": "Attach",

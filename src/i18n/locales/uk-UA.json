@@ -149,7 +149,8 @@
     "fundSetTitle": "",
     "fundReadOnly": "",
     "envelopeLeftIn": "",
-    "envelopeOverIn": ""
+    "envelopeOverIn": "",
+    "coverRow": ""
   },
   "capture": {
     "attach": "Прикріпити",

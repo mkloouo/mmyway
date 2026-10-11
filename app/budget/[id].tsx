@@ -3,7 +3,7 @@
 //
 // A move is one queued operation carrying both absolute amounts (src/bucket/actions.ts), so it can
 // never half-land and lose money out of the budget.
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ScrollView, Text, View } from 'react-native';
@@ -33,7 +33,9 @@ import { appLocale } from '../../src/i18n';
 import { dayDate } from '../../src/utils/day';
 
 export default function EnvelopeScreen() {
-  const { id: rawId } = useLocalSearchParams<{ id: string }>();
+  // `cover=1` arrives from the overspent row on the Budget tab: open the move sheet straight away,
+  // with the shortfall as the amount.
+  const { id: rawId, cover } = useLocalSearchParams<{ id: string; cover?: string }>();
   const budgetId = decodeURIComponent(rawId ?? '');
   const t = useTheme();
   const { t: tr } = useTranslation();
@@ -44,6 +46,13 @@ export default function EnvelopeScreen() {
 
   const [sheet, setSheet] = useState<'assign' | 'giver' | 'amount' | null>(null);
   const [giverId, setGiverId] = useState<string | null>(null);
+  // Once per visit: reopening it after the user closed the sheet would trap them on this screen.
+  const coverHandled = useRef(false);
+  useEffect(() => {
+    if (!cover || coverHandled.current) return;
+    coverHandled.current = true;
+    setSheet('giver');
+  }, [cover]);
 
   if (!envelope) {
     return (
@@ -59,6 +68,8 @@ export default function EnvelopeScreen() {
   }
 
   const { currency, period } = bucket;
+  // What it would take to bring an overspent envelope back to zero.
+  const shortfall = envelope.overspent ? envelope.available.replace(/^[-−]/, '') : null;
   const lastMonth = bucket.lastPeriod.get(budgetId) ?? null;
   // Only envelopes with something left can give, and never this one to itself.
   const givers = bucket.envelopes.filter(
@@ -190,7 +201,13 @@ export default function EnvelopeScreen() {
             name: giver.name,
             available: formatMoney(giver.available, currency),
           })}
-          initial={giver.available}
+          // Covering an overspend opens on the shortfall — or on all the giver has, when that is
+          // less. Otherwise on everything the giver can give.
+          initial={
+            shortfall && compareDecimal(shortfall, giver.available) < 0
+              ? shortfall
+              : giver.available
+          }
           currency={currency}
           type="transfer"
           onDone={(typed) => {

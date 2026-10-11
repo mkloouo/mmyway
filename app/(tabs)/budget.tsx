@@ -10,6 +10,7 @@ import {
   Card,
   EmptyState,
   Money,
+  Row,
   Screen,
   SectionHeader,
   SCREEN_TOP_PADDING,
@@ -156,6 +157,18 @@ export default function BudgetScreen() {
                   spent: unsigned(envelope.spent),
                 })}
               </Text>
+              {/* An overspent envelope says so and offers the way out: the move sheet from Phase 2,
+                  opened on this envelope with the shortfall already filled in. */}
+              {envelope.overspent && (
+                <Row
+                  label={tr('budget.coverRow', { amount: unsigned(envelope.available) })}
+                  icon="arrow-forward"
+                  tone="warn"
+                  onPress={() =>
+                    navigateOnce(`/budget/${encodeURIComponent(envelope.budgetId)}?cover=1`)
+                  }
+                />
+              )}
             </Card>
           ))
         )}

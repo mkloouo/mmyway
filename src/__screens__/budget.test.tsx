@@ -164,6 +164,15 @@ describe('Budget tab', () => {
     expect(screen.getByText(new RegExp(`of ${escapeRegExp(zl('4000.00'))}`))).toBeTruthy();
   });
 
+  it('offers to cover an overspent envelope from another one', async () => {
+    await renderScreen();
+    // Dining Out is 45 over: the row is the way into the move sheet, pre-filled with the shortfall.
+    const cover = screen.getByText(`Cover ${zl('45.00')} from another envelope`);
+    expect(cover).toBeTruthy();
+    // Groceries is not overspent, so it gets no such row.
+    expect(screen.queryByText(`Cover ${zl('479.50')} from another envelope`)).toBeNull();
+  });
+
   it('says on the screen why its number differs from the one in Firefly III', async () => {
     await renderScreen();
     expect(screen.getByText(/left to budget/)).toBeTruthy();
