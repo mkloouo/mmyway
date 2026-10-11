@@ -35,27 +35,27 @@ function isImage(a: AttachmentRead): boolean {
   return /\.(jpe?g|png|webp|gif|heic)$/i.test(a.attributes.filename ?? '');
 }
 
-/** FF3's attachments for a group, narrowed to one journal (a split group has several). */
+/**
+ * FF3's attachments for a group. A split group has several journals, and FF3 keeps a receipt on
+ * whichever one it was attached to — not necessarily the group's first/cached journal — so this
+ * no longer narrows to one journal id: the request is already scoped to the group, and every
+ * attachment it returns belongs to one of that group's own splits.
+ */
 export async function fetchJournalAttachments(
   client: FF3Client,
   groupId: string,
-  journalId: string,
 ): Promise<JournalAttachment[]> {
   const res = await client.request<{ data: AttachmentRead[] }>(
     `/v1/transactions/${encodeURIComponent(groupId)}/attachments`,
   );
-  return (res.data ?? [])
-    .filter(
-      (a) => a.attributes.attachable_id == null || String(a.attributes.attachable_id) === journalId,
-    )
-    .map((a) => ({
-      id: a.id,
-      filename: a.attributes.title || a.attributes.filename || `attachment ${a.id}`,
-      imageSource:
-        isImage(a) && client.imageSource
-          ? client.imageSource(`/v1/attachments/${encodeURIComponent(a.id)}/download`)
-          : null,
-    }));
+  return (res.data ?? []).map((a) => ({
+    id: a.id,
+    filename: a.attributes.title || a.attributes.filename || `attachment ${a.id}`,
+    imageSource:
+      isImage(a) && client.imageSource
+        ? client.imageSource(`/v1/attachments/${encodeURIComponent(a.id)}/download`)
+        : null,
+  }));
 }
 
 export interface ReceiptPreview {

@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 import { normkey } from './normkey';
-import { payeeAliases } from '../db/schema';
+import { payeeAliases, referenceAccounts } from '../db/schema';
 import type { OutboxDb } from '../sync/outbox';
 import type { Draft } from '../inbox/draft';
 
@@ -163,7 +163,13 @@ export function withPayeeAlias(
   return draft;
 }
 
-/** Applies a payee alias to a draft whose payee is still free text (a receipt's merchant); otherwise returns it unchanged. */
+/**
+ * Applies a payee alias to a draft whose payee is still free text (a receipt's merchant); otherwise
+ * returns it unchanged. Falls back to a direct name match against reference_accounts (the already
+ * locally-synced account list, same local-first check FF3Service.accounts.resolve does) so a
+ * merchant the user renamed/merged in FF3 itself — never hand-corrected into an alias here — isn't
+ * flagged "a new account will be created" forever.
+ */
 export async function resolvePayeeAlias(db: OutboxDb, draft: Draft): Promise<Draft> {
   const raw = draftPayeeName(draft);
   if (!draft.isNewPayee || !raw?.trim()) return draft;
@@ -172,5 +178,20 @@ export async function resolvePayeeAlias(db: OutboxDb, draft: Draft): Promise<Dra
   if (match.matched) {
     return withPayeeAlias(draft, { payeeName: match.payeeName, rawInput: raw });
   }
-  return draft;
+
+  const payeeType =
+    draft.type === 'withdrawal' ? 'expense' : draft.type === 'deposit' ? 'revenue' : null;
+  if (!payeeType) return draft;
+  const trimmed = raw.trim();
+  const accounts = await db
+    .select()
+    .from(referenceAccounts)
+    .where(eq(referenceAccounts.type, payeeType));
+  const account =
+    accounts.find((a) => a.name === trimmed) ??
+    accounts.find((a) => a.name.toLowerCase() === trimmed.toLowerCase());
+  if (!account) return draft;
+  return draft.type === 'withdrawal'
+    ? { ...draft, destinationId: account.id, isNewPayee: false }
+    : { ...draft, sourceId: account.id, isNewPayee: false };
 }

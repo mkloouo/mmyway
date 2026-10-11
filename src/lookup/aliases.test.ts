@@ -8,6 +8,7 @@ import {
   getPayeesWithAliases,
   resolvePayeeAlias,
 } from './aliases';
+import { referenceAccounts } from '../db/schema';
 import type { Draft } from '../inbox/draft';
 
 describe('N-to-1 Payee Aliases', () => {
@@ -116,5 +117,77 @@ describe('N-to-1 Payee Aliases', () => {
     expect(resolved.destinationName).toBe('Biedronka');
     expect(resolved.isNewPayee).toBe(false);
     expect(resolved.payeeReadAs).toBe('Jeronimo Martins Polska S.A.');
+  });
+
+  it("clears isNewPayee when the OCR'd name already matches a real FF3 expense account, with no alias learned", async () => {
+    const db = createTestDb();
+    await db.insert(referenceAccounts).values({
+      id: 'acc-1',
+      name: 'Biedronka',
+      type: 'expense',
+      currencyCode: 'PLN',
+      syncedAt: 's',
+    });
+
+    const draft: Draft = {
+      type: 'withdrawal',
+      amount: '12.00',
+      currencyCode: 'PLN',
+      date: new Date().toISOString(),
+      description: 'Receipt',
+      destinationName: 'Biedronka',
+      isNewPayee: true,
+    };
+
+    const resolved = await resolvePayeeAlias(db as any, draft);
+    expect(resolved.isNewPayee).toBe(false);
+    expect(resolved.destinationId).toBe('acc-1');
+    expect(resolved.destinationName).toBe('Biedronka');
+  });
+
+  it('matches case-insensitively and only within the matching payee type (deposit -> revenue)', async () => {
+    const db = createTestDb();
+    await db.insert(referenceAccounts).values([
+      { id: 'exp-1', name: 'employer', type: 'expense', currencyCode: 'PLN', syncedAt: 's' },
+      { id: 'rev-1', name: 'Employer', type: 'revenue', currencyCode: 'PLN', syncedAt: 's' },
+    ]);
+
+    const draft: Draft = {
+      type: 'deposit',
+      amount: '2000.00',
+      currencyCode: 'PLN',
+      date: new Date().toISOString(),
+      description: 'Receipt',
+      sourceName: 'EMPLOYER',
+      isNewPayee: true,
+    };
+
+    const resolved = await resolvePayeeAlias(db as any, draft);
+    expect(resolved.isNewPayee).toBe(false);
+    expect(resolved.sourceId).toBe('rev-1'); // the revenue account, not the same-named expense one
+  });
+
+  it('leaves isNewPayee true when nothing matches', async () => {
+    const db = createTestDb();
+    await db.insert(referenceAccounts).values({
+      id: 'acc-1',
+      name: 'Some Other Shop',
+      type: 'expense',
+      currencyCode: 'PLN',
+      syncedAt: 's',
+    });
+
+    const draft: Draft = {
+      type: 'withdrawal',
+      amount: '12.00',
+      currencyCode: 'PLN',
+      date: new Date().toISOString(),
+      description: 'Receipt',
+      destinationName: 'Totally Unknown Merchant',
+      isNewPayee: true,
+    };
+
+    const resolved = await resolvePayeeAlias(db as any, draft);
+    expect(resolved.isNewPayee).toBe(true);
   });
 });

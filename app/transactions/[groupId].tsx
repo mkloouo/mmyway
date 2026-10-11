@@ -153,10 +153,10 @@ function TransactionEditor({ row }: { row: CachedRow }) {
   const queued = queuedAttachments(outbox ?? [], row.journalId);
   const deletedAttachmentIds = queuedAttachmentDeletes(outbox ?? [], row.journalId);
   const attachments = useQuery({
-    queryKey: ['journal-attachments', groupId, row.journalId, queued.length],
+    queryKey: ['journal-attachments', groupId, queued.length],
     queryFn: async () => {
       const client = await getClient(db);
-      return client ? fetchJournalAttachments(client, groupId, row.journalId) : null;
+      return client ? fetchJournalAttachments(client, groupId) : null;
     },
     retry: false,
   });

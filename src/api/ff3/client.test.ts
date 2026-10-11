@@ -59,3 +59,23 @@ describe('createFF3Client request timeout', () => {
     expect(jest.getTimerCount()).toBe(0);
   });
 });
+
+describe('createFF3Client Content-Type', () => {
+  it('sends Content-Type on a bodyless POST, like recurrences/{id}/trigger', async () => {
+    const fetchMock = jest.fn(async () => ({ ok: true, status: 204 })) as any;
+    global.fetch = fetchMock;
+    await client.request('/v1/recurrences/15/trigger', { method: 'POST' });
+    expect(fetchMock.mock.calls[0][1].headers['Content-Type']).toBe('application/vnd.api+json');
+  });
+
+  it('omits Content-Type on a GET', async () => {
+    const fetchMock = jest.fn(async () => ({
+      ok: true,
+      status: 200,
+      json: async () => ({}),
+    })) as any;
+    global.fetch = fetchMock;
+    await client.request('/v1/about');
+    expect(fetchMock.mock.calls[0][1].headers['Content-Type']).toBeUndefined();
+  });
+});

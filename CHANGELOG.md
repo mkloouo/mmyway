@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **"Book now" on a planned recurring transaction.** Triggering a recurring transaction early no longer fails with an HTTP error on some Firefly III versions.
+- **Receipt missing after splitting a transaction.** A receipt attached before a transaction was split into multiple parts now keeps showing on the transaction, matching what Firefly III itself shows.
+- **False "a new account will be created" after renaming/merging accounts in Firefly III.** Scanning a receipt or entering a transaction for a payee you've since renamed or merged in Firefly III no longer wrongly offers to create a duplicate. The payee picker also stops surfacing old, no-longer-existing account names once Firefly III's account list has synced.
+
 ## [1.10.0] - 2026-10-09
 
 ### Receipts

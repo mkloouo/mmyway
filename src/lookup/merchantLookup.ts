@@ -1,5 +1,5 @@
-import { sql } from 'drizzle-orm';
-import { cachedTransactions } from '../db/schema';
+import { inArray, sql } from 'drizzle-orm';
+import { cachedTransactions, referenceAccounts } from '../db/schema';
 import { normkey } from './normkey';
 import type { OutboxDb } from '../sync/outbox';
 
@@ -63,14 +63,39 @@ type Lookups = {
 let memo: { signature: string; value: Lookups } | null = null;
 
 async function lookups(db: OutboxDb): Promise<Lookups> {
-  const [probe] = await db
+  const [txProbe] = await db
     .select({
       n: sql<number>`count(*)`,
       last: sql<string | null>`max(${cachedTransactions.syncedAt})`,
     })
     .from(cachedTransactions);
-  const signature = `${probe?.n ?? 0}|${probe?.last ?? ''}`;
+  // reference_accounts is pruned on every full sync (src/sync/referenceHygiene.ts): a rename or
+  // merge there must drop the old, now-dead merchant name from the picker even when no new
+  // transaction came in to change the cachedTransactions probe above.
+  const [accountProbe] = await db
+    .select({
+      n: sql<number>`count(*)`,
+      last: sql<string | null>`max(${referenceAccounts.syncedAt})`,
+    })
+    .from(referenceAccounts);
+  const signature = `${txProbe?.n ?? 0}|${txProbe?.last ?? ''}|${accountProbe?.n ?? 0}|${accountProbe?.last ?? ''}`;
   if (memo && memo.signature === signature) return memo.value;
+
+  // Live expense/revenue account names (small, already-synced table), normkey'd the same way
+  // merchant buckets are keyed — so a payee FF3 no longer has under that name (renamed, merged,
+  // deleted in the user's own account cleanup) doesn't linger in the picker forever.
+  const payeeAccounts = await db
+    .select({ name: referenceAccounts.name, type: referenceAccounts.type })
+    .from(referenceAccounts)
+    .where(inArray(referenceAccounts.type, ['expense', 'revenue']));
+  const livePayeeNames: Record<Kind, Set<string>> = {
+    withdrawal: new Set(),
+    deposit: new Set(),
+  };
+  for (const a of payeeAccounts) {
+    if (a.type === 'expense') livePayeeNames.withdrawal.add(normkey(a.name));
+    else if (a.type === 'revenue') livePayeeNames.deposit.add(normkey(a.name));
+  }
 
   const buckets: Record<Kind, Map<string, Bucket>> = { withdrawal: new Map(), deposit: new Map() };
   const accountLastUsed = new Map<string, string>();
@@ -122,6 +147,15 @@ async function lookups(db: OutboxDb): Promise<Lookups> {
       entry.budgets.set(row.budgetName, (entry.budgets.get(row.budgetName) ?? 0) + 1);
     byMerchant.set(key, entry);
   }
+  // A merchant key FF3 no longer has as a live expense/revenue account is a dead spelling from
+  // before a rename/merge, unless the account list hasn't synced at all yet.
+  for (const kind of ['withdrawal', 'deposit'] as const) {
+    if (livePayeeNames[kind].size === 0) continue;
+    for (const key of buckets[kind].keys()) {
+      if (!livePayeeNames[kind].has(key)) buckets[kind].delete(key);
+    }
+  }
+
   memo = {
     signature,
     value: {

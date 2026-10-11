@@ -7,7 +7,7 @@ import {
 } from './journalAttachments';
 
 describe('fetchJournalAttachments', () => {
-  it('asks FF3 for the group and keeps only this journal', async () => {
+  it("asks FF3 for the group and keeps every split's attachment, not just one journal", async () => {
     const request = jest.fn().mockResolvedValue({
       data: [
         { id: '1', attributes: { filename: 'a.jpg', attachable_id: '10' } },
@@ -15,9 +15,10 @@ describe('fetchJournalAttachments', () => {
         { id: '3', attributes: { filename: 'c.jpg', attachable_id: '11' } },
       ],
     });
-    const result = await fetchJournalAttachments({ request }, '5', '11');
+    const result = await fetchJournalAttachments({ request }, '5');
     expect(request).toHaveBeenCalledWith('/v1/transactions/5/attachments');
     expect(result).toEqual([
+      { id: '1', filename: 'a.jpg', imageSource: null },
       { id: '2', filename: 'Receipt', imageSource: null },
       { id: '3', filename: 'c.jpg', imageSource: null },
     ]);
@@ -38,7 +39,7 @@ describe('fetchJournalAttachments', () => {
       uri: `https://ff3${path}`,
       headers: { Authorization: 'Bearer t' },
     });
-    const result = await fetchJournalAttachments({ request, imageSource }, '5', '11');
+    const result = await fetchJournalAttachments({ request, imageSource }, '5');
     expect(result.map((a) => a.imageSource?.uri ?? null)).toEqual([
       'https://ff3/v1/attachments/1/download',
       null,

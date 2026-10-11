@@ -39,7 +39,11 @@ export function createFF3Client({ baseUrl, apiToken }: FF3ClientConfig): FF3Clie
           headers: {
             Authorization: `Bearer ${apiToken}`,
             Accept: 'application/json',
-            ...(rest.body ? { 'Content-Type': 'application/vnd.api+json' } : {}),
+            // FF3 (unpatched, e.g. 6.7.7) 415s a bodyless POST/PUT like recurrences/{id}/trigger
+            // with "Content-Type header cannot be empty" — key on method, not body presence.
+            ...(rest.method === 'POST' || rest.method === 'PUT' || rest.method === 'PATCH'
+              ? { 'Content-Type': 'application/vnd.api+json' }
+              : {}),
             ...rest.headers,
           },
         });
