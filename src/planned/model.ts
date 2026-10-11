@@ -2,24 +2,21 @@
 // transaction that share a name, edited together. This file turns the three FF3 objects into one
 // set of fields and back into what FF3 takes for each. Pure, no db.
 import { normkey } from '../lookup/normkey';
-import { plannedTimeNote, readPlannedTime, stripPlannedTime } from './plannedTime';
-import type {
-  BillAttributes,
-  PlannedObject,
-  RecurrenceRepetition,
-  RuleAction,
-  RuleAttributes,
-  RuleTrigger,
-} from './objects';
-
-export type Frequency = 'weekly' | 'monthly' | 'quarterly' | 'half-year' | 'yearly';
-export const FREQUENCIES: readonly Frequency[] = [
-  'weekly',
-  'monthly',
-  'quarterly',
-  'half-year',
-  'yearly',
-];
+import { readMarkers, stripMarkers, writeMarkers } from './notes';
+import {
+  billSchedule,
+  defaultRepetition,
+  momentFor,
+  repetitionFromFF3,
+  repetitionProblem,
+  repetitionToFF3,
+  sameEnd,
+  sameRepetitions,
+  type EndCondition,
+  type Repetition,
+  type RepetitionType,
+} from './repetition';
+import type { PlannedObject, RuleAction, RuleAttributes, RuleTrigger } from './objects';
 
 export interface PlannedFields {
   name: string;
@@ -33,13 +30,19 @@ export interface PlannedFields {
   currencyCode: string;
   notes: string | null;
   repeats: boolean;
-  frequency: Frequency;
-  /** Every how many periods: 1 is every week/month/…, FF3's `skip` is this minus one. */
-  every: number;
+  /**
+   * The whole schedule, as FF3 holds it. A recurrence may repeat on several patterns at once
+   * ("the 1st and the 15th"); sending only the first destroyed the rest, because FF3 deletes and
+   * recreates the array whenever the submitted count differs from the stored one.
+   */
+  repetitions: Repetition[];
+  end: EndCondition;
   /** YYYY-MM-DD: the next time it is planned. */
   date: string;
-  /** HH:MM it is planned at, or null for any time (kept in the recurrence's notes, src/planned/plannedTime.ts). */
+  /** HH:MM it is planned at, or null for any time (a marker in the recurrence's notes, ./notes.ts). */
   time: string | null;
+  /** Occurrences the user cancelled one by one (the `mmyway-skip` marker, ./notes.ts). */
+  skipDays: string[];
   categoryName: string | null;
   tags: string[];
 }
@@ -81,19 +84,28 @@ function actionValue(rule: RuleAttributes | undefined, type: string): string | n
   return text(rule?.actions?.find((a) => a.type === type)?.value);
 }
 
-function frequencyFromBill(bill: BillAttributes): { frequency: Frequency; every: number } {
-  const freq = FREQUENCIES.find((f) => f === bill.repeat_freq) ?? 'monthly';
-  return { frequency: freq, every: (bill.skip ?? 0) + 1 };
-}
+/** The date "forever" is expressed as on a recurrence: FF3's API has no such thing. */
+const REPEAT_FOREVER_UNTIL = '2099-12-31';
+/**
+ * The far-future end date a repeating subscription is given. A bill's `end_date` has no `nullable`
+ * on update and is capped by `before:2038-01-17` (`Bill/UpdateRequest.php`), so an end date left
+ * behind by a one-off cannot be cleared — it is pushed out of the way instead. (`2099-12-31`, which
+ * `repeat_until` takes, would be refused here.)
+ */
+export const BILL_FOREVER_END = '2038-01-16';
 
-function frequencyFromRepetition(rep: RecurrenceRepetition): {
-  frequency: Frequency;
-  every: number;
-} {
-  const every = (rep.skip ?? 0) + 1;
-  if (rep.type === 'weekly') return { frequency: 'weekly', every };
-  if (rep.type === 'yearly') return { frequency: 'yearly', every };
-  return { frequency: 'monthly', every };
+/**
+ * How the recurrence ends. FF3 holds exactly one of the two keys, and a one-off is
+ * `nr_of_repetitions: 1` — which is also what `repeats: false` means.
+ */
+function endOf(
+  rec: { repeat_until?: string | null; nr_of_repetitions?: number | null } | undefined,
+): EndCondition {
+  const count = rec?.nr_of_repetitions;
+  if (count != null && count >= 1) return { kind: 'times', count };
+  const until = dateOnly(rec?.repeat_until);
+  if (until && until < REPEAT_FOREVER_UNTIL) return { kind: 'until', date: until };
+  return { kind: 'forever' };
 }
 
 /** The fields the simple view shows and edits, read from whichever of the three exist. */
@@ -102,23 +114,21 @@ export function fieldsOf(group: PlannedGroup, today: string): PlannedFields {
   const rule = group.rule?.attributes;
   const rec = group.recurrence?.attributes;
   const tx = rec?.transactions?.[0];
-  const rep = rec?.repetitions?.[0];
+  const reps = rec?.repetitions ?? [];
   const type = rec?.type === 'deposit' || rec?.type === 'transfer' ? rec.type : 'withdrawal';
   const repeats = rec ? rec.nr_of_repetitions !== 1 : bill ? !bill.end_date : true;
-  // A one-off's bill says yearly only because FF3 bills must repeat (billBody): its repetition is
-  // the better guess at what "Repeats" should start from if it is switched on.
-  const schedule =
-    bill && (repeats || !rep)
-      ? frequencyFromBill(bill)
-      : rep
-        ? frequencyFromRepetition(rep)
-        : { frequency: 'monthly' as const, every: 1 };
   const date =
-    dateOnly(rep?.occurrences?.[0]) ??
+    dateOnly(reps[0]?.occurrences?.[0]) ??
     dateOnly(bill?.next_expected_match) ??
     dateOnly(rec?.first_date) ??
     dateOnly(bill?.date) ??
     today;
+  // The recurring transaction's repetitions *are* the schedule. The subscription's repeat_freq is
+  // derived from them on write (billSchedule) and never read back as one: two objects holding the
+  // schedule, disagreeing, and whichever was read last winning is what lost the user's choice on
+  // every round trip. A planned transaction with no recurrence yet is the only fallback.
+  const repetitions = reps.length ? reps.map(repetitionFromFF3) : [defaultRepetition(date)];
+  const markers = readMarkers(rec?.notes);
   const ruleTags = (rule?.actions ?? [])
     .filter((a) => a.type === 'add_tag')
     .map((a) => a.value)
@@ -136,11 +146,14 @@ export function fieldsOf(group: PlannedGroup, today: string): PlannedFields {
       (type === 'withdrawal' ? actionValue(rule, 'set_destination_account') : null),
     amount: text(tx?.amount) ?? text(bill?.amount_max) ?? '0',
     currencyCode: text(tx?.currency_code) ?? text(bill?.currency_code) ?? '',
-    // The user's note is the bill's; a recurrence without one (made in the web UI) keeps it itself.
-    notes: bill ? text(bill.notes) : stripPlannedTime(text(rec?.notes)),
-    time: readPlannedTime(rec?.notes),
+    // The user's note is the bill's, because a bill update keeps newlines where a recurrence update
+    // strips them. A recurrence without a bill (made in the web UI) keeps its own, markers aside.
+    notes: bill ? text(bill.notes) : stripMarkers(text(rec?.notes)),
+    time: markers.time,
+    skipDays: markers.skip,
     repeats,
-    ...schedule,
+    repetitions,
+    end: endOf(rec),
     date,
     categoryName: text(tx?.category_name) ?? actionValue(rule, 'set_category'),
     tags: tx?.tags?.length ? tx.tags : ruleTags,
@@ -153,8 +166,8 @@ export function scheduleChanged(before: PlannedFields | null, after: PlannedFiel
     !before ||
     before.date !== after.date ||
     before.repeats !== after.repeats ||
-    before.frequency !== after.frequency ||
-    before.every !== after.every
+    !sameEnd(before.end, after.end) ||
+    !sameRepetitions(before.repetitions, after.repetitions)
   );
 }
 
@@ -162,21 +175,39 @@ export function scheduleChanged(before: PlannedFields | null, after: PlannedFiel
 export function samePlannedFields(before: PlannedFields, after: PlannedFields): boolean {
   return (Object.keys(before) as (keyof PlannedFields)[]).every((key) => {
     const [a, b] = [before[key], after[key]];
-    if (key === 'tags') return (a as string[]).join('\n') === (b as string[]).join('\n');
+    if (key === 'repetitions') return sameRepetitions(a as Repetition[], b as Repetition[]);
+    if (key === 'end') return sameEnd(a as EndCondition, b as EndCondition);
+    if (Array.isArray(a) && Array.isArray(b)) return a.join('\n') === b.join('\n');
     // A notes field typed into and emptied again is '' where FF3's was null.
     if (key === 'notes') return (a || null) === (b || null);
     return a === b;
   });
 }
 
-/** `base` with `from`'s schedule: what FF3 holds once a save sent `from`'s schedule and nothing else. */
-export function withScheduleOf(base: PlannedFields, from: PlannedFields): PlannedFields {
+/**
+ * A `save_planned` queued by a build that kept five presets and `repetitions[0]`: it sits in the
+ * outbox across an app update, so it is read back rather than failed. One pure function instead of
+ * a payload version bump and a v1→v2 converter, which is strictly more code for the same result.
+ */
+export function normalizeFields(fields: PlannedFields): PlannedFields {
+  if (Array.isArray(fields.repetitions) && fields.repetitions.length > 0) return fields;
+  const legacy = fields as unknown as { frequency?: string; every?: number };
+  const every = Math.max(1, legacy.every ?? 1);
+  // The five presets, back to what they meant: quarterly and half-year were monthly + skip.
+  const scaled: Record<string, { type: RepetitionType; every: number }> = {
+    daily: { type: 'daily', every },
+    weekly: { type: 'weekly', every },
+    monthly: { type: 'monthly', every },
+    quarterly: { type: 'monthly', every: every * 3 },
+    'half-year': { type: 'monthly', every: every * 6 },
+    yearly: { type: 'yearly', every },
+  };
+  const { type, every: n } = scaled[legacy.frequency ?? 'monthly'] ?? scaled.monthly!;
   return {
-    ...base,
-    date: from.date,
-    repeats: from.repeats,
-    frequency: from.frequency,
-    every: from.every,
+    ...fields,
+    repetitions: [{ type, moment: momentFor(type, fields.date), skip: n - 1, weekend: 1 }],
+    end: fields.end ?? (fields.repeats ? { kind: 'forever' } : { kind: 'times', count: 1 }),
+    skipDays: fields.skipDays ?? [],
   };
 }
 
@@ -186,61 +217,30 @@ function addDays(date: string, days: number): string {
   return d.toISOString().slice(0, 10);
 }
 
-/** FF3 bill body. A one-off is a yearly bill that ends the day after it's due. */
+/** FF3 bill body. A one-off is a bill that ends the day after it's due. */
 export function billBody(f: PlannedFields, before: PlannedFields | null): Record<string, unknown> {
   return {
     name: f.name,
     amount_min: f.amount,
     amount_max: f.amount,
     currency_code: f.currencyCode,
-    // Null clears them. Stock FF3 refuses that on a bill update ("notes must be at least 1
-    // characters"): its API rule lacks the `nullable` its web form has, so this needs a server with it.
+    // Null clears them, which FF3 has taken on a bill update since 6.7.0 (`['nullable', 'min:1',
+    // 'max:32768']`) — the app's floor, so the note the user emptied really is emptied.
     notes: f.notes || null,
     active: true,
     ...(scheduleChanged(before, f)
       ? {
           date: f.date,
-          repeat_freq: f.repeats ? f.frequency : 'yearly',
-          skip: f.repeats ? f.every - 1 : 0,
-          // A one-off ends the day after it's due. A repeating one has no end, and the key is left
-          // out rather than sent as null: stock FF3's bill *update* rule lacks the `nullable` its
-          // create rule has (as with notes above), so a null fails with "The end date is not a
-          // valid date." and three more. An end date left from a one-off later switched to
-          // repeating therefore stays on the bill until FF3 can be sent a null.
-          ...(f.repeats ? {} : { end_date: addDays(f.date, 1) }),
+          // Derived from the recurrence's repetitions, and lossy on purpose: see billSchedule.
+          ...(f.repeats ? billSchedule(f.repetitions) : { repeat_freq: 'yearly', skip: 0 }),
+          // A one-off ends the day after it's due. A repeating one is pushed out to the sentinel
+          // rather than left as it was: FF3 refuses a null here, so this is how an end date left
+          // behind by a one-off switched back to repeating gets cleared.
+          end_date: f.repeats ? BILL_FOREVER_END : addDays(f.date, 1),
         }
       : {}),
   };
 }
-
-function isoWeekday(date: string): number {
-  const day = new Date(`${date}T00:00:00Z`).getUTCDay();
-  return day === 0 ? 7 : day;
-}
-
-export function repetitionFor(f: PlannedFields): Record<string, unknown> {
-  const dayOfMonth = String(Number(f.date.slice(8, 10)));
-  // A one-off happens once, on first_date, whatever the frequency says (a one-off's bill is yearly,
-  // so it read back as yearly). A yearly repetition's moment is a date, and FF3 refuses one on an
-  // update ("repetitions.0.moment must be a number"): moving a one-off's date always failed.
-  if (!f.repeats) return { type: 'monthly', moment: dayOfMonth, skip: 0, weekend: 1 };
-  const skip = f.every - 1;
-  switch (f.frequency) {
-    case 'weekly':
-      return { type: 'weekly', moment: String(isoWeekday(f.date)), skip, weekend: 1 };
-    case 'quarterly':
-      return { type: 'monthly', moment: dayOfMonth, skip: 3 * f.every - 1, weekend: 1 };
-    case 'half-year':
-      return { type: 'monthly', moment: dayOfMonth, skip: 6 * f.every - 1, weekend: 1 };
-    case 'yearly':
-      return { type: 'yearly', moment: f.date, skip, weekend: 1 };
-    default:
-      return { type: 'monthly', moment: dayOfMonth, skip, weekend: 1 };
-  }
-}
-
-/** The end date a repeating planned transaction is given: FF3's API has no "forever". */
-const REPEAT_FOREVER_UNTIL = '2099-12-31';
 
 /**
  * FF3 recurrence body. `transactionId` is the existing recurrence transaction, updated in place;
@@ -248,6 +248,9 @@ const REPEAT_FOREVER_UNTIL = '2099-12-31';
  * 7.99 USD from a PLN account) — the exact PLN amount is set when the transaction is reviewed.
  * FF3's recurrence API reads accounts and the category by id only (it drops the names, and a
  * missing account id fails the save half-way), so `f` must carry both account ids.
+ *
+ * `repetitions` is sent only when the schedule changed, and `overrideRepetitions` is how the
+ * intermediate PUT of replay.ts's two-step write sends a single one (see there).
  */
 export function recurrenceBody(
   f: PlannedFields & { sourceId: string; destinationId: string },
@@ -255,8 +258,10 @@ export function recurrenceBody(
   opts: {
     billId?: string | null;
     transactionId?: string | null;
-    repetitionId?: string | null;
     categoryId?: string | null;
+    /** The recurrence's notes as FF3 holds them, so a marker this build doesn't know survives. */
+    existingNotes?: string | null;
+    overrideRepetitions?: readonly Repetition[];
   },
 ): Record<string, unknown> {
   const transaction: Record<string, unknown> = {
@@ -271,29 +276,38 @@ export function recurrenceBody(
     ...(f.tags.some((t) => t.trim()) ? { tags: f.tags.filter((t) => t.trim()) } : {}),
     ...(opts.billId ? { bill_id: opts.billId } : {}),
   };
+  const repetitions = opts.overrideRepetitions ?? f.repetitions;
   return {
     type: f.type,
     title: f.name,
-    // Only the time: FF3's recurrence update strips newlines from notes, so the user's is the bill's.
-    notes: plannedTimeNote(f.time),
+    // The app's markers only: a recurrence update strips newlines, so the user's note is the
+    // subscription's. Sending the key at all is deliberate — an omitted one would leave FF3's
+    // stored value, and clearing the last marker has to clear the field.
+    notes: writeMarkers({ time: f.time, skip: f.skipDays }, opts.existingNotes),
     active: true,
     apply_rules: true,
-    ...(scheduleChanged(before, f)
+    ...(scheduleChanged(before, f) || opts.overrideRepetitions
       ? {
           first_date: f.date,
-          // FF3 wants exactly one of the two: a key sent as null still counts as sent ("Require
-          // either a number of repetitions, or an end date. Not both."). A one-off happens once; a
-          // repeating one runs until a date far enough away to mean "until changed".
-          ...(f.repeats ? { repeat_until: REPEAT_FOREVER_UNTIL } : { nr_of_repetitions: 1 }),
-          repetitions: [
-            { ...(opts.repetitionId ? { id: opts.repetitionId } : {}), ...repetitionFor(f) },
-          ],
+          ...endBody(f),
+          repetitions: repetitions.map(repetitionToFF3),
         }
       : {}),
     transactions: [transaction],
   };
 }
 
+/**
+ * The end condition. FF3 wants exactly one of the two keys and a key sent as null still counts as
+ * sent ("Require either a number of repetitions, or an end date. Not both."), so "forever" is a
+ * date far enough away to mean "until changed".
+ */
+function endBody(f: PlannedFields): Record<string, unknown> {
+  if (!f.repeats) return { nr_of_repetitions: 1 };
+  if (f.end.kind === 'times') return { nr_of_repetitions: Math.max(2, f.end.count) };
+  if (f.end.kind === 'until') return { repeat_until: f.end.date };
+  return { repeat_until: REPEAT_FOREVER_UNTIL };
+}
 /** The rule actions the simple view owns; any other action on the rule is kept as it is. */
 const MANAGED_ACTIONS = new Set([
   'link_to_bill',
@@ -386,5 +400,10 @@ export function plannedProblems(f: PlannedFields): string[] {
   // Every type needs both ends: an own account and a payee/payer, or two own accounts.
   if (!f.sourceId && !f.sourceName) problems.push('source');
   if (!f.destinationId && !f.destinationName) problems.push('destination');
+  if (f.repeats) {
+    if (f.repetitions.length === 0 || f.repetitions.some(repetitionProblem))
+      problems.push('schedule');
+    if (f.end.kind === 'until' && f.end.date < f.date) problems.push('endDate');
+  }
   return problems;
 }

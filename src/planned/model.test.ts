@@ -1,13 +1,16 @@
 import {
+  BILL_FOREVER_END,
   billBody,
   fieldsOf,
   groupPlanned,
+  normalizeFields,
   recurrenceBody,
-  repetitionFor,
   ruleBody,
   samePlannedFields,
+  scheduleChanged,
   type PlannedFields,
 } from './model';
+import { billSchedule, repetitionProblem, type Repetition } from './repetition';
 import { plannedItems } from './items';
 import type { PlannedObject } from './objects';
 
@@ -98,8 +101,8 @@ describe('planned model', () => {
       categoryName: 'Music',
       tags: ['sub'],
       repeats: true,
-      frequency: 'monthly',
-      every: 1,
+      repetitions: [{ type: 'monthly', moment: '5', skip: 0, weekend: 1 }],
+      end: { kind: 'forever' },
       date: '2026-10-05',
     });
   });
@@ -121,11 +124,14 @@ describe('planned model', () => {
     });
   });
 
-  it('leaves end_date out of a repeating bill and sets it on a one-off', () => {
+  it('pushes a repeating bill’s end date to the sentinel and ends a one-off the next day', () => {
     const fields = fieldsOf(groupPlanned([bill, rule, recurrence])[0]!, '2026-09-28');
     const moved: PlannedFields = { ...fields, date: '2026-11-08' };
-    // FF3's bill update refuses end_date: null ("The end date is not a valid date.").
-    expect(billBody(moved, fields)).not.toHaveProperty('end_date');
+    // FF3's bill update has no `nullable` on end_date and caps it at before:2038-01-17, so a
+    // repeating one is pushed out of the way instead of cleared — which is how an end date left
+    // behind by a one-off switched back to repeating goes away.
+    expect(billBody(moved, fields)).toMatchObject({ end_date: BILL_FOREVER_END });
+    expect(BILL_FOREVER_END < '2038-01-17').toBe(true);
     expect(billBody({ ...moved, repeats: false }, fields)).toMatchObject({
       end_date: '2026-11-09',
     });
@@ -251,36 +257,157 @@ describe('planned model', () => {
     expect(txEmpty).not.toHaveProperty('tags');
   });
 
-  it('maps frequencies to recurrence repetitions', () => {
-    const f = { date: '2026-09-28', every: 1, repeats: true } as PlannedFields;
-    expect(repetitionFor({ ...f, frequency: 'weekly' })).toMatchObject({
-      type: 'weekly',
-      moment: '1',
-      skip: 0,
-    });
-    expect(repetitionFor({ ...f, frequency: 'quarterly' })).toMatchObject({
-      type: 'monthly',
-      moment: '28',
-      skip: 2,
-    });
-    expect(repetitionFor({ ...f, frequency: 'yearly', every: 2 })).toMatchObject({
-      type: 'yearly',
-      moment: '2026-09-28',
-      skip: 1,
-    });
+  it('sends every repetition type in the shape FF3 validates, and reads it back unchanged', () => {
+    const base = {
+      ...fieldsOf(groupPlanned([bill, rule, recurrence])[0]!, '2026-09-28'),
+      sourceId: '1',
+      destinationId: '4',
+    };
+    const cases: Repetition[] = [
+      // validateDaily wants the moment empty.
+      { type: 'daily', moment: '', skip: 0, weekend: 1 },
+      { type: 'weekly', moment: '3', skip: 1, weekend: 3 },
+      { type: 'monthly', moment: '28', skip: 2, weekend: 2 },
+      { type: 'ndom', moment: '2,1', skip: 0, weekend: 4 },
+      { type: 'yearly', moment: '2026-09-28', skip: 1, weekend: 1 },
+    ];
+    for (const rep of cases) {
+      expect(repetitionProblem(rep)).toBeNull();
+      const body = recurrenceBody({ ...base, repetitions: [rep] }, null, {});
+      const [sent] = body.repetitions as Record<string, unknown>[];
+      expect(sent).toEqual({
+        type: rep.type,
+        moment: rep.moment,
+        skip: rep.skip,
+        weekend: rep.weekend,
+      });
+      // FF3's `moment` budget is 10 characters, which `Y-m-d` fills exactly.
+      expect(String(sent!.moment).length).toBeLessThanOrEqual(10);
+      // Read back out of a recurrence FF3 would answer with: the same repetition.
+      const back = fieldsOf(
+        groupPlanned([
+          bill,
+          rule,
+          {
+            ...recurrence,
+            attributes: { ...recurrence.attributes, repetitions: [{ id: '9', ...rep }] },
+          } as PlannedObject,
+        ])[0]!,
+        '2026-09-28',
+      );
+      expect(back.repetitions).toEqual([{ id: '9', ...rep }]);
+    }
   });
 
-  it('gives a one-off a monthly repetition on its day, whatever the frequency', () => {
-    // FF3 refuses a yearly moment (a date) on an update: "repetitions.0.moment must be a number".
-    const once = { date: '2026-10-05', every: 1, repeats: false } as PlannedFields;
-    for (const frequency of ['yearly', 'weekly', 'monthly'] as const) {
-      expect(repetitionFor({ ...once, frequency })).toEqual({
-        type: 'monthly',
-        moment: '5',
-        skip: 0,
-        weekend: 1,
-      });
-    }
+  it('refuses a moment the type cannot hold', () => {
+    expect(repetitionProblem({ type: 'daily', moment: '5', skip: 0, weekend: 1 })).toBe('moment');
+    expect(repetitionProblem({ type: 'weekly', moment: '8', skip: 0, weekend: 1 })).toBe('moment');
+    expect(repetitionProblem({ type: 'monthly', moment: '0', skip: 0, weekend: 1 })).toBe('moment');
+    expect(repetitionProblem({ type: 'yearly', moment: '28', skip: 0, weekend: 1 })).toBe('moment');
+    expect(repetitionProblem({ type: 'monthly', moment: '5', skip: 99, weekend: 1 })).toBe('skip');
+  });
+
+  it('keeps every repetition of a multi-repetition recurrence', () => {
+    const first = { id: '9', type: 'monthly', moment: '1', skip: 0, weekend: 1 } as const;
+    const fifteenth = { id: '10', type: 'monthly', moment: '15', skip: 0, weekend: 1 } as const;
+    const both = {
+      ...recurrence,
+      attributes: { ...recurrence.attributes, repetitions: [first, fifteenth] },
+    } as PlannedObject;
+    const fields = fieldsOf(groupPlanned([bill, rule, both])[0]!, '2026-09-28');
+    expect(fields.repetitions).toHaveLength(2);
+    // A non-schedule edit sends no repetitions at all, so neither can be lost.
+    const renamed = { ...fields, name: 'Spotify Family', sourceId: '1', destinationId: '4' };
+    expect(recurrenceBody(renamed, fields, {})).not.toHaveProperty('repetitions');
+    // A schedule edit sends both, and the ids are deliberately left off: FF3 deletes and recreates
+    // the rows whenever the counts differ, and replay.ts makes sure they always do.
+    const moved = { ...renamed, date: '2026-11-01' };
+    const sent = recurrenceBody(moved, fields, {}).repetitions as Record<string, unknown>[];
+    expect(sent).toEqual([
+      { type: 'monthly', moment: '1', skip: 0, weekend: 1 },
+      { type: 'monthly', moment: '15', skip: 0, weekend: 1 },
+    ]);
+  });
+
+  it('reads the same schedule in either order as unchanged', () => {
+    const a = { type: 'monthly', moment: '1', skip: 0, weekend: 1 } as const;
+    const b = { type: 'monthly', moment: '15', skip: 0, weekend: 1 } as const;
+    const fields = fieldsOf(groupPlanned([bill, rule, recurrence])[0]!, '2026-09-28');
+    const one = { ...fields, repetitions: [a, b] };
+    expect(scheduleChanged(one, { ...fields, repetitions: [b, a] })).toBe(false);
+    expect(scheduleChanged(one, { ...fields, repetitions: [a] })).toBe(true);
+    expect(samePlannedFields(one, { ...fields, repetitions: [b, a] })).toBe(true);
+  });
+
+  it('derives a lossy bill schedule from the repetitions and never reads it back', () => {
+    // FF3 bills take weekly/monthly/quarterly/half-year/yearly only.
+    expect(billSchedule([{ type: 'daily', moment: '', skip: 3, weekend: 1 }])).toEqual({
+      repeat_freq: 'weekly',
+      skip: 0,
+    });
+    expect(billSchedule([{ type: 'ndom', moment: '2,1', skip: 0, weekend: 1 }])).toEqual({
+      repeat_freq: 'monthly',
+      skip: 0,
+    });
+    // Every 3 months stays monthly + skip rather than being relabelled quarterly: that relabelling
+    // is what never round-tripped.
+    expect(billSchedule([{ type: 'monthly', moment: '5', skip: 2, weekend: 1 }])).toEqual({
+      repeat_freq: 'monthly',
+      skip: 2,
+    });
+    // Several repetitions: the most frequent one.
+    expect(
+      billSchedule([
+        { type: 'yearly', moment: '2026-01-01', skip: 0, weekend: 1 },
+        { type: 'weekly', moment: '1', skip: 0, weekend: 1 },
+      ]),
+    ).toEqual({ repeat_freq: 'weekly', skip: 0 });
+  });
+
+  it('normalises a save queued by the build that kept five presets', () => {
+    const fields = fieldsOf(groupPlanned([bill, rule, recurrence])[0]!, '2026-09-28');
+    const legacy = {
+      ...fields,
+      date: '2026-09-28',
+      repetitions: undefined,
+      end: undefined,
+      skipDays: undefined,
+      frequency: 'quarterly',
+      every: 1,
+    } as unknown as PlannedFields;
+    expect(normalizeFields(legacy)).toMatchObject({
+      // quarterly was monthly + skip 2 underneath all along.
+      repetitions: [{ type: 'monthly', moment: '28', skip: 2, weekend: 1 }],
+      end: { kind: 'forever' },
+      skipDays: [],
+    });
+    const yearly = normalizeFields({
+      ...legacy,
+      frequency: 'yearly',
+      every: 2,
+    } as unknown as PlannedFields);
+    expect(yearly.repetitions).toEqual([
+      { type: 'yearly', moment: '2026-09-28', skip: 1, weekend: 1 },
+    ]);
+    // Already normal: untouched, same object.
+    expect(normalizeFields(fields)).toBe(fields);
+  });
+
+  it('keeps both markers in the recurrence notes and the user’s note on the bill', () => {
+    const fields = {
+      ...fieldsOf(groupPlanned([bill, rule, recurrence])[0]!, '2026-09-28'),
+      sourceId: '1',
+      destinationId: '4',
+    };
+    const skipping = { ...fields, time: '09:30', skipDays: ['2026-11-05'], notes: 'Mine' };
+    expect(recurrenceBody(skipping, fields, {}).notes).toBe(
+      'mmyway-time: 09:30 mmyway-skip: 2026-11-05',
+    );
+    expect(billBody(skipping, fields).notes).toBe('Mine');
+    // A marker a newer build wrote survives this build reading and rewriting the notes.
+    expect(recurrenceBody(skipping, fields, { existingNotes: 'mmyway-future: 1' }).notes).toContain(
+      'mmyway-future: 1',
+    );
   });
 
   it('moves a one-off read back from FF3 without a yearly repetition', () => {
@@ -306,16 +433,37 @@ describe('planned model', () => {
       },
     };
     const before = fieldsOf(groupPlanned([oneOffBill, rule, oneOffRecurrence])[0]!, '2026-09-28');
-    expect(before).toMatchObject({ repeats: false, frequency: 'monthly', date: '2026-10-05' });
-    const moved = { ...before, date: '2026-10-12' };
-    const body = recurrenceBody({ ...moved, sourceId: '1', destinationId: '4' }, before, {
-      repetitionId: '9',
+    expect(before).toMatchObject({
+      repeats: false,
+      date: '2026-10-05',
+      end: { kind: 'times', count: 1 },
     });
+    const moved = { ...before, date: '2026-10-12' };
+    const body = recurrenceBody({ ...moved, sourceId: '1', destinationId: '4' }, before, {});
     expect(body).toMatchObject({
       first_date: '2026-10-12',
       nr_of_repetitions: 1,
-      repetitions: [{ id: '9', type: 'monthly', moment: '12' }],
+      repetitions: [{ type: 'monthly', moment: '5' }],
     });
+    expect(body).not.toHaveProperty('repeat_until');
+  });
+
+  it('sends an end date or a count, whichever the user chose', () => {
+    const fields = {
+      ...fieldsOf(groupPlanned([bill, rule, recurrence])[0]!, '2026-09-28'),
+      sourceId: '1',
+      destinationId: '4',
+    };
+    const until = recurrenceBody(
+      { ...fields, end: { kind: 'until', date: '2027-06-01' } },
+      null,
+      {},
+    );
+    expect(until).toMatchObject({ repeat_until: '2027-06-01' });
+    expect(until).not.toHaveProperty('nr_of_repetitions');
+    const times = recurrenceBody({ ...fields, end: { kind: 'times', count: 12 } }, null, {});
+    expect(times).toMatchObject({ nr_of_repetitions: 12 });
+    expect(times).not.toHaveProperty('repeat_until');
   });
 
   it('shows queued saves and hides queued deletes', () => {

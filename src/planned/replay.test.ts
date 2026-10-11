@@ -17,10 +17,11 @@ const fields: PlannedFields = {
   currencyCode: 'USD',
   notes: 'a note',
   repeats: false,
-  frequency: 'monthly',
-  every: 1,
+  repetitions: [{ type: 'monthly', moment: '5', skip: 0, weekend: 1 }],
+  end: { kind: 'times', count: 1 },
   date: '2026-10-05',
   time: '09:30',
+  skipDays: [],
   categoryName: 'Music',
   tags: ['sub'],
 };
@@ -71,10 +72,15 @@ describe('replaySavePlanned', () => {
 });
 
 describe('replaySavePlanned on a planned transaction already in FF3', () => {
-  const inFF3 = { ...fields, repeats: true, date: '2026-10-05' };
+  const inFF3: PlannedFields = {
+    ...fields,
+    repeats: true,
+    end: { kind: 'forever' },
+    date: '2026-10-05',
+  };
   const ids = { billId: '2', ruleId: '4', recurrenceId: '3' };
 
-  function recordingFF3() {
+  function recordingFF3(stored: { id: string }[] = [{ id: '90' }]) {
     const calls: { method: string; path: string; body?: Record<string, unknown> }[] = [];
     const request = jest.fn(async (path: string, init?: RequestInit): Promise<unknown> => {
       const method = init?.method ?? 'GET';
@@ -93,7 +99,7 @@ describe('replaySavePlanned on a planned transaction already in FF3', () => {
         return read(path.split('/').pop()!, {
           title: fields.name,
           transactions: [{ id: '70' }],
-          repetitions: [{ id: '90' }],
+          repetitions: stored,
         });
       if (path.startsWith('/v1/bills')) return read('2', { name: fields.name });
       if (path.startsWith('/v1/rules/'))
@@ -113,11 +119,15 @@ describe('replaySavePlanned on a planned transaction already in FF3', () => {
     return read;
   }
 
-  it('replaces the recurring transaction when the schedule moves: FF3 refuses the new moment on an update', async () => {
+  it('sends a schedule change as one PUT and keeps the recurrence id', async () => {
     const db = createTestDb();
     const payload: SavePlannedPayload = {
       key: 'testspotify',
-      fields: { ...inFF3, date: '2026-10-12' },
+      fields: {
+        ...inFF3,
+        date: '2026-10-12',
+        repetitions: [{ type: 'monthly', moment: '12', skip: 0, weekend: 1 }],
+      },
       before: inFF3,
       ...ids,
     };
@@ -125,67 +135,115 @@ describe('replaySavePlanned on a planned transaction already in FF3', () => {
     const { client, calls } = recordingFF3();
     await replaySavePlanned(db as any, client as any, 'op-1', payload);
 
-    const recurrenceCalls = calls
-      .filter((c) => c.path.startsWith('/v1/recurrences'))
-      .map((c) => `${c.method} ${c.path}`);
-    expect(recurrenceCalls).toEqual([
-      'DELETE /v1/recurrences/3',
-      'GET /v1/recurrences?limit=100&page=1',
-      'POST /v1/recurrences',
-    ]);
-    const created = calls.find((c) => c.method === 'POST' && c.path === '/v1/recurrences')!.body!;
-    expect(created).toMatchObject({
-      first_date: '2026-10-12',
-      repetitions: [{ type: 'monthly', moment: '12' }],
-    });
-    expect(await stored()).toMatchObject({
-      recurrenceId: '30',
-      recurrenceReplaced: true,
-      replacedRecurrenceIds: [],
-    });
-  });
-
-  it('does not replace it again on a retry, and sends no schedule to the new one', async () => {
-    const db = createTestDb();
-    const payload: SavePlannedPayload = {
-      key: 'testspotify',
-      fields: { ...inFF3, date: '2026-10-12' },
-      before: inFF3,
-      ...ids,
-      recurrenceId: '30',
-      recurrenceReplaced: true,
-      replacedRecurrenceIds: [],
-    };
-    await queued(db, payload);
-    const { client, calls } = recordingFF3();
-    await replaySavePlanned(db as any, client as any, 'op-1', payload);
-
+    // FF3 6.7.0 validates a repetition's moment as a string on update, so no delete-and-recreate.
     expect(calls.some((c) => c.method === 'DELETE')).toBe(false);
-    const put = calls.find((c) => c.method === 'PUT' && c.path === '/v1/recurrences/30')!.body!;
-    expect(put).not.toHaveProperty('repetitions');
-  });
-
-  it('finishes deleting the old one when a retry finds it still listed', async () => {
-    const db = createTestDb();
-    const payload: SavePlannedPayload = {
-      key: 'testspotify',
-      fields: { ...inFF3, date: '2026-10-12' },
-      before: inFF3,
-      ...ids,
-      recurrenceId: null,
-      recurrenceReplaced: true,
-      replacedRecurrenceIds: ['3'],
-    };
-    await queued(db, payload);
-    const { client, calls } = recordingFF3();
-    await replaySavePlanned(db as any, client as any, 'op-1', payload);
     expect(
       calls.filter((c) => c.path.startsWith('/v1/recurrences')).map((c) => `${c.method} ${c.path}`),
-    ).toEqual([
-      'DELETE /v1/recurrences/3',
-      'GET /v1/recurrences?limit=100&page=1',
-      'POST /v1/recurrences',
+    ).toEqual(['GET /v1/recurrences/3', 'PUT /v1/recurrences/3']);
+    const put = calls.find((c) => c.method === 'PUT' && c.path === '/v1/recurrences/3')!.body!;
+    expect(put).toMatchObject({
+      first_date: '2026-10-12',
+      repetitions: [{ type: 'monthly', moment: '12', skip: 0, weekend: 1 }],
+    });
+    // The id survives, and with it the markers kept in the recurrence's notes.
+    expect(await stored()).toMatchObject({ recurrenceId: '3' });
+  });
+
+  it('sends one repetition first when FF3 holds several and the count would not change', async () => {
+    const db = createTestDb();
+    const both = [
+      { type: 'monthly' as const, moment: '1', skip: 0, weekend: 1 as const },
+      { type: 'monthly' as const, moment: '20', skip: 0, weekend: 1 as const },
+    ];
+    const payload: SavePlannedPayload = {
+      key: 'testspotify',
+      fields: { ...inFF3, date: '2026-10-12', repetitions: both },
+      before: { ...inFF3, repetitions: [both[0]!, { ...both[1]!, moment: '15' }] },
+      ...ids,
+    };
+    await queued(db, payload);
+    // FF3 holds two, so a same-count PUT would go down matchRepetition and throw
+    // "Cannot match recurring repetition to existing repetition."
+    const { client, calls } = recordingFF3([{ id: '90' }, { id: '91' }]);
+    await replaySavePlanned(db as any, client as any, 'op-1', payload);
+
+    const puts = calls.filter((c) => c.method === 'PUT' && c.path === '/v1/recurrences/3');
+    expect(puts).toHaveLength(2);
+    // The intermediate one carries exactly one repetition, so both counts differ from the stored
+    // two and FF3 takes the delete-and-recreate branch each time.
+    expect(puts[0]!.body!.repetitions).toEqual([
+      { type: 'monthly', moment: '1', skip: 0, weekend: 1 },
     ]);
+    expect(puts[1]!.body!.repetitions).toEqual([
+      { type: 'monthly', moment: '1', skip: 0, weekend: 1 },
+      { type: 'monthly', moment: '20', skip: 0, weekend: 1 },
+    ]);
+  });
+
+  it('sends one PUT when the repetition count itself changes', async () => {
+    const db = createTestDb();
+    const payload: SavePlannedPayload = {
+      key: 'testspotify',
+      fields: {
+        ...inFF3,
+        repetitions: [
+          { type: 'monthly', moment: '1', skip: 0, weekend: 1 },
+          { type: 'monthly', moment: '15', skip: 0, weekend: 1 },
+          { type: 'monthly', moment: '20', skip: 0, weekend: 1 },
+        ],
+      },
+      before: inFF3,
+      ...ids,
+    };
+    await queued(db, payload);
+    const { client, calls } = recordingFF3([{ id: '90' }, { id: '91' }]);
+    await replaySavePlanned(db as any, client as any, 'op-1', payload);
+    expect(calls.filter((c) => c.method === 'PUT' && c.path === '/v1/recurrences/3')).toHaveLength(
+      1,
+    );
+  });
+
+  it('sends one PUT when FF3 holds a single repetition, whatever changes', async () => {
+    const db = createTestDb();
+    const payload: SavePlannedPayload = {
+      key: 'testspotify',
+      fields: {
+        ...inFF3,
+        repetitions: [{ type: 'ndom', moment: '2,1', skip: 0, weekend: 3 }],
+      },
+      before: inFF3,
+      ...ids,
+    };
+    await queued(db, payload);
+    const { client, calls } = recordingFF3();
+    await replaySavePlanned(db as any, client as any, 'op-1', payload);
+    // originalCount === 1 returns the first repetition unconditionally, so a match is never tried.
+    expect(calls.filter((c) => c.method === 'PUT' && c.path === '/v1/recurrences/3')).toHaveLength(
+      1,
+    );
+  });
+
+  it('replays a save queued by the build that kept five presets', async () => {
+    const db = createTestDb();
+    const asQueued = (frequency: string) => ({
+      ...inFF3,
+      repetitions: undefined,
+      end: undefined,
+      skipDays: undefined,
+      frequency,
+      every: 1,
+    });
+    const legacy = {
+      key: 'testspotify',
+      fields: asQueued('quarterly'),
+      before: asQueued('monthly'),
+      ...ids,
+    } as unknown as SavePlannedPayload;
+    await queued(db, legacy);
+    const { client, calls } = recordingFF3();
+    await replaySavePlanned(db as any, client as any, 'op-1', legacy);
+    const put = calls.find((c) => c.method === 'PUT' && c.path === '/v1/recurrences/3')!.body!;
+    expect(put.repetitions).toEqual([{ type: 'monthly', moment: '5', skip: 2, weekend: 1 }]);
   });
 
   it('updates in place when the schedule did not change', async () => {

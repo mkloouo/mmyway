@@ -3,6 +3,7 @@
 // is kept as FF3 sent it, for the detailed view.
 import { eq } from 'drizzle-orm';
 import type { FF3Client } from '../api/ff3/client';
+import type { TransactionRead } from '../api/ff3/types';
 import { fetchAllPages } from '../api/ff3/paginate';
 import { plannedObjects } from '../db/schema';
 import type { OutboxDb } from '../sync/outbox';
@@ -148,6 +149,26 @@ const PATHS: Record<PlannedKind, string> = {
 };
 export const plannedPath = (kind: PlannedKind, id?: string) =>
   id ? `${PATHS[kind]}/${id}` : PATHS[kind];
+
+/**
+ * The transactions Firefly III has already booked from a recurrence, newest first
+ * (`GET /v1/recurrences/{id}/transactions`). The "behind" half of the occurrence list: FF3's
+ * `repetitions[].occurrences` are future-only, so there is no other way to get at the past ones.
+ */
+export async function fetchRecurrenceTransactions(
+  client: FF3Client,
+  recurrenceId: string,
+): Promise<TransactionRead[]> {
+  const rows = await fetchAllPages<TransactionRead>(
+    client,
+    `/v1/recurrences/${encodeURIComponent(recurrenceId)}/transactions`,
+  );
+  return [...rows].sort((a, b) =>
+    String(b.attributes.transactions[0]?.date ?? '').localeCompare(
+      String(a.attributes.transactions[0]?.date ?? ''),
+    ),
+  );
+}
 
 export async function fetchAllOf(
   client: FF3Client,

@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+### Planned
+
+- **Fine-tune how a planned transaction repeats.** The five fixed frequencies are replaced by the whole schedule Firefly III can actually hold: daily, weekly, monthly, yearly, and "the second Tuesday of the month". Each pattern has its own day — a day of the month, a weekday, an nth weekday, or a date — its own "every N periods", and its own weekend rule: keep the date, skip it, move it to the Friday, or move it to the Monday. "Every 3 months" is now just that, instead of a "Quarterly" label that did not survive being saved and read back.
+- **More than one pattern per planned transaction.** Rent on the 1st _and_ the 15th is one planned transaction with two patterns, added and removed from the detail screen.
+- **Choose when it stops.** Until you change it, until a date, or after a number of times.
+- **See every occurrence.** The detail screen lists what is coming up — across all of its patterns, as far ahead as the pattern goes rather than the five dates Firefly III hands over — and what Firefly III has already booked, each one opening the transaction.
+- **Choose when reminders arrive.** Settings → Notifications picks how many days before a planned transaction you are reminded — the day before, two, three, a week, or only on the day itself. Reminders now also cover every occurrence in the next month rather than only the next one, and a skipped occurrence is not reminded about.
+- **Skip a single occurrence without cancelling the rest.** Tap a date in the list to skip it. Firefly III has no way to miss one occurrence, so the app deletes the transaction as soon as it is booked and never shows it to you; the skipped dates are stored on the recurring transaction itself, so they survive a reinstall and are visible in Firefly III's own web interface.
+
+### Fixed
+
+- **A planned transaction with several repeat patterns lost all but the first.** Changing the schedule of a recurring transaction built in Firefly III's web interface with more than one repetition — "the 1st and the 15th" — silently dropped every repetition after the first. All of them are now kept.
+- **Daily and "nth weekday" recurring transactions were rewritten as monthly.** A recurring transaction Firefly III held as daily, or as "the second Monday", was shown as "every 1 month" and turned into exactly that the next time anything was saved. Both are now read and written as what they are.
+- **A one-off switched back to repeating kept its end date.** Its subscription stayed ended on the day after the original date, so Firefly III no longer expected it. The end date is now pushed far into the future instead.
+- **Clearing a planned transaction's note now works.** It needed Firefly III 6.7.0, which is now the minimum.
+
 ### Firefly III
 
 - **Firefly III 6.7.0 or later is now required.** Older servers are refused at sign-in. 6.7.0 is the release that fixed two API bugs this app had to work around: a recurring transaction's schedule could not be updated in place (so every schedule change deleted the recurring transaction and created a replacement), and a subscription's note could not be cleared. If your instance is older, update it before updating the app.

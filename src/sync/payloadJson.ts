@@ -72,14 +72,29 @@ const SCHEMAS = {
       currencyCode: z.string(),
       date: z.string(),
       repeats: z.boolean(),
-      frequency: z.string(),
-      every: z.number(),
+      // All three are optional so a save queued by either build parses: the previous one wrote
+      // `frequency`/`every`, this one writes `repetitions`, and model.ts's normalizeFields turns
+      // the legacy pair into a repetitions array on read.
+      frequency: z.string().optional(),
+      every: z.number().optional(),
+      repetitions: z
+        .array(
+          z.looseObject({
+            type: z.string(),
+            moment: z.string(),
+            skip: z.number(),
+            weekend: z.number(),
+          }),
+        )
+        .optional(),
       tags: z.array(z.string()),
     }),
     before: z.looseObject({}).nullable(),
     billId: z.string().nullish(),
     ruleId: z.string().nullish(),
     recurrenceId: z.string().nullish(),
+    // Written by the build that deleted and recreated the recurring transaction for every schedule
+    // change. Kept so an operation it queued still parses and replays; removable a release later.
     recurrenceReplaced: z.boolean().optional(),
     replacedRecurrenceIds: z.array(z.string()).optional(),
   }),

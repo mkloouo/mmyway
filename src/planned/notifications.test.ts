@@ -5,7 +5,7 @@ import {
   NOTIFICATION_PREFIX,
 } from './notifications';
 import { createTestDb } from '../db/testDb';
-import { setPlannedNotificationsEnabled } from '../settings/appSettings';
+import { setPlannedNotificationsEnabled, setPlannedReminderLead } from '../settings/appSettings';
 import * as Notifications from 'expo-notifications';
 import { plannedObjects } from '../db/schema';
 import { plannedKey } from './objects';
@@ -28,21 +28,68 @@ describe('computePlannedNotificationTargets', () => {
       currencyCode: 'EUR',
       date: '2026-10-15',
       time: '14:30',
+      repeats: false,
+      skipDays: [] as string[],
     },
   };
 
-  it('computes both 2 days before and day of when both are in the future', () => {
+  it('computes both the lead reminder and the day itself when both are in the future', () => {
     const now = new Date(2026, 9, 10, 10, 0, 0); // Oct 10, 2026
     const targets = computePlannedNotificationTargets(item, now);
 
     expect(targets).toHaveLength(2);
-    expect(targets[0]?.type).toBe('twoDaysBefore');
+    expect(targets[0]?.leadDays).toBe(2);
     expect(targets[0]?.triggerDate).toEqual(new Date(2026, 9, 13, 14, 30, 0));
-    expect(targets[0]?.identifier).toBe(`${NOTIFICATION_PREFIX}netflix:2`);
+    expect(targets[0]?.identifier).toBe(`${NOTIFICATION_PREFIX}netflix:2026-10-15:2`);
 
-    expect(targets[1]?.type).toBe('dayOf');
+    expect(targets[1]?.leadDays).toBe(0);
     expect(targets[1]?.triggerDate).toEqual(new Date(2026, 9, 15, 14, 30, 0));
-    expect(targets[1]?.identifier).toBe(`${NOTIFICATION_PREFIX}netflix:0`);
+    expect(targets[1]?.identifier).toBe(`${NOTIFICATION_PREFIX}netflix:2026-10-15:0`);
+  });
+
+  it('takes the lead time it is given, and only the day itself for a lead of none', () => {
+    const now = new Date(2026, 9, 1, 10, 0, 0);
+    expect(computePlannedNotificationTargets(item, now, 7).map((x) => x.triggerDate)).toEqual([
+      new Date(2026, 9, 8, 14, 30, 0),
+      new Date(2026, 9, 15, 14, 30, 0),
+    ]);
+    const onlyTheDay = computePlannedNotificationTargets(item, now, 0);
+    expect(onlyTheDay).toHaveLength(1);
+    expect(onlyTheDay[0]?.leadDays).toBe(0);
+  });
+
+  it('reminds about every occurrence inside the horizon, not just the next one', () => {
+    const weekly = {
+      key: 'gym',
+      fields: {
+        ...item.fields,
+        date: '2026-10-15',
+        repeats: true,
+        repetitions: [{ type: 'weekly' as const, moment: '4', skip: 0, weekend: 1 as const }],
+      },
+    };
+    const now = new Date(2026, 9, 10, 10, 0, 0);
+    const days = [
+      ...new Set(computePlannedNotificationTargets(weekly, now, 0).map((x) => x.dueDate)),
+    ];
+    // 2026-10-15 is a Thursday; the horizon is 30 days.
+    expect(days).toEqual(['2026-10-15', '2026-10-22', '2026-10-29', '2026-11-05']);
+  });
+
+  it('leaves out an occurrence the user skipped', () => {
+    const weekly = {
+      key: 'gym',
+      fields: {
+        ...item.fields,
+        repeats: true,
+        repetitions: [{ type: 'weekly' as const, moment: '4', skip: 0, weekend: 1 as const }],
+        skipDays: ['2026-10-22'],
+      },
+    };
+    const now = new Date(2026, 9, 10, 10, 0, 0);
+    const days = computePlannedNotificationTargets(weekly, now, 0).map((x) => x.dueDate);
+    expect(days).not.toContain('2026-10-22');
+    expect(days).toContain('2026-10-15');
   });
 
   it('defaults to 9:00 AM if time is not specified', () => {
@@ -63,7 +110,7 @@ describe('computePlannedNotificationTargets', () => {
     const targets = computePlannedNotificationTargets(item, now);
 
     expect(targets).toHaveLength(1);
-    expect(targets[0]?.type).toBe('dayOf');
+    expect(targets[0]?.leadDays).toBe(0);
   });
 
   it('returns empty if both dates are in the past', () => {
@@ -75,10 +122,10 @@ describe('computePlannedNotificationTargets', () => {
 });
 
 describe('formatPlannedNotificationBody', () => {
-  it('formats dayOf notification with amount', () => {
+  it('formats the day-of notification with amount', () => {
     const target = {
-      identifier: `${NOTIFICATION_PREFIX}netflix:0`,
-      type: 'dayOf' as const,
+      identifier: `${NOTIFICATION_PREFIX}netflix:2026-10-15:0`,
+      leadDays: 0,
       triggerDate: new Date(2026, 9, 15),
       plannedKey: 'netflix',
       name: 'Netflix',
@@ -90,10 +137,10 @@ describe('formatPlannedNotificationBody', () => {
     expect(body).toContain('15.99');
   });
 
-  it('formats twoDaysBefore notification with date and amount', () => {
+  it('formats the lead notification with date and amount', () => {
     const target = {
-      identifier: `${NOTIFICATION_PREFIX}netflix:2`,
-      type: 'twoDaysBefore' as const,
+      identifier: `${NOTIFICATION_PREFIX}netflix:2026-10-15:2`,
+      leadDays: 2,
       triggerDate: new Date(2026, 9, 13),
       plannedKey: 'netflix',
       name: 'Netflix',
@@ -173,7 +220,7 @@ describe('syncPlannedNotifications', () => {
           first_date: '2026-10-20',
           type: 'withdrawal',
           transactions: [{ amount: '30.00', currency_code: 'EUR' }],
-          repetitions: [{ type: 'monthly', skip: 0, occurrences: ['2026-10-20'] }],
+          repetitions: [{ type: 'monthly', moment: '20', skip: 0, occurrences: ['2026-10-20'] }],
         }),
         syncedAt,
       },
@@ -181,10 +228,11 @@ describe('syncPlannedNotifications', () => {
 
     await syncPlannedNotifications(db, [{ code: 'EUR', symbol: '€' } as any], now);
 
+    // One occurrence inside the 30-day horizon, so the lead reminder and the day itself.
     expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledTimes(2);
     expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledWith(
       expect.objectContaining({
-        identifier: 'planned:gym:2',
+        identifier: 'planned:gym:2026-10-20:2',
         content: expect.objectContaining({
           title: 'Gym',
           data: { plannedKey: 'gym' },
@@ -193,12 +241,56 @@ describe('syncPlannedNotifications', () => {
     );
     expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledWith(
       expect.objectContaining({
-        identifier: 'planned:gym:0',
+        identifier: 'planned:gym:2026-10-20:0',
         content: expect.objectContaining({
           title: 'Gym',
           data: { plannedKey: 'gym' },
         }),
       }),
+    );
+  });
+
+  it('honours the lead time the user chose', async () => {
+    await setPlannedNotificationsEnabled(db, true);
+    await setPlannedReminderLead(db, 0);
+    const now = new Date(2026, 9, 1, 10, 0, 0);
+    await db.insert(plannedObjects).values([
+      {
+        key: plannedKey('bill', '1'),
+        kind: 'bill',
+        ff3Id: '1',
+        name: 'Gym',
+        attributesJson: JSON.stringify({ name: 'Gym', amount_max: '30.00', date: '2026-10-20' }),
+        syncedAt: now.toISOString(),
+      },
+      {
+        key: plannedKey('rule', '1'),
+        kind: 'rule',
+        ff3Id: '1',
+        name: 'Gym',
+        attributesJson: JSON.stringify({ title: 'Gym', actions: [], triggers: [] }),
+        syncedAt: now.toISOString(),
+      },
+      {
+        key: plannedKey('recurrence', '1'),
+        kind: 'recurrence',
+        ff3Id: '1',
+        name: 'Gym',
+        attributesJson: JSON.stringify({
+          title: 'Gym',
+          first_date: '2026-10-20',
+          type: 'withdrawal',
+          transactions: [{ amount: '30.00', currency_code: 'EUR' }],
+          repetitions: [{ type: 'yearly', moment: '2026-10-20', skip: 0 }],
+        }),
+        syncedAt: now.toISOString(),
+      },
+    ]);
+
+    await syncPlannedNotifications(db, [{ code: 'EUR', symbol: '€' } as any], now);
+    expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledTimes(1);
+    expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ identifier: 'planned:gym:2026-10-20:0' }),
     );
   });
 

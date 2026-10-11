@@ -1,15 +1,16 @@
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import type { FF3Client } from '../api/ff3/client';
 import type { TransactionRead, TransactionSplit } from '../api/ff3/types';
-import { inboxItems, plannedObjects } from '../db/schema';
-import { enqueueOperation } from './outbox';
+import { inboxItems, outboxOperations, plannedObjects } from '../db/schema';
+import { enqueueOperation, isUnsent } from './outbox';
 import type { NewOutboxOperation, OutboxDb } from './outbox';
 import { generateId } from '../utils/id';
 import { transition } from '../inbox/state';
 import { readReviewJournal, writeDraft, type ReviewJournal } from '../inbox/draftJson';
 import { plannedKey, readPlannedRow } from '../planned/objects';
-import { atPlannedTime, readPlannedTime } from '../planned/plannedTime';
+import { atPlannedTime, readMarkers, readPlannedTime } from '../planned/notes';
 import { normkey } from '../lookup/normkey';
+import { payloadGroupId } from './payloadJson';
 import { fetchAll } from './referenceData';
 
 const REVIEWED_TAG = 'mmyway-reviewed';
@@ -27,9 +28,10 @@ export async function pullUnreviewedRecurring(
   // so every transaction in the window is fetched and the rest skipped.
   // Bounded by date: none from before this app has the reviewed tag, and an unbounded first pull
   // turned up to 100 of them into review cards. Reaching back from the last sync, not from today,
-  // still catches everything that fired while the app wasn't opened. The end reaches ahead
-  // because triggering a recurrence early books it on its future date; FF3 ignores a start given
-  // without an end.
+  // still catches everything that fired while the app wasn't opened. The end reaches a year ahead
+  // only as slack — the Planned tab's "book now" dates its transaction *today* whatever occurrence
+  // it fired (`markGroupsAsNow`, see replayTriggerPlanned), so nothing should be out there; FF3
+  // ignores a start given without an end.
   const from = new Date(opts.since ?? Date.now());
   from.setDate(from.getDate() - RECURRING_LOOKBACK_DAYS);
   const to = new Date();
@@ -50,6 +52,26 @@ export async function pullUnreviewedRecurring(
     )
       continue;
 
+    // FF3 puts updated_at on the group's attributes, not on each split — journal.updated_at is
+    // undefined against real API responses despite what TransactionSplit's type claims. Fix it
+    // once here so every downstream reader (approve/edit/delete, all of which JSON.parse this
+    // draftJson) sees a correct value without having to know about the mismatch.
+    const groupUpdatedAt =
+      (group.attributes as { updated_at?: string }).updated_at ?? journal.updated_at;
+
+    // An occurrence the user cancelled one by one: Firefly III has no per-occurrence skip, so the
+    // cron books it anyway and the app deletes it the moment it arrives, without ever showing a
+    // card. Queued like any other delete, so it goes out in order with everything else.
+    if (await isSkipped(db, journal)) {
+      if (!(await alreadyQueuedDelete(db, group.id)))
+        await enqueueOperation(db, {
+          id: generateId(),
+          kind: 'delete_transaction',
+          payload: { groupId: group.id, expectedUpdatedAt: groupUpdatedAt },
+        });
+      continue;
+    }
+
     const [existing] = await db
       .select()
       .from(inboxItems)
@@ -67,12 +89,6 @@ export async function pullUnreviewedRecurring(
       continue;
     }
 
-    // FF3 puts updated_at on the group's attributes, not on each split — journal.updated_at is
-    // undefined against real API responses despite what TransactionSplit's type claims. Fix it
-    // once here so every downstream reader (approve/edit/delete, all of which JSON.parse this
-    // draftJson) sees a correct value without having to know about the mismatch.
-    const groupUpdatedAt =
-      (group.attributes as { updated_at?: string }).updated_at ?? journal.updated_at;
     const reviewJournal = await withPlannedForeign(
       db,
       readReviewJournal(writeDraft({ ...journal, updated_at: groupUpdatedAt })),
@@ -90,6 +106,36 @@ export async function pullUnreviewedRecurring(
     created += 1;
   }
   return created;
+}
+
+/**
+ * Whether the recurrence that booked this journal has the journal's occurrence in its
+ * `mmyway-skip` marker. FF3 records the occurrence a journal came from in its `recurrence_date`
+ * meta; where the API does not hand that over, the journal's own date is the next best match —
+ * the cron only ever books an occurrence on the day it falls (`handleOccurrence` returns unless
+ * the occurrence date equals the run date).
+ */
+async function isSkipped(
+  db: OutboxDb,
+  journal: {
+    date?: string;
+    description?: string;
+    recurrence_id?: string | number | null;
+    recurrence_date?: string | null;
+  },
+): Promise<boolean> {
+  const day = (journal.recurrence_date ?? journal.date ?? '').slice(0, 10);
+  if (!day) return false;
+  return readMarkers((await recurrenceFor(db, journal))?.notes).skip.includes(day);
+}
+
+/** A delete for this group already waiting in the queue: a pull repeats until it has been sent. */
+async function alreadyQueuedDelete(db: OutboxDb, groupId: string): Promise<boolean> {
+  const ops = await db
+    .select()
+    .from(outboxOperations)
+    .where(and(eq(outboxOperations.kind, 'delete_transaction'), isUnsent()));
+  return ops.some((op) => payloadGroupId(op.kind, op.payloadJson) === groupId);
 }
 
 /**
@@ -176,9 +222,9 @@ type RecurrenceAttributes = {
 /** The cached recurrence that booked a journal: by the journal's recurrence id, else by title. */
 async function recurrenceFor(
   db: OutboxDb,
-  journal: ReviewJournal,
+  journal: { recurrence_id?: string | number | null; description?: string },
 ): Promise<RecurrenceAttributes | undefined> {
-  const recurrenceId = (journal as { recurrence_id?: string | number | null }).recurrence_id;
+  const recurrenceId = journal.recurrence_id;
   if (recurrenceId != null) {
     const [row] = await db
       .select()
