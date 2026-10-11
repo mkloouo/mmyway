@@ -26,6 +26,17 @@ export function addDecimal(a: string, b: string): string {
   return fromMinorUnits(leftScaled + rightScaled, scale);
 }
 
+/** `a - b`. Ready to Assign and the carry-over are differences of two FF3amounts. */
+export function subtractDecimal(a: string, b: string): string {
+  return addDecimal(a, b.trim().startsWith('-') ? b.trim().slice(1) : `-${b.trim()}`);
+}
+
+/** -1 when `a < b`, 0 when equal, 1 when greater. "Is this envelope overspent." */
+export function compareDecimal(a: string, b: string): -1 | 0 | 1 {
+  const diff = toMinorUnits(subtractDecimal(a, b)).minor;
+  return diff === 0n ? 0 : diff < 0n ? -1 : 1;
+}
+
 /** FF3's `7.990000000000` as `7.99`, for an editable field: only trailing fraction zeros go. */
 export function trimDecimal(a: string): string {
   return a.includes('.') ? a.replace(/0+$/, '').replace(/\.$/, '') : a;

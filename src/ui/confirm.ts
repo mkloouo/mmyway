@@ -11,13 +11,34 @@ export function confirmDestructive(
   actionLabel: string,
   message?: string,
 ): Promise<boolean> {
+  return ask(title, actionLabel, 'destructive', message);
+}
+
+/**
+ * The same prompt for a change that is big but not destructive — auto-filling every envelope at
+ * once. Same shape, without the red button: nothing is being deleted.
+ */
+export function confirmAction(
+  title: string,
+  actionLabel: string,
+  message?: string,
+): Promise<boolean> {
+  return ask(title, actionLabel, 'default', message);
+}
+
+function ask(
+  title: string,
+  actionLabel: string,
+  style: 'destructive' | 'default',
+  message?: string,
+): Promise<boolean> {
   return new Promise((resolve) => {
     Alert.alert(
       title,
       message,
       [
         { text: i18n.t('common.cancel'), style: 'cancel', onPress: () => resolve(false) },
-        { text: actionLabel, style: 'destructive', onPress: () => resolve(true) },
+        { text: actionLabel, style, onPress: () => resolve(true) },
       ],
       { onDismiss: () => resolve(false) },
     );

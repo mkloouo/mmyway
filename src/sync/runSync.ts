@@ -39,6 +39,7 @@ import {
   isUnsent,
   type OutboxDb,
 } from './outbox';
+import { pullBucketData } from './bucketData';
 import { pruneReferenceData, reapplyQueuedAccountEdits } from './referenceHygiene';
 import { pullUnreviewedRecurring } from './recurringReview';
 import { retryPendingReceipts } from '../receipt/toDraft';
@@ -264,6 +265,13 @@ async function doSync(db: OutboxDb, mode: SyncMode): Promise<SyncSummary> {
         await reapplyQueuedAccountEdits(db);
         await backfillCachedTransactions(db);
         await setBalancesStale(db, false);
+        // The Budget tab's envelopes and funds: five requests, so the quick push path skips it.
+        // A failure here leaves the tab showing the last pull; it doesn't fail the sync.
+        try {
+          await pullBucketData(db, client);
+        } catch (err) {
+          logLine('warn', `budget pull failed: ${errorMessage(err)}`);
+        }
       }
 
       // Marked before sending, not after: a process killed between a write landing and the
