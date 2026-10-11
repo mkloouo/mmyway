@@ -138,7 +138,13 @@
     "moveFrom": "",
     "moveAmountTitle": "",
     "nothingToGive": "",
-    "envelopeGone": ""
+    "envelopeGone": "",
+    "autofill": "",
+    "autofillWith": "",
+    "autofillTitle": "",
+    "autofillConfirm": "",
+    "autofillBody_one": "",
+    "autofillBody_other": ""
   },
   "capture": {
     "attach": "Прикріпити",
