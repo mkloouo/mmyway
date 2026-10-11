@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-10-11
+
 ### Security
 
 - **App lock.** Settings → Security → Require unlock asks for your fingerprint, face, or screen lock when the app opens, and again when it has been in the background for more than a couple of minutes. Switching to the camera or the gallery to add a receipt does not re-lock it. Turning it on prompts once first, so a lock you cannot pass can never be switched on, and the option stays unavailable until the phone has a fingerprint, face unlock, or screen lock of its own.
