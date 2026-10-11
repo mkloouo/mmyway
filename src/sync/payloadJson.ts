@@ -98,6 +98,21 @@ const SCHEMAS = {
     recurrenceId: z.string(),
     date: z.string(),
   }),
+  set_budget_limits: z.looseObject({
+    v: version,
+    periodStart: z.string(),
+    periodEnd: z.string(),
+    currencyCode: z.string(),
+    // Absolute amounts. One entry is an assignment, two a move, many an auto-fill — one operation
+    // either way, so a move can't half-land (src/bucket/replay.ts).
+    entries: z.array(
+      z.looseObject({
+        budgetId: z.string(),
+        amount: z.string(),
+        limitId: z.string().nullish(),
+      }),
+    ),
+  }),
 } satisfies Record<OutboxKind, z.ZodType>;
 
 export function readPayload<T = Record<string, unknown>>(kind: OutboxKind, json: string): T {

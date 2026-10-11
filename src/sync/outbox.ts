@@ -43,6 +43,7 @@ import {
   type SavePlannedPayload,
   type TriggerPlannedPayload,
 } from '../planned/replay';
+import { replaySetBudgetLimits, type SetBudgetLimitsPayload } from '../bucket/replay';
 
 export type OutboxKind =
   | 'create_transaction'
@@ -55,7 +56,8 @@ export type OutboxKind =
   | 'reorder_accounts'
   | 'save_planned'
   | 'delete_planned'
-  | 'trigger_planned';
+  | 'trigger_planned'
+  | 'set_budget_limits';
 
 /** The kinds that change an account balance in FF3 once they land; receipts and account edits don't. */
 export const LEDGER_KINDS = [
@@ -139,6 +141,7 @@ export interface NewOutboxOperation {
     | SavePlannedPayload
     | DeletePlannedPayload
     | TriggerPlannedPayload
+    | SetBudgetLimitsPayload
     | Record<string, unknown>;
 }
 
@@ -839,6 +842,12 @@ async function replayOne(
 
     if (row.kind === 'trigger_planned') {
       await replayTriggerPlanned(client, payload as TriggerPlannedPayload);
+      await db.delete(outboxOperations).where(eq(outboxOperations.id, row.id));
+      return 'done';
+    }
+
+    if (row.kind === 'set_budget_limits') {
+      await replaySetBudgetLimits(db, client, row.id, payload as SetBudgetLimitsPayload);
       await db.delete(outboxOperations).where(eq(outboxOperations.id, row.id));
       return 'done';
     }

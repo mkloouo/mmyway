@@ -199,5 +199,15 @@ export function describeQueuedChange(
         route: `/planned/${encodeURIComponent(p.key as string)}`,
         changed: [],
       };
+    case 'set_budget_limits': {
+      // No subject: the envelope's name would mean threading a budget lookup through both callers
+      // for one line, and the kind label ("Saving a budget assignment") already says what it is.
+      const first = str((p.entries as { budgetId?: unknown }[] | undefined)?.[0]?.budgetId);
+      return {
+        subject: null,
+        route: first ? `/budget/${encodeURIComponent(first)}` : null,
+        changed: [],
+      };
+    }
   }
 }

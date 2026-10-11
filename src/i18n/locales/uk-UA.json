@@ -125,7 +125,20 @@
     "fundOfTarget": "",
     "fundOpenEnded": "",
     "fundBy": "",
-    "dueThisPeriod": ""
+    "dueThisPeriod": "",
+    "availableLabel": "",
+    "overspentBy": "",
+    "thisMonth": "",
+    "assignedLabel": "",
+    "spentLabel": "",
+    "lastMonthLabel": "",
+    "assign": "",
+    "assignTitle": "",
+    "moveHere": "",
+    "moveFrom": "",
+    "moveAmountTitle": "",
+    "nothingToGive": "",
+    "envelopeGone": ""
   },
   "capture": {
     "attach": "Прикріпити",
@@ -370,6 +383,7 @@
       "recurring_review": "Схвалення повторюваної транзакції",
       "reorder_accounts": "",
       "save_planned": "Збереження запланованої транзакції",
+      "set_budget_limits": "",
       "trigger_planned": "",
       "update_account": "Збереження облікового запису",
       "update_transaction": "Збереження редагування транзакції"

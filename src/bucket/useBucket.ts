@@ -1,14 +1,16 @@
 // The Budget tab's data, live off SQLite: the open period's envelopes, the previous period's (for
 // "what you assigned last month"), the sinking funds, the bills due, and Ready to Assign.
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { useMemo } from 'react';
-import { bucketObjects, plannedObjects, referenceAccounts } from '../db/schema';
+import { bucketObjects, outboxOperations, plannedObjects, referenceAccounts } from '../db/schema';
 import { useLiveQuery } from '../db/useLiveQuery';
 import { useBudgetRows, useCurrencies } from '../db/useReferenceData';
 import { useDb } from '../providers/DbProvider';
 import { currencyOf, type DisplayCurrency } from '../ui/money';
 import { billsDueIn, type BillDue } from '../sync/bucketData';
+import { tryReadPayload } from '../sync/payloadJson';
 import { envelopesFor, type Envelope } from './envelopes';
+import type { SetBudgetLimitsPayload } from './replay';
 import { fundsFrom, type Fund } from './funds';
 import { readBucketRow, type BucketObject } from './objects';
 import { periodOf, previousPeriod, type Period } from './period';
@@ -26,6 +28,8 @@ export interface BucketData {
   rta: Rta;
   currency: DisplayCurrency;
   currencyCode: string;
+  /** Budget ids whose assignment is still waiting in the outbox, for a pending dot. */
+  queued: Set<string>;
   loaded: boolean;
 }
 
@@ -35,6 +39,12 @@ export function useBucket(): BucketData {
   const { data: planned } = useLiveQuery(db.select().from(plannedObjects));
   const { data: accounts } = useLiveQuery(
     db.select().from(referenceAccounts).where(eq(referenceAccounts.type, 'asset')),
+  );
+  const { data: ops } = useLiveQuery(
+    db
+      .select()
+      .from(outboxOperations)
+      .where(inArray(outboxOperations.kind, ['set_budget_limits'])),
   );
   const budgets = useBudgetRows();
   const currencies = useCurrencies();
@@ -51,6 +61,11 @@ export function useBucket(): BucketData {
     );
     const funds = fundsFrom(objects);
     const bills = billsDueIn(planned ?? [], period);
+    const queued = new Set<string>();
+    for (const op of ops ?? []) {
+      const p = tryReadPayload<SetBudgetLimitsPayload>(op.kind, op.payloadJson);
+      for (const entry of p?.entries ?? []) queued.add(entry.budgetId);
+    }
     return {
       period,
       previous,
@@ -67,7 +82,8 @@ export function useBucket(): BucketData {
       }),
       currency,
       currencyCode: code,
+      queued,
       loaded: rows !== undefined && budgets !== undefined,
     };
-  }, [rows, planned, accounts, budgets, currencies]);
+  }, [rows, planned, accounts, ops, budgets, currencies]);
 }

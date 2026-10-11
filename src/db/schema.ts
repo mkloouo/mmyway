@@ -112,6 +112,7 @@ export const outboxOperations = sqliteTable('outbox_operations', {
       'save_planned',
       'delete_planned',
       'trigger_planned',
+      'set_budget_limits',
     ],
   }).notNull(),
   payloadJson: text('payload_json').notNull(),

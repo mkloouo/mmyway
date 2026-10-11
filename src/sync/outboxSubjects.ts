@@ -61,6 +61,12 @@ export function subjectsOf(op: {
       add('rule', p.ruleId);
       add('recurrence', p.recurrenceId);
       break;
+    case 'set_budget_limits':
+      // Every budget in the operation, so a second assignment to the same envelope queues behind
+      // this one instead of racing it — both are absolute amounts, and the later one must win.
+      for (const entry of (p.entries ?? []) as { budgetId?: unknown }[])
+        add('budget', entry.budgetId);
+      break;
   }
   return keys;
 }

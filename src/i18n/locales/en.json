@@ -121,7 +121,20 @@
     "fundOfTarget": "of {{target}}",
     "fundOpenEnded": "No target",
     "fundBy": "by {{date}}",
-    "dueThisPeriod": "Due this month"
+    "dueThisPeriod": "Due this month",
+    "availableLabel": "Available",
+    "overspentBy": "{{amount}} over budget",
+    "thisMonth": "This month",
+    "assignedLabel": "Available in it",
+    "spentLabel": "Spent",
+    "lastMonthLabel": "Last month",
+    "assign": "Set the amount",
+    "assignTitle": "How much for {{name}}?",
+    "moveHere": "Move money here",
+    "moveFrom": "Take it from",
+    "moveAmountTitle": "How much from {{name}}? ({{available}} left)",
+    "nothingToGive": "No other envelope has anything left to give.",
+    "envelopeGone": "This budget is no longer in Firefly III."
   },
   "capture": {
     "attach": "Attach",
@@ -348,6 +361,7 @@
       "recurring_review": "Approving a recurring transaction",
       "reorder_accounts": "Saving the account order",
       "save_planned": "Saving a planned transaction",
+      "set_budget_limits": "Saving a budget assignment",
       "trigger_planned": "Booking a recurring transaction now",
       "update_account": "Saving an account",
       "update_transaction": "Saving a transaction edit"

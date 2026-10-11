@@ -12,6 +12,7 @@ import {
   SectionHeader,
   SCREEN_TOP_PADDING,
 } from '../../src/ui/components';
+import { PendingDot } from '../../src/ui/PendingDot';
 import { useTheme } from '../../src/ui/theme';
 import { formatMoney } from '../../src/ui/money';
 import { navigateOnce } from '../../src/ui/navigateOnce';
@@ -24,7 +25,7 @@ export default function BudgetScreen() {
   const t = useTheme();
   const { t: tr } = useTranslation();
   const pull = usePullToRefresh();
-  const { period, envelopes, funds, bills, rta, currency, loaded } = useBucket();
+  const { period, envelopes, funds, bills, rta, currency, queued, loaded } = useBucket();
 
   const monthLabel = dayDate(period.start).toLocaleString(appLocale(), {
     month: 'long',
@@ -83,6 +84,7 @@ export default function BudgetScreen() {
               onPress={() => navigateOnce(`/budget/${encodeURIComponent(envelope.budgetId)}`)}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
+                <PendingDot visible={queued.has(envelope.budgetId)} />
                 <Text style={[t.type.heading, { color: t.color.text, flex: 1 }]} numberOfLines={1}>
                   {envelope.name}
                 </Text>
