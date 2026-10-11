@@ -143,7 +143,9 @@
     "autofillBody_other": "{{amount}} is spread over {{count}} envelopes, bringing each back to what it held last month. Subscriptions due this month are already held back.",
     "fundSet": "Set the fund",
     "fundSetTitle": "How much is put aside in {{name}}?",
-    "fundReadOnly": "This fund has no linked account in Firefly III, so it can only be read here."
+    "fundReadOnly": "This fund has no linked account in Firefly III, so it can only be read here.",
+    "envelopeLeftIn": "{{name}} · {{amount}} left",
+    "envelopeOverIn": "{{name}} · {{amount}} over"
   },
   "capture": {
     "attach": "Attach",

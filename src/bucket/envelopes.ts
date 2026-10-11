@@ -42,6 +42,19 @@ export function spentAmount(value: unknown): string {
   return '0';
 }
 
+/**
+ * One envelope's numbers from its two possible cache rows. The one place the "FF3's `spent` is
+ * negative, so ADD it" rule is written — Capture reads it too (src/bucket/useEnvelopeRemaining.ts).
+ */
+export function envelopeAmounts(
+  limit: BudgetLimitAttributes | undefined,
+  unbudgeted: BudgetSpentAttributes | undefined,
+): { assigned: string; spent: string; available: string } {
+  const assigned = limit?.amount ?? '0';
+  const spent = spentAmount(limit ? limit.spent : unbudgeted?.spent);
+  return { assigned, spent, available: addDecimal(assigned, spent) };
+}
+
 export function envelopesFor(
   budgets: readonly { id: string; name: string; active: boolean }[],
   objects: readonly BucketObject[],
@@ -56,18 +69,14 @@ export function envelopesFor(
         BudgetLimitAttributes | undefined;
       const unbudgeted = byKey.get(bucketKey('budget_spent', budget.id, periodStart))
         ?.attributes as BudgetSpentAttributes | undefined;
-      const assigned = limit?.amount ?? '0';
-      const spent = spentAmount(limit ? limit.spent : unbudgeted?.spent);
-      const available = addDecimal(assigned, spent);
+      const amounts = envelopeAmounts(limit, unbudgeted);
       return {
         budgetId: budget.id,
         name: budget.name,
         limitId: limit ? String(limit.id) : null,
         currencyCode: limit?.currency_code ?? unbudgeted?.currency_code ?? fallbackCurrency,
-        assigned,
-        spent,
-        available,
-        overspent: compareDecimal(available, '0') < 0,
+        ...amounts,
+        overspent: compareDecimal(amounts.available, '0') < 0,
       };
     })
     .sort((a, b) => a.name.localeCompare(b.name));

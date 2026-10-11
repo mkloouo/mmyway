@@ -147,7 +147,9 @@
     "autofillBody_other": "",
     "fundSet": "",
     "fundSetTitle": "",
-    "fundReadOnly": ""
+    "fundReadOnly": "",
+    "envelopeLeftIn": "",
+    "envelopeOverIn": ""
   },
   "capture": {
     "attach": "Прикріпити",

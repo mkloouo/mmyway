@@ -1,4 +1,4 @@
-import { envelopeHeadroom, envelopesFor, spentAmount } from './envelopes';
+import { envelopeAmounts, envelopeHeadroom, envelopesFor, spentAmount } from './envelopes';
 import { bucketKey, type BucketObject } from './objects';
 
 const PERIOD = '2026-10-01';
@@ -89,5 +89,32 @@ describe('spentAmount', () => {
     expect(spentAmount([{ sum: '-10.00' }, { sum: '-2.50' }])).toBe('-12.50');
     expect(spentAmount(undefined)).toBe('0');
     expect(spentAmount([])).toBe('0');
+  });
+});
+
+describe('envelopeAmounts', () => {
+  // The one place "FF3's spent is negative, so ADD it" is written; Capture reads it too.
+  it('adds the negative spent to the assigned amount', () => {
+    expect(envelopeAmounts({ id: '1', amount: '800.00', spent: '-320.50' }, undefined)).toEqual({
+      assigned: '800.00',
+      spent: '-320.50',
+      available: '479.50',
+    });
+  });
+
+  it('reads bare spending when there is no limit', () => {
+    expect(envelopeAmounts(undefined, { spent: '-45.00' })).toEqual({
+      assigned: '0',
+      spent: '-45.00',
+      available: '-45.00',
+    });
+  });
+
+  it('is all zeroes when neither is cached', () => {
+    expect(envelopeAmounts(undefined, undefined)).toEqual({
+      assigned: '0',
+      spent: '0',
+      available: '0',
+    });
   });
 });

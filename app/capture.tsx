@@ -10,11 +10,12 @@ import { useConfirmDiscard } from '../src/ui/useConfirmDiscard';
 import { useBudgets, useCategories, useCurrencies } from '../src/db/useReferenceData';
 import { useDb } from '../src/providers/DbProvider';
 import { useTheme } from '../src/ui/theme';
+import { useEnvelopeRemaining } from '../src/bucket/useEnvelopeRemaining';
 import { Screen, Chip, Button, Sheet, Toast, Row, CloseButton } from '../src/ui/components';
 import { Keypad } from '../src/ui/Keypad';
 import { PayeeSheet } from '../src/ui/PayeeSheet';
 import { AccountPickerSheet, type AccountPickerAccount } from '../src/ui/AccountPickerSheet';
-import { currencyOf, formatAmountInput } from '../src/ui/money';
+import { currencyOf, formatAmountInput, formatMoney } from '../src/ui/money';
 import { categoryColor } from '../src/ui/categoryColor';
 import { haptics } from '../src/ui/haptics';
 
@@ -327,6 +328,8 @@ export default function CaptureScreen() {
   const sourceAccount = assetAccounts.find((a) => a.id === effectiveSourceId);
   const destinationAccount = assetAccounts.find((a) => a.id === destinationId);
   const budget = budgets.find((b) => b.id === budgetId);
+  // What is left in that envelope this month, from the Budget tab's cache (src/bucket/).
+  const envelopeLeft = useEnvelopeRemaining(budgetId);
 
   // FX (design §6.2): reveal when the account leg's currency differs from the chosen currency.
   // The same rule as the draft screen's, from src/inbox/fx.ts.
@@ -691,6 +694,31 @@ export default function CaptureScreen() {
                     onPress={() => setSheet('budget')}
                   />
                 </ChipRow>
+                {/* What is left in the chosen envelope this month (the Budget tab's own number,
+                    read from its cache — no extra request). Shown while entering, which is the
+                    moment it is worth knowing. */}
+                {!!budget && envelopeLeft !== null && (
+                  <Text
+                    style={[
+                      t.type.label,
+                      {
+                        color: isNegative(envelopeLeft) ? t.color.warn : t.color.textMuted,
+                        paddingHorizontal: t.space.lg,
+                      },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {isNegative(envelopeLeft)
+                      ? tr('budget.envelopeOverIn', {
+                          name: budget.name,
+                          amount: formatMoney(envelopeLeft.replace(/^[-−]/, ''), currency),
+                        })
+                      : tr('budget.envelopeLeftIn', {
+                          name: budget.name,
+                          amount: formatMoney(envelopeLeft, currency),
+                        })}
+                  </Text>
+                )}
               </>
             )}
           </View>
