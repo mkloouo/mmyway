@@ -6,25 +6,14 @@
 // two.
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { pickDate } from '../../src/ui/pickDate';
 import { eq } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
 import { useCurrencies } from '../../src/db/useReferenceData';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
-import {
-  Screen,
-  AppBar,
-  SectionHeader,
-  Card,
-  Row,
-  Button,
-  Toast,
-  CloseButton,
-  SCREEN_TOP_PADDING,
-} from '../../src/ui/components';
+import { Screen, AppBar, Row, Toast, CloseButton } from '../../src/ui/components';
 import { Checkbox } from '../../src/ui/Checkbox';
 import { TextField } from '../../src/ui/TextField';
 import { useAction } from '../../src/ui/useAction';
@@ -38,39 +27,27 @@ import {
   updateAccount,
 } from '../../src/accounts/accountActions';
 import {
-  ACCOUNT_ROLES,
   accountFormProblem,
   diffAccountEdit,
   formFromAccount,
   type AccountEdit,
   type AccountForm,
-  type AccountRole,
 } from '../../src/accounts/accountEdit';
 import { parseSignedDecimalInput } from '../../src/api/ff3/decimal';
-import { appLocale } from '../../src/i18n';
-import { PickerSheet } from '../../src/ui/PickerSheet';
-import { pickableCurrencies } from '../../src/ui/currencies';
 import { PendingDot } from '../../src/ui/PendingDot';
 import { usePendingAccountIds } from '../../src/accounts/usePendingAccountIds';
-import { dayDate, localDay } from '../../src/utils/day';
-
-const ROLE_LABEL_KEYS: Record<AccountRole, string> = {
-  defaultAsset: 'account.roleDefault',
-  sharedAsset: 'account.roleShared',
-  savingAsset: 'account.roleSaving',
-  ccAsset: 'account.roleCreditCard',
-  cashWalletAsset: 'account.roleCashWallet',
-};
-
-function dayLabel(day: string | null): string | null {
-  return day
-    ? dayDate(day).toLocaleDateString(appLocale(), {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      })
-    : null;
-}
+import {
+  FormScroll,
+  FormSection,
+  AmountField,
+  CurrencySheet,
+  NameField,
+  RoleSheet,
+  ROLE_LABEL_KEYS,
+  dayLabel,
+  pickDay,
+} from '../../src/accounts/AccountFormParts';
+import { SaveBar } from '../../src/ui/SaveBar';
 
 export default function AccountScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -148,10 +125,6 @@ export default function AccountScreen() {
 
   const close = useConfirmDiscard(dirty, 'account.discardTitle');
 
-  function pickDay(value: string | null, onPick: (day: string) => void) {
-    pickDate(value ? dayDate(value) : new Date(), (picked) => onPick(localDay(picked)));
-  }
-
   const save = act(
     tr('common.save'),
     async () => {
@@ -190,18 +163,9 @@ export default function AccountScreen() {
           left={<CloseButton onPress={close} />}
           right={<PendingDot visible={pendingAccounts.has(account.id)} />}
         />
-        <ScrollView
-          contentContainerStyle={{ paddingBottom: t.space.xl, paddingTop: SCREEN_TOP_PADDING }}
-          keyboardShouldPersistTaps="handled"
-        >
-          <SectionHeader first title={tr('account.sectionAccount')} />
-          <Card style={{ marginHorizontal: t.space.lg, gap: t.space.sm }}>
-            <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('accounts.name')}</Text>
-            <TextField
-              value={form.name}
-              onChangeText={(name) => patch({ name })}
-              placeholder={tr('accounts.name')}
-            />
+        <FormScroll>
+          <FormSection first title={tr('account.sectionAccount')}>
+            <NameField value={form.name} onChangeText={(name) => patch({ name })} />
             <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('fields.note')}</Text>
             <TextField value={description} onChangeText={setDescription} multiline />
             <Row
@@ -234,10 +198,9 @@ export default function AccountScreen() {
                 {tr('account.monthlyPaymentDateHint')}
               </Text>
             )}
-          </Card>
+          </FormSection>
 
-          <SectionHeader title={tr('account.sectionOptions')} />
-          <Card style={{ marginHorizontal: t.space.lg }}>
+          <FormSection tight title={tr('account.sectionOptions')}>
             <Checkbox
               checked={active}
               onPress={() => setActive((v) => !v)}
@@ -260,24 +223,15 @@ export default function AccountScreen() {
                 hint={tr('account.includeNetWorthHint')}
               />
             )}
-          </Card>
+          </FormSection>
 
-          <SectionHeader title={tr('account.sectionBalances')} />
-          <Card style={{ marginHorizontal: t.space.lg, gap: t.space.sm }}>
-            <Text style={[t.type.label, { color: t.color.textMuted }]}>
-              {tr('account.openingBalance')}
-            </Text>
-            <TextField
-              value={openingText}
+          <FormSection title={tr('account.sectionBalances')}>
+            <AmountField
+              label={tr('account.openingBalance')}
+              text={openingText}
               onChangeText={setOpeningText}
-              keyboardType="numeric"
-              placeholder="0"
+              parsed={opening}
             />
-            {!!opening && !opening.ok && (
-              <Text style={[t.type.label, { color: t.color.danger }]}>
-                {tr('common.invalidAmount')}
-              </Text>
-            )}
             <Row
               label={tr('account.openingBalanceDate')}
               value={dayLabel(form.openingBalanceDate) ?? tr('account.pickDate')}
@@ -286,61 +240,36 @@ export default function AccountScreen() {
                 pickDay(form.openingBalanceDate, (day) => patch({ openingBalanceDate: day }))
               }
             />
-            <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.sm }]}>
-              {tr('account.virtualBalance')}
-            </Text>
-            <TextField
-              value={virtualText}
+            <AmountField
+              label={tr('account.virtualBalance')}
+              text={virtualText}
               onChangeText={setVirtualText}
-              keyboardType="numeric"
-              placeholder="0"
+              parsed={virtual}
+              spaced
             />
-            {!!virtual && !virtual.ok && (
-              <Text style={[t.type.label, { color: t.color.danger }]}>
-                {tr('common.invalidAmount')}
-              </Text>
-            )}
             <Text style={[t.type.label, { color: t.color.textFaint }]}>
               {tr('account.virtualBalanceHint')}
             </Text>
-          </Card>
-        </ScrollView>
+          </FormSection>
+        </FormScroll>
 
-        <View style={{ padding: t.space.lg, gap: t.space.sm }}>
-          {!!problemText && (
-            <Text style={[t.type.label, { color: t.color.warn, textAlign: 'center' }]}>
-              {problemText}
-            </Text>
-          )}
-          <Button
-            title={saving ? tr('common.saving') : tr('common.save')}
-            onPress={save}
-            disabled={!canSave}
-            size="lg"
-          />
-        </View>
+        <SaveBar problemText={problemText} saving={saving} disabled={!canSave} onSave={save} />
         <Toast message={toast} />
       </View>
 
-      <PickerSheet
+      <CurrencySheet
         visible={currencySheetOpen}
         onClose={() => setCurrencySheetOpen(false)}
-        title={tr('fields.currency')}
-        options={pickableCurrencies(currencies, form.currencyCode).map((c) => ({
-          key: c.code,
-          label: c.code,
-        }))}
+        currencies={currencies}
         selected={form.currencyCode}
-        onSelect={(code) => code && patch({ currencyCode: code })}
+        onSelect={(code) => patch({ currencyCode: code })}
       />
 
-      <PickerSheet
+      <RoleSheet
         visible={roleSheetOpen}
         onClose={() => setRoleSheetOpen(false)}
-        title={tr('account.role')}
-        options={ACCOUNT_ROLES.map((role) => ({ key: role, label: tr(ROLE_LABEL_KEYS[role]) }))}
         selected={form.accountRole}
-        onSelect={(role) => role && patch({ accountRole: role as AccountRole })}
+        onSelect={(role) => patch({ accountRole: role })}
       />
     </Screen>
   );

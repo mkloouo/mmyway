@@ -11,7 +11,6 @@ import {
   Screen,
   AppBar,
   BarIconButton,
-  Button,
   Card,
   Chip,
   Row,
@@ -47,6 +46,7 @@ import { deletePlanned, savePlanned, triggerPlanned } from '../../src/planned/ac
 import type { PlannedItem } from '../../src/planned/items';
 import { localDay } from '../../src/utils/day';
 import { TX_TYPES } from '../../src/transactions/txTypes';
+import { SaveBar } from '../../src/ui/SaveBar';
 
 type TxType = PlannedFields['type'];
 
@@ -447,21 +447,18 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
         </Card>
       </ScrollView>
 
-      <View style={{ padding: t.space.lg, gap: t.space.sm }}>
-        {problems.length > 0 && (
-          <Text style={[t.type.label, { color: t.color.warn, textAlign: 'center' }]}>
-            {tr('readiness.missing', {
-              fields: problems.map((p) => tr(`planned.problem.${p}`)).join(', '),
-            })}
-          </Text>
-        )}
-        <Button
-          title={saving ? tr('common.saving') : tr('common.save')}
-          onPress={onSave}
-          disabled={saving || unchanged || problems.length > 0}
-          size="lg"
-        />
-      </View>
+      <SaveBar
+        problemText={
+          problems.length > 0
+            ? tr('readiness.missing', {
+                fields: problems.map((p) => tr(`planned.problem.${p}`)).join(', '),
+              })
+            : null
+        }
+        saving={saving}
+        disabled={saving || unchanged || problems.length > 0}
+        onSave={onSave}
+      />
 
       <AmountSheet
         visible={sheet === 'amount'}
