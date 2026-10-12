@@ -442,6 +442,11 @@ export default function SettingsScreen() {
             onPress={() => router.push('/settings/accounts')}
           />
           <Row
+            label={tr('settings.liabilities')}
+            chevron
+            onPress={() => router.push('/settings/liabilities')}
+          />
+          <Row
             label={tr('settings.aliases')}
             chevron
             value={tr('settings.aliasesCount', { count: aliasesCount })}

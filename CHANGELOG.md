@@ -12,7 +12,7 @@
 
 ### Accounts
 
-- **Create asset and liability accounts.** Settings → Accounts → + creates an asset or a liability, including loans, debts and mortgages with an interest rate, an interest period and a credit limit. It works offline, shows up straight away, and is synced to Firefly III with your next sync.
+- **Create asset and liability accounts.** Settings → Accounts → + creates an asset, and Settings → Liabilities → + creates a liability, including loans, debts and mortgages with an interest rate, an interest period and a credit limit. Liabilities have their own Settings → Liabilities list, where you can open, edit and archive them. It works offline, shows up straight away, and is synced to Firefly III with your next sync.
 
 ### Settings
 

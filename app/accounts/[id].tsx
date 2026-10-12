@@ -1,5 +1,6 @@
-// One asset account's page (design §6.6): everything FF3 lets you set on it, saved together and
-// queued like any other write. Opened from Settings → Accounts (tap or long-press) and from a
+// One account's page (design §6.6): everything FF3 lets you set on it, saved together and
+// queued like any other write. A liability shows only the fields that apply to it. Opened from
+// Settings → Accounts or Settings → Liabilities (tap or long-press) and from a
 // balance card on Activity (long-press). The balance itself isn't here — it is on the card that
 // opens this page, and repeating it above fields that edit the opening balance only confused the
 // two.
@@ -124,11 +125,13 @@ export default function AccountScreen() {
     openingBalance: opening?.ok ? opening.value : null,
     virtualBalance: virtual?.ok ? virtual.value : null,
   };
+  // A liability has no role, card, net-worth flag or cash envelope; those controls are left out.
+  const liability = account?.type === 'liability';
   const descriptionChanged = description !== initialDescription;
   // A changed description sends the whole notes text, the envelope marker as it now is included;
   // the marker alone is a read-modify-write at replay (see setAccountEnvelope).
   const edit: AccountEdit = {
-    ...(initial && next ? diffAccountEdit(initial, next) : {}),
+    ...(initial && next ? diffAccountEdit(initial, next, liability ? 'liability' : 'asset') : {}),
     ...(descriptionChanged ? { notes: setEnvelopeMarker(description, envelope) || null } : {}),
   };
   const problem = next ? accountFormProblem(next) : null;
@@ -207,13 +210,15 @@ export default function AccountScreen() {
               chevron
               onPress={() => setCurrencySheetOpen(true)}
             />
-            <Row
-              label={tr('account.role')}
-              value={tr(ROLE_LABEL_KEYS[form.accountRole])}
-              chevron
-              onPress={() => setRoleSheetOpen(true)}
-            />
-            {form.accountRole === 'ccAsset' && (
+            {!liability && (
+              <Row
+                label={tr('account.role')}
+                value={tr(ROLE_LABEL_KEYS[form.accountRole])}
+                chevron
+                onPress={() => setRoleSheetOpen(true)}
+              />
+            )}
+            {!liability && form.accountRole === 'ccAsset' && (
               <Row
                 label={tr('account.monthlyPaymentDate')}
                 value={dayLabel(form.monthlyPaymentDate) ?? tr('account.pickDate')}
@@ -224,7 +229,7 @@ export default function AccountScreen() {
                 }
               />
             )}
-            {form.accountRole === 'ccAsset' && (
+            {!liability && form.accountRole === 'ccAsset' && (
               <Text style={[t.type.label, { color: t.color.textFaint }]}>
                 {tr('account.monthlyPaymentDateHint')}
               </Text>
@@ -239,18 +244,22 @@ export default function AccountScreen() {
               label={tr('accounts.active')}
               hint={tr('accounts.activeHint')}
             />
-            <Checkbox
-              checked={envelope}
-              onPress={() => setEnvelope((v) => !v)}
-              label={tr('accounts.cashEnvelope')}
-              hint={tr('accounts.cashEnvelopeHint')}
-            />
-            <Checkbox
-              checked={form.includeNetWorth}
-              onPress={() => patch({ includeNetWorth: !form.includeNetWorth })}
-              label={tr('account.includeNetWorth')}
-              hint={tr('account.includeNetWorthHint')}
-            />
+            {!liability && (
+              <Checkbox
+                checked={envelope}
+                onPress={() => setEnvelope((v) => !v)}
+                label={tr('accounts.cashEnvelope')}
+                hint={tr('accounts.cashEnvelopeHint')}
+              />
+            )}
+            {!liability && (
+              <Checkbox
+                checked={form.includeNetWorth}
+                onPress={() => patch({ includeNetWorth: !form.includeNetWorth })}
+                label={tr('account.includeNetWorth')}
+                hint={tr('account.includeNetWorthHint')}
+              />
+            )}
           </Card>
 
           <SectionHeader title={tr('account.sectionBalances')} />

@@ -69,6 +69,37 @@ describe('diffAccountEdit', () => {
   });
 });
 
+describe('diffAccountEdit for a liability', () => {
+  it('never sends the role, net-worth flag or card fields, even when they differ', () => {
+    const edit = diffAccountEdit(
+      base,
+      {
+        ...base,
+        accountRole: 'ccAsset',
+        includeNetWorth: false,
+        monthlyPaymentDate: '2026-10-15',
+      },
+      'liability',
+    );
+    expect(edit).toEqual({});
+    expect(ff3AccountBody(edit)).toEqual({});
+  });
+
+  it('still sends name, currency, opening balance and its date', () => {
+    const edit = diffAccountEdit(
+      base,
+      { ...base, name: 'Home loan', currencyCode: 'EUR', openingBalanceDate: '2026-02-01' },
+      'liability',
+    );
+    expect(ff3AccountBody(edit)).toEqual({
+      name: 'Home loan',
+      currency_code: 'EUR',
+      opening_balance: '100.00',
+      opening_balance_date: '2026-02-01',
+    });
+  });
+});
+
 describe('accountFormProblem', () => {
   it('needs a name, an opening-balance date with an opening balance, and a payment date for a card', () => {
     expect(accountFormProblem(base)).toBeNull();

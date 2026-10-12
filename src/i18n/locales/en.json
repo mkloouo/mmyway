@@ -458,6 +458,11 @@
     "zeroHint": "Nothing waiting to confirm.",
     "zeroTitle": "Inbox zero"
   },
+  "liabilities": {
+    "empty": "No liabilities synced yet",
+    "newLiability": "New liability",
+    "title": "Liabilities"
+  },
   "lock": {
     "title": "mmyway is locked",
     "hint": "Unlock with your fingerprint, face, or screen lock to see your money.",
@@ -725,6 +730,7 @@
     "addresses": "Addresses",
     "apiKeyPlaceholder": "API key",
     "assetAccounts": "Asset accounts",
+    "liabilities": "Liabilities",
     "cantSignOutYet": "Can't sign out yet",
     "cantSwitchYet": "Can't switch Firefly III yet",
     "cashPaymentsUse": "Cash payments use",

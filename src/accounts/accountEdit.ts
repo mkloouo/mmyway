@@ -68,13 +68,18 @@ function amountKey(value: string | null): string {
 
 /**
  * Only the fields that changed, plus what FF3 needs alongside them: the opening balance and its
- * date travel together, and the ccAsset role needs the card type and payment date.
+ * date travel together, and the ccAsset role needs the card type and payment date. A liability has
+ * no role, net-worth flag or card fields in FF3 (it rejects them), so none of those go out for one.
  */
-export function diffAccountEdit(before: AccountForm, after: AccountForm): AccountEdit {
+export function diffAccountEdit(
+  before: AccountForm,
+  after: AccountForm,
+  type: 'asset' | 'liability' = 'asset',
+): AccountEdit {
   const edit: AccountEdit = {};
   if (after.name.trim() !== before.name) edit.name = after.name.trim();
   if (after.currencyCode !== before.currencyCode) edit.currencyCode = after.currencyCode;
-  if (after.includeNetWorth !== before.includeNetWorth)
+  if (type === 'asset' && after.includeNetWorth !== before.includeNetWorth)
     edit.includeNetWorth = after.includeNetWorth;
   if (amountKey(after.virtualBalance) !== amountKey(before.virtualBalance))
     edit.virtualBalance = amountKey(after.virtualBalance) || null;
@@ -88,7 +93,7 @@ export function diffAccountEdit(before: AccountForm, after: AccountForm): Accoun
   }
   const isCard = after.accountRole === 'ccAsset';
   const cardChanged = after.monthlyPaymentDate !== before.monthlyPaymentDate;
-  if (after.accountRole !== before.accountRole || (isCard && cardChanged)) {
+  if (type === 'asset' && (after.accountRole !== before.accountRole || (isCard && cardChanged))) {
     edit.accountRole = after.accountRole;
     if (isCard) {
       edit.creditCardType = CREDIT_CARD_TYPE;

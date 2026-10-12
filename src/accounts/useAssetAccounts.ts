@@ -33,6 +33,17 @@ export function selectAssetAccounts(
     .sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name));
 }
 
+/** The user's liabilities in FF3's order (Settings → Liabilities); the same query, liabilities only. */
+export function useLiabilityAccounts(
+  opts: { includeInactive?: boolean } = {},
+): ReferenceAccountRow[] | undefined {
+  const accounts = useAssetAccounts({
+    includeInactive: opts.includeInactive,
+    includeLiabilities: true,
+  });
+  return useMemo(() => accounts?.filter((a) => a.type === 'liability'), [accounts]);
+}
+
 /** undefined until the first read lands (see src/db/useLiveQuery.ts). */
 export function useAssetAccounts(
   opts: { includeInactive?: boolean; includeLiabilities?: boolean } = {},

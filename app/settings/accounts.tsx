@@ -151,7 +151,9 @@ export default function AccountsScreen() {
                 <BarIconButton
                   icon="add"
                   label={tr('accounts.newAccount')}
-                  onPress={() => navigateOnce('/accounts/new')}
+                  onPress={() =>
+                    navigateOnce({ pathname: '/accounts/new', params: { type: 'asset' } })
+                  }
                 />
               )}
               <BarIconButton

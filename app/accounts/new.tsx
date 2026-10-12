@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, Text, View } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useDb } from '../../src/providers/DbProvider';
 import { useCurrencies } from '../../src/db/useReferenceData';
 import { useTheme } from '../../src/ui/theme';
@@ -110,8 +110,13 @@ export default function NewAccountScreen() {
   const t = useTheme();
   const { t: tr } = useTranslation();
   const currencies = useCurrencies();
+  // Opened from Settings → Liabilities with type=liability, from Settings → Accounts with type=asset.
+  const { type: initialType } = useLocalSearchParams<{ type?: string }>();
 
-  const [form, setForm] = useState<AccountCreateForm>(EMPTY_FORM);
+  const [form, setForm] = useState<AccountCreateForm>(() => ({
+    ...EMPTY_FORM,
+    type: initialType === 'liability' ? 'liability' : 'asset',
+  }));
   // Amount fields are kept as typed ("12,5", "-") and parsed below.
   const [openingText, setOpeningText] = useState('');
   const [rateText, setRateText] = useState('');

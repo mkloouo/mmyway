@@ -12,10 +12,11 @@ import NewAccountScreen from '../../app/accounts/new';
 jest.setTimeout(15_000);
 
 let mockDb: ReturnType<typeof createTestDb>;
+let mockParams: Record<string, string | undefined> = {};
 
 jest.mock('../providers/DbProvider', () => ({ useDb: () => mockDb }));
 jest.mock('expo-router', () => ({
-  useLocalSearchParams: () => ({}),
+  useLocalSearchParams: () => mockParams,
   router: { back: jest.fn() },
 }));
 jest.mock('../db/useLiveQuery', () => ({
@@ -28,6 +29,7 @@ const SYNCED = '2026-10-11T08:00:00Z';
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockParams = {};
   mockDb = createTestDb();
   mockDb
     .insert(referenceCurrencies)
@@ -79,6 +81,13 @@ describe('Settings → Accounts → New account screen', () => {
     await fireEvent.press(screen.getByText('Asset'));
     expect(screen.queryByText('Interest rate (%)')).toBeNull();
     expect(screen.queryByText('Credit limit')).toBeNull();
+  });
+
+  it('starts on Liability when opened with type=liability (Settings → Liabilities +)', async () => {
+    mockParams = { type: 'liability' };
+    await renderScreen();
+    expect(screen.getByText('Interest rate (%)')).toBeTruthy();
+    expect(screen.queryByText('Account role')).toBeNull();
   });
 
   it('confirms, then queues create_account and shows the account at once', async () => {

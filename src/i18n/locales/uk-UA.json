@@ -486,6 +486,11 @@
     "zeroHint": "Нічого, що чекає на підтвердження.",
     "zeroTitle": "Немає вхідних"
   },
+  "liabilities": {
+    "empty": "",
+    "newLiability": "",
+    "title": ""
+  },
   "lock": {
     "title": "",
     "hint": "",
@@ -771,6 +776,7 @@
     "addresses": "Адреси",
     "apiKeyPlaceholder": "Ключ API",
     "assetAccounts": "Рахунки активів",
+    "liabilities": "",
     "cantSignOutYet": "Ще не можу вийти",
     "cantSwitchYet": "Поки що не можу переключитися на Firefly III",
     "cashPaymentsUse": "Використання готівкових платежів",
