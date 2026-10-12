@@ -11,6 +11,9 @@ pipeline.
   what looks like restarting the app; this repo also uses config plugins Expo Go cannot apply.
 - `npm run typecheck` / `npm run lint` / `npm run test` / `npm run check` (all three)
 - `npm run db:generate` — regenerate Drizzle migrations after editing `src/db/schema.ts`
+- `npm run ios:run:dev` — Release build of the Dev app (`com.mkloouo.mmyway.dev`) installed on the
+  iOS simulator, JS bundled in, no Metro needed; regenerates `ios/` for the Dev variant first
+  (`ios:clean:dev`), so a later production iOS build needs its own `expo prebuild --clean`
 - `npm run android:build:dev` / `npm run android:build:pro` — local EAS APK build;
   `npm run android:build:aab` — Play Store bundle
 - `npm run release -- X.Y.Z` / `npm run release -- build` — see `scripts/release.mjs --help`;

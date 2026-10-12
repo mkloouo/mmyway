@@ -10,6 +10,8 @@
     "android:build:pro": "eas build -p android -e production --local",
     "android:run:dev": "APP_VARIANT=development npx expo run:android --variant release",
     "ios:build:e2e": "eas build -p ios -e e2e --local",
+    "ios:clean:dev": "APP_VARIANT=development npx expo prebuild -p ios --clean",
+    "ios:run:dev": "npm run ios:clean:dev && APP_VARIANT=development npx expo run:ios --configuration Release",
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
     "test": "jest",
