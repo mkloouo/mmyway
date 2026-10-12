@@ -1,17 +1,17 @@
 // Queues the Budget tab's envelope (budget) create, rename and delete operations.
 // Like every other write in the app they go through the outbox, so they work offline and reach FF3
 // in order with everything else.
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { FF3RequestError, type FF3Client } from '../api/ff3/client';
 import { bucketObjects, outboxOperations, referenceBudgets } from '../db/schema';
 import { enqueueOperation, isUnsent, type OutboxDb } from '../sync/outbox';
 import { readPayload, writePayload } from '../sync/payloadJson';
+import type { SetBudgetLimitsPayload } from './replay';
 import { generateId } from '../utils/id';
 
 export interface CreateBudgetPayload {
   clientId: string; // becomes internal_reference
   name: string;
-  currencyCode: string;
   serverId?: string; // recorded at replay time
 }
 
@@ -28,16 +28,16 @@ export interface DeleteBudgetPayload {
 }
 
 /**
- * Create a new envelope (budget) and queue the operation.
+ * Create a new envelope (budget) and queue the operation. The envelope shows on the Budget tab
+ * at once under its temporary `mmyway-*` id; the create's replay swaps in FF3's id.
  * Returns the temporary client-generated ID.
  */
-export async function enqueueBudgetCreate(
-  db: OutboxDb,
-  name: string,
-  currencyCode: string,
-): Promise<string> {
+export async function enqueueBudgetCreate(db: OutboxDb, name: string): Promise<string> {
   const clientId = `mmyway-${generateId()}`;
-  const payload: CreateBudgetPayload = { clientId, name, currencyCode };
+  const payload: CreateBudgetPayload = { clientId, name };
+  await db
+    .insert(referenceBudgets)
+    .values({ id: clientId, name, active: true, syncedAt: new Date().toISOString() });
   await enqueueOperation(db, {
     id: generateId(),
     kind: 'create_budget',
@@ -60,6 +60,7 @@ export async function enqueueBudgetRename(
     name: newName,
     ...(expectedUpdatedAt ? { expectedUpdatedAt } : {}),
   };
+  await db.update(referenceBudgets).set({ name: newName }).where(eq(referenceBudgets.id, budgetId));
   await enqueueOperation(db, {
     id: generateId(),
     kind: 'update_budget',
@@ -80,22 +81,21 @@ export async function enqueueBudgetDelete(
 ): Promise<void> {
   const isUnsynced = budgetId.startsWith('mmyway-');
   if (isUnsynced) {
-    // Remove any queued create/update for this unsynced budget
-    await db
-      .delete(outboxOperations)
-      .where(and(eq(outboxOperations.kind, 'create_budget'), isUnsent()))
-      .run();
-    // Also remove update operations for this budget id
-    const updateOps = await db
+    // Drop this envelope's own queued create and renames — and only its own.
+    const ops = await db
       .select()
       .from(outboxOperations)
-      .where(and(eq(outboxOperations.kind, 'update_budget'), isUnsent()));
-    for (const op of updateOps) {
-      const p = readPayload<UpdateBudgetPayload>(op.kind, op.payloadJson);
-      if (p.budgetId === budgetId) {
+      .where(and(inArray(outboxOperations.kind, ['create_budget', 'update_budget']), isUnsent()));
+    for (const op of ops) {
+      const id =
+        op.kind === 'create_budget'
+          ? readPayload<CreateBudgetPayload>(op.kind, op.payloadJson).clientId
+          : readPayload<UpdateBudgetPayload>(op.kind, op.payloadJson).budgetId;
+      if (id === budgetId) {
         await db.delete(outboxOperations).where(eq(outboxOperations.id, op.id));
       }
     }
+    await db.delete(referenceBudgets).where(eq(referenceBudgets.id, budgetId));
   }
 
   const payload: DeleteBudgetPayload = {
@@ -182,7 +182,6 @@ export async function replayCreateBudget(
         body: JSON.stringify({
           name: payload.name,
           active: true,
-          currency_code: payload.currencyCode,
           internal_reference: `mmyway:${payload.clientId}`,
         }),
       });
@@ -214,6 +213,7 @@ export async function replayCreateBudget(
 
   // Update reference_budgets with the server ID
   if (budget) {
+    await swapBudgetId(db, payload.clientId, budget.id);
     await db
       .insert(referenceBudgets)
       .values({
@@ -320,4 +320,47 @@ export async function replayDeleteBudget(
 
   // Remove from reference_budgets
   await db.delete(referenceBudgets).where(eq(referenceBudgets.id, payload.budgetId));
+}
+
+/**
+ * The create just learned FF3's id for an envelope known so far only by its `mmyway-*` id. Moves
+ * everything still pointing at the temporary id — the optimistic row and queued
+ * renames, deletes and assignments — over to the real one, or the delete would be dropped as
+ * "never synced" and the envelope would survive in FF3.
+ */
+async function swapBudgetId(db: OutboxDb, clientId: string, serverId: string): Promise<void> {
+  await db.delete(referenceBudgets).where(eq(referenceBudgets.id, clientId));
+  await db.delete(bucketObjects).where(eq(bucketObjects.ff3Id, clientId)); // the next pull refills
+  const ops = await db
+    .select()
+    .from(outboxOperations)
+    .where(
+      and(
+        inArray(outboxOperations.kind, ['update_budget', 'delete_budget', 'set_budget_limits']),
+        isUnsent(),
+      ),
+    );
+  for (const op of ops) {
+    let next: object | null = null;
+    if (op.kind === 'set_budget_limits') {
+      const p = readPayload<SetBudgetLimitsPayload>(op.kind, op.payloadJson);
+      if (p.entries.some((e) => e.budgetId === clientId)) {
+        next = {
+          ...p,
+          entries: p.entries.map((e) =>
+            e.budgetId === clientId ? { ...e, budgetId: serverId } : e,
+          ),
+        };
+      }
+    } else {
+      const p = readPayload<UpdateBudgetPayload | DeleteBudgetPayload>(op.kind, op.payloadJson);
+      if (p.budgetId === clientId) next = { ...p, budgetId: serverId };
+    }
+    if (next) {
+      await db
+        .update(outboxOperations)
+        .set({ payloadJson: writePayload(next) })
+        .where(eq(outboxOperations.id, op.id));
+    }
+  }
 }

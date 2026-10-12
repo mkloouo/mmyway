@@ -23,7 +23,7 @@ describe('budgetActions', () => {
 
   describe('enqueueBudgetCreate', () => {
     it('generates a clientId and queues a create_budget operation', async () => {
-      const clientId = await enqueueBudgetCreate(db, 'Groceries', 'USD');
+      const clientId = await enqueueBudgetCreate(db, 'Groceries');
       expect(clientId).toMatch(/^mmyway-/);
 
       const ops = db.select().from(outboxOperations).all();
@@ -33,7 +33,11 @@ describe('budgetActions', () => {
       const payload = readPayload<CreateBudgetPayload>(ops[0]!.kind, ops[0]!.payloadJson);
       expect(payload.clientId).toBe(clientId);
       expect(payload.name).toBe('Groceries');
-      expect(payload.currencyCode).toBe('USD');
+      expect(payload).not.toHaveProperty('currencyCode');
+      // Shown on the Budget tab before it syncs
+      expect(db.select().from(referenceBudgets).all()).toEqual([
+        expect.objectContaining({ id: clientId, name: 'Groceries', active: true }),
+      ]);
     });
   });
 
@@ -75,7 +79,7 @@ describe('budgetActions', () => {
     });
 
     it('removes queued create operation for unsynced budget (mmyway-*)', async () => {
-      const clientId = await enqueueBudgetCreate(db, 'Groceries', 'USD');
+      const clientId = await enqueueBudgetCreate(db, 'Groceries');
       expect(db.select().from(outboxOperations).all()).toHaveLength(1);
 
       await enqueueBudgetDelete(db, clientId, 'Groceries');
@@ -86,7 +90,7 @@ describe('budgetActions', () => {
     });
 
     it('removes queued update operations for unsynced budget', async () => {
-      const clientId = await enqueueBudgetCreate(db, 'Groceries', 'USD');
+      const clientId = await enqueueBudgetCreate(db, 'Groceries');
       await enqueueBudgetRename(db, clientId, 'Food');
       expect(db.select().from(outboxOperations).all()).toHaveLength(2);
 
@@ -95,6 +99,127 @@ describe('budgetActions', () => {
       const ops = db.select().from(outboxOperations).all();
       expect(ops).toHaveLength(1);
       expect(ops[0]!.kind).toBe('delete_budget');
+    });
+  });
+
+  describe('unsynced envelope, then the create syncs', () => {
+    const ff3 = () => {
+      const calls: string[] = [];
+      let next = 100;
+      const client = {
+        request: async (path: string, init?: any) => {
+          calls.push(`${init?.method ?? 'GET'} ${path}`);
+          if (path === '/v1/budgets' && init?.method === 'POST') {
+            return { data: { id: String(next++), attributes: JSON.parse(init.body) } };
+          }
+          if (init?.method === 'DELETE' || init?.method === 'PUT')
+            return { data: { attributes: {} } };
+          throw new Error(`unexpected request: ${path}`);
+        },
+      };
+      return { client, calls };
+    };
+    const queued = (kind: string) =>
+      db
+        .select()
+        .from(outboxOperations)
+        .all()
+        .filter((o) => o.kind === kind);
+
+    it("deleting one unsynced envelope keeps the other envelope's create", async () => {
+      const a = await enqueueBudgetCreate(db, 'Groceries');
+      const b = await enqueueBudgetCreate(db, 'Dining');
+
+      await enqueueBudgetDelete(db, a, 'Groceries');
+
+      const creates = queued('create_budget');
+      expect(creates).toHaveLength(1);
+      expect(
+        readPayload<CreateBudgetPayload>('create_budget', creates[0]!.payloadJson).clientId,
+      ).toBe(b);
+      expect(
+        db
+          .select()
+          .from(referenceBudgets)
+          .all()
+          .map((r) => r.id),
+      ).toEqual([b]);
+    });
+
+    it('a delete queued behind the create reaches FF3 under the server id', async () => {
+      const { client, calls } = ff3();
+      const clientId = await enqueueBudgetCreate(db, 'Food');
+      // The create is already on its way, so the delete can't just cancel it
+      db.update(outboxOperations).set({ status: 'in_flight' }).run();
+      await enqueueBudgetDelete(db, clientId, 'Food');
+
+      const create = queued('create_budget')[0]!;
+      await replayCreateBudget(
+        db,
+        client as any,
+        create.id,
+        readPayload('create_budget', create.payloadJson),
+      );
+
+      const del = queued('delete_budget')[0]!;
+      const payload = readPayload<DeleteBudgetPayload>('delete_budget', del.payloadJson);
+      expect(payload.budgetId).toBe('100');
+      await replayDeleteBudget(db, client as any, del.id, payload);
+
+      expect(calls).toContain('DELETE /v1/budgets/100');
+      expect(db.select().from(referenceBudgets).all()).toHaveLength(0);
+    });
+
+    it('swaps the id in queued renames and assignments and drops the temporary row', async () => {
+      const { client } = ff3();
+      const clientId = await enqueueBudgetCreate(db, 'Food');
+      db.update(outboxOperations).set({ status: 'in_flight' }).run();
+      await enqueueBudgetRename(db, clientId, 'Groceries');
+      db.insert(outboxOperations)
+        .values({
+          id: 'limits',
+          kind: 'set_budget_limits',
+          payloadJson: JSON.stringify({
+            v: 1,
+            periodStart: '2026-10-01',
+            periodEnd: '2026-10-31',
+            currencyCode: 'PLN',
+            entries: [
+              { budgetId: clientId, amount: '50.00' },
+              { budgetId: 'other', amount: '10.00' },
+            ],
+          }),
+          status: 'pending',
+          attempts: 0,
+          createdAt: new Date().toISOString(),
+          sequence: 9,
+        })
+        .run();
+
+      const create = queued('create_budget')[0]!;
+      await replayCreateBudget(
+        db,
+        client as any,
+        create.id,
+        readPayload('create_budget', create.payloadJson),
+      );
+
+      const rename = queued('update_budget')[0]!;
+      expect(readPayload<UpdateBudgetPayload>('update_budget', rename.payloadJson).budgetId).toBe(
+        '100',
+      );
+      const limits = readPayload<{ entries: { budgetId: string }[] }>(
+        'set_budget_limits',
+        queued('set_budget_limits')[0]!.payloadJson,
+      );
+      expect(limits.entries.map((e) => e.budgetId)).toEqual(['100', 'other']);
+      expect(
+        db
+          .select()
+          .from(referenceBudgets)
+          .all()
+          .map((r) => r.id),
+      ).toEqual(['100']);
     });
   });
 
@@ -120,7 +245,6 @@ describe('budgetActions', () => {
       const payload: CreateBudgetPayload = {
         clientId,
         name: 'Groceries',
-        currencyCode: 'USD',
       };
       const opId = 'op-123';
 
@@ -169,7 +293,6 @@ describe('budgetActions', () => {
       const payload: CreateBudgetPayload = {
         clientId,
         name: 'Groceries',
-        currencyCode: 'USD',
       };
       const opId = 'op-123';
 

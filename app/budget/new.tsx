@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { router } from 'expo-router';
-import { TextInput, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { AppBar, Button, CloseButton, Screen } from '../../src/ui/components';
+import { TextField } from '../../src/ui/TextField';
 import { useTheme } from '../../src/ui/theme';
 import { useAction } from '../../src/ui/useAction';
 import { confirmAction } from '../../src/ui/confirm';
 import { useDb } from '../../src/providers/DbProvider';
-import { useCurrencies, useBudgetRows } from '../../src/db/useReferenceData';
+import { useBudgetRows } from '../../src/db/useReferenceData';
 import { enqueueBudgetCreate } from '../../src/bucket/budgetActions';
 
 export default function NewEnvelopeScreen() {
@@ -17,8 +18,6 @@ export default function NewEnvelopeScreen() {
   const { t: tr } = useTranslation();
   const db = useDb();
   const act = useAction();
-  const currencies = useCurrencies();
-  const defaultCurrency = currencies.find((c) => c.isDefault);
   const budgets = useBudgetRows() ?? [];
 
   const validateName = (text: string) => {
@@ -38,7 +37,7 @@ export default function NewEnvelopeScreen() {
     }
     const ok = await confirmAction(tr('budget.createTitle'), tr('budget.createAction'));
     if (!ok) return;
-    await enqueueBudgetCreate(db, name, defaultCurrency?.code ?? 'EUR');
+    await enqueueBudgetCreate(db, name.trim());
     router.back();
   });
 
@@ -53,22 +52,11 @@ export default function NewEnvelopeScreen() {
           <Text style={[t.type.label, { color: t.color.text, marginBottom: t.space.xs }]}>
             {tr('budget.nameLabel')}
           </Text>
-          <TextInput
+          <TextField
             value={name}
             onChangeText={validateName}
             placeholder={tr('budget.namePlaceholder')}
-            placeholderTextColor={t.color.textMuted}
-            style={[
-              t.type.body,
-              {
-                color: t.color.text,
-                borderColor: nameError ? t.color.warn : t.color.border,
-                borderWidth: 1,
-                borderRadius: t.radius.md,
-                paddingHorizontal: t.space.md,
-                paddingVertical: t.space.sm,
-              },
-            ]}
+            invalid={!!nameError}
           />
           {nameError && (
             <Text style={[t.type.label, { color: t.color.warn, marginTop: t.space.xs }]}>

@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ScrollView, Text, TextInput, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
 import {
   AppBar,
   Button,
@@ -21,6 +21,7 @@ import {
 import { AmountSheet } from '../../src/ui/AmountSheet';
 import { PickerSheet } from '../../src/ui/PickerSheet';
 import { PendingDot } from '../../src/ui/PendingDot';
+import { TextField } from '../../src/ui/TextField';
 import { useTheme } from '../../src/ui/theme';
 import { formatMoney } from '../../src/ui/money';
 import { useAction } from '../../src/ui/useAction';
@@ -273,23 +274,7 @@ export default function EnvelopeScreen() {
               <Text style={[t.type.label, { color: t.color.text, marginBottom: t.space.xs }]}>
                 {tr('budget.nameLabel')}
               </Text>
-              <TextInput
-                value={newName}
-                onChangeText={setNewName}
-                autoFocus
-                placeholderTextColor={t.color.textMuted}
-                style={[
-                  t.type.body,
-                  {
-                    color: t.color.text,
-                    borderColor: t.color.border,
-                    borderWidth: 1,
-                    borderRadius: t.radius.md,
-                    paddingHorizontal: t.space.md,
-                    paddingVertical: t.space.sm,
-                  },
-                ]}
-              />
+              <TextField value={newName} onChangeText={setNewName} autoFocus />
             </View>
             <View style={{ flexDirection: 'row', gap: t.space.sm }}>
               <Button

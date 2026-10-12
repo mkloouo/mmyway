@@ -139,7 +139,6 @@ const SCHEMAS = {
     v: version,
     clientId: z.string(), // duplicate detection; becomes internal_reference
     name: z.string(),
-    currencyCode: z.string(),
     serverId: z.string().optional(), // recorded after FF3 answers
   }),
   update_budget: z.looseObject({
