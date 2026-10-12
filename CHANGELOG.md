@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Receipts
+
+- Aligned receipt capture fallback tiles with the unified card style (white surface, 14 px radius, 1 px border).
+- Aligned Hint for the reader sheet with the Edit sheet archetype: help text positioned above group, and inline field inside a Card.
+
 ## [2.0.2] - 2026-10-13
 
 ### Capture

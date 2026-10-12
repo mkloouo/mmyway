@@ -46,16 +46,18 @@ function SourceTile({
       style={({ pressed }) => ({
         flex: 1,
         aspectRatio: 1,
-        borderRadius: t.radius.lg,
-        backgroundColor: t.color.accentSoft,
+        borderRadius: t.radius.md,
+        borderWidth: 1,
+        borderColor: t.color.border,
+        backgroundColor: t.color.surface,
         alignItems: 'center',
         justifyContent: 'center',
         gap: t.space.md,
         opacity: disabled ? 0.4 : pressed ? PRESSED_OPACITY : 1,
       })}
     >
-      <Ionicons name={icon} size={40} color={t.color.accent} />
-      <Text style={[t.type.heading, { color: t.color.accent }]}>{label}</Text>
+      <Ionicons name={icon} size={36} color={t.color.accent} />
+      <Text style={[t.type.heading, { color: t.color.text }]}>{label}</Text>
     </Pressable>
   );
 }
@@ -163,13 +165,14 @@ export default function ReceiptScreen() {
             />
           </View>
           {!attachToJournalId && (
-            <Card>
+            <Card flush>
               <Row
                 first
                 label={tr('receipt.hintTitle')}
                 value={hint || tr('receipt.optional')}
                 chevron
                 onPress={() => setHintSheetOpen(true)}
+                style={{ paddingHorizontal: t.space.lg }}
               />
             </Card>
           )}
@@ -182,13 +185,37 @@ export default function ReceiptScreen() {
         title={tr('receipt.hintTitle')}
         footer={<Button title={tr('common.done')} onPress={() => setHintSheetOpen(false)} />}
       >
-        <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('receipt.hintBody')}</Text>
-        <TextField
-          value={hint}
-          onChangeText={setHint}
-          placeholder={tr('receipt.hintPlaceholder')}
-          style={{ marginTop: t.space.sm }}
-        />
+        <Text
+          style={[
+            t.type.label,
+            { color: t.color.textMuted, paddingHorizontal: 4, marginBottom: t.space.xs },
+          ]}
+        >
+          {tr('receipt.hintBody')}
+        </Text>
+        <Card flush>
+          <View
+            style={{
+              paddingHorizontal: t.space.lg,
+              paddingVertical: t.space.sm,
+              minHeight: 48,
+              justifyContent: 'center',
+            }}
+          >
+            <TextField
+              value={hint}
+              onChangeText={setHint}
+              placeholder={tr('receipt.hintPlaceholder')}
+              style={{
+                borderWidth: 0,
+                paddingHorizontal: 0,
+                backgroundColor: 'transparent',
+                fontSize: 15,
+              }}
+              autoFocus
+            />
+          </View>
+        </Card>
       </Sheet>
     </Screen>
   );
