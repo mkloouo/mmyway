@@ -214,7 +214,7 @@ export default function CountScreen() {
   const denomLadder = denomAccount ? denominationsFor(denomAccount.currencyCode) : null;
 
   return (
-    <Screen bottom>
+    <Screen bottom modal>
       <View style={{ flex: 1 }}>
         <AppBar
           title={tr('count.title')}

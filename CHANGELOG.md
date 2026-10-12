@@ -20,6 +20,7 @@
 
 ### Fixed
 
+- **iPhone: no more empty band at the top of Capture, receipts, drafts and the cash count.** These open as a sheet that already sits below the status bar, and the space for the status bar was added on top of it again.
 - **Signing in to a different Firefly III no longer shows the old one's envelopes.** The Budget tab's amounts are now cleared with the rest of the old instance's data.
 
 ## [1.11.0] - 2026-10-11

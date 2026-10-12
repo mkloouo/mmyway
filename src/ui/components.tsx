@@ -16,7 +16,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTheme, hitSize } from './theme';
 import { formatMoney, signFor, type DisplayCurrency } from './money';
@@ -33,17 +33,33 @@ import { haptics } from './haptics';
  * lower field sat under it. The screen shrinks by the keyboard's height instead; its ScrollView,
  * made shorter, scrolls the focused field back into view.
  */
-export function Screen({
-  children,
-  style,
-  bottom,
-  avoidKeyboard,
-}: {
+interface ScreenProps {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
   bottom?: boolean;
   avoidKeyboard?: boolean;
-}) {
+  /**
+   * A route presented as a modal. On iOS that is a page sheet, which already starts below the
+   * status bar, so the window's top inset (from the root SafeAreaProvider) doubled the gap above
+   * its bar. The sheet measures its own insets instead: no top, the home indicator still at the
+   * bottom. Android shows modals full screen, so the window's insets are right there.
+   */
+  modal?: boolean;
+}
+
+export function Screen(props: ScreenProps) {
+  const t = useTheme();
+  if (props.modal && Platform.OS === 'ios') {
+    return (
+      <SafeAreaProvider style={{ flex: 1, backgroundColor: t.color.bg }}>
+        <ScreenBody {...props} />
+      </SafeAreaProvider>
+    );
+  }
+  return <ScreenBody {...props} />;
+}
+
+function ScreenBody({ children, style, bottom, avoidKeyboard }: ScreenProps) {
   const t = useTheme();
   const insets = useSafeAreaInsets();
   // Only screens that ask listen: every tab stays mounted, and each would re-render on every keyboard.

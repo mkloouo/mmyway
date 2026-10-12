@@ -124,7 +124,7 @@ export default function ReceiptScreen() {
   }, []);
 
   return (
-    <Screen bottom>
+    <Screen bottom modal>
       <AppBar
         title={attachToJournalId ? tr('receipt.attachTitle') : tr('draft.receipt')}
         left={<CloseButton onPress={() => router.back()} />}

@@ -98,7 +98,7 @@ export default function DraftScreen() {
 
   if (!row) {
     return (
-      <Screen bottom>
+      <Screen bottom modal>
         <AppBar title={tr('draft.title')} left={<CloseButton onPress={() => router.back()} />} />
       </Screen>
     );
@@ -517,7 +517,7 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
           : { value: '', onChange: () => {} };
 
   return (
-    <Screen bottom>
+    <Screen bottom modal>
       <View style={{ flex: 1 }}>
         <AppBar
           title={tr('draft.title')}

@@ -479,7 +479,7 @@ export default function CaptureScreen() {
   const moreHasValue = !!(notes || tags.length > 0 || sharedWith || photoUri);
 
   return (
-    <Screen bottom>
+    <Screen bottom modal>
       <View style={{ flex: 1 }}>
         <View
           style={{
