@@ -1,12 +1,11 @@
 appId: ${APP_ID}
-name: 'T6 · Create a loan account'
+name: 'T6 · Create and archive a loan account'
 tags:
   - release
 ---
 # Creates a liability in Settings → Asset accounts → New account: a loan, "I owe this", 4,5 % a
 # month. Two syncs later Firefly III has the account with those fields.
-# Not covered yet: archiving it. Settings → Asset accounts lists asset accounts only and the account
-# page (app/accounts/[id].tsx) is asset-only, so a liability has no screen to switch inactive from.
+# Then it is archived from Settings → Liabilities, and Firefly III has it inactive.
 - runFlow: ../../subflows/ready.yaml
 - tapOn: 'Settings, tab, 5 of 5'
 - tapOn: 'Asset accounts'
@@ -43,10 +42,20 @@ tags:
       {
         ACTION: expectAccountFields,
         NAME: 'E2E Loan',
-        EXPECT_TYPE: 'liability',
+        EXPECT_TYPE: 'liabilities', # FF3's word; the app stores 'liability'
         EXPECT_LIABILITY_TYPE: 'loan',
         EXPECT_LIABILITY_DIRECTION: 'debit',
         EXPECT_INTEREST: '4.5',
         EXPECT_INTEREST_PERIOD: 'monthly',
         TIMEOUT_MS: '90000',
       }
+- tapOn: 'Settings, tab, 5 of 5'
+- tapOn: 'Liabilities'
+- tapOn: 'E2E Loan'
+- tapOn: 'Active'
+- tapOn: 'Save'
+- runFlow: ../../subflows/home.yaml
+- runFlow: ../../subflows/sync.yaml
+- runScript:
+    file: ../../scripts/ff3.js
+    env: { ACTION: expectAccount, NAME: 'E2E Loan', EXPECT_ACTIVE: 'false', TIMEOUT_MS: '90000' }
