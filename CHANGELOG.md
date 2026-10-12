@@ -10,6 +10,10 @@
 - Details sheet now isolates changes in a draft and only commits on Done; aligned When padding, inline Note row, styled tag chips with suggestions, and Shared with row.
 - Selected Payee and From suggestion chips are now bold.
 
+### Developer
+
+- Removed local release script
+
 ### Inbox & Sync
 
 - Aligned Sync sheet with the Review sheet archetype: grouped inside a Card with leading status dots, clear status statements, and a "Set up" link for receipt reading.

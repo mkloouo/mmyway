@@ -18,7 +18,6 @@ module.exports = defineConfig([
   {
     ignores: [
       'dist/*',
-      'scripts/release-test-stubs/**',
       '.maestro/**',
       'src/db/migrations/**',
       'src/api/ff3/types.ts',
