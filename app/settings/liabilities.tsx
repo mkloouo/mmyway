@@ -3,25 +3,16 @@
 // accounts stay on Settings → Accounts.
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, Text, View } from 'react-native';
-import { SearchField } from '../../src/ui/SearchField';
+import { FlatList } from 'react-native';
 import { useTheme } from '../../src/ui/theme';
-import {
-  Screen,
-  AppBar,
-  BarRow,
-  BarIconButton,
-  Card,
-  Chip,
-  SCREEN_TOP_PADDING,
-} from '../../src/ui/components';
+import { Screen, SCREEN_TOP_PADDING } from '../../src/ui/components';
+import { AccountCard, AccountListBar, AccountListEmpty } from '../../src/accounts/AccountList';
 import {
   useLiabilityAccounts,
   type ReferenceAccountRow,
 } from '../../src/accounts/useAssetAccounts';
 import { filterAccounts } from '../../src/accounts/filterAccounts';
 import { navigateOnce } from '../../src/ui/navigateOnce';
-import { PendingDot } from '../../src/ui/PendingDot';
 import { usePendingAccountIds } from '../../src/accounts/usePendingAccountIds';
 
 const EMPTY_ACCOUNTS: ReferenceAccountRow[] = [];
@@ -43,63 +34,26 @@ export default function LiabilitiesScreen() {
   const visible = useMemo(() => filterAccounts(shown, search), [shown, search]);
 
   const row = (item: ReferenceAccountRow) => (
-    <Card
+    <AccountCard
+      account={item}
+      pending={pendingAccounts.has(item.id)}
       onPress={() => navigateOnce(`/accounts/${item.id}`)}
-      style={item.active ? undefined : { opacity: 0.5 }}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
-        <PendingDot visible={pendingAccounts.has(item.id)} />
-        <Text style={[t.type.body, { color: t.color.text, flex: 1 }]} numberOfLines={1}>
-          {item.name}
-        </Text>
-        {!item.active && <Chip label={tr('accounts.inactive')} />}
-        <Text style={[t.type.body, { color: t.color.textFaint }]}>›</Text>
-      </View>
-    </Card>
+    />
   );
 
   return (
     <Screen bottom>
-      {searchOpen ? (
-        <BarRow>
-          <SearchField
-            value={search}
-            onChangeText={setSearch}
-            placeholder={tr('pickers.searchAccounts')}
-            autoFocus
-            onClear={() => {
-              setSearch('');
-              setSearchOpen(false);
-            }}
-            style={{ flex: 1 }}
-          />
-        </BarRow>
-      ) : (
-        <AppBar
-          title={tr('liabilities.title')}
-          right={
-            <>
-              <BarIconButton
-                icon="add"
-                label={tr('liabilities.newLiability')}
-                onPress={() =>
-                  navigateOnce({ pathname: '/accounts/new', params: { type: 'liability' } })
-                }
-              />
-              <BarIconButton
-                icon="search"
-                label={tr('pickers.searchAccounts')}
-                onPress={() => setSearchOpen(true)}
-              />
-              <BarIconButton
-                icon={showInactive ? 'eye' : 'eye-off'}
-                label={showInactive ? tr('accounts.hideInactive') : tr('accounts.showInactive')}
-                onPress={() => setShowInactive((v) => !v)}
-              />
-            </>
-          }
-        />
-      )}
+      <AccountListBar
+        title={tr('liabilities.title')}
+        search={search}
+        onSearch={setSearch}
+        searchOpen={searchOpen}
+        onSearchOpen={setSearchOpen}
+        showInactive={showInactive}
+        onToggleInactive={() => setShowInactive((v) => !v)}
+        newLabel={tr('liabilities.newLiability')}
+        onNew={() => navigateOnce({ pathname: '/accounts/new', params: { type: 'liability' } })}
+      />
       <FlatList
         data={visible}
         keyExtractor={(a) => a.id}
@@ -111,16 +65,10 @@ export default function LiabilitiesScreen() {
         }}
         renderItem={({ item }) => row(item)}
         ListEmptyComponent={
-          <Text
-            style={[
-              t.type.body,
-              { color: t.color.textFaint, textAlign: 'center', paddingTop: t.space.xl },
-            ]}
-          >
-            {allLiabilities.length > 0 && !showInactive
-              ? tr('accounts.allInactiveHidden')
-              : tr('liabilities.empty')}
-          </Text>
+          <AccountListEmpty
+            allHidden={allLiabilities.length > 0 && !showInactive}
+            emptyText={tr('liabilities.empty')}
+          />
         }
       />
     </Screen>

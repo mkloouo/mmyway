@@ -2,23 +2,13 @@
 // (app/accounts/[id].tsx); Reorder turns the list into a drag list, and Done saves it.
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, Text, View } from 'react-native';
+import { FlatList, Text } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import Animated, { FadeIn } from 'react-native-reanimated';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { useDb } from '../../src/providers/DbProvider';
-import { SearchField } from '../../src/ui/SearchField';
 import { useTheme } from '../../src/ui/theme';
-import {
-  Screen,
-  AppBar,
-  BarRow,
-  BarIconButton,
-  Card,
-  Chip,
-  Button,
-  SCREEN_TOP_PADDING,
-} from '../../src/ui/components';
+import { Screen, BarIconButton, Chip, Button, SCREEN_TOP_PADDING } from '../../src/ui/components';
+import { AccountCard, AccountListBar, AccountListEmpty } from '../../src/accounts/AccountList';
 import { DragList } from '../../src/ui/DragList';
 import { hasEnvelopeMarker } from '../../src/accounts/envelopeMarker';
 import { useAssetAccounts, type ReferenceAccountRow } from '../../src/accounts/useAssetAccounts';
@@ -27,7 +17,6 @@ import { filterAccounts } from '../../src/accounts/filterAccounts';
 import { applyVisibleOrder } from '../../src/accounts/moveAccount';
 import { navigateOnce } from '../../src/ui/navigateOnce';
 import { useAction } from '../../src/ui/useAction';
-import { PendingDot } from '../../src/ui/PendingDot';
 import { usePendingAccountIds } from '../../src/accounts/usePendingAccountIds';
 
 const FADE_MS = 160;
@@ -93,96 +82,53 @@ export default function AccountsScreen() {
   });
 
   const row = (item: ReferenceAccountRow) => (
-    <Card
+    <AccountCard
+      account={item}
+      pending={pendingAccounts.has(item.id)}
+      reordering={reordering}
+      chips={hasEnvelopeMarker(item.notes) && <Chip label={tr('accounts.envelope')} />}
       onPress={reordering ? undefined : () => navigateOnce(`/accounts/${item.id}`)}
-      style={item.active ? undefined : { opacity: 0.5 }}
-    >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
-        <PendingDot visible={pendingAccounts.has(item.id)} />
-        <Text style={[t.type.body, { color: t.color.text, flex: 1 }]} numberOfLines={1}>
-          {item.name}
-        </Text>
-        {!item.active && <Chip label={tr('accounts.inactive')} />}
-        {hasEnvelopeMarker(item.notes) && <Chip label={tr('accounts.envelope')} />}
-        {reordering ? (
-          <Ionicons name="reorder-three" size={22} color={t.color.accent} />
-        ) : (
-          <Text style={[t.type.body, { color: t.color.textFaint }]}>›</Text>
-        )}
-      </View>
-    </Card>
+    />
   );
 
   const empty = (
-    <Text
-      style={[
-        t.type.body,
-        { color: t.color.textFaint, textAlign: 'center', paddingTop: t.space.xl },
-      ]}
-    >
-      {allAccounts.length > 0 && !showInactive
-        ? tr('accounts.allInactiveHidden')
-        : tr('accounts.empty')}
-    </Text>
+    <AccountListEmpty
+      allHidden={allAccounts.length > 0 && !showInactive}
+      emptyText={tr('accounts.empty')}
+    />
   );
 
   return (
     <Screen bottom>
-      {searchOpen ? (
-        <BarRow>
-          <SearchField
-            value={search}
-            onChangeText={setSearch}
-            placeholder={tr('pickers.searchAccounts')}
-            autoFocus
-            onClear={() => {
+      <AccountListBar
+        title={tr('accounts.title')}
+        search={search}
+        onSearch={setSearch}
+        searchOpen={searchOpen}
+        onSearchOpen={setSearchOpen}
+        showInactive={showInactive}
+        onToggleInactive={() => setShowInactive((v) => !v)}
+        newLabel={tr('accounts.newAccount')}
+        onNew={
+          reordering
+            ? undefined
+            : () => navigateOnce({ pathname: '/accounts/new', params: { type: 'asset' } })
+        }
+      >
+        {reordering ? (
+          <Button title={tr('common.done')} variant="ghost" size="bar" onPress={done} />
+        ) : (
+          <BarIconButton
+            icon="swap-vertical"
+            label={tr('accounts.reorder')}
+            onPress={() => {
+              setDraft(allAccounts.map((a) => a.id));
               setSearch('');
               setSearchOpen(false);
             }}
-            style={{ flex: 1 }}
           />
-        </BarRow>
-      ) : (
-        <AppBar
-          title={tr('accounts.title')}
-          right={
-            <>
-              {!reordering && (
-                <BarIconButton
-                  icon="add"
-                  label={tr('accounts.newAccount')}
-                  onPress={() =>
-                    navigateOnce({ pathname: '/accounts/new', params: { type: 'asset' } })
-                  }
-                />
-              )}
-              <BarIconButton
-                icon="search"
-                label={tr('pickers.searchAccounts')}
-                onPress={() => setSearchOpen(true)}
-              />
-              <BarIconButton
-                icon={showInactive ? 'eye' : 'eye-off'}
-                label={showInactive ? tr('accounts.hideInactive') : tr('accounts.showInactive')}
-                onPress={() => setShowInactive((v) => !v)}
-              />
-              {reordering ? (
-                <Button title={tr('common.done')} variant="ghost" size="bar" onPress={done} />
-              ) : (
-                <BarIconButton
-                  icon="swap-vertical"
-                  label={tr('accounts.reorder')}
-                  onPress={() => {
-                    setDraft(allAccounts.map((a) => a.id));
-                    setSearch('');
-                    setSearchOpen(false);
-                  }}
-                />
-              )}
-            </>
-          }
-        />
-      )}
+        )}
+      </AccountListBar>
       {/* Reorder swaps both the line under the bar and the list itself. Each side fades in on
           its own (the old one just goes): two of them animating at once would both claim the
           space for the length of the fade, and the list would jump as they handed it over. The
