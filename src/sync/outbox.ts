@@ -49,14 +49,13 @@ import {
   type SetBudgetLimitsPayload,
   type SetPiggyAmountPayload,
 } from '../bucket/replay';
-import {
-  replayCreateBudget,
-  replayUpdateBudget,
-  replayDeleteBudget,
-  type CreateBudgetPayload,
-  type UpdateBudgetPayload,
-  type DeleteBudgetPayload,
+import { replayCreateBudget, replayUpdateBudget, replayDeleteBudget } from '../bucket/budgetReplay';
+import type {
+  CreateBudgetPayload,
+  UpdateBudgetPayload,
+  DeleteBudgetPayload,
 } from '../bucket/budgetActions';
+import { isUnsent } from './unsent';
 import { replayCreateAccount, type CreateAccountPayload } from '../accounts/accountCreate';
 import {
   replayCreateRule,
@@ -296,13 +295,7 @@ function insertOperation(db: OutboxDb, op: NewOutboxOperation): void {
  * Transaction-safe variant for callers that must write the op and their own state atomically
  * (confirmInboxItem, the create's follow-up writes). Pass the `tx` from `db.transaction`.
  */
-/**
- * An operation that hasn't gone out: replay may claim it and Cancel may drop it. `in_flight` is on
- * its way and left alone; `done` rows are deleted, not kept. Every "is it still queued?" question
- * asks through this (#79).
- */
-const UNSENT_STATUSES = ['pending', 'failed'] as const;
-export const isUnsent = () => inArray(outboxOperations.status, [...UNSENT_STATUSES]);
+export { isUnsent };
 
 /** A create that never left the device: nothing of it can be in FF3 (Undo may take it back). */
 export const neverSent = () =>

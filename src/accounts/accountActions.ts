@@ -7,6 +7,7 @@ import { generateId } from '../utils/id';
 import { hasEnvelopeMarker, setEnvelopeMarker } from './envelopeMarker';
 import { getAccountOrder, setAccountOrder } from '../settings/appSettings';
 import type { AccountEdit } from './accountEdit';
+import { localRow, type AccountCreateForm, type CreateAccountPayload } from './accountCreate';
 
 export async function setAccountActive(
   db: OutboxDb,
@@ -77,4 +78,20 @@ export async function reorderAccounts(db: OutboxDb, orderedIds: string[]): Promi
     kind: 'reorder_accounts',
     payload: { orderedIds },
   });
+}
+
+/**
+ * Create an account and queue the operation. The account shows at once under its temporary `mmyway-*`
+ * id; the create's replay swaps in FF3's id. Returns the temporary id.
+ */
+export async function enqueueAccountCreate(db: OutboxDb, form: AccountCreateForm): Promise<string> {
+  const clientId = `mmyway-${generateId()}`;
+  const payload: CreateAccountPayload = { clientId, form };
+  await db.insert(referenceAccounts).values(localRow(clientId, form, new Date().toISOString()));
+  await enqueueOperation(db, {
+    id: generateId(),
+    kind: 'create_account',
+    payload,
+  });
+  return clientId;
 }

@@ -7,15 +7,9 @@ import { FF3RequestError, type FF3Client } from '../api/ff3/client';
 import { parseDecimalInput, parseSignedDecimalInput } from '../api/ff3/decimal';
 import { fetchAllPages } from '../api/ff3/paginate';
 import { outboxOperations, referenceAccounts } from '../db/schema';
-import {
-  enqueueOperation,
-  isUnsent,
-  type OutboxDb,
-  type ReorderAccountsPayload,
-  type UpdateAccountPayload,
-} from '../sync/outbox';
+import type { OutboxDb, ReorderAccountsPayload, UpdateAccountPayload } from '../sync/outbox';
+import { isUnsent } from '../sync/unsent';
 import { readPayload, writePayload } from '../sync/payloadJson';
-import { generateId } from '../utils/id';
 import { accountFormProblem, CREDIT_CARD_TYPE, type AccountRole } from './accountEdit';
 
 export interface AccountCreateForm {
@@ -120,7 +114,7 @@ export function ff3CreateAccountBody(form: AccountCreateForm): Record<string, un
 }
 
 /** The reference_accounts row a create writes, from the form alone (used before and after FF3 answers). */
-function localRow(id: string, form: AccountCreateForm, now: string) {
+export function localRow(id: string, form: AccountCreateForm, now: string) {
   const asset = form.type === 'asset';
   const card = asset && form.accountRole === 'ccAsset';
   return {
@@ -141,22 +135,6 @@ function localRow(id: string, form: AccountCreateForm, now: string) {
     monthlyPaymentDate: card ? (form.monthlyPaymentDate ?? null) : null,
     syncedAt: now,
   };
-}
-
-/**
- * Create an account and queue the operation. The account shows at once under its temporary `mmyway-*`
- * id; the create's replay swaps in FF3's id. Returns the temporary id.
- */
-export async function enqueueAccountCreate(db: OutboxDb, form: AccountCreateForm): Promise<string> {
-  const clientId = `mmyway-${generateId()}`;
-  const payload: CreateAccountPayload = { clientId, form };
-  await db.insert(referenceAccounts).values(localRow(clientId, form, new Date().toISOString()));
-  await enqueueOperation(db, {
-    id: generateId(),
-    kind: 'create_account',
-    payload,
-  });
-  return clientId;
 }
 
 interface AccountResponse {
