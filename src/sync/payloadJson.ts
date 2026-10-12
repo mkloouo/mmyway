@@ -153,6 +153,16 @@ const SCHEMAS = {
     name: z.string(), // for display in Inbox
     expectedUpdatedAt: z.string().optional(), // conflict check
   }),
+  create_account: z.looseObject({
+    v: version,
+    clientId: z.string(), // the temporary mmyway-* id until serverId is recorded
+    form: z.looseObject({
+      name: z.string(),
+      type: z.enum(['asset', 'liability']),
+      currencyCode: z.string(),
+    }),
+    serverId: z.string().optional(), // recorded after FF3 answers
+  }),
 } satisfies Record<OutboxKind, z.ZodType>;
 
 export function readPayload<T = Record<string, unknown>>(kind: OutboxKind, json: string): T {

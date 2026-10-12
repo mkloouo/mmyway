@@ -117,6 +117,7 @@ export const outboxOperations = sqliteTable('outbox_operations', {
       'create_budget',
       'update_budget',
       'delete_budget',
+      'create_account',
     ],
   }).notNull(),
   payloadJson: text('payload_json').notNull(),

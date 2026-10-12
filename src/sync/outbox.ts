@@ -57,6 +57,7 @@ import {
   type UpdateBudgetPayload,
   type DeleteBudgetPayload,
 } from '../bucket/budgetActions';
+import { replayCreateAccount, type CreateAccountPayload } from '../accounts/accountCreate';
 
 export type OutboxKind =
   | 'create_transaction'
@@ -74,7 +75,8 @@ export type OutboxKind =
   | 'set_piggy_amount'
   | 'create_budget'
   | 'update_budget'
-  | 'delete_budget';
+  | 'delete_budget'
+  | 'create_account';
 
 /** The kinds that change an account balance in FF3 once they land; receipts and account edits don't. */
 export const LEDGER_KINDS = [
@@ -163,6 +165,7 @@ export interface NewOutboxOperation {
     | CreateBudgetPayload
     | UpdateBudgetPayload
     | DeleteBudgetPayload
+    | CreateAccountPayload
     | Record<string, unknown>;
 }
 
@@ -893,6 +896,12 @@ async function replayOne(
 
     if (row.kind === 'delete_budget') {
       await replayDeleteBudget(db, client, row.id, payload as DeleteBudgetPayload);
+      await db.delete(outboxOperations).where(eq(outboxOperations.id, row.id));
+      return 'done';
+    }
+
+    if (row.kind === 'create_account') {
+      await replayCreateAccount(db, client, row.id, payload as CreateAccountPayload);
       await db.delete(outboxOperations).where(eq(outboxOperations.id, row.id));
       return 'done';
     }

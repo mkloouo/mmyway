@@ -229,5 +229,11 @@ export function describeQueuedChange(
         route: '/budget',
         changed: [],
       };
+    case 'create_account':
+      return {
+        subject: str((p.form as Record<string, unknown> | undefined)?.name),
+        route: '/settings/accounts',
+        changed: [],
+      };
   }
 }

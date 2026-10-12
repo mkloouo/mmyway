@@ -81,6 +81,11 @@ export function subjectsOf(op: {
     case 'delete_budget':
       add('budget', p.budgetId);
       break;
+    case 'create_account':
+      // Both ids: an edit queued on the account waits behind this create whichever one it carries.
+      add('account', p.clientId);
+      add('account', p.serverId);
+      break;
   }
   return keys;
 }
