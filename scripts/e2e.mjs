@@ -317,6 +317,18 @@ export const FLOWS = [
     ],
   },
   {
+    id: 'T7',
+    tier: 'release',
+    title: 'Rules: toggle, run now, create from a transaction',
+    steps: ['settings/T7-rules-toggle-run.yaml'],
+    areas: [
+      'app/settings/rules.tsx',
+      'app/settings/rule-new.tsx',
+      'src/rules/',
+      'app/transactions/[groupId].tsx',
+    ],
+  },
+  {
     id: 'T3',
     tier: 'release',
     title: 'Sign out and back in',

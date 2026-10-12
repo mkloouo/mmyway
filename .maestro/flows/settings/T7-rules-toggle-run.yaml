@@ -1,0 +1,117 @@
+appId: ${APP_ID}
+name: 'T7 · Rules: toggle, run now, create from a transaction'
+tags:
+  - release
+---
+# Settings → Rules: the seeded "E2E marker rule" (group "E2E rules") is switched off and on, each
+# change synced and checked in Firefly III. Then Run now applies it to a transaction that has
+# no category, and a rule made from a transaction ("Create a rule") is saved and checked.
+- runFlow: ../../subflows/ready.yaml
+
+# A withdrawal the marker rule should categorise. Created through the API with apply_rules off,
+# so nothing runs until the flow asks for it.
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      {
+        ACTION: createTx,
+        DESCRIPTION: 'E2E-RULE-MARKER lunch',
+        AMOUNT: '7.70',
+        DESTINATION: 'Biedronka',
+      }
+
+# The rules screen. The Switch has no text of its own; it is labelled with the rule's title, so
+# the title matches twice: index 0 is the title text, index 1 is the Switch in the same row.
+- tapOn: 'Settings, tab, 5 of 5'
+- tapOn: 'Rules'
+- assertVisible: 'E2E rules'
+- assertVisible: 'E2E marker rule'
+
+# Off, then sync, then Firefly III must have it inactive.
+- tapOn:
+    text: 'E2E marker rule'
+    index: 1
+- runFlow: ../../subflows/home.yaml
+- runFlow: ../../subflows/sync.yaml
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      {
+        ACTION: expectRule,
+        TITLE: 'E2E marker rule',
+        ACTIVE: 'false',
+        TIMEOUT_MS: '90000',
+      }
+
+# On again, sync, Firefly III active.
+- tapOn: 'Settings, tab, 5 of 5'
+- tapOn: 'Rules'
+- tapOn:
+    text: 'E2E marker rule'
+    index: 1
+- runFlow: ../../subflows/home.yaml
+- runFlow: ../../subflows/sync.yaml
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      {
+        ACTION: expectRule,
+        TITLE: 'E2E marker rule',
+        ACTIVE: 'true',
+        TIMEOUT_MS: '90000',
+      }
+
+# Run now: the row under the rule's title. It asks to confirm; the confirm's Run now is the one
+# below the dialog title. The rule is applied on the next sync.
+- tapOn: 'Settings, tab, 5 of 5'
+- tapOn: 'Rules'
+- tapOn:
+    text: 'Run now'
+    below: 'E2E marker rule'
+- tapOn:
+    text: 'Run now'
+    below: 'Run "E2E marker rule" now\?'
+- runFlow: ../../subflows/home.yaml
+- runFlow: ../../subflows/sync.yaml
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      {
+        ACTION: findTx,
+        DESCRIPTION: 'E2E-RULE-MARKER lunch',
+        EXPECT_CATEGORY: 'Household',
+        TIMEOUT_MS: '90000',
+      }
+
+# Create a rule from a seeded transaction: its ⋯ (More) sheet → Create a rule. The fuel
+# transaction pays Orlen, so the new rule matches "Orlen" and carries the transaction's category.
+- runFlow:
+    file: ../../subflows/open-transaction.yaml
+    env:
+      QUERY: 'Fuel'
+- tapOn: 'More'
+- tapOn: 'Create a rule'
+# The match and the title are both prefilled with the payee.
+- assertVisible: 'Orlen'
+- tapOn: 'Category'
+- tapOn: 'Household'
+- tapOn: 'Save'
+# The confirm dialog's Save sits below its title, as the screen's does.
+- tapOn:
+    text: 'Save'
+    below: 'Create this rule\?'
+- runFlow: ../../subflows/home.yaml
+- runFlow: ../../subflows/sync.yaml
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      {
+        ACTION: expectRule,
+        TITLE: 'Orlen',
+        ACTIVE: 'true',
+        TIMEOUT_MS: '90000',
+      }
+# Clean up: an active "description contains Orlen" rule would recategorise other flows' fuel.
+- runScript:
+    file: ../../scripts/ff3.js
+    env: { ACTION: deleteRule, TITLE: 'Orlen' }

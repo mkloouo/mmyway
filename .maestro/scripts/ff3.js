@@ -331,6 +331,33 @@ var ACTIONS = {
     });
   },
 
+  /** Waits until exactly one rule titled TITLE exists and its active flag is ACTIVE ('true' or 'false'). */
+  expectRule: function () {
+    var title = v('TITLE');
+    if (!title) throw new Error('set TITLE');
+    poll('rule "' + title + '"', function () {
+      var found = all('/rules').filter(function (r) {
+        return r.attributes.title === title;
+      });
+      same('rules named ' + title, found.length, 1);
+      same('active', found[0].attributes.active, v('ACTIVE'));
+      return true;
+    });
+  },
+
+  /** Removes every rule titled TITLE, so a rule a flow made can't rewrite later flows' transactions. */
+  deleteRule: function () {
+    var title = v('TITLE');
+    if (!title) throw new Error('set TITLE');
+    all('/rules')
+      .filter(function (r) {
+        return r.attributes.title === title;
+      })
+      .forEach(function (r) {
+        api('DELETE', '/rules/' + r.id);
+      });
+  },
+
   /** output.balance: the account's current balance, e.g. to count a cash envelope 10,00 short. */
   balance: function () {
     output.balance = accountByName(v('NAME')).attributes.current_balance;

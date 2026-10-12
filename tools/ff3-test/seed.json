@@ -134,5 +134,13 @@
         }
       ]
     }
+  ],
+  "rules": [
+    {
+      "group": "E2E rules",
+      "title": "E2E marker rule",
+      "triggers": [{ "type": "description_contains", "value": "E2E-RULE-MARKER" }],
+      "actions": [{ "type": "set_category", "value": "Household" }]
+    }
   ]
 }

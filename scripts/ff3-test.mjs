@@ -386,6 +386,20 @@ async function seed(state, file) {
   }
   const groups = seedTransactions(data);
   for (const g of groups) await api(state, 'POST', '/transactions', g);
+  // After the transactions: apply_rules is false on every seed write, so no rule rewrites them.
+  for (const r of data.rules) {
+    const group = await api(state, 'POST', '/rule-groups', { title: r.group, active: true });
+    await api(state, 'POST', '/rules', {
+      title: r.title,
+      rule_group_id: group.data.id,
+      trigger: 'store-journal',
+      active: true,
+      strict: true,
+      stop_processing: false,
+      triggers: r.triggers.map((t) => ({ ...t, active: true, stop_processing: false })),
+      actions: r.actions.map((a) => ({ ...a, active: true, stop_processing: false })),
+    });
+  }
   return { accounts: data.accounts.length, transactions: groups.length };
 }
 
