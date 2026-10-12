@@ -35,24 +35,20 @@ immediate, "Run now" confirms; Rules reached from Settings; group headers non-co
 
 Suite at `04c90d6`: 144 suites / 983 tests pass, typecheck and lint clean.
 
-## Open — fix before merge
+## Done in the follow-up session (same day)
 
-From [review-envelope-1.md](review-envelope-1.md) and an orchestrator check:
+Plan: `~/.claude/plans/please-plan-first-you-agile-possum.md`. Suite: 155 suites / 1056 tests, tsc + lint clean.
 
-1. **Critical** — queued rename/delete keep the local `mmyway-*` id after `create_budget` syncs; the delete then
-   skips FF3 and the envelope survives. Swap the id in queued `update_budget`/`delete_budget`/`set_budget_limits`
-   payloads when the create records its server id (`src/bucket/budgetActions.ts`). Add the test.
-2. **Critical** — `enqueueBudgetDelete` on an unsynced envelope drops *every* unsynced `create_budget`, not just its
-   own (non-specific `where`). Filter by the payload's client id.
-3. `enqueueBudgetCreate(db, name, currencyCode)` — remove `currencyCode` from signature and payload.
-4. `app/budget/new.tsx`, `app/budget/[id].tsx` use raw `TextInput`; AGENTS.md requires `TextField`.
+- `773e016` envelope review fixes 1–4 (optimistic row, id swap, scoped delete, no currencyCode, TextField)
+- `949f6f1` Maestro B1–B3 (Budget tab); seed adds budget "Fun"
+- `9ff41ff` `35befba` account create (data, screen); `f68b0db` Settings → Liabilities + liability edit/archive
+- `1cf8ec0` `dc8a34a` demo mode ([spec-demo.md](spec-demo.md)); also clears bucket_objects on instance switch
+- `9f7c982` `ee3d8ca` Rules (cache groups; toggle_rule / toggle_rule_group / trigger_rule / create_rule; screens)
+- `d5ea78f` `9d83df4` `51b553e` Maestro T6 (loan create + archive), D1 (demo, smoke), T7 (rules); seed marker rule
 
-## Not started
+## Still open
 
-- Envelope Maestro flow (create → rename → delete, FF3-side checks) — spec-envelope.md chunk 3
-- Account create — spec-account.md (data → UI → Maestro)
-- Rules surface — spec-rules.md chunks A/B/C. Seed rule must match a unique marker string, **not** "Żabka",
-  or FF3 will rewrite transactions other flows create.
-- Maestro flow for the existing Budget tab (Ready to Assign, assign, move, auto-fill, cover overspent, capture
-  remainder) — session dialog critical path 13
-- Demo/sandbox mode (roadmap §2.8) — pending your call whether it's in scope
+- Device run of every new flow — selectors (dialog buttons, rule Switch by index) are unverified.
+- Regenerate the FF3 test snapshot: `npm run ff3:test -- fresh` (seed gained "Fun" and the marker rule).
+- Liability type/direction/interest are create-only (no local columns).
+- Pre-existing prettier warnings: S1-cold-start.yaml, subflows/sync.yaml, app.config.js.
