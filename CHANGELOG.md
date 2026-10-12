@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Developer
+
+- Removed local release script
+
 ### Inbox & Sync
 
 - Aligned Sync sheet with the Review sheet archetype: grouped inside a Card with leading status dots, clear status statements, and a "Set up" link for receipt reading.

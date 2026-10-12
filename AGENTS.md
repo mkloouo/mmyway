@@ -16,7 +16,7 @@ pipeline.
   (`ios:clean:dev`), so a later production iOS build needs its own `expo prebuild --clean`
 - `npm run android:build:dev` / `npm run android:build:pro` — local EAS APK build;
   `npm run android:build:aab` — Play Store bundle
-- `npm run release -- X.Y.Z` / `npm run release -- build` — see `scripts/release.mjs --help`;
+- `npm run release -- X.Y.Z` / `npm run release -- build` — see `npx release --help`;
   the **Release** workflow runs the same script from GitHub
 - `npm run ff3:test -- fresh` — a throwaway, seeded, patched Firefly III in Docker for device tests
   (`scripts/ff3-test.mjs --help`: up, reset to the seed snapshot, cron, env, destroy, …). Patches
@@ -94,7 +94,7 @@ pipeline.
 - **Every change a user could notice, minor to major, goes in `CHANGELOG.md` under
   `[Unreleased]`** in the same commit — a new feature, a changed behaviour, a fixed bug, a
   visual tweak. Write it for the person installing the app (it becomes the release notes
-  verbatim, see `scripts/release.mjs --help`): what they'll see, not which file changed. Put it
+  verbatim, see `npx release --help`): what they'll see, not which file changed. Put it
   under the section it belongs to (Capture, Receipts, Inbox, ...) or a `### Fixed` section. A
   fix to something not yet released doesn't get its own line — correct the existing description
   instead. Internal-only changes (refactors, tests, tooling, docs) are skipped.
