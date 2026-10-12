@@ -25,7 +25,7 @@
     "ff3:test": "node scripts/ff3-test.mjs",
     "e2e": "node scripts/e2e.mjs",
     "analyze": "node scripts/analyze.mjs",
-    "analyze:dead": "knip",
+    "analyze:dead": "knip --no-config-hints",
     "analyze:dupes": "jscpd --config .jscpd.json",
     "analyze:cycles": "dpdm --no-warning --no-tree -T --exit-code circular:1 \"app/**/*.tsx\" \"src/**/*.ts\" \"src/**/*.tsx\"",
     "analyze:deps": "node scripts/audit.mjs",

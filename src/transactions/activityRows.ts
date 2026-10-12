@@ -58,13 +58,7 @@ export function mapRemoteResult(group: TransactionRead): RemoteResultRow | null 
   const splits = group.attributes.transactions;
   const journal = splits[0];
   if (!journal) return null;
-  const sameCurrency = splits.every((s) => s.currency_code === journal.currency_code);
-  const amount =
-    splits.length > 1 && sameCurrency
-      ? splits.map((s) => s.amount).reduce((a, b) => addDecimal(a, b))
-      : journal.amount;
-  const groupTitle = (group.attributes as { group_title?: string | null }).group_title;
-  const description = splits.length > 1 && groupTitle ? groupTitle : journal.description;
+  const { amount, description } = groupHeadline(group);
   const extra = journal as {
     source_id?: string | number | null;
     destination_id?: string | number | null;
@@ -83,6 +77,20 @@ export function mapRemoteResult(group: TransactionRead): RemoteResultRow | null 
     destinationName: journal.destination_name ?? null,
     categoryName: splits.length > 1 ? null : (journal.category_name ?? null),
   };
+}
+
+/**
+ * A split group as one line: the splits' total when they share a currency (otherwise the first
+ * split's amount, as there is no single total), under the group's title. Needs at least one split.
+ */
+export function groupHeadline(group: TransactionRead): { amount: string; description: string } {
+  const splits = group.attributes.transactions;
+  const journal = splits[0]!;
+  const sameCurrency = splits.every((s) => s.currency_code === journal.currency_code);
+  const amount = splits.length > 1 && sameCurrency ? sumAmounts(splits) : journal.amount;
+  const groupTitle = (group.attributes as { group_title?: string | null }).group_title;
+  const description = splits.length > 1 && groupTitle ? groupTitle : journal.description;
+  return { amount, description };
 }
 
 export function sumAmounts(splits: TransactionSplit[]): string {

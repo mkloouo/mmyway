@@ -20,7 +20,7 @@ import type { OutboxDb } from './outbox';
 import { payloadGroupId } from './payloadJson';
 import { logLine } from '../utils/log';
 import { setAccountOrder } from '../settings/appSettings';
-import { addDecimal } from '../api/ff3/decimal';
+import { groupHeadline } from '../transactions/activityRows';
 import { normkey } from '../lookup/normkey';
 import { splitsFromGroup, writeSplits } from '../transactions/splitsJson';
 
@@ -306,13 +306,7 @@ export function cachedRowFromGroup(
     source_id?: string | number | null;
     destination_id?: string | number | null;
   };
-  const sameCurrency = splits.every((s) => s.currency_code === journal.currency_code);
-  const amount =
-    splits.length > 1 && sameCurrency
-      ? splits.map((s) => s.amount).reduce((a, b) => addDecimal(a, b))
-      : journal.amount;
-  const groupTitle = (group.attributes as { group_title?: string | null }).group_title;
-  const description = splits.length > 1 && groupTitle ? groupTitle : journal.description;
+  const { amount, description } = groupHeadline(group);
   const sourceName = journal.source_name ?? null;
   const destinationName = journal.destination_name ?? null;
 
