@@ -350,6 +350,21 @@ var ACTIONS = {
     });
   },
 
+  /** Checks a liability's own fields by NAME: EXPECT_TYPE, EXPECT_LIABILITY_TYPE, EXPECT_LIABILITY_DIRECTION, EXPECT_INTEREST (decimal), EXPECT_INTEREST_PERIOD. */
+  expectAccountFields: function () {
+    var name = v('NAME');
+    poll('account "' + name + '" fields', function () {
+      var a = accountByName(name).attributes;
+      same('type', a.type, v('EXPECT_TYPE'));
+      same('liability_type', a.liability_type, v('EXPECT_LIABILITY_TYPE'));
+      same('liability_direction', a.liability_direction, v('EXPECT_LIABILITY_DIRECTION'));
+      if (v('EXPECT_INTEREST') !== undefined && !sameDecimal(a.interest, v('EXPECT_INTEREST')))
+        throw new Error('interest: expected ' + v('EXPECT_INTEREST') + ', Firefly III has ' + a.interest);
+      same('interest_period', a.interest_period, v('EXPECT_INTEREST_PERIOD'));
+      return true;
+    });
+  },
+
   /** Puts an account back the way the seed had it (NAME → NEW_NAME, ACTIVE, NOTES). */
   updateAccount: function () {
     var a = accountByName(v('NAME'));

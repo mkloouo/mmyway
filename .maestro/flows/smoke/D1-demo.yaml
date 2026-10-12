@@ -1,0 +1,48 @@
+appId: ${APP_ID}
+name: 'D1 · Try the demo, then leave it'
+tags:
+  - smoke
+---
+# The demo needs no server: start it from Settings while signed out, check the seeded Food envelope
+# and the Fuel transaction, then leave it. clearState gives a signed-out app whatever the flows
+# before it did. ready.yaml is not used, because it signs the app in.
+# Nothing is sent to Firefly III in demo mode; no expectNoTx check, see the notes in the report.
+- launchApp:
+    appId: ${APP_ID}
+    clearState: true
+- runFlow:
+    when:
+      visible: 'Allow|ALLOW|While using the app'
+    commands:
+      - tapOn: 'Allow|ALLOW|While using the app'
+- extendedWaitUntil:
+    visible: 'Settings, tab, 5 of 5'
+    timeout: 30000
+- tapOn: 'Settings, tab, 5 of 5'
+- tapOn: 'Try the demo'
+- tapOn:
+    text: 'Try the demo'
+    below: 'Try the demo\?'
+- extendedWaitUntil:
+    visible: 'Leave the demo'
+    timeout: 15000
+- tapOn: 'Budget, tab, 4 of 5'
+- extendedWaitUntil:
+    visible: 'Food'
+    timeout: 15000
+- tapOn: 'Activity, tab, 2 of 5'
+- extendedWaitUntil:
+    visible:
+      label: 'Fuel'
+    timeout: 15000
+- takeScreenshot: D1-activity
+- tapOn: 'Settings, tab, 5 of 5'
+- tapOn: 'Leave the demo'
+- tapOn:
+    text: 'Leave the demo'
+    below: 'Leave the demo\?'
+- extendedWaitUntil:
+    visible: 'Try the demo'
+    timeout: 15000
+- tapOn: 'Budget, tab, 4 of 5'
+- assertNotVisible: 'Food'

@@ -89,7 +89,7 @@ describe('e2e flows', () => {
   });
 
   it('runs the smoke by default, and picks flows by id', () => {
-    expect(list().map((f) => f.id)).toEqual(['S1', 'S2', 'S3', 'S4', 'S5', 'S6']);
+    expect(list().map((f) => f.id)).toEqual(['S1', 'S2', 'S3', 'S4', 'S5', 'S6', 'D1']);
     expect(list('q2', 'S3').map((f) => f.id)).toEqual(['S3', 'Q2']);
   });
 

@@ -78,6 +78,13 @@ export const FLOWS = [
     steps: ['smoke/S6-offline-round-trip.yaml'],
     areas: ['src/sync/'],
   },
+  {
+    id: 'D1',
+    tier: 'smoke',
+    title: 'Try the demo, then leave it',
+    steps: ['smoke/D1-demo.yaml'],
+    areas: ['src/demo/', 'src/settings/', 'app/(tabs)/settings.tsx'],
+  },
 
   {
     id: 'C1',
@@ -271,6 +278,13 @@ export const FLOWS = [
     areas: ['src/reconcile/', 'app/count.tsx'],
   },
 
+  {
+    id: 'T6',
+    tier: 'release',
+    title: 'Create a loan account',
+    steps: ['settings/T6-create-account.yaml'],
+    areas: ['app/accounts/', 'src/accounts/', 'app/settings/accounts.tsx'],
+  },
   {
     id: 'T1',
     tier: 'release',

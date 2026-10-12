@@ -1,0 +1,52 @@
+appId: ${APP_ID}
+name: 'T6 · Create a loan account'
+tags:
+  - release
+---
+# Creates a liability in Settings → Asset accounts → New account: a loan, "I owe this", 4,5 % a
+# month. Two syncs later Firefly III has the account with those fields.
+# Not covered yet: archiving it. Settings → Asset accounts lists asset accounts only and the account
+# page (app/accounts/[id].tsx) is asset-only, so a liability has no screen to switch inactive from.
+- runFlow: ../../subflows/ready.yaml
+- tapOn: 'Settings, tab, 5 of 5'
+- tapOn: 'Asset accounts'
+- tapOn: 'New account'
+# The name field is not labelled; its placeholder is "Name", the same word as the label above it.
+- tapOn:
+    text: 'Name'
+    index: 1
+- inputText: 'E2E Loan'
+- hideKeyboard
+- tapOn: 'Liability'
+- tapOn: 'Liability type'
+- tapOn: 'Loan'
+- tapOn: 'Direction'
+- tapOn: 'I owe this'
+# Three empty amount fields show "0"; the interest rate is the one under its label.
+- tapOn:
+    text: '0'
+    below: 'Interest rate \(%\)'
+- inputText: '4,5'
+- hideKeyboard
+- tapOn: 'Interest period'
+- tapOn: 'Monthly'
+- tapOn: 'Save'
+# The confirm dialog's Save, below its title; the screen's own Save is the first match.
+- tapOn:
+    text: 'Save'
+    below: 'Create this account\?'
+- runFlow: ../../subflows/home.yaml
+- runFlow: ../../subflows/sync.yaml
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      {
+        ACTION: expectAccountFields,
+        NAME: 'E2E Loan',
+        EXPECT_TYPE: 'liability',
+        EXPECT_LIABILITY_TYPE: 'loan',
+        EXPECT_LIABILITY_DIRECTION: 'debit',
+        EXPECT_INTEREST: '4.5',
+        EXPECT_INTEREST_PERIOD: 'monthly',
+        TIMEOUT_MS: '90000',
+      }
