@@ -19,7 +19,8 @@ tags:
 - assertNotVisible: 'Not signed in'
 - tapOn: 'Activity, tab, 2 of 5'
 - extendedWaitUntil:
-    visible: 'Fuel'
+    visible:
+        label: "Fuel"
     timeout: 15000
 - takeScreenshot: S1-activity
 - tapOn: 'Inbox, tab, 1 of 5'

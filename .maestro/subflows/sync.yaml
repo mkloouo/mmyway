@@ -7,4 +7,6 @@ appId: ${APP_ID}
 - extendedWaitUntil:
     notVisible: 'Syncing…'
     timeout: 120000
-- back
+- tapOn:
+    point: 0%,15%
+

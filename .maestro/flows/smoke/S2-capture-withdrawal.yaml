@@ -21,7 +21,8 @@ tags:
     id: 'keypad-3'
 - tapOn:
     id: 'keypad-4'
-- assertVisible: '12[.,]34'
+- assertVisible:
+    label: '12[.,]34'
 - tapOn: 'Close'
 - runFlow:
     when:
@@ -41,7 +42,8 @@ tags:
       DESCRIPTION: ''
       SAVE: inbox
 - runFlow: ../../subflows/close-capture.yaml
-- assertVisible: 'S2 ${RUN_ID}'
+- assertVisible:
+    label: 'S2 ${RUN_ID}'
 - assertVisible: 'TO CONFIRM'
 - runScript:
     file: ../../scripts/ff3.js
