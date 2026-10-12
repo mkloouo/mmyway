@@ -32,7 +32,7 @@
     { "name": "Cash surplus", "type": "revenue" }
   ],
   "categories": ["Groceries", "Household", "Fuel", "Eating out", "Salary"],
-  "budgets": ["Food"],
+  "budgets": ["Food", "Fun"],
   "bills": [
     {
       "name": "Internet",

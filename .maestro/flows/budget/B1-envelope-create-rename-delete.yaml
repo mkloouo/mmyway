@@ -1,0 +1,80 @@
+appId: ${APP_ID}
+name: 'B1 · Budget: create, rename, delete an envelope'
+tags:
+  - release
+---
+# An envelope is a Firefly III budget. Created on the Budget tab, renamed and deleted from its own
+# page. Each change goes through the outbox, so every step syncs and then checks Firefly III.
+- runFlow: ../../subflows/ready.yaml
+
+# Create: the name field has a placeholder (the field itself is not labelled for Maestro).
+- tapOn: 'Budget, tab, 4 of 5'
+- tapOn: 'New envelope'
+- tapOn: 'e.g. Groceries, Rent'
+- inputText: 'E2E Env'
+- hideKeyboard
+- tapOn: 'Create'
+# The confirm dialog's Create. Its title is "New envelope", as is the screen's, so pick the button
+# that sits below the dialog title.
+- tapOn:
+    text: 'Create'
+    below: 'New envelope'
+- runFlow: ../../subflows/sync.yaml
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      {
+        ACTION: expectBudget,
+        NAME: 'E2E Env',
+        TIMEOUT_MS: '90000',
+      }
+
+# Rename: the screen's Rename opens a sheet with the name field; its own Rename asks to confirm.
+# The sheet's Rename is the second "Rename" in the tree (the screen's button comes first).
+- tapOn: 'Budget, tab, 4 of 5'
+- tapOn: 'E2E Env'
+- tapOn: 'Rename'
+- eraseText: 7
+- inputText: 'E2E Env2'
+- hideKeyboard
+- tapOn:
+    text: 'Rename'
+    index: 1
+- tapOn:
+    text: 'Rename'
+    below: 'Rename to "E2E Env2"\?'
+- runFlow: ../../subflows/home.yaml
+- runFlow: ../../subflows/sync.yaml
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      {
+        ACTION: expectBudget,
+        NAME: 'E2E Env2',
+        TIMEOUT_MS: '90000',
+      }
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      {
+        ACTION: expectNoBudget,
+        NAME: 'E2E Env',
+        TIMEOUT_MS: '90000',
+      }
+
+# Delete: the screen's Delete, then the confirm dialog's Delete below its title.
+- tapOn: 'Budget, tab, 4 of 5'
+- tapOn: 'E2E Env2'
+- tapOn: 'Delete'
+- tapOn:
+    text: 'Delete'
+    below: 'Delete "E2E Env2"\?'
+- runFlow: ../../subflows/sync.yaml
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      {
+        ACTION: expectNoBudget,
+        NAME: 'E2E Env2',
+        TIMEOUT_MS: '90000',
+      }

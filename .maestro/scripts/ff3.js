@@ -191,6 +191,35 @@ function accountByName(name) {
   return found[0];
 }
 
+function budgetsNamed(name) {
+  return all('/budgets').filter(function (b) {
+    return b.attributes.name === name;
+  });
+}
+
+/** Decimal strings without trailing zeros: "100.00", "100" and "100.000000000000" all give "100". */
+function normDecimal(text) {
+  var s = String(text).trim();
+  if (s.indexOf('.') >= 0) s = s.replace(/0+$/, '').replace(/\.$/, '');
+  return /^-?0+$/.test(s) ? '0' : s;
+}
+
+function sameDecimal(actual, expected) {
+  return normDecimal(actual) === normDecimal(expected);
+}
+
+/**
+ * First and last day (YYYY-MM-DD) of the month MONTHS_AGO months before this one, by the phone's
+ * calendar (as src/bucket/period.ts does). The date arithmetic is Date.UTC on whole days, so no
+ * timezone shifts a day across a month boundary.
+ */
+function monthBounds(monthsAgo) {
+  var now = new Date();
+  var first = new Date(Date.UTC(now.getFullYear(), now.getMonth() - monthsAgo, 1));
+  var last = new Date(Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + 1, 0));
+  return { start: first.toISOString().slice(0, 10), end: last.toISOString().slice(0, 10) };
+}
+
 var ACTIONS = {
   ping: function () {
     output.ff3Version = api('GET', '/about').data.version;
@@ -230,6 +259,7 @@ var ACTIONS = {
       destination_name: v('DESTINATION', v('PAYEE', 'Żabka')),
     };
     if (v('CATEGORY')) split.category_name = v('CATEGORY');
+    if (v('BUDGET')) split.budget_name = v('BUDGET');
     var created = api('POST', '/transactions', {
       error_if_duplicate_hash: false,
       apply_rules: false,
@@ -328,6 +358,73 @@ var ACTIONS = {
     if (v('ACTIVE')) body.active = v('ACTIVE') === 'true';
     if (v('NOTES') !== undefined) body.notes = v('NOTES') === '-' ? null : v('NOTES');
     api('PUT', '/accounts/' + a.id, body);
+  },
+
+  /** Waits until exactly one budget (envelope) named NAME exists. */
+  expectBudget: function () {
+    var name = v('NAME');
+    poll('budget "' + name + '"', function () {
+      same('budgets named ' + name, budgetsNamed(name).length, 1);
+      return true;
+    });
+  },
+
+  /** Waits until no budget named NAME is left (deleted, or renamed away). */
+  expectNoBudget: function () {
+    var name = v('NAME');
+    poll('no budget "' + name + '"', function () {
+      same('budgets named ' + name, budgetsNamed(name).length, 0);
+      return true;
+    });
+  },
+
+  /**
+   * Waits until budget NAME has a limit of AMOUNT (compared as decimals). With MONTHS_AGO, only the
+   * limit starting that many months back counts; without it, any period's limit does.
+   */
+  expectBudgetLimit: function () {
+    var name = v('NAME');
+    var amount = v('AMOUNT');
+    if (!amount) throw new Error('set AMOUNT');
+    var month = v('MONTHS_AGO') === undefined ? null : monthBounds(Number(v('MONTHS_AGO'))).start;
+    poll('a limit of ' + amount + ' on budget "' + name + '"', function () {
+      var found = budgetsNamed(name);
+      same('budgets named ' + name, found.length, 1);
+      var limits = all('/budgets/' + found[0].id + '/limits').filter(function (l) {
+        return !month || String(l.attributes.start).slice(0, 10) === month;
+      });
+      var amounts = limits.map(function (l) {
+        return l.attributes.amount;
+      });
+      var hit = amounts.some(function (a) {
+        return sameDecimal(a, amount);
+      });
+      if (!hit)
+        throw new Error(
+          'limits of "' + name + '"' + (month ? ' for ' + month : '') + ' are ' + JSON.stringify(amounts),
+        );
+      return true;
+    });
+  },
+
+  /**
+   * Writes a limit the way the app's own POST does: AMOUNT for CURRENCY (default PLN) over the whole
+   * month MONTHS_AGO months back (default 0, this month). Used to seed last month's envelopes.
+   */
+  setBudgetLimit: function () {
+    var name = v('NAME');
+    var amount = v('AMOUNT');
+    if (!amount) throw new Error('set AMOUNT');
+    var found = budgetsNamed(name);
+    if (found.length !== 1)
+      throw new Error('expected one budget named "' + name + '", found ' + found.length);
+    var bounds = monthBounds(Number(v('MONTHS_AGO', 0)));
+    api('POST', '/budgets/' + found[0].id + '/limits', {
+      start: bounds.start,
+      end: bounds.end,
+      amount: amount,
+      currency_code: v('CURRENCY', 'PLN'),
+    });
   },
 };
 

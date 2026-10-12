@@ -241,6 +241,27 @@ export const FLOWS = [
     ],
     areas: ['src/sync/recurringReview.ts', 'src/ui/ReviewEditSheet.tsx', 'src/planned/'],
   },
+  {
+    id: 'B1',
+    tier: 'release',
+    title: 'Budget: create, rename, delete an envelope',
+    steps: ['budget/B1-envelope-create-rename-delete.yaml'],
+    areas: ['app/budget/', 'app/(tabs)/budget.tsx', 'src/bucket/'],
+  },
+  {
+    id: 'B2',
+    tier: 'release',
+    title: 'Budget: assign, move, auto-fill, cover',
+    steps: ['budget/B2-assign-move-autofill-cover.yaml'],
+    areas: ['app/budget/', 'app/(tabs)/budget.tsx', 'src/bucket/'],
+  },
+  {
+    id: 'B3',
+    tier: 'release',
+    title: 'Budget: capture shows what the envelope has left',
+    steps: ['budget/B3-capture-remainder.yaml'],
+    areas: ['app/budget/', 'app/(tabs)/budget.tsx', 'src/bucket/', 'app/capture.tsx'],
+  },
 
   {
     id: 'K1',

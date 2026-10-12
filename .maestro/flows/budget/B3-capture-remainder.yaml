@@ -1,0 +1,26 @@
+appId: ${APP_ID}
+name: 'B3 · Budget: capture shows what the envelope has left'
+tags:
+  - release
+---
+# Picking an envelope on the capture screen shows what it has left this month, or how far over it is,
+# under the budget chip. Nothing is saved: the draft is discarded.
+- runFlow: ../../subflows/ready.yaml
+- runFlow:
+    file: ../../subflows/capture.yaml
+    env:
+      TYPE_LABEL: ''
+      AMOUNT: '5,00'
+      PAYEE: ''
+      PAYEE_NEW: 'false'
+      ACCOUNT: ''
+      TO_ACCOUNT: ''
+      CATEGORY: ''
+      DESCRIPTION: ''
+      SAVE: ''
+# The budget chip reads "Budget" until an envelope is picked; the picker's title is "Budget" too.
+- tapOn: 'Budget'
+- tapOn: 'Food'
+- assertVisible:
+    label: 'Food · .* (left|over)'
+- runFlow: ../../subflows/close-capture.yaml

@@ -1,0 +1,179 @@
+appId: ${APP_ID}
+name: 'B2 · Budget: assign, move, auto-fill, cover'
+tags:
+  - release
+---
+# Assign, move, auto-fill and cover, in that order. Every step syncs, then checks the budget limits
+# in Firefly III for this month (MONTHS_AGO 0), since last month's limits are seeded below.
+#
+# Arithmetic (the app's own rules: src/bucket/autofill.ts, src/bucket/actions.ts, src/bucket/envelopes.ts):
+#   seeded last month:  Food 150, Fun 50                       (auto-fill's targets)
+#   assign:             Food 100
+#   move 30 Food→Fun:   Food 100-30 = 70, Fun 0+30 = 30        (move adds to the receiver's assigned)
+#   auto-fill:          Food 70 → 150 (+80), Fun 30 → 50 (+20)  (each up to last month's assigned;
+#                       total 100, far under Ready to Assign, which holds the 5000 PLN Checking)
+#   overspend:          a 80.00 withdrawal on Fun today: Fun available = 50 - 80 = -30 ("Cover 30,00 PLN")
+#   cover 30 from Food: Food 150-30 = 120, Fun 50+30 = 80 (Fun available 80 - 80 = 0)
+- runFlow: ../../subflows/ready.yaml
+
+# Last month's limits, so auto-fill has targets. Written straight to Firefly III (the same POST the
+# app makes), then synced so the app's previous-period cache has them.
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      {
+        ACTION: setBudgetLimit,
+        NAME: 'Food',
+        AMOUNT: '150',
+        MONTHS_AGO: '1',
+      }
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      {
+        ACTION: setBudgetLimit,
+        NAME: 'Fun',
+        AMOUNT: '50',
+        MONTHS_AGO: '1',
+      }
+- runFlow: ../../subflows/sync.yaml
+
+# Assign: the envelope page's "Set the amount" opens the keypad with what Food holds (0) to type over.
+- tapOn: 'Budget, tab, 4 of 5'
+- assertVisible:
+    label: '(?i)ready to assign'
+- tapOn: 'Food'
+- tapOn: 'Set the amount'
+- tapOn:
+    id: 'keypad-1'
+- tapOn:
+    id: 'keypad-0'
+- tapOn:
+    id: 'keypad-0'
+- tapOn:
+    id: 'keypad-save'
+- runFlow: ../../subflows/sync.yaml
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      {
+        ACTION: expectBudgetLimit,
+        NAME: 'Food',
+        AMOUNT: '100',
+        MONTHS_AGO: '0',
+        TIMEOUT_MS: '90000',
+      }
+
+# Move: from Fun's page, "Move money here" asks where from (the picker lists envelopes with something
+# left, as "Food · <amount>"), then how much. Typing 30 replaces the amount the sheet opens with.
+- tapOn: 'Budget, tab, 4 of 5'
+- tapOn: 'Fun'
+- tapOn: 'Move money here'
+- tapOn:
+    label: 'Food · .*'
+- tapOn:
+    id: 'keypad-3'
+- tapOn:
+    id: 'keypad-0'
+- tapOn:
+    id: 'keypad-save'
+- runFlow: ../../subflows/sync.yaml
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      {
+        ACTION: expectBudgetLimit,
+        NAME: 'Fun',
+        AMOUNT: '30',
+        MONTHS_AGO: '0',
+        TIMEOUT_MS: '90000',
+      }
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      {
+        ACTION: expectBudgetLimit,
+        NAME: 'Food',
+        AMOUNT: '70',
+        MONTHS_AGO: '0',
+        TIMEOUT_MS: '90000',
+      }
+
+# Auto-fill: the button reads "Auto-fill <amount>" and only appears when the plan has something to do;
+# here it does (Food 70 and Fun 30, both below last month). Its confirm dialog's Auto-fill is the
+# button below the dialog title; the screen's own button has an amount after the word.
+- tapOn: 'Budget, tab, 4 of 5'
+- tapOn: 'Auto-fill .*'
+- tapOn:
+    text: 'Auto-fill'
+    below: 'Auto-fill the envelopes\?'
+- runFlow: ../../subflows/sync.yaml
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      {
+        ACTION: expectBudgetLimit,
+        NAME: 'Food',
+        AMOUNT: '150',
+        MONTHS_AGO: '0',
+        TIMEOUT_MS: '90000',
+      }
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      {
+        ACTION: expectBudgetLimit,
+        NAME: 'Fun',
+        AMOUNT: '50',
+        MONTHS_AGO: '0',
+        TIMEOUT_MS: '90000',
+      }
+
+# Overspend: an 80.00 withdrawal today, booked to Fun (Checking to Żabka, budget "Fun"). Fun holds 50,
+# so it is 30 over. After the sync its row offers the cover.
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      {
+        ACTION: createTx,
+        AMOUNT: '80.00',
+        BUDGET: 'Fun',
+        DESCRIPTION: 'B2 overspend',
+        TIMEOUT_MS: '90000',
+      }
+- runFlow: ../../subflows/sync.yaml
+
+# Cover: Fun's "Cover 30,00 PLN from another envelope" row opens its page with the move picker showing.
+# Food is the only envelope with something to give. The sheet opens on the shortfall (30), but Done
+# with nothing typed moves nothing, so the amount is typed out.
+- tapOn: 'Budget, tab, 4 of 5'
+- tapOn: 'Cover .* from another envelope'
+- tapOn:
+    label: 'Food · .*'
+- tapOn:
+    id: 'keypad-3'
+- tapOn:
+    id: 'keypad-0'
+- tapOn:
+    id: 'keypad-save'
+- runFlow: ../../subflows/sync.yaml
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      {
+        ACTION: expectBudgetLimit,
+        NAME: 'Fun',
+        AMOUNT: '80',
+        MONTHS_AGO: '0',
+        TIMEOUT_MS: '90000',
+      }
+- runScript:
+    file: ../../scripts/ff3.js
+    env:
+      {
+        ACTION: expectBudgetLimit,
+        NAME: 'Food',
+        AMOUNT: '120',
+        MONTHS_AGO: '0',
+        TIMEOUT_MS: '90000',
+      }
