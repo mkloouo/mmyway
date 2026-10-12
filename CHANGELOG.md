@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-10-12
+
 ### Look and feel
 
 - **One calmer look everywhere.** Lists, settings and forms now sit in the same white cards. Accounts, envelopes, planned payments and rules are each one card, not a card per row. Labels are dark and values grey, and on/off options are switches instead of checkboxes.
