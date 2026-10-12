@@ -16,12 +16,7 @@ const TESTS = [
 module.exports = defineConfig([
   expoConfig,
   {
-    ignores: [
-      'dist/*',
-      '.maestro/**',
-      'src/db/migrations/**',
-      'src/api/ff3/types.ts',
-    ],
+    ignores: ['dist/*', '.maestro/**', 'src/db/migrations/**', 'src/api/ff3/types.ts'],
   },
   {
     // Promises: an async handler's failure must reach useAction()/the log, not vanish.
