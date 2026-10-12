@@ -160,7 +160,7 @@ export function SearchListSheet<T>({
           sections={sections}
           keyExtractor={(row) => row.key}
           style={{ flex: 1 }}
-          keyboardShouldPersistTaps="handled"
+          keyboardShouldPersistTaps="always"
           stickySectionHeadersEnabled={false}
           // Keeps the right-aligned column clear of Android's scrollbar, which draws over the content.
           contentContainerStyle={{ paddingRight: t.space.md, paddingBottom: t.space.sm }}

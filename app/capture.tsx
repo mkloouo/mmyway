@@ -63,7 +63,6 @@ import { Snackbar, type SnackbarEntry } from '../src/ui/Snackbar';
 import type { Draft } from '../src/inbox/draft';
 import { needsLabel } from '../src/ui/readinessLabel';
 import { TextField } from '../src/ui/TextField';
-import { TagsField } from '../src/ui/TagsField';
 import { SharedWithField } from '../src/ui/SharedWithField';
 import { PickerSheet } from '../src/ui/PickerSheet';
 import { useAction } from '../src/ui/useAction';
@@ -152,8 +151,9 @@ function SuggestChip({
         style={[
           t.type.label,
           {
+            fontSize: 13,
             color: selected ? t.color.onAccent : t.color.text,
-            fontWeight: selected ? '600' : '400',
+            fontWeight: selected ? '700' : '400',
           },
         ]}
       >
@@ -188,6 +188,7 @@ function FieldRow({
         flexDirection: 'row',
         alignItems: 'center',
         minHeight: 48,
+        paddingLeft: t.space.lg,
         borderTopWidth: 1,
         borderTopColor: t.color.border,
       }}
@@ -198,8 +199,7 @@ function FieldRow({
         style={[
           t.type.label,
           {
-            width: 72,
-            paddingLeft: t.space.lg,
+            width: 58,
             color: blocking ? t.color.warn : t.color.textFaint,
           },
         ]}
@@ -320,7 +320,7 @@ export default function CaptureScreen() {
   const { fly, ghost, ghostStyle, fieldStyle } = useFlyAway();
   const { defaultAccountId, defaultCurrencyCode } = useCaptureDefaults();
   const window = useWindowDimensions();
-  const keyHeight = captureKeyHeight(window);
+  const keyHeight = Math.min(48, captureKeyHeight(window));
   const short = window.height < SHORT_WINDOW;
   const amountType = short ? t.type.title : t.type.display;
 
@@ -391,6 +391,36 @@ export default function CaptureScreen() {
   >(null);
   const accountSheetTarget =
     sheet === 'accountSource' ? 'source' : sheet === 'accountDestination' ? 'destination' : null;
+
+  const [draftNotes, setDraftNotes] = useState('');
+  const [draftTags, setDraftTags] = useState<string[]>([]);
+  const [draftSharedWith, setDraftSharedWith] = useState('');
+  const [draftDate, setDraftDate] = useState<Date>(() => new Date());
+  const [draftDateMode, setDraftDateMode] = useState<'today' | 'yesterday' | 'custom'>('today');
+  const [addingTag, setAddingTag] = useState(false);
+  const [newTagText, setNewTagText] = useState('');
+
+  const openDetails = useCallback(() => {
+    setDraftNotes(notes);
+    setDraftTags(tags);
+    setDraftSharedWith(sharedWith);
+    setDraftDate(date);
+    setDraftDateMode(dateMode);
+    setAddingTag(false);
+    setNewTagText('');
+    setSheet('more');
+  }, [notes, tags, sharedWith, date, dateMode]);
+
+  const commitDetails = useCallback(() => {
+    set({
+      notes: draftNotes,
+      tags: draftTags,
+      sharedWith: draftSharedWith,
+      date: draftDate,
+      dateMode: draftDateMode,
+    });
+    setSheet(null);
+  }, [draftNotes, draftTags, draftSharedWith, draftDate, draftDateMode, set]);
 
   // Seeded from the lookup warmed at startup (DbProvider, runSync) so the first frame already has
   // suggestions; the effect then refreshes it in case the cache moved since.
@@ -658,6 +688,17 @@ export default function CaptureScreen() {
             hour: '2-digit',
             minute: '2-digit',
           });
+  const draftDateText =
+    draftDateMode === 'today'
+      ? tr('capture.today')
+      : draftDateMode === 'yesterday'
+        ? tr('capture.yesterday')
+        : draftDate.toLocaleString(appLocale(), {
+            day: 'numeric',
+            month: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+          });
   const fxAccountName = fxAccount?.name ?? accountCurrencyCode;
 
   return (
@@ -744,11 +785,7 @@ export default function CaptureScreen() {
               accessibilityLabel={tr('fields.date')}
               onPress={() => setSheet('date')}
             />
-            <Pill
-              label={tr('capture.details')}
-              dot={moreHasValue}
-              onPress={() => setSheet('more')}
-            />
+            <Pill label={tr('capture.details')} dot={moreHasValue} onPress={openDetails} />
           </View>
           {!!aliasCaption && (
             <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]}>
@@ -775,7 +812,7 @@ export default function CaptureScreen() {
                 gap: t.space.sm,
               }}
             >
-              <Text style={[t.type.label, { width: 72, color: t.color.textFaint }]}>
+              <Text style={[t.type.label, { width: 58, color: t.color.textFaint }]}>
                 {tr('fields.description')}
               </Text>
               <TextField
@@ -894,7 +931,7 @@ export default function CaptureScreen() {
                   style={[
                     t.type.label,
                     {
-                      width: 72,
+                      width: 58,
                       color: fxMissing ? t.color.warn : t.color.textFaint,
                     },
                   ]}
@@ -1060,12 +1097,14 @@ export default function CaptureScreen() {
             title={tr('capture.toInbox')}
             variant="secondary"
             size="lg"
-            style={{ flex: 1 }}
+            style={{ flex: 1, paddingHorizontal: 12 }}
+            textStyle={{ fontSize: 15 }}
             disabled={saving || foreignAmountInvalid || fxMissing}
             onPress={() => handleSave(false)}
           />
           <Button
             title={tr('capture.saveAndConfirm')}
+            icon="checkmark"
             size="lg"
             style={{ flex: 2 }}
             disabled={!readiness.ready || foreignAmountInvalid || fxMissing || saving}
@@ -1167,40 +1206,201 @@ export default function CaptureScreen() {
         visible={sheet === 'more'}
         onClose={() => setSheet(null)}
         title={tr('capture.details')}
-        footer={<Button title={tr('common.done')} onPress={() => setSheet(null)} />}
+        footer={<Button title={tr('common.done')} onPress={commitDetails} />}
       >
         <Card flush>
           <Row
             first
             label={tr('capture.when')}
-            value={dateText}
+            value={draftDateText}
             chevron
-            onPress={() => setSheet('date')}
+            style={{ paddingHorizontal: t.space.lg }}
+            onPress={() => {
+              pickDateTime(buildEntryDate(draftDate, new Date()), (picked) => {
+                setDraftDate(picked);
+                setDraftDateMode('custom');
+              });
+            }}
           />
           <View
             style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              minHeight: 48,
               paddingHorizontal: t.space.lg,
               paddingVertical: t.space.sm,
               borderTopWidth: 1,
               borderTopColor: t.color.border,
             }}
           >
+            <Text style={[t.type.body, { width: 92, color: t.color.text }]}>
+              {tr('capture.note')}
+            </Text>
             <TextField
               placeholder={tr('capture.notePlaceholder')}
-              value={notes}
-              onChangeText={(notes) => set({ notes })}
-              style={{ borderWidth: 0, paddingHorizontal: 0, backgroundColor: 'transparent' }}
+              value={draftNotes}
+              onChangeText={setDraftNotes}
+              style={{
+                flex: 1,
+                borderWidth: 0,
+                paddingHorizontal: 0,
+                backgroundColor: 'transparent',
+                fontSize: 15,
+              }}
             />
           </View>
-          <View style={{ padding: t.space.lg, borderTopWidth: 1, borderTopColor: t.color.border }}>
-            <TagsField tags={tags} onChange={(tags) => set({ tags })} suggestions={recentTags} />
+          <View
+            style={{
+              paddingHorizontal: t.space.lg,
+              paddingVertical: 12,
+              borderTopWidth: 1,
+              borderTopColor: t.color.border,
+              gap: 8,
+            }}
+          >
+            <Text style={[t.type.body, { color: t.color.text }]}>{tr('fields.tags')}</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+              {draftTags.map((tag) => (
+                <View
+                  key={tag}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    backgroundColor: '#E7E9FB',
+                    borderRadius: t.radius.pill,
+                    paddingHorizontal: 10,
+                    paddingVertical: 5,
+                    gap: 4,
+                  }}
+                >
+                  <Text style={{ color: '#3A48B8', fontSize: 13, fontWeight: '600' }}>{tag}</Text>
+                  <Pressable
+                    hitSlop={6}
+                    accessibilityRole="button"
+                    accessibilityLabel={tr('fields.removeTag', { tag })}
+                    onPress={() =>
+                      setDraftTags(draftTags.filter((tg) => tg.toLowerCase() !== tag.toLowerCase()))
+                    }
+                  >
+                    <Ionicons name="close" size={14} color="#3A48B8" />
+                  </Pressable>
+                </View>
+              ))}
+              {recentTags
+                .filter((s) => !draftTags.some((tg) => tg.toLowerCase() === s.toLowerCase()))
+                .map((suggestion) => (
+                  <Pressable
+                    key={suggestion}
+                    accessibilityRole="button"
+                    accessibilityLabel={tr('fields.addTag', { tag: suggestion })}
+                    onPress={() => setDraftTags([...draftTags, suggestion])}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      borderWidth: 1,
+                      borderStyle: 'dashed',
+                      borderColor: '#C9C9C4',
+                      borderRadius: t.radius.pill,
+                      paddingHorizontal: 10,
+                      paddingVertical: 5,
+                    }}
+                  >
+                    <Text style={{ color: '#6B6F76', fontSize: 13, fontWeight: '600' }}>
+                      {suggestion}
+                    </Text>
+                  </Pressable>
+                ))}
+              {addingTag ? (
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    borderWidth: 1,
+                    borderColor: t.color.border,
+                    borderRadius: t.radius.pill,
+                    paddingHorizontal: 8,
+                    paddingVertical: 2,
+                  }}
+                >
+                  <TextField
+                    autoFocus
+                    placeholder="Tag..."
+                    value={newTagText}
+                    onChangeText={setNewTagText}
+                    onSubmitEditing={() => {
+                      const trimmed = newTagText.trim();
+                      if (
+                        trimmed &&
+                        !draftTags.some((tg) => tg.toLowerCase() === trimmed.toLowerCase())
+                      ) {
+                        setDraftTags([...draftTags, trimmed]);
+                      }
+                      setNewTagText('');
+                      setAddingTag(false);
+                    }}
+                    onBlur={() => {
+                      const trimmed = newTagText.trim();
+                      if (
+                        trimmed &&
+                        !draftTags.some((tg) => tg.toLowerCase() === trimmed.toLowerCase())
+                      ) {
+                        setDraftTags([...draftTags, trimmed]);
+                      }
+                      setNewTagText('');
+                      setAddingTag(false);
+                    }}
+                    style={{
+                      minWidth: 60,
+                      height: 26,
+                      fontSize: 13,
+                      paddingHorizontal: 0,
+                      paddingVertical: 0,
+                      borderWidth: 0,
+                      backgroundColor: 'transparent',
+                    }}
+                  />
+                </View>
+              ) : (
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={tr('fields.addTag', { tag: '' }).trim()}
+                  onPress={() => setAddingTag(true)}
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    borderWidth: 1,
+                    borderStyle: 'dashed',
+                    borderColor: '#C9C9C4',
+                    borderRadius: t.radius.pill,
+                    paddingHorizontal: 10,
+                    paddingVertical: 5,
+                  }}
+                >
+                  <Text style={{ color: '#6B6F76', fontSize: 13, fontWeight: '600' }}>
+                    {`+ ${tr('fields.addTag', { tag: '' }).trim()}`}
+                  </Text>
+                </Pressable>
+              )}
+            </View>
           </View>
-          <View style={{ padding: t.space.lg, borderTopWidth: 1, borderTopColor: t.color.border }}>
+          <View
+            style={{
+              paddingHorizontal: t.space.lg,
+              paddingVertical: t.space.sm,
+              borderTopWidth: 1,
+              borderTopColor: t.color.border,
+              minHeight: 48,
+              justifyContent: 'center',
+            }}
+          >
+            <Text style={[t.type.caption, { color: t.color.textFaint, marginBottom: 2 }]}>
+              {tr('fields.sharedWith')}
+            </Text>
             <SharedWithField
               live
-              value={sharedWith}
+              value={draftSharedWith}
               people={sharedPeople}
-              onApply={(sharedWith) => set({ sharedWith })}
+              onApply={setDraftSharedWith}
             />
           </View>
         </Card>

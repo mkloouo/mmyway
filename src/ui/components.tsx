@@ -15,6 +15,7 @@ import {
   Text,
   View,
   type StyleProp,
+  type TextStyle,
   type ViewStyle,
 } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -328,6 +329,7 @@ export function Row({
   tone,
   first,
   loading,
+  style,
 }: {
   label: string;
   /** Omitted on an action row (Delete, Duplicate): it shows `icon` there instead of a value. */
@@ -341,6 +343,7 @@ export function Row({
   first?: boolean;
   /** The value is still being read: a spinner stands where "—" would flash. */
   loading?: boolean;
+  style?: StyleProp<ViewStyle>;
 }) {
   const t = useTheme();
   const { t: tr } = useTranslation();
@@ -349,15 +352,18 @@ export function Row({
     tone === 'warn' ? t.color.warn : tone === 'danger' ? t.color.danger : t.color.textMuted;
   const content = (
     <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: t.space.md,
-        minHeight: ROW_HEIGHT,
-        paddingVertical: t.space.sm,
-        borderTopWidth: first ? 0 : 1,
-        borderTopColor: t.color.border,
-      }}
+      style={[
+        {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: t.space.md,
+          minHeight: ROW_HEIGHT,
+          paddingVertical: t.space.sm,
+          borderTopWidth: first ? 0 : 1,
+          borderTopColor: t.color.border,
+        },
+        style,
+      ]}
     >
       {leading}
       <Text style={[t.type.body, { color: t.color.text, flexShrink: 0 }]}>{label}</Text>
@@ -529,7 +535,9 @@ export function Button({
   size = 'md',
   disabled,
   style,
+  textStyle,
   accessibilityLabel,
+  icon,
 }: {
   title: string;
   onPress?: () => void;
@@ -538,8 +546,10 @@ export function Button({
   size?: 'bar' | 'md' | 'lg';
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
+  textStyle?: StyleProp<TextStyle>;
   /** For a title that is an emoji or a glyph: what a screen reader should say instead. */
   accessibilityLabel?: string;
+  icon?: keyof typeof Ionicons.glyphMap;
 }) {
   const t = useTheme();
   const fill =
@@ -570,16 +580,25 @@ export function Button({
           minHeight: size === 'lg' ? 52 : size === 'bar' ? BAR_CONTROL_SIZE : hitSize,
           paddingHorizontal: size === 'bar' ? t.space.lg : t.space.xl,
           borderRadius: t.radius.md,
+          flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',
+          gap: 8,
           backgroundColor: fill,
           opacity: disabled ? 0.4 : pressed ? PRESSED_OPACITY : 1,
         },
         style,
       ]}
     >
+      {icon && <Ionicons name={icon} size={18} color={label} />}
       <Text
-        style={[size === 'lg' ? t.type.heading : t.type.body, { color: label, fontWeight: '600' }]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        style={[
+          size === 'lg' ? t.type.heading : t.type.body,
+          { color: label, fontWeight: '600', flexShrink: 1 },
+          textStyle,
+        ]}
       >
         {title}
       </Text>
@@ -810,7 +829,9 @@ export function Sheet({
                 <Ionicons name="chevron-back" size={24} color={t.color.text} />
               </Pressable>
             )}
-            <Text style={[t.type.heading, { color: t.color.text, flex: 1 }]}>{title}</Text>
+            <Text style={[t.type.heading, { color: t.color.text, flex: 1, fontWeight: '700' }]}>
+              {title}
+            </Text>
             <Pressable
               onPress={onClose}
               accessibilityRole="button"
@@ -820,7 +841,7 @@ export function Sheet({
                 width: 32,
                 height: 32,
                 borderRadius: 16,
-                backgroundColor: t.color.surfaceAlt,
+                backgroundColor: t.dark ? t.color.surfaceAlt : '#E8E8E4',
                 alignItems: 'center',
                 justifyContent: 'center',
                 opacity: pressed ? PRESSED_OPACITY : 1,

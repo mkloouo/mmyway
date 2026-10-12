@@ -25,6 +25,7 @@ import {
   Banner,
   CloseButton,
   SCREEN_TOP_PADDING,
+  SectionHeader,
 } from '../../src/ui/components';
 import { DetailRows, type DetailRowsValue } from '../../src/ui/DetailRows';
 import { PayeeSheet } from '../../src/ui/PayeeSheet';
@@ -706,41 +707,49 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
             </Card>
           )}
           {(row.kind === 'receipt' || !!row.receiptImagePath) && (
-            <Card style={{ marginHorizontal: t.space.lg, gap: t.space.sm }}>
-              {row.receiptImagePath ? (
-                <Pressable
-                  onPress={() => setSheet('photo')}
-                  accessibilityRole="imagebutton"
-                  accessibilityLabel={tr('draft.showPhoto')}
-                >
-                  <Image
-                    source={{ uri: row.receiptImagePath }}
-                    resizeMode="cover"
-                    style={{
-                      width: '100%',
-                      height: 140,
-                      borderRadius: t.radius.sm,
-                      backgroundColor: t.color.surfaceAlt,
-                    }}
-                  />
-                </Pressable>
-              ) : (
-                <Text style={[t.type.label, { color: t.color.textFaint }]}>
-                  {tr('draft.photoInFf3')}
+            <>
+              <SectionHeader title={tr('capture.receiptPhoto')} />
+              <Card
+                flush
+                style={{ marginHorizontal: t.space.lg, padding: t.space.md, gap: t.space.sm }}
+              >
+                {row.receiptImagePath ? (
+                  <Pressable
+                    onPress={() => setSheet('photo')}
+                    accessibilityRole="imagebutton"
+                    accessibilityLabel={tr('draft.showPhoto')}
+                  >
+                    <Image
+                      source={{ uri: row.receiptImagePath }}
+                      resizeMode="cover"
+                      style={{
+                        width: '100%',
+                        height: 140,
+                        borderRadius: t.radius.sm,
+                        backgroundColor: t.color.surfaceAlt,
+                      }}
+                    />
+                  </Pressable>
+                ) : (
+                  <Text style={[t.type.label, { color: t.color.textFaint }]}>
+                    {tr('draft.photoInFf3')}
+                  </Text>
+                )}
+                <Text style={[t.type.body, { color: t.color.text }]}>
+                  {itemCount > 0
+                    ? tr('draft.itemCount', { count: itemCount })
+                    : tr('draft.receipt')}
                 </Text>
-              )}
-              <Text style={[t.type.body, { color: t.color.textMuted }]}>
-                {itemCount > 0 ? tr('draft.itemCount', { count: itemCount }) : tr('draft.receipt')}
-              </Text>
-              {!!draft.readBy && (
-                <Text style={[t.type.label, { color: t.color.textFaint }]}>
-                  {tr('draft.readBy', {
-                    provider: draft.readBy.provider,
-                    model: draft.readBy.model,
-                  })}
-                </Text>
-              )}
-            </Card>
+                {!!draft.readBy && (
+                  <Text style={[t.type.label, { color: t.color.textMuted }]}>
+                    {tr('draft.readBy', {
+                      provider: draft.readBy.provider,
+                      model: draft.readBy.model,
+                    })}
+                  </Text>
+                )}
+              </Card>
+            </>
           )}
         </ScrollView>
 
@@ -876,33 +885,35 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
       )}
 
       <Sheet visible={sheet === 'menu'} onClose={closeSheet} title={tr('draft.menuTitle')}>
-        {readOnly && !!row.ff3GroupId && (
+        <Card flush>
+          {readOnly && !!row.ff3GroupId && (
+            <Row
+              first
+              label={tr('draft.openInActivity')}
+              icon="open"
+              onPress={() => {
+                closeSheet();
+                navigateOnce(`/transactions/${row.ff3GroupId}`);
+              }}
+            />
+          )}
+          {!readOnly && (
+            <Row
+              first={!row.ff3GroupId}
+              label={tr('fields.currency')}
+              value={draft.currencyCode || '—'}
+              chevron
+              onPress={() => setSheet('currency')}
+            />
+          )}
           <Row
-            first
-            label={tr('draft.openInActivity')}
-            icon="open"
-            onPress={() => {
-              closeSheet();
-              navigateOnce(`/transactions/${row.ff3GroupId}`);
-            }}
+            first={readOnly && !row.ff3GroupId}
+            label={tr('draft.deleteDraft')}
+            icon="trash"
+            tone="danger"
+            onPress={handleDeleteDraft}
           />
-        )}
-        {!readOnly && (
-          <Row
-            first={!row.ff3GroupId}
-            label={tr('fields.currency')}
-            value={draft.currencyCode || '—'}
-            chevron
-            onPress={() => setSheet('currency')}
-          />
-        )}
-        <Row
-          first={readOnly && !row.ff3GroupId}
-          label={tr('draft.deleteDraft')}
-          icon="trash"
-          tone="danger"
-          onPress={handleDeleteDraft}
-        />
+        </Card>
       </Sheet>
       <PickerSheet
         visible={sheet === 'currency'}

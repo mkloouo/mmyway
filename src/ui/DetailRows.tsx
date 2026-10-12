@@ -2,7 +2,7 @@
 // the transaction detail screen. Every row opens a sheet; nothing is an inline chip wall.
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Text } from 'react-native';
+import { Text, View } from 'react-native';
 import { Card, Dot, Row, Button, Sheet } from './components';
 import { useTheme } from './theme';
 import { categoryColor } from './categoryColor';
@@ -260,29 +260,59 @@ export function DetailRows({
           title={tr('details.noteTagsAndSharedWith')}
           footer={<Button title={tr('common.done')} onPress={() => setTextSheetOpen(false)} />}
         >
-          <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('fields.note')}</Text>
-          <TextField
-            value={value.notes ?? ''}
-            onCommit={(v) => onChange({ notes: v })}
-            multiline
-            style={{ minHeight: 60 }}
-          />
-          <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.sm }]}>
-            {tr('fields.tags')}
-          </Text>
-          <TagsField
-            tags={value.tags ?? []}
-            onChange={(tags) => onChange({ tags })}
-            suggestions={tagsSuggestions}
-          />
-          <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.sm }]}>
-            {tr('fields.sharedWith')}
-          </Text>
-          <SharedWithField
-            value={value.sharedWith ?? ''}
-            onApply={(sharedWith) => onChange({ sharedWith })}
-            people={sharedPeople ?? []}
-          />
+          <Card flush>
+            <View style={{ paddingHorizontal: t.space.lg, paddingVertical: t.space.sm }}>
+              <Text style={[t.type.caption, { color: t.color.textFaint }]}>
+                {tr('fields.note')}
+              </Text>
+              <TextField
+                placeholder={tr('capture.notePlaceholder')}
+                value={value.notes ?? ''}
+                onCommit={(v) => onChange({ notes: v })}
+                multiline
+                style={{
+                  borderWidth: 0,
+                  paddingHorizontal: 0,
+                  backgroundColor: 'transparent',
+                  minHeight: 44,
+                }}
+              />
+            </View>
+            <View
+              style={{
+                borderTopWidth: 1,
+                borderTopColor: t.color.border,
+                paddingHorizontal: t.space.lg,
+                paddingVertical: t.space.sm,
+              }}
+            >
+              <Text style={[t.type.caption, { color: t.color.textFaint, marginBottom: 4 }]}>
+                {tr('fields.tags')}
+              </Text>
+              <TagsField
+                tags={value.tags ?? []}
+                onChange={(tags) => onChange({ tags })}
+                suggestions={tagsSuggestions}
+              />
+            </View>
+            <View
+              style={{
+                borderTopWidth: 1,
+                borderTopColor: t.color.border,
+                paddingHorizontal: t.space.lg,
+                paddingVertical: t.space.sm,
+              }}
+            >
+              <Text style={[t.type.caption, { color: t.color.textFaint, marginBottom: 4 }]}>
+                {tr('fields.sharedWith')}
+              </Text>
+              <SharedWithField
+                value={value.sharedWith ?? ''}
+                onApply={(sharedWith) => onChange({ sharedWith })}
+                people={sharedPeople ?? []}
+              />
+            </View>
+          </Card>
         </Sheet>
       )}
     </>

@@ -1043,9 +1043,11 @@ function TransactionEditor({ row }: { row: CachedRow }) {
       )}
 
       <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={tr('transaction.title')}>
-        <Row first label={tr('transaction.duplicate')} icon="copy" onPress={onDuplicate} />
-        <Row label={tr('transaction.createRule')} icon="options" onPress={onCreateRule} />
-        <Row label={tr('common.delete')} icon="trash" tone="danger" onPress={onDelete} />
+        <Card flush>
+          <Row first label={tr('transaction.duplicate')} icon="copy" onPress={onDuplicate} />
+          <Row label={tr('transaction.createRule')} icon="options" onPress={onCreateRule} />
+          <Row label={tr('common.delete')} icon="trash" tone="danger" onPress={onDelete} />
+        </Card>
       </Sheet>
       <PhotoViewer
         uri={photo?.uri ?? null}

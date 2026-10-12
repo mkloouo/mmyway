@@ -2,9 +2,23 @@
 
 ## [Unreleased]
 
+### Capture
+
+- Aligned keypad digits with design: 48 px height, white keys with 12 px radius, and 22 px font.
+- Picker items in sheets now select on first tap when search input is focused.
+- Added checkmark icon to Save & confirm button, and prevented truncation on To inbox button.
+- Details sheet now isolates changes in a draft and only commits on Done; aligned When padding, inline Note row, styled tag chips with suggestions, and Shared with row.
+- Selected Payee and From suggestion chips are now bold.
+
 ### Inbox & Sync
 
 - Aligned Sync sheet with the Review sheet archetype: grouped inside a Card with leading status dots, clear status statements, and a "Set up" link for receipt reading.
+
+### Draft Review
+
+- Grouped menu sheet actions in a card, and added SectionHeader to receipt photo section.
+- Details sheet for notes, tags, and shared with now uses unified Card grouping.
+- Fullscreen photo viewer now features a floating close button and clean deletion action instead of a solid pink banner.
 
 ## [2.0.1] - 2026-10-12
 

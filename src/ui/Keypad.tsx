@@ -53,7 +53,7 @@ function Key({
     }).start();
   return (
     <Animated.View
-      style={{ flex: 1, marginHorizontal: 4, marginVertical: 4, transform: [{ scale }] }}
+      style={{ flex: 1, marginHorizontal: 3, marginVertical: 3, transform: [{ scale }] }}
     >
       <Pressable
         // On press-in, not release: the buzz lands with the finger, the way a keyboard's does.
@@ -69,18 +69,20 @@ function Key({
         accessibilityLabel={label}
         style={({ pressed }) => ({
           ...(height ? { height } : { aspectRatio: 1.4 }),
-          borderRadius: t.radius.sm,
+          borderRadius: 12,
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: isAccent ? t.color.accent : t.color.surfaceAlt,
+          backgroundColor: isAccent ? t.color.accent : t.color.surface,
           opacity: disabled ? 0.4 : pressed ? PRESSED_OPACITY : 1,
         })}
       >
         <Text
-          style={[
-            t.type.heading,
-            { color: isAccent ? t.color.onAccent : t.color.text, textAlign: 'center' },
-          ]}
+          style={{
+            fontSize: 22,
+            fontWeight: '500',
+            color: isAccent ? t.color.onAccent : t.color.text,
+            textAlign: 'center',
+          }}
           numberOfLines={1}
         >
           {label}
@@ -114,7 +116,7 @@ type KeypadProps = KeypadBaseProps &
 
 /** The empty cell that stands in for the second and third rows' extra key in `compact` mode. */
 function Spacer() {
-  return <View style={{ flex: 1, marginHorizontal: 4, marginVertical: 4 }} />;
+  return <View style={{ flex: 1, marginHorizontal: 3, marginVertical: 3 }} />;
 }
 
 export function Keypad(props: KeypadProps) {
