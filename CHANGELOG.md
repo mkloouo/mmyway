@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-10-12
+
 ### Rules
 
 - **See and change your Firefly III rules.** Settings → Rules lists your rule groups and the rules in them. Switch a rule or a whole group on or off, run a rule now against the last year of transactions, and create a rule from a transaction (… → Create a rule) that sets its category or budget. Works offline and is sent on the next sync.
