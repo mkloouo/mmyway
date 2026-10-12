@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-10-12
+
 ### Capture
 
 - Aligned Category and Budget in Capture into a 2-column split row matching the unified redesign, resolving label truncation.
