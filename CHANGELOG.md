@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Capture
+
+- Aligned Category and Budget in Capture into a 2-column split row matching the unified redesign, resolving label truncation.
+- Capture Details sheet now includes a When date/time row, inline note input, and a styled Receipt tile with camera/library action.
+- Search inputs across pickers styled with borderless filled background.
+
 ## [2.0.0] - 2026-10-12
 
 ### Look and feel

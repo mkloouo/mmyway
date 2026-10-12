@@ -34,10 +34,11 @@ export function SearchField({
           flexDirection: 'row',
           alignItems: 'center',
           gap: t.space.sm,
-          backgroundColor: t.color.surface,
-          borderWidth: 1,
-          borderColor: t.color.border,
-          borderRadius: t.radius.md,
+          backgroundColor: t.color.surfaceAlt,
+          borderWidth: 0,
+          borderRadius: 12,
+          height: 40,
+          minHeight: 40,
           paddingLeft: t.space.md,
         },
         style,
@@ -53,7 +54,7 @@ export function SearchField({
         autoCapitalize="none"
         autoCorrect={false}
         returnKeyType="search"
-        style={[t.type.body, { flex: 1, color: t.color.text, paddingVertical: t.space.md }]}
+        style={[t.type.body, { flex: 1, color: t.color.text, paddingVertical: 0 }]}
       />
       {showClear ? (
         <Pressable

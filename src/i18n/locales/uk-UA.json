@@ -269,9 +269,15 @@
     "undoneBackInInbox": "Скасовано — воно знову у вхідних",
     "yesterday": "Вчора",
     "accountPaid": "",
+    "attachPhoto": "Додати фото",
+    "cameraOrLibrary": "Камера або галерея",
+    "leftShort": "залишилось",
+    "notePlaceholder": "Будь-яка примітка",
+    "overShort": "понад план",
     "searchBudgets": "",
     "searchCategories": "",
-    "toInbox": ""
+    "toInbox": "",
+    "when": "Коли"
   },
   "common": {
     "actionFailed": "{{action}} не вдалося",

@@ -22,9 +22,10 @@ import {
   CloseButton,
   Card,
   Dot,
+  SectionHeader,
   PRESSED_OPACITY,
 } from '../src/ui/components';
-import { Segmented } from '../src/ui/kit';
+import { ListRow, Segmented, Tile } from '../src/ui/kit';
 import { Keypad } from '../src/ui/Keypad';
 import { PayeeSheet } from '../src/ui/PayeeSheet';
 import { AccountPickerSheet, type AccountPickerAccount } from '../src/ui/AccountPickerSheet';
@@ -924,58 +925,97 @@ export default function CaptureScreen() {
             )}
 
             {type !== 'transfer' && (
-              <>
-                <FieldRow
-                  label={tr('fields.category')}
-                  searchLabel={tr('capture.searchCategories')}
-                  onSearch={() => setSheet('category')}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  borderTopWidth: 1,
+                  borderTopColor: t.color.border,
+                }}
+              >
+                <Pressable
+                  onPress={() => setSheet('category')}
+                  accessibilityRole="button"
+                  accessibilityLabel={tr('fields.category')}
+                  testID="capture-category"
+                  style={({ pressed }) => ({
+                    flex: 1,
+                    paddingLeft: t.space.lg,
+                    paddingRight: t.space.md,
+                    paddingVertical: t.space.sm,
+                    justifyContent: 'center',
+                    opacity: pressed ? PRESSED_OPACITY : 1,
+                  })}
                 >
-                  <SuggestChip
-                    label={categoryName ?? tr('common.none')}
-                    selected={!!categoryName}
-                    dotColor={categoryName ? categoryColor(categoryName, t.dark) : undefined}
-                    onPress={() => setSheet('category')}
-                    testID="capture-category"
-                  />
-                </FieldRow>
-                <FieldRow
-                  label={tr('fields.budget')}
-                  searchLabel={tr('capture.searchBudgets')}
-                  onSearch={() => setSheet('budget')}
-                >
-                  <SuggestChip
-                    label={budget?.name ?? tr('common.none')}
-                    selected={!!budgetId}
-                    onPress={() => setSheet('budget')}
-                  />
-                </FieldRow>
-                {/* What is left in the chosen envelope this month (the Budget tab's own number,
-                    read from its cache — no extra request). Shown while entering, which is the
-                    moment it is worth knowing. */}
-                {!!budget && envelopeLeft !== null && (
                   <Text
-                    style={[
-                      t.type.label,
-                      {
-                        color: isNegative(envelopeLeft) ? t.color.warn : t.color.textMuted,
-                        paddingHorizontal: t.space.lg,
-                        paddingBottom: t.space.sm,
-                      },
-                    ]}
                     numberOfLines={1}
+                    style={[t.type.caption, { color: t.color.textFaint, marginBottom: 2 }]}
                   >
-                    {isNegative(envelopeLeft)
-                      ? tr('budget.envelopeOverIn', {
-                          name: budget.name,
-                          amount: formatMoney(envelopeLeft.replace(/^[-−]/, ''), currency),
-                        })
-                      : tr('budget.envelopeLeftIn', {
-                          name: budget.name,
-                          amount: formatMoney(envelopeLeft, currency),
-                        })}
+                    {tr('fields.category')}
                   </Text>
-                )}
-              </>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    {categoryName && (
+                      <View
+                        style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: 4,
+                          backgroundColor: categoryColor(categoryName, t.dark),
+                        }}
+                      />
+                    )}
+                    <Text
+                      numberOfLines={1}
+                      style={[
+                        t.type.body,
+                        { fontSize: 15, color: categoryName ? t.color.text : t.color.textMuted },
+                      ]}
+                    >
+                      {categoryName ?? tr('common.none')}
+                    </Text>
+                  </View>
+                </Pressable>
+                <Pressable
+                  onPress={() => setSheet('budget')}
+                  accessibilityRole="button"
+                  accessibilityLabel={tr('fields.budget')}
+                  testID="capture-budget"
+                  style={({ pressed }) => ({
+                    flex: 1,
+                    borderLeftWidth: 1,
+                    borderLeftColor: t.color.border,
+                    paddingHorizontal: t.space.lg,
+                    paddingVertical: t.space.sm,
+                    justifyContent: 'center',
+                    opacity: pressed ? PRESSED_OPACITY : 1,
+                  })}
+                >
+                  <Text
+                    numberOfLines={1}
+                    style={[t.type.caption, { color: t.color.textFaint, marginBottom: 2 }]}
+                  >
+                    {tr('fields.budget')}
+                  </Text>
+                  <Text numberOfLines={1} style={[t.type.body, { fontSize: 15 }]}>
+                    <Text style={{ color: budget ? t.color.text : t.color.textMuted }}>
+                      {budget?.name ?? tr('common.none')}
+                    </Text>
+                    {!!budget && envelopeLeft !== null && (
+                      <Text
+                        style={{
+                          fontSize: 13,
+                          color: isNegative(envelopeLeft) ? t.color.warn : t.color.textMuted,
+                        }}
+                      >
+                        {' · '}
+                        {formatMoney(envelopeLeft.replace(/^[-−]/, ''), currency)}{' '}
+                        {isNegative(envelopeLeft)
+                          ? tr('capture.overShort')
+                          : tr('capture.leftShort')}
+                      </Text>
+                    )}
+                  </Text>
+                </Pressable>
+              </View>
             )}
           </Card>
 
@@ -1130,9 +1170,23 @@ export default function CaptureScreen() {
         footer={<Button title={tr('common.done')} onPress={() => setSheet(null)} />}
       >
         <Card flush>
-          <View style={{ padding: t.space.lg }}>
+          <Row
+            first
+            label={tr('capture.when')}
+            value={dateText}
+            chevron
+            onPress={() => setSheet('date')}
+          />
+          <View
+            style={{
+              paddingHorizontal: t.space.lg,
+              paddingVertical: t.space.sm,
+              borderTopWidth: 1,
+              borderTopColor: t.color.border,
+            }}
+          >
             <TextField
-              placeholder={tr('fields.notes')}
+              placeholder={tr('capture.notePlaceholder')}
               value={notes}
               onChangeText={(notes) => set({ notes })}
               style={{ borderWidth: 0, paddingHorizontal: 0, backgroundColor: 'transparent' }}
@@ -1150,11 +1204,13 @@ export default function CaptureScreen() {
             />
           </View>
         </Card>
+        <SectionHeader title={tr('capture.receiptPhoto')} />
         <Card flush>
-          <Row
+          <ListRow
             first
-            label={tr('capture.receiptPhoto')}
-            value={photoUri ? tr('capture.attached') : tr('capture.attach')}
+            leading={<Tile icon="camera-outline" tone="muted" size={40} />}
+            label={photoUri ? tr('capture.attached') : tr('capture.attachPhoto')}
+            sub={tr('capture.cameraOrLibrary')}
             chevron
             onPress={attachPhoto}
           />

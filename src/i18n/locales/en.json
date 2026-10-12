@@ -265,9 +265,15 @@
     "undoneBackInInbox": "Undone — it is back in the Inbox",
     "yesterday": "Yesterday",
     "accountPaid": "{{account}} paid",
+    "attachPhoto": "Attach a photo",
+    "cameraOrLibrary": "Camera or library",
+    "leftShort": "left",
+    "notePlaceholder": "Anything to remember",
+    "overShort": "over",
     "searchBudgets": "Search budgets",
     "searchCategories": "Search categories",
-    "toInbox": "To inbox"
+    "toInbox": "To inbox",
+    "when": "When"
   },
   "common": {
     "actionFailed": "{{action}} failed",
