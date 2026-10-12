@@ -20,22 +20,10 @@ tags:
 # app makes), then synced so the app's previous-period cache has them.
 - runScript:
     file: ../../scripts/ff3.js
-    env:
-      {
-        ACTION: setBudgetLimit,
-        NAME: 'Food',
-        AMOUNT: '150',
-        MONTHS_AGO: '1',
-      }
+    env: { ACTION: setBudgetLimit, NAME: 'Food', AMOUNT: '150', MONTHS_AGO: '1' }
 - runScript:
     file: ../../scripts/ff3.js
-    env:
-      {
-        ACTION: setBudgetLimit,
-        NAME: 'Fun',
-        AMOUNT: '50',
-        MONTHS_AGO: '1',
-      }
+    env: { ACTION: setBudgetLimit, NAME: 'Fun', AMOUNT: '50', MONTHS_AGO: '1' }
 - runFlow: ../../subflows/sync.yaml
 
 # Assign: the envelope page's "Set the amount" opens the keypad with what Food holds (0) to type over.
@@ -81,13 +69,7 @@ tags:
 - runScript:
     file: ../../scripts/ff3.js
     env:
-      {
-        ACTION: expectBudgetLimit,
-        NAME: 'Fun',
-        AMOUNT: '30',
-        MONTHS_AGO: '0',
-        TIMEOUT_MS: '90000',
-      }
+      { ACTION: expectBudgetLimit, NAME: 'Fun', AMOUNT: '30', MONTHS_AGO: '0', TIMEOUT_MS: '90000' }
 - runScript:
     file: ../../scripts/ff3.js
     env:
@@ -121,13 +103,7 @@ tags:
 - runScript:
     file: ../../scripts/ff3.js
     env:
-      {
-        ACTION: expectBudgetLimit,
-        NAME: 'Fun',
-        AMOUNT: '50',
-        MONTHS_AGO: '0',
-        TIMEOUT_MS: '90000',
-      }
+      { ACTION: expectBudgetLimit, NAME: 'Fun', AMOUNT: '50', MONTHS_AGO: '0', TIMEOUT_MS: '90000' }
 
 # Overspend: an 80.00 withdrawal today, booked to Fun (Checking to Żabka, budget "Fun"). Fun holds 50,
 # so it is 30 over. After the sync its row offers the cover.
@@ -160,13 +136,7 @@ tags:
 - runScript:
     file: ../../scripts/ff3.js
     env:
-      {
-        ACTION: expectBudgetLimit,
-        NAME: 'Fun',
-        AMOUNT: '80',
-        MONTHS_AGO: '0',
-        TIMEOUT_MS: '90000',
-      }
+      { ACTION: expectBudgetLimit, NAME: 'Fun', AMOUNT: '80', MONTHS_AGO: '0', TIMEOUT_MS: '90000' }
 - runScript:
     file: ../../scripts/ff3.js
     env:

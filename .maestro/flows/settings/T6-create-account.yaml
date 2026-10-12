@@ -38,8 +38,7 @@ tags:
 - runFlow: ../../subflows/sync.yaml
 - runScript:
     file: ../../scripts/ff3.js
-    env:
-      {
+    env: {
         ACTION: expectAccountFields,
         NAME: 'E2E Loan',
         EXPECT_TYPE: 'liabilities', # FF3's word; the app stores 'liability'

@@ -386,7 +386,9 @@ var ACTIONS = {
       same('liability_type', a.liability_type, v('EXPECT_LIABILITY_TYPE'));
       same('liability_direction', a.liability_direction, v('EXPECT_LIABILITY_DIRECTION'));
       if (v('EXPECT_INTEREST') !== undefined && !sameDecimal(a.interest, v('EXPECT_INTEREST')))
-        throw new Error('interest: expected ' + v('EXPECT_INTEREST') + ', Firefly III has ' + a.interest);
+        throw new Error(
+          'interest: expected ' + v('EXPECT_INTEREST') + ', Firefly III has ' + a.interest,
+        );
       same('interest_period', a.interest_period, v('EXPECT_INTEREST_PERIOD'));
       return true;
     });
@@ -443,7 +445,12 @@ var ACTIONS = {
       });
       if (!hit)
         throw new Error(
-          'limits of "' + name + '"' + (month ? ' for ' + month : '') + ' are ' + JSON.stringify(amounts),
+          'limits of "' +
+            name +
+            '"' +
+            (month ? ' for ' + month : '') +
+            ' are ' +
+            JSON.stringify(amounts),
         );
       return true;
     });

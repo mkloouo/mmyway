@@ -35,13 +35,7 @@ tags:
 - runFlow: ../../subflows/sync.yaml
 - runScript:
     file: ../../scripts/ff3.js
-    env:
-      {
-        ACTION: expectRule,
-        TITLE: 'E2E marker rule',
-        ACTIVE: 'false',
-        TIMEOUT_MS: '90000',
-      }
+    env: { ACTION: expectRule, TITLE: 'E2E marker rule', ACTIVE: 'false', TIMEOUT_MS: '90000' }
 
 # On again, sync, Firefly III active.
 - tapOn: 'Settings, tab, 5 of 5'
@@ -53,13 +47,7 @@ tags:
 - runFlow: ../../subflows/sync.yaml
 - runScript:
     file: ../../scripts/ff3.js
-    env:
-      {
-        ACTION: expectRule,
-        TITLE: 'E2E marker rule',
-        ACTIVE: 'true',
-        TIMEOUT_MS: '90000',
-      }
+    env: { ACTION: expectRule, TITLE: 'E2E marker rule', ACTIVE: 'true', TIMEOUT_MS: '90000' }
 
 # Run now: the row under the rule's title. It asks to confirm; the confirm's Run now is the one
 # below the dialog title. The rule is applied on the next sync.
@@ -104,13 +92,7 @@ tags:
 - runFlow: ../../subflows/sync.yaml
 - runScript:
     file: ../../scripts/ff3.js
-    env:
-      {
-        ACTION: expectRule,
-        TITLE: 'Orlen',
-        ACTIVE: 'true',
-        TIMEOUT_MS: '90000',
-      }
+    env: { ACTION: expectRule, TITLE: 'Orlen', ACTIVE: 'true', TIMEOUT_MS: '90000' }
 # Clean up: an active "description contains Orlen" rule would recategorise other flows' fuel.
 - runScript:
     file: ../../scripts/ff3.js
