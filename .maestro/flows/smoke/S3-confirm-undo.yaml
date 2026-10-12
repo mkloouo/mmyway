@@ -3,7 +3,7 @@ name: 'S3 · Confirm, then Undo'
 tags:
   - smoke
 ---
-# Save & ✓, Undo inside the 5 s window (back in the Inbox, nothing sent), then confirm from the
+# Save & confirm, Undo inside the 5 s window (back in the Inbox, nothing sent), then confirm from the
 # draft: it goes out by itself and lands in Firefly III exactly once.
 - runFlow: ../../subflows/ready.yaml
 - runFlow:

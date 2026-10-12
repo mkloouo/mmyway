@@ -2,6 +2,59 @@
 
 ## [Unreleased]
 
+### Look and feel
+
+- **One calmer look everywhere.** Lists, settings and forms now sit in the same white cards. Accounts, envelopes, planned payments and rules are each one card, not a card per row. Labels are dark and values grey, and on/off options are switches instead of checkboxes.
+- **Pickers you can search.** Choosing a payee, account, category, budget, currency or language opens one kind of sheet. It shows your likely picks first, then everything A–Z, with search when the list is long and a letter index when it's very long, so picking from hundreds of accounts no longer means scrolling a wall of chips.
+- **Screens come and go the same way.** Things you open from a list (an account, an envelope, a transaction, a planned payment, Settings pages) slide in with a back button. A Save bar appears at the bottom only once you change something, with Undo next to it. Rare actions like Delete are under ••• at the top right. Tasks that create something (Capture, Count cash, New account, New planned payment) have ✕ at the top left and one button at the bottom. New envelope and New rule open as sheets.
+
+### Capture
+
+- **Simpler capture screen.** Expense, Income and Transfer is a switch at the top. Currency, date and Details are buttons under the amount. Each field has one row of suggestions with a search button at its end. The two buttons at the bottom are To inbox and Save & confirm. A small note under the amount says what's still missing, and the row it's about is marked.
+- **Notes, tags, shared with and the receipt photo are in a Details sheet.**
+
+### Accounts
+
+- **New account in two steps.** First choose Money I have or Money I owe, then name, type and currency, then the starting balance (or, for a liability, what you owe, the interest and the limit).
+- **Plainer account page.** The switches say what they do: In pickers and lists, In the cash count, In net worth. Opening and virtual balance are two rows you tap to change. A cash envelope's page has a Count cash button.
+- **Balances in the accounts lists and on each account's page**, and a Transactions button there that opens Activity filtered to that account.
+
+### Count cash
+
+- **Count in place.** Type the counted amount right in each envelope's row. The notes-and-coins counter has + and − per note and coin. The review sheet lists each adjustment before you confirm.
+- **When there's nothing to count yet**, switch your cash accounts into the count right there. **When balances are out of date**, the count says so and offers Sync first.
+
+### Budget
+
+- **Ready to assign is one big number at the top**, and every envelope shows a bar for how much of it is spent.
+- **New envelope is a sheet** that suggests names from your categories.
+
+### Planned
+
+- **The Planned tab shows what's coming up**, grouped by today, this week and later. Tap one to skip it or book it now. All your planned payments are one tap away.
+- **What goes out and comes in over the next 30 days** sits at the top of the Planned tab, and occurrences that were already booked say so.
+- **Book any upcoming occurrence now**, not just the next one.
+- **New planned payment in three steps:** what, when (Once, Weekly, Monthly or More…, with a preview of the next dates), and a final check where you can also choose its reminder.
+- **Schedules are edited in one sheet** with a preview of the next dates. A planned payment's page has an Expense/Income/Transfer switch and its own Remind me setting.
+- **Firefly III's raw subscriptions, rules and recurring transactions** moved to Settings → Planned in Firefly III.
+
+### Reminders
+
+- **More say over reminders.** Settings → Reminders shows what a reminder will look like and lets you choose when (on the day, the day before, a few days before or a week before), at what time, whether to nudge again on the day, and which payments: all of them, only bigger ones, or only money going out.
+- **One message for the whole day**, if you'd rather have a single summary than one per payment.
+- **Warns you when an account may run short** of a planned payment, with a Move money button that opens a transfer into it.
+- **Skip this one, right from the reminder.** The app opens and asks before skipping.
+- **After your first planned payment**, the app asks whether you want reminders before asking your phone for permission.
+
+### Settings
+
+- **Settings is shorter.** Firefly III connection, Receipt reading, Reminders, and About and help each have their own page.
+- **Choose who reads your receipts:** nobody (the photo is attached and you type the details), only your own model, or your model with Google Gemini as a backup. The Gemini key can now be removed.
+- **Counting cash has its own page** for where differences are booked.
+- **Sync now and Open in browser** on the Firefly III page.
+- **What's new** under About and help shows this version's changes.
+- **iPhone: dates and times can be picked.** They used to do nothing on iOS.
+
 ## [1.12.0] - 2026-10-12
 
 ### Rules

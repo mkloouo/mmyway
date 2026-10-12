@@ -63,11 +63,16 @@ export async function savePlanned(
 }
 
 /**
- * Books the next occurrence now instead of waiting for its day (#44) — testing a new recurrence,
- * or paying one early. Queued like the saves above, so it lands after a schedule change still
- * waiting to be sent rather than firing the schedule FF3 still holds.
+ * Books an occurrence now instead of waiting for its day (#44) — testing a new recurrence, or
+ * paying one early. `date` is the occurrence to book (YYYY-MM-DD); it defaults to the next one.
+ * Queued like the saves above, so it lands after a schedule change still waiting to be sent
+ * rather than firing the schedule FF3 still holds.
  */
-export async function triggerPlanned(db: OutboxDb, item: PlannedItem): Promise<void> {
+export async function triggerPlanned(
+  db: OutboxDb,
+  item: PlannedItem,
+  date: string = item.fields.date,
+): Promise<void> {
   const recurrenceId = item.group?.recurrence?.id;
   if (!recurrenceId) return;
   await enqueueOperation(db, {
@@ -77,7 +82,7 @@ export async function triggerPlanned(db: OutboxDb, item: PlannedItem): Promise<v
       key: item.key,
       name: item.fields.name,
       recurrenceId,
-      date: item.fields.date,
+      date,
     },
   });
 }

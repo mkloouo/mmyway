@@ -8,6 +8,7 @@ tags:
     appId: ${APP_ID}
 - runFlow: ../../subflows/home.yaml
 - tapOn: 'Settings, tab, 5 of 5'
+- tapOn: 'Firefly III'
 - tapOn:
     text: 'Addresses'
     index: 0
@@ -15,5 +16,6 @@ tags:
 - tapOn:
     text: 'Remove'
     below: "Remove this address\\?"
-- back
+- back # the addresses sheet
+- back # the Firefly III page
 - runFlow: ../../subflows/sync.yaml

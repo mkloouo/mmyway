@@ -30,7 +30,16 @@ tags:
 - tapOn:
     text: 'Orlen'
     index: 0
-- tapOn: 'Save'
+# A new payment is three steps: What, When (the default is monthly), Check.
+- tapOn: 'Continue'
+- tapOn: 'Continue'
+- tapOn: 'Create'
+# The first payment asks about reminders once, while they are off.
+- runFlow:
+    when:
+      visible: 'Not now'
+    commands:
+      - tapOn: 'Not now'
 - runScript:
     file: ../../scripts/ff3.js
     env:
@@ -44,11 +53,13 @@ tags:
       }
 - runFlow: ../../subflows/home.yaml
 - tapOn: 'Planned, tab, 3 of 5'
+- tapOn: 'All plans'
 - tapOn: 'P1 ${RUN_ID}'
-# The schedule is a list of repetitions now, each with its own type: "How often" is the first
-# row of the first one. 'Repeat' would also match the "Repeats" checkbox above it.
+# The schedule opens as a sheet from the "Repeats" row; "How often" is its first row.
+- tapOn: 'Repeats'
 - tapOn: 'How often'
 - tapOn: 'Weekly'
+- tapOn: 'Done'
 - tapOn: 'Save'
 - runScript:
     file: ../../scripts/ff3.js
@@ -63,7 +74,10 @@ tags:
       }
 - runFlow: ../../subflows/home.yaml
 - tapOn: 'Planned, tab, 3 of 5'
+- tapOn: 'All plans'
 - tapOn: 'P1 ${RUN_ID}'
+# Delete is behind the ••• now; its menu's Delete asks the same question again.
+- tapOn: 'More'
 - tapOn: 'Delete'
 - tapOn:
     text: 'Delete'

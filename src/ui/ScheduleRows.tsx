@@ -1,17 +1,23 @@
-// The Planned tab's schedule editor: a list of repetitions with add/remove, and the end condition.
+// The Planned tab's schedule: one sheet with how often it repeats, the first date, when it stops,
+// and — under "More…" — the repetitions themselves.
 //
 // One planned transaction can repeat on several patterns at once, as Firefly III holds them, so
-// this is a list rather than a single frequency picker — which is also what stops a "1st and the
-// 15th" recurrence built in FF3's web UI from losing the 15th on any edit here. Each row's
-// `moment` follows from its type (a day of the month for monthly, a weekday for weekly, nth +
+// "More…" is a list of repetitions rather than a single frequency picker — which is also what stops
+// a "1st and the 15th" recurrence built in FF3's web UI from losing the 15th on any edit here. Each
+// row's `moment` follows from its type (a day of the month for monthly, a weekday for weekly, nth +
 // weekday for ndom, a date for yearly, nothing at all for daily), not from the planned date.
+//
+// A choice opens as a list inside the same sheet (`choose`), never as a second sheet.
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
-import { Button, Card, Row, SectionHeader } from './components';
-import { PickerSheet } from './PickerSheet';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { Button, Card, Row, Sheet, SectionHeader } from './components';
+import { ListRow } from './kit';
 import { pickDate } from './pickDate';
 import { useTheme } from './theme';
+import { expandRepetition, upcomingOccurrences, withWeekendRule } from '../planned/occurrences';
+import type { PlannedGroup } from '../planned/model';
 import {
   momentFor,
   ndomMoment,
@@ -21,32 +27,287 @@ import {
   type EndCondition,
   type Repetition,
   type RepetitionType,
+  type WeekendRule,
 } from '../planned/repetition';
-import { dayLabel, nthName, repetitionTypeName, weekdayName, weekendName } from '../planned/labels';
+import {
+  dayLabel,
+  endLabel,
+  nthName,
+  occurrenceLabel,
+  repetitionTypeName,
+  scheduleLabel,
+  weekdayName,
+  weekendName,
+} from '../planned/labels';
 import { localDay } from '../utils/day';
 
-type Sheet =
-  { k: 'type' | 'weekday' | 'dayOfMonth' | 'nth' | 'weekend'; i: number } | { k: 'end' } | null;
+/** A single-choice list, shown in place of the sheet's content until one is picked. */
+interface Choice {
+  title: string;
+  options: { key: string; label: string }[];
+  selected: string | null;
+  onSelect: (key: string) => void;
+}
+
+type Choose = (choice: Choice) => void;
 
 const range = (from: number, to: number) =>
   Array.from({ length: to - from + 1 }, (_, i) => String(from + i));
 
-export function ScheduleRows({
+function weekendChoice(
+  title: string,
+  selected: WeekendRule,
+  onSelect: (weekend: WeekendRule) => void,
+): Choice {
+  return {
+    title,
+    options: WEEKEND_RULES.map((w) => ({ key: String(w), label: weekendName(w) })),
+    selected: String(selected),
+    onSelect: (key) => {
+      const weekend = WEEKEND_RULES.find((w) => String(w) === key);
+      if (weekend) onSelect(weekend);
+    },
+  };
+}
+
+/** The sheet's schedule: the simple how-often choice, or the full list under "More…". */
+export function ScheduleSheet({
+  visible,
+  onClose,
+  group,
+  repeats,
   repetitions,
   end,
   date,
   onChange,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  /** FF3's own description of the schedule, when it holds one. */
+  group: PlannedGroup | null | undefined;
+  repeats: boolean;
+  repetitions: Repetition[];
+  end: EndCondition;
+  /** The first date. */
+  date: string;
+  onChange: (patch: {
+    date?: string;
+    repeats?: boolean;
+    repetitions?: Repetition[];
+    end?: EndCondition;
+  }) => void;
+}) {
+  const t = useTheme();
+  const { t: tr } = useTranslation();
+  const [choice, setChoice] = useState<Choice | null>(null);
+  const [more, setMore] = useState(false);
+
+  const first = repetitions[0];
+  // One weekly or monthly pattern every so often is what the simple choices can say.
+  const simple =
+    repetitions.length === 1 &&
+    !!first &&
+    first.skip === 0 &&
+    (first.type === 'weekly' || first.type === 'monthly');
+  const editing = repeats && (more || !simple);
+  const how = !repeats
+    ? 'once'
+    : editing
+      ? 'more'
+      : first?.type === 'weekly'
+        ? 'weekly'
+        : 'monthly';
+  const howOptions = [
+    { key: 'once', label: tr('planned.howOnce') },
+    { key: 'weekly', label: repetitionTypeName('weekly') },
+    { key: 'monthly', label: repetitionTypeName('monthly') },
+    { key: 'more', label: tr('planned.howMore') },
+  ];
+
+  function chooseHow(key: string) {
+    if (key === 'more') {
+      setMore(true);
+      if (!repeats) onChange({ repeats: true });
+      return;
+    }
+    setMore(false);
+    if (key === 'once') {
+      onChange({ repeats: false });
+      return;
+    }
+    const type: RepetitionType = key === 'weekly' ? 'weekly' : 'monthly';
+    onChange({
+      repeats: true,
+      repetitions: [{ type, moment: momentFor(type, date), skip: 0, weekend: first?.weekend ?? 1 }],
+    });
+  }
+
+  /** The simple pattern's day follows the first date, unless the user has set the day by hand. */
+  function moveDate(next: string) {
+    const follows = simple && !more && !!first;
+    onChange({
+      date: next,
+      ...(follows ? { repetitions: [{ ...first, moment: momentFor(first.type, next) }] } : {}),
+    });
+  }
+
+  const today = localDay();
+  const from = date > today ? date : today;
+  const days = repeats
+    ? upcomingOccurrences(repetitions, from, { count: 3 })
+    : [date].filter((d) => d >= today);
+  // "(moved to Fri)": a day a weekend rule pushed here, not one the pattern lands on by itself.
+  const movedHere = (day: string) =>
+    repeats &&
+    repetitions.some((rep) =>
+      expandRepetition(rep, from, 9).some(
+        (raw) => raw !== day && withWeekendRule(raw, rep.weekend) === day,
+      ),
+    );
+  const dayText = (day: string) =>
+    movedHere(day)
+      ? `${occurrenceLabel(day)} (${tr('planned.movedTo', { day: weekdayName(isoWeekday(day), 'short') })})`
+      : occurrenceLabel(day);
+  const summary = [scheduleLabel({ repeats, repetitions }, group), endLabel(end, repeats)]
+    .filter(Boolean)
+    .join(' · ');
+
+  const close = () => {
+    setChoice(null);
+    onClose();
+  };
+
+  return (
+    <Sheet
+      visible={visible}
+      title={choice?.title ?? tr('planned.schedule')}
+      onClose={close}
+      onBack={choice ? () => setChoice(null) : undefined}
+      footer={choice ? undefined : <Button title={tr('common.done')} onPress={close} size="lg" />}
+    >
+      {choice ? (
+        <Card flush>
+          {choice.options.map((o, i) => (
+            <ListRow
+              key={o.key}
+              first={i === 0}
+              label={o.label}
+              onPress={() => {
+                choice.onSelect(o.key);
+                setChoice(null);
+              }}
+              trailing={
+                o.key === choice.selected ? (
+                  <Ionicons name="checkmark" size={20} color={t.color.accent} />
+                ) : undefined
+              }
+            />
+          ))}
+        </Card>
+      ) : (
+        <>
+          <View
+            style={{
+              backgroundColor: t.color.accentSoft,
+              borderRadius: t.radius.md,
+              padding: t.space.md,
+              gap: 4,
+            }}
+          >
+            <Text style={[t.type.body, { color: t.color.text, fontWeight: '600' }]}>{summary}</Text>
+            {days.length > 0 && (
+              <Text style={[t.type.label, { color: t.color.accent }]}>
+                {tr('planned.nextDates', { dates: days.map(dayText).join(' · ') })}
+              </Text>
+            )}
+          </View>
+
+          <SectionHeader title={tr('planned.starts')} />
+          <Card>
+            <Row
+              first
+              label={tr('planned.firstDate')}
+              value={dayLabel(date)}
+              chevron
+              onPress={() => pickDate(new Date(`${date}T12:00:00`), (d) => moveDate(localDay(d)))}
+            />
+          </Card>
+
+          <SectionHeader title={tr('planned.repeats')} />
+          <Card>
+            <Row
+              first
+              label={tr('planned.howOften')}
+              value={howOptions.find((o) => o.key === how)?.label ?? ''}
+              chevron
+              onPress={() =>
+                setChoice({
+                  title: tr('planned.howOften'),
+                  options: howOptions,
+                  selected: how,
+                  onSelect: chooseHow,
+                })
+              }
+            />
+            {repeats && !editing && !!first && (
+              <Row
+                label={tr('planned.weekendLabel')}
+                value={weekendName(first.weekend)}
+                chevron
+                onPress={() =>
+                  setChoice(
+                    weekendChoice(tr('planned.weekendLabel'), first.weekend, (weekend) =>
+                      onChange({ repetitions: [{ ...first, weekend }] }),
+                    ),
+                  )
+                }
+              />
+            )}
+          </Card>
+
+          {repeats && !editing && (
+            <EndRows
+              end={end}
+              date={date}
+              onChange={(next) => onChange({ end: next })}
+              choose={setChoice}
+            />
+          )}
+          {editing && (
+            <ScheduleRows
+              repetitions={repetitions}
+              end={end}
+              date={date}
+              onChange={onChange}
+              choose={setChoice}
+            />
+          )}
+        </>
+      )}
+    </Sheet>
+  );
+}
+
+/** The ISO weekday (Mon = 1) of a `YYYY-MM-DD` day. */
+const isoWeekday = (day: string): number => ((new Date(`${day}T12:00:00`).getDay() + 6) % 7) + 1;
+
+/** The full repetition editor, shown under "More…". */
+function ScheduleRows({
+  repetitions,
+  end,
+  date,
+  onChange,
+  choose,
 }: {
   repetitions: Repetition[];
   end: EndCondition;
   /** The planned date: what a new row and a switched type take their `moment` from. */
   date: string;
   onChange: (patch: { repetitions?: Repetition[]; end?: EndCondition }) => void;
+  choose: Choose;
 }) {
   const t = useTheme();
   const { t: tr } = useTranslation();
-  const [sheet, setSheet] = useState<Sheet>(null);
-  const open = sheet && sheet.k !== 'end' ? repetitions[sheet.i] : undefined;
 
   const patchRow = (index: number, patch: Partial<Repetition>) =>
     onChange({
@@ -77,20 +338,50 @@ export function ScheduleRows({
         }
       />
       {repetitions.map((rep, i) => (
-        <Card key={i} style={{ marginHorizontal: t.space.lg, marginBottom: t.space.sm }}>
+        <Card key={i} style={{ marginBottom: t.space.sm }}>
           <Row
             first
             label={tr('planned.repTypeLabel')}
             value={repetitionTypeName(rep.type)}
             chevron
-            onPress={() => setSheet({ k: 'type', i })}
+            onPress={() =>
+              choose({
+                title: tr('planned.repTypeLabel'),
+                options: REPETITION_TYPES.map((type) => ({
+                  key: type,
+                  label: repetitionTypeName(type),
+                })),
+                selected: rep.type,
+                onSelect: (key) => {
+                  const type = REPETITION_TYPES.find((x) => x === key);
+                  if (type) changeType(i, type);
+                },
+              })
+            }
           />
-          {rep.type === 'weekly' && (
+          {(rep.type === 'weekly' || rep.type === 'ndom') && (
             <Row
               label={tr('planned.weekdayLabel')}
-              value={weekdayName(Number(rep.moment) || 1)}
+              value={weekdayName(
+                rep.type === 'ndom' ? parseNdom(rep.moment).weekday : Number(rep.moment) || 1,
+              )}
               chevron
-              onPress={() => setSheet({ k: 'weekday', i })}
+              onPress={() =>
+                choose({
+                  title: tr('planned.weekdayLabel'),
+                  options: range(1, 7).map((d) => ({ key: d, label: weekdayName(Number(d)) })),
+                  selected: String(
+                    rep.type === 'ndom' ? parseNdom(rep.moment).weekday : Number(rep.moment) || 1,
+                  ),
+                  onSelect: (key) =>
+                    patchRow(i, {
+                      moment:
+                        rep.type === 'ndom'
+                          ? ndomMoment(parseNdom(rep.moment).nth, Number(key))
+                          : key,
+                    }),
+                })
+              }
             />
           )}
           {rep.type === 'monthly' && (
@@ -98,24 +389,33 @@ export function ScheduleRows({
               label={tr('planned.dayOfMonthLabel')}
               value={String(Number(rep.moment) || 1)}
               chevron
-              onPress={() => setSheet({ k: 'dayOfMonth', i })}
+              onPress={() =>
+                choose({
+                  title: tr('planned.dayOfMonthLabel'),
+                  options: range(1, 31).map((d) => ({ key: d, label: d })),
+                  selected: String(Number(rep.moment) || 1),
+                  onSelect: (key) => patchRow(i, { moment: key }),
+                })
+              }
             />
           )}
           {rep.type === 'ndom' && (
-            <>
-              <Row
-                label={tr('planned.nthLabel')}
-                value={nthName(parseNdom(rep.moment).nth)}
-                chevron
-                onPress={() => setSheet({ k: 'nth', i })}
-              />
-              <Row
-                label={tr('planned.weekdayLabel')}
-                value={weekdayName(parseNdom(rep.moment).weekday)}
-                chevron
-                onPress={() => setSheet({ k: 'weekday', i })}
-              />
-            </>
+            <Row
+              label={tr('planned.nthLabel')}
+              value={nthName(parseNdom(rep.moment).nth)}
+              chevron
+              onPress={() =>
+                choose({
+                  title: tr('planned.nthLabel'),
+                  options: range(1, 5).map((n) => ({ key: n, label: nthName(Number(n)) })),
+                  selected: String(parseNdom(rep.moment).nth),
+                  onSelect: (key) =>
+                    patchRow(i, {
+                      moment: ndomMoment(Number(key), parseNdom(rep.moment).weekday),
+                    }),
+                })
+              }
+            />
           )}
           {rep.type === 'yearly' && (
             <Row
@@ -134,7 +434,13 @@ export function ScheduleRows({
             label={tr('planned.weekendLabel')}
             value={weekendName(rep.weekend)}
             chevron
-            onPress={() => setSheet({ k: 'weekend', i })}
+            onPress={() =>
+              choose(
+                weekendChoice(tr('planned.weekendLabel'), rep.weekend, (weekend) =>
+                  patchRow(i, { weekend }),
+                ),
+              )
+            }
           />
           {repetitions.length > 1 && (
             <Row
@@ -147,114 +453,70 @@ export function ScheduleRows({
         </Card>
       ))}
 
-      <Card style={{ marginHorizontal: t.space.lg }}>
-        <Row
-          first
-          label={tr('planned.endLabel')}
-          value={tr(`planned.end.${end.kind}`)}
-          chevron
-          onPress={() => setSheet({ k: 'end' })}
-        />
-        {end.kind === 'until' && (
-          <Row
-            label={tr('planned.endDateLabel')}
-            value={dayLabel(end.date)}
-            chevron
-            onPress={() =>
-              pickDate(new Date(`${end.date}T12:00:00`), (d) =>
-                onChange({ end: { kind: 'until', date: localDay(d) } }),
-              )
-            }
-          />
-        )}
-        {end.kind === 'times' && (
-          <Stepper
-            label={tr('planned.endCountLabel')}
-            value={Math.max(2, end.count)}
-            min={2}
-            onChange={(count) => onChange({ end: { kind: 'times', count } })}
-          />
-        )}
-      </Card>
-
-      <PickerSheet
-        visible={sheet?.k === 'type'}
-        onClose={() => setSheet(null)}
-        title={tr('planned.repTypeLabel')}
-        options={REPETITION_TYPES.map((type) => ({ key: type, label: repetitionTypeName(type) }))}
-        selected={open?.type}
-        onSelect={(key) => {
-          const type = REPETITION_TYPES.find((x) => x === key);
-          if (type && sheet && sheet.k !== 'end') changeType(sheet.i, type);
-        }}
-      />
-      <PickerSheet
-        visible={sheet?.k === 'weekday'}
-        onClose={() => setSheet(null)}
-        title={tr('planned.weekdayLabel')}
-        options={range(1, 7).map((d) => ({ key: d, label: weekdayName(Number(d)) }))}
-        selected={
-          open ? String(open.type === 'ndom' ? parseNdom(open.moment).weekday : open.moment) : null
-        }
-        onSelect={(key) => {
-          if (!key || !sheet || sheet.k === 'end' || !open) return;
-          patchRow(
-            sheet.i,
-            open.type === 'ndom'
-              ? { moment: ndomMoment(parseNdom(open.moment).nth, Number(key)) }
-              : { moment: key },
-          );
-        }}
-      />
-      <PickerSheet
-        visible={sheet?.k === 'dayOfMonth'}
-        onClose={() => setSheet(null)}
-        title={tr('planned.dayOfMonthLabel')}
-        options={range(1, 31).map((d) => ({ key: d, label: d }))}
-        selected={open ? String(Number(open.moment) || 1) : null}
-        onSelect={(key) => {
-          if (key && sheet && sheet.k !== 'end') patchRow(sheet.i, { moment: key });
-        }}
-      />
-      <PickerSheet
-        visible={sheet?.k === 'nth'}
-        onClose={() => setSheet(null)}
-        title={tr('planned.nthLabel')}
-        options={range(1, 5).map((n) => ({ key: n, label: nthName(Number(n)) }))}
-        selected={open ? String(parseNdom(open.moment).nth) : null}
-        onSelect={(key) => {
-          if (!key || !sheet || sheet.k === 'end' || !open) return;
-          patchRow(sheet.i, { moment: ndomMoment(Number(key), parseNdom(open.moment).weekday) });
-        }}
-      />
-      <PickerSheet
-        visible={sheet?.k === 'weekend'}
-        onClose={() => setSheet(null)}
-        title={tr('planned.weekendLabel')}
-        options={WEEKEND_RULES.map((w) => ({ key: String(w), label: weekendName(w) }))}
-        selected={open ? String(open.weekend) : null}
-        onSelect={(key) => {
-          const weekend = WEEKEND_RULES.find((w) => String(w) === key);
-          if (weekend && sheet && sheet.k !== 'end') patchRow(sheet.i, { weekend });
-        }}
-      />
-      <PickerSheet
-        visible={sheet?.k === 'end'}
-        onClose={() => setSheet(null)}
-        title={tr('planned.endLabel')}
-        options={(['forever', 'until', 'times'] as const).map((kind) => ({
-          key: kind,
-          label: tr(`planned.end.${kind}`),
-        }))}
-        selected={end.kind}
-        onSelect={(key) => {
-          if (key === 'forever') onChange({ end: { kind: 'forever' } });
-          // Both start from something valid, so Save is never blocked by an unset value.
-          if (key === 'until') onChange({ end: { kind: 'until', date: inAYear(date) } });
-          if (key === 'times') onChange({ end: { kind: 'times', count: 12 } });
-        }}
-      />
+      <EndRows end={end} date={date} onChange={(next) => onChange({ end: next })} choose={choose} />
     </>
+  );
+}
+
+/** Where the schedule stops: until changed, on a date, or after a number of times. */
+function EndRows({
+  end,
+  date,
+  onChange,
+  choose,
+}: {
+  end: EndCondition;
+  date: string;
+  onChange: (end: EndCondition) => void;
+  choose: Choose;
+}) {
+  const t = useTheme();
+  const { t: tr } = useTranslation();
+  return (
+    <Card style={{ marginBottom: t.space.sm }}>
+      <Row
+        first
+        label={tr('planned.endLabel')}
+        value={tr(`planned.end.${end.kind}`)}
+        chevron
+        onPress={() =>
+          choose({
+            title: tr('planned.endLabel'),
+            options: (['forever', 'until', 'times'] as const).map((kind) => ({
+              key: kind,
+              label: tr(`planned.end.${kind}`),
+            })),
+            selected: end.kind,
+            onSelect: (key) => {
+              // Both start from something valid, so Save is never blocked by an unset value.
+              if (key === 'forever') onChange({ kind: 'forever' });
+              if (key === 'until') onChange({ kind: 'until', date: inAYear(date) });
+              if (key === 'times') onChange({ kind: 'times', count: 12 });
+            },
+          })
+        }
+      />
+      {end.kind === 'until' && (
+        <Row
+          label={tr('planned.endDateLabel')}
+          value={dayLabel(end.date)}
+          chevron
+          onPress={() =>
+            pickDate(new Date(`${end.date}T12:00:00`), (d) =>
+              onChange({ kind: 'until', date: localDay(d) }),
+            )
+          }
+        />
+      )}
+      {end.kind === 'times' && (
+        <Stepper
+          label={tr('planned.endCountLabel')}
+          value={Math.max(2, end.count)}
+          min={2}
+          onChange={(count) => onChange({ kind: 'times', count })}
+        />
+      )}
+    </Card>
   );
 }
 

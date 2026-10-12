@@ -1,10 +1,10 @@
 // Settings → Rules: FF3's rule groups and the rules in them, cached in planned_objects
 // (src/rules/model.ts). Switches and Run now go through the outbox, so they work offline. A switch
 // shows at once: a queued toggle wins over the cached `active` until FF3 has answered it.
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, Switch, Text, View } from 'react-native';
-import { router } from 'expo-router';
+import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { router, useLocalSearchParams } from 'expo-router';
 import { and, asc, inArray } from 'drizzle-orm';
 import { outboxOperations, plannedObjects } from '../../src/db/schema';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
@@ -12,19 +12,19 @@ import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
 import {
   Screen,
-  AppBar,
   BarIconButton,
   Card,
-  Row,
   SectionHeader,
   SCREEN_TOP_PADDING,
 } from '../../src/ui/components';
+import { ListRow, PushHeader } from '../../src/ui/kit';
 import { confirmAction } from '../../src/ui/confirm';
 import { useAction } from '../../src/ui/useAction';
 import { isUnsent } from '../../src/sync/outbox';
 import { tryReadPayload } from '../../src/sync/payloadJson';
 import { rulesByGroup, type RuleGroupSummary } from '../../src/rules/model';
 import { runRule, toggleRule, toggleRuleGroup } from '../../src/rules/actions';
+import { NewRuleSheet } from '../../src/rules/NewRuleSheet';
 import type { ToggleRuleGroupPayload, ToggleRulePayload } from '../../src/rules/replay';
 
 export default function RulesScreen() {
@@ -32,6 +32,9 @@ export default function RulesScreen() {
   const t = useTheme();
   const { t: tr } = useTranslation();
   const act = useAction();
+  // A transaction's ⋯ → Create a rule lands here with the rule's prefill, and the sheet already open.
+  const params = useLocalSearchParams<{ match?: string; category?: string; budget?: string }>();
+  const [newRuleOpen, setNewRuleOpen] = useState(!!params.match);
   const { data: planned } = useLiveQuery(
     db
       .select()
@@ -92,13 +95,15 @@ export default function RulesScreen() {
 
   return (
     <Screen bottom>
-      <AppBar
+      <PushHeader
+        backLabel={tr('settings.title')}
+        onBack={() => router.back()}
         title={tr('rules.title')}
         right={
           <BarIconButton
             icon="add"
             label={tr('rules.newRule')}
-            onPress={() => router.push('/settings/rule-new')}
+            onPress={() => setNewRuleOpen(true)}
           />
         }
       />
@@ -130,43 +135,44 @@ export default function RulesScreen() {
                 />
               }
             />
-            {group.rules.map((rule) => (
-              <Card
-                key={rule.id}
-                style={{
-                  marginHorizontal: t.space.lg,
-                  marginBottom: t.space.sm,
-                  gap: t.space.xs,
-                  opacity: group.active ? 1 : 0.5,
-                }}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
-                  <Text style={[t.type.body, { color: t.color.text, flex: 1 }]} numberOfLines={1}>
-                    {rule.title}
-                  </Text>
-                  <Switch
-                    value={rule.active}
-                    accessibilityLabel={rule.title}
-                    onValueChange={(v) => setRule(rule.id, v)}
-                    trackColor={{ false: t.color.border, true: t.color.accent }}
-                    thumbColor={t.color.surface}
-                  />
-                </View>
-                {!!rule.triggers[0] && (
-                  <Text style={[t.type.label, { color: t.color.textMuted }]} numberOfLines={1}>
-                    {rule.triggers[0].value}
-                  </Text>
-                )}
-                <Row
-                  label={tr('rules.runNow')}
-                  icon="play"
-                  onPress={() => run(rule.id, rule.title)}
+            <Card flush style={{ marginHorizontal: t.space.lg, opacity: group.active ? 1 : 0.5 }}>
+              {group.rules.map((rule, i) => (
+                <ListRow
+                  key={rule.id}
+                  first={i === 0}
+                  label={rule.title}
+                  sub={rule.triggers[0]?.value}
+                  trailing={
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.md }}>
+                      <Pressable
+                        onPress={() => run(rule.id, rule.title)}
+                        accessibilityRole="button"
+                        hitSlop={8}
+                      >
+                        <Text style={[t.type.label, { color: t.color.accent }]}>
+                          {tr('rules.runNow')}
+                        </Text>
+                      </Pressable>
+                      <Switch
+                        value={rule.active}
+                        accessibilityLabel={rule.title}
+                        onValueChange={(v) => setRule(rule.id, v)}
+                        trackColor={{ false: t.color.border, true: t.color.accent }}
+                        thumbColor={t.color.surface}
+                      />
+                    </View>
+                  }
                 />
-              </Card>
-            ))}
+              ))}
+            </Card>
           </View>
         ))}
       </ScrollView>
+      <NewRuleSheet
+        visible={newRuleOpen}
+        onClose={() => setNewRuleOpen(false)}
+        initial={{ match: params.match, category: params.category, budget: params.budget }}
+      />
     </Screen>
   );
 }

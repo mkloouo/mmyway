@@ -15,8 +15,8 @@ tags:
 - eraseText: 30
 - inputText: 'Savings EUR ${RUN_ID}'
 - hideKeyboard
-- tapOn: 'Active'
-- tapOn: 'Cash envelope'
+- tapOn: 'In pickers and lists'
+- tapOn: 'In the cash count'
 - tapOn: 'Save'
 - runFlow: ../../subflows/home.yaml
 - runFlow: ../../subflows/sync.yaml

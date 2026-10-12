@@ -1,4 +1,6 @@
-// Settings (design §6.6) — grouped Card/Row layout, every › opens a Sheet. No nested FlatLists.
+// Settings (design §6.6, Settings.dc.html) — grouped Cards of ListRows. Each group is one flush Card;
+// a row either opens a page (Firefly III, Receipts, Reminders, Accounts, About…), a Choose sheet
+// (defaults, language) or flips a switch. No nested FlatLists.
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, Text } from 'react-native';
@@ -8,63 +10,36 @@ import Constants from 'expo-constants';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
 import {
-  Screen,
   AppBar,
-  SectionHeader,
   Card,
-  Row,
-  Button,
-  Sheet,
-  Toast,
+  SectionHeader,
+  SwitchRow,
   SCREEN_TOP_PADDING,
+  Screen,
 } from '../../src/ui/components';
-import { AddressesSheet } from '../../src/ui/AddressesSheet';
-import { relativeTime } from '../../src/ui/relativeTime';
+import { ListRow, Tile } from '../../src/ui/kit';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { loadSettings, SETTINGS_QUERY_KEY } from '../../src/settings/loadSettings';
-import { signOut, readStoredCredentials, probeAbout } from '../../src/api/ff3/auth';
-import { writeHosts } from '../../src/api/ff3/hosts';
-import { connectFailureText, connectToInstance } from '../../src/settings/connectInstance';
-import { saveGeminiKey } from '../../src/settings/secrets';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { hasEnvelopeMarker } from '../../src/accounts/envelopeMarker';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
 import { payeeAliases } from '../../src/db/schema';
-import { useSync } from '../../src/sync/useSync';
-import { withSyncPaused } from '../../src/sync/runSync';
 import {
-  clearInstanceData,
-  describeQueuedOperations,
-  queuedOperationCount,
-} from '../../src/sync/instanceData';
-import * as Notifications from 'expo-notifications';
-import {
-  setLocalModelBaseUrls,
-  setLocalModelName,
   setDefaultSourceAccountId,
   setDefaultCurrencyCode,
   setCashAccountId,
   setLocale,
   setRecordLocation,
   setAppLockEnabled,
-  setPlannedNotificationsEnabled,
-  setPlannedReminderLead,
   getDemoMode,
-  PLANNED_REMINDER_LEADS,
 } from '../../src/settings/appSettings';
-import { leaveDemo, startDemo } from '../../src/demo/demo';
-import { syncPlannedNotifications } from '../../src/planned/notifications';
 import i18n, { type AppLocale } from '../../src/i18n';
 import { authenticate, canUseAppLock } from '../../src/lock/appLock';
-import { TextField } from '../../src/ui/TextField';
 import { PickerSheet } from '../../src/ui/PickerSheet';
-import { Checkbox } from '../../src/ui/Checkbox';
+import { AccountPickerSheet } from '../../src/ui/AccountPickerSheet';
 import { forgetPosition, startPositionRequest } from '../../src/capture/position';
 import { useAction } from '../../src/ui/useAction';
 import { pickableCurrencies, primaryCurrencyCode } from '../../src/ui/currencies';
-import { confirmAction, confirmDestructive } from '../../src/ui/confirm';
-import { useToast } from '../../src/ui/useToast';
-import { probeLocalModel } from '../../src/receipt/providers/local';
 
 const LANGUAGE_OPTIONS: { value: AppLocale; labelKey: string }[] = [
   { value: 'system', labelKey: 'settings.languageSystem' },
@@ -89,7 +64,6 @@ function reminderLeadName(days: number): string {
 
 export default function SettingsScreen() {
   const db = useDb();
-  const { credentialsChanged } = useSync();
   const t = useTheme();
   const { t: tr } = useTranslation();
   const act = useAction();
@@ -118,77 +92,30 @@ export default function SettingsScreen() {
   const demo = demoMode.data ?? false;
   const signedIn = settings?.signedIn ?? false;
   const ff3Hosts = settings?.ff3Hosts ?? [];
-  const proxyHeaderCount = settings?.proxyHeaderCount ?? 0;
   const ff3ActiveHost = settings?.ff3ActiveHost ?? null;
+  const localModelName = settings?.localModelName ?? '';
   const localModelUrls = settings?.localModelUrls ?? [];
-  const localModelActiveUrl = settings?.localModelActiveUrl ?? null;
   const hasGeminiKey = settings?.hasGeminiKey ?? false;
   const defaultAccountId = settings?.defaultAccountId ?? null;
   const defaultCurrency = settings?.defaultCurrency ?? null;
   const cashAccountId = settings?.cashAccountId ?? null;
-  const lastSyncedAt = settings?.lastSyncedAt ?? null;
   const locale: AppLocale = settings?.locale ?? 'system';
   const recordLocation = settings?.recordLocation ?? true;
   const plannedNotifications = settings?.plannedNotifications ?? false;
   const plannedReminderLead = settings?.plannedReminderLead ?? 2;
   const appLock = settings?.appLock ?? false;
-  // The one setting that is typed before it's saved, so it needs a draft of its own.
-  const [localModelNameInput, setLocalModelNameInput] = useState<string | null>(null);
-  const localModelName = localModelNameInput ?? settings?.localModelName ?? '';
-
-  const [toast, setToast] = useToast();
 
   // Only one sheet is ever open, so it is one state rather than a boolean each.
-  const [sheet, setSheet] = useState<
-    | 'signIn'
-    | 'ff3Addresses'
-    | 'localAddresses'
-    | 'localModel'
-    | 'gemini'
-    | 'account'
-    | 'currency'
-    | 'cashAccount'
-    | 'language'
-    | 'reminderLead'
-    | null
-  >(null);
+  const [sheet, setSheet] = useState<'account' | 'currency' | 'cashAccount' | 'language' | null>(
+    null,
+  );
 
-  const [host, setHost] = useState('');
-  const [token, setToken] = useState('');
-  const [geminiKeyInput, setGeminiKeyInput] = useState('');
-
-  /** Keeps a double-tap on any Save from writing the same secret or setting twice. */
-  const saveOnce = act(tr('common.save'), (write: () => Promise<void>) => write());
-  const saving = act.pending(tr('common.save'));
   // Keeps the permission; only stops the app using it (#67).
   const toggleLocation = act(tr('settings.recordLocation'), async () => {
     await setRecordLocation(db, !recordLocation);
     if (recordLocation) forgetPosition();
     else startPositionRequest(db);
     reload();
-  });
-  const togglePlannedNotifications = act(tr('settings.plannedNotifications'), async () => {
-    const next = !plannedNotifications;
-    if (next) {
-      const { status } = await Notifications.getPermissionsAsync();
-      let granted = status === 'granted';
-      if (!granted) {
-        const req = await Notifications.requestPermissionsAsync();
-        granted = req.status === 'granted';
-      }
-      if (!granted) {
-        Alert.alert(tr('common.error'), tr('settings.notificationsPermissionDenied'));
-        return;
-      }
-    }
-    await setPlannedNotificationsEnabled(db, next);
-    await reload();
-    await syncPlannedNotifications(db, currencies);
-  });
-  const chooseReminderLead = act(tr('planned.reminderLead'), async (days: number) => {
-    await setPlannedReminderLead(db, days);
-    await reload();
-    await syncPlannedNotifications(db, currencies);
   });
   const toggleAppLock = act(tr('settings.appLock'), async () => {
     const next = !appLock;
@@ -204,75 +131,6 @@ export default function SettingsScreen() {
     await setAppLockEnabled(db, next);
     await reload();
   });
-  const signingIn = act.pending(tr('settings.signIn'));
-
-  const onSignIn = act(tr('settings.signIn'), async () => {
-    const result = await connectToInstance(db, host, token);
-    if (result.status === 'connected') {
-      setSheet(null);
-      setToast(tr('settings.connected'));
-      setHost('');
-      setToken('');
-      await reload();
-      credentialsChanged();
-    } else {
-      const { title, message } = connectFailureText(result);
-      Alert.alert(title, message);
-    }
-  });
-
-  const onSignOut = act(tr('settings.signOut'), async () => {
-    const queued = await queuedOperationCount(db);
-    if (queued > 0) {
-      Alert.alert(tr('settings.cantSignOutYet'), describeQueuedOperations(queued));
-      return;
-    }
-    if (
-      !(await confirmDestructive(
-        tr('settings.signOutTitle'),
-        tr('settings.signOut'),
-        tr('settings.signOutBody'),
-      ))
-    )
-      return;
-    // Re-checked: a write can be queued while the dialog is open.
-    const nowQueued = await queuedOperationCount(db);
-    if (nowQueued > 0) {
-      Alert.alert(tr('settings.cantSignOutYet'), describeQueuedOperations(nowQueued));
-      return;
-    }
-    await withSyncPaused(async () => {
-      await signOut();
-      await clearInstanceData(db);
-    });
-    await reload();
-    credentialsChanged();
-  });
-
-  const onTryDemo = act(tr('demo.tryAction'), async () => {
-    if (!(await confirmAction(tr('demo.tryTitle'), tr('demo.tryAction'), tr('demo.tryBody'))))
-      return;
-    const result = await startDemo(db);
-    if (result.status === 'has_data') {
-      Alert.alert(tr('demo.hasDataTitle'), tr('demo.hasDataBody'));
-      return;
-    }
-    await reload();
-    if (result.status === 'started') setToast(tr('demo.loaded'));
-  });
-
-  const onLeaveDemo = act(tr('demo.leaveAction'), async () => {
-    if (
-      !(await confirmDestructive(
-        tr('demo.leaveTitle'),
-        tr('demo.leaveAction'),
-        tr('demo.leaveBody'),
-      ))
-    )
-      return;
-    await withSyncPaused(() => leaveDemo(db));
-    await reload();
-  });
 
   function accountLabel(id: string | null): string {
     if (!id) return tr('settings.none');
@@ -282,12 +140,32 @@ export default function SettingsScreen() {
     return inactive ? tr('settings.inactiveAccount', { name: inactive.name }) : tr('settings.none');
   }
 
-  const noAccountsHint = (
-    <Text style={[t.type.body, { color: t.color.textMuted }]}>{tr('settings.noAccountsHint')}</Text>
-  );
-
   const envelopeCount = assetAccounts.filter((a) => hasEnvelopeMarker(a.notes)).length;
   const version = Constants.expoConfig?.version ?? '0.1.0';
+
+  // The summaries read the same settings their pages write.
+  const receiptNames = [
+    ...(localModelName.trim() !== '' && localModelUrls.length > 0
+      ? [tr('sync.providerLocal')]
+      : []),
+    ...(hasGeminiKey ? [tr('sync.providerGemini')] : []),
+  ];
+  const receiptSummary = receiptNames.length > 0 ? receiptNames.join(' · ') : tr('settings.off');
+  const remindersSummary = plannedNotifications
+    ? reminderLeadName(plannedReminderLead)
+    : tr('settings.off');
+  const activeHost = ff3ActiveHost ?? ff3Hosts[0] ?? null;
+  const connectionSub = demo
+    ? tr('demo.value')
+    : !signedIn
+      ? tr('settings.notConnected')
+      : activeHost
+        ? shortLabel(activeHost)
+        : tr('settings.connectedValue');
+
+  const valueText = (text: string) => (
+    <Text style={[t.type.body, { color: t.color.textMuted }]}>{text}</Text>
+  );
 
   return (
     <Screen>
@@ -295,326 +173,164 @@ export default function SettingsScreen() {
       <ScrollView
         contentContainerStyle={{ paddingBottom: t.space.xxl, paddingTop: SCREEN_TOP_PADDING }}
       >
-        <SectionHeader first title={tr('settings.sectionConnection')} />
-        <Card style={{ marginHorizontal: t.space.lg }}>
-          <Row
+        <Card flush style={{ marginHorizontal: t.space.lg }}>
+          <ListRow
             first
+            leading={<Tile icon="server-outline" size={48} />}
             label="Firefly III"
+            sub={connectionSub}
             chevron
-            value={
-              demo
-                ? tr('demo.value')
-                : signedIn
-                  ? tr('settings.connectedValue')
-                  : tr('settings.notConnected')
-            }
-            tone={signedIn || demo ? 'default' : 'warn'}
-            onPress={() => setSheet('signIn')}
-          />
-          {/* Like the sign-out row: kept while the settings load, so the section keeps its height. */}
-          {(!settings || (!signedIn && !demo)) && (
-            <Row label={tr('demo.tryAction')} onPress={settings ? onTryDemo : undefined} />
-          )}
-          {demo && <Row label={tr('demo.leaveAction')} tone="danger" onPress={onLeaveDemo} />}
-          <Row
-            label={tr('settings.addresses')}
-            chevron
-            value={
-              ff3Hosts.length > 0
-                ? `${shortLabel(ff3ActiveHost ?? ff3Hosts[0]!)}${ff3Hosts.length > 1 ? ` +${ff3Hosts.length - 1}` : ''}`
-                : tr('settings.none')
-            }
-            onPress={() => setSheet('ff3Addresses')}
-          />
-          <Row
-            label={tr('proxy.title')}
-            chevron
-            value={
-              proxyHeaderCount > 0
-                ? tr('proxy.headerCount', { count: proxyHeaderCount })
-                : tr('settings.none')
-            }
-            onPress={() => router.push('/settings/proxy')}
-          />
-          {/* The row is kept while the settings load, so the section is its final height on the
-              first frame — it used to appear once "signed in" was known and shift what's below. */}
-          {(signedIn || !settings) && (
-            <Row
-              label={tr('settings.signOut')}
-              icon="log-out"
-              tone="danger"
-              onPress={settings ? onSignOut : undefined}
-            />
-          )}
-        </Card>
-
-        <SectionHeader title={tr('settings.sectionReceipts')} />
-        <Card style={{ marginHorizontal: t.space.lg }}>
-          <Row
-            first
-            label={tr('sync.providerLocal')}
-            chevron
-            value={localModelName || tr('settings.notSet')}
-            onPress={() => setSheet('localModel')}
-          />
-          <Row
-            label={tr('settings.addresses')}
-            chevron
-            value={
-              localModelUrls.length > 0
-                ? `${shortLabel(localModelActiveUrl ?? localModelUrls[0]!)}${localModelUrls.length > 1 ? ` +${localModelUrls.length - 1}` : ''}`
-                : tr('settings.none')
-            }
-            onPress={() => setSheet('localAddresses')}
-          />
-          <Row
-            label={tr('settings.geminiKey')}
-            chevron
-            value={hasGeminiKey ? tr('settings.set') : tr('settings.notSet')}
-            onPress={() => setSheet('gemini')}
+            onPress={() => router.push('/settings/connection')}
           />
         </Card>
 
-        <SectionHeader title={tr('settings.sectionDefaults')} />
-        <Card style={{ marginHorizontal: t.space.lg }}>
-          <Row
+        <SectionHeader title={tr('settings.sectionAddMoney')} />
+        <Card flush style={{ marginHorizontal: t.space.lg }}>
+          <ListRow
             first
-            label={tr('settings.account')}
+            leading={<Tile icon="wallet-outline" />}
+            label={tr('settings.payFrom')}
+            sub={tr('settings.payFromHint')}
+            trailing={valueText(accountLabel(defaultAccountId))}
             chevron
-            value={accountLabel(defaultAccountId)}
             onPress={() => setSheet('account')}
           />
-          <Row
-            label={tr('fields.currency')}
+          <ListRow
+            leading={<Tile icon="cash-outline" tone="warn" />}
+            label={tr('settings.cashComesFrom')}
+            sub={tr('settings.cashComesFromHint')}
+            trailing={valueText(accountLabel(cashAccountId))}
             chevron
-            value={defaultCurrency ?? primaryCurrencyCode(currencies) ?? tr('settings.none')}
-            onPress={() => setSheet('currency')}
-          />
-          <Row
-            label={tr('settings.cashPaymentsUse')}
-            chevron
-            value={accountLabel(cashAccountId)}
             onPress={() => setSheet('cashAccount')}
           />
-          <Checkbox
-            checked={recordLocation}
-            onPress={() => void toggleLocation()}
+          <ListRow
+            leading={<Tile icon="logo-usd" tone="income" />}
+            label={tr('fields.currency')}
+            trailing={valueText(
+              defaultCurrency ?? primaryCurrencyCode(currencies) ?? tr('settings.none'),
+            )}
+            chevron
+            onPress={() => setSheet('currency')}
+          />
+          <SwitchRow
+            value={recordLocation}
+            onValueChange={() => void toggleLocation()}
             label={tr('settings.recordLocation')}
             hint={tr('settings.recordLocationHint')}
           />
         </Card>
 
-        <SectionHeader title={tr('settings.sectionSecurity')} />
-        <Card style={{ marginHorizontal: t.space.lg }}>
-          <Checkbox
-            checked={appLock}
-            onPress={() => void toggleAppLock()}
-            label={tr('settings.appLock')}
-            hint={tr('settings.appLockHint')}
-          />
-        </Card>
-
-        <SectionHeader title={tr('settings.sectionNotifications')} />
-        <Card style={{ marginHorizontal: t.space.lg }}>
-          <Checkbox
-            checked={plannedNotifications}
-            onPress={() => void togglePlannedNotifications()}
-            label={tr('settings.plannedNotifications')}
-            hint={tr('settings.plannedNotificationsHint')}
-          />
-          {plannedNotifications && (
-            <Row
-              label={tr('planned.reminderLead')}
-              value={reminderLeadName(plannedReminderLead)}
-              chevron
-              onPress={() => setSheet('reminderLead')}
-            />
-          )}
-        </Card>
-
-        <SectionHeader title={tr('accounts.title')} />
-        <Card style={{ marginHorizontal: t.space.lg }}>
-          <Row
+        <SectionHeader title={tr('settings.sectionReceiptReading')} />
+        <Card flush style={{ marginHorizontal: t.space.lg }}>
+          <ListRow
             first
-            label={tr('settings.assetAccounts')}
+            leading={<Tile icon="receipt-outline" tone="muted" />}
+            label={tr('settings.receiptReading')}
+            sub={receiptSummary}
             chevron
-            value={`${assetAccounts.length} · ${tr('settings.envelopeCount', { count: envelopeCount })}`}
+            onPress={() => router.push('/settings/receipts')}
+          />
+        </Card>
+
+        <SectionHeader title={tr('settings.sectionAccountsAndMoney')} />
+        <Card flush style={{ marginHorizontal: t.space.lg }}>
+          <ListRow
+            first
+            leading={<Tile icon="albums-outline" />}
+            label={tr('settings.assetAccounts')}
+            trailing={valueText(
+              `${assetAccounts.length} · ${tr('settings.envelopeCount', { count: envelopeCount })}`,
+            )}
+            chevron
             onPress={() => router.push('/settings/accounts')}
           />
-          <Row
+          <ListRow
+            leading={<Tile icon="trending-down-outline" tone="danger" />}
             label={tr('settings.liabilities')}
             chevron
             onPress={() => router.push('/settings/liabilities')}
           />
-          <Row
-            label={tr('settings.aliases')}
+          <ListRow
+            leading={<Tile icon="time-outline" tone="warn" />}
+            label={tr('settings.countingCash')}
+            sub={tr('settings.countingCashHint')}
             chevron
-            value={tr('settings.aliasesCount', { count: aliasesCount })}
+            onPress={() => router.push('/settings/cash')}
+          />
+          <ListRow
+            leading={<Tile icon="pricetag-outline" tone="income" />}
+            label={tr('settings.aliases')}
+            trailing={valueText(tr('settings.aliasesCount', { count: aliasesCount }))}
+            chevron
             onPress={() => router.push('/settings/aliases')}
           />
-          <Row label={tr('rules.title')} chevron onPress={() => router.push('/settings/rules')} />
         </Card>
 
-        <SectionHeader title={tr('settings.sectionLanguage')} />
-        <Card style={{ marginHorizontal: t.space.lg }}>
-          <Row
+        <SectionHeader title={tr('settings.sectionAutomation')} />
+        <Card flush style={{ marginHorizontal: t.space.lg }}>
+          <ListRow
             first
-            label={tr('settings.language')}
+            leading={<Tile icon="flash-outline" />}
+            label={tr('rules.title')}
             chevron
-            value={tr(LANGUAGE_OPTIONS.find((o) => o.value === locale)!.labelKey)}
-            onPress={() => setSheet('language')}
+            onPress={() => router.push('/settings/rules')}
+          />
+          <ListRow
+            leading={<Tile icon="repeat-outline" />}
+            label={tr('settings.plannedRaw')}
+            sub={tr('settings.plannedRawHint')}
+            chevron
+            onPress={() => router.push('/settings/planned-raw')}
           />
         </Card>
 
-        <SectionHeader title={tr('settings.sectionAbout')} />
-        <Card style={{ marginHorizontal: t.space.lg }}>
-          <Row first label={tr('settings.version')} value={version} />
-          <Row label={tr('settings.lastSync')} value={relativeTime(lastSyncedAt)} />
-          <Row
-            label={tr('logs.title')}
-            icon="document-text"
-            onPress={() => router.push('/settings/logs')}
+        <SectionHeader title={tr('settings.sectionPrivacyReminders')} />
+        <Card flush style={{ marginHorizontal: t.space.lg }}>
+          <SwitchRow
+            first
+            value={appLock}
+            onValueChange={() => void toggleAppLock()}
+            label={tr('settings.appLock')}
+            hint={tr('settings.appLockHint')}
+          />
+          <ListRow
+            leading={<Tile icon="notifications-outline" tone="danger" />}
+            label={tr('settings.reminders')}
+            sub={remindersSummary}
+            chevron
+            onPress={() => router.push('/settings/reminders')}
+          />
+        </Card>
+
+        <SectionHeader title={tr('settings.sectionApp')} />
+        <Card flush style={{ marginHorizontal: t.space.lg }}>
+          <ListRow
+            first
+            leading={<Tile icon="language-outline" />}
+            label={tr('settings.language')}
+            trailing={valueText(tr(LANGUAGE_OPTIONS.find((o) => o.value === locale)!.labelKey))}
+            chevron
+            onPress={() => setSheet('language')}
+          />
+          <ListRow
+            leading={<Tile icon="information-circle-outline" tone="muted" />}
+            label={tr('settings.aboutAndHelp')}
+            sub={tr('settings.aboutSub', { version })}
+            chevron
+            onPress={() => router.push('/settings/about')}
           />
         </Card>
       </ScrollView>
 
-      <Toast message={toast} />
-
-      <Sheet
-        visible={sheet === 'signIn'}
-        onClose={() => setSheet(null)}
-        title="Firefly III"
-        footer={
-          <Button
-            title={signingIn ? tr('settings.connecting') : tr('settings.signIn')}
-            onPress={onSignIn}
-            disabled={signingIn}
-          />
-        }
-      >
-        <TextField
-          value={host}
-          onChangeText={setHost}
-          placeholder="https://firefly.example.com"
-          autoCapitalize="none"
-        />
-        <TextField
-          value={token}
-          onChangeText={setToken}
-          placeholder={tr('settings.tokenPlaceholder')}
-          secureTextEntry
-          autoCapitalize="none"
-          style={{ marginTop: t.space.sm }}
-        />
-      </Sheet>
-
-      <AddressesSheet
-        visible={sheet === 'ff3Addresses'}
-        onClose={() => {
-          setSheet(null);
-          reload();
-        }}
-        title={tr('settings.ff3Addresses')}
-        addresses={ff3Hosts}
-        activeAddress={ff3ActiveHost}
-        onSave={async (list) => {
-          await writeHosts(list);
-          await reload();
-        }}
-        probe={async (address) => {
-          const stored = await readStoredCredentials();
-          if (!stored) return false;
-          return (await probeAbout(address, stored.apiToken)).ok;
-        }}
-      />
-
-      <AddressesSheet
-        visible={sheet === 'localAddresses'}
-        onClose={() => {
-          setSheet(null);
-          reload();
-        }}
-        title={tr('settings.localModelAddresses')}
-        addresses={localModelUrls}
-        activeAddress={localModelActiveUrl}
-        onSave={async (list) => {
-          await setLocalModelBaseUrls(db, list);
-          await reload();
-        }}
-        probe={probeLocalModel}
-      />
-
-      <Sheet
-        visible={sheet === 'localModel'}
-        onClose={() => {
-          setSheet(null);
-          setLocalModelNameInput(null); // drop an unsaved edit, so the sheet reopens on the stored name
-        }}
-        title={tr('sync.providerLocal')}
-        footer={
-          <Button
-            title={saving ? tr('common.saving') : tr('common.save')}
-            disabled={saving}
-            onPress={() =>
-              saveOnce(async () => {
-                await setLocalModelName(db, localModelName);
-                setLocalModelNameInput(null);
-                await reload();
-                setSheet(null);
-              })
-            }
-          />
-        }
-      >
-        <TextField
-          value={localModelName}
-          onChangeText={setLocalModelNameInput}
-          placeholder={tr('settings.localModelPlaceholder')}
-          autoCapitalize="none"
-        />
-      </Sheet>
-
-      <Sheet
-        visible={sheet === 'gemini'}
-        onClose={() => setSheet(null)}
-        title={tr('settings.geminiApiKey')}
-        footer={
-          <Button
-            title={saving ? tr('common.saving') : tr('common.save')}
-            disabled={saving || !geminiKeyInput.trim()}
-            onPress={() =>
-              saveOnce(async () => {
-                await saveGeminiKey(geminiKeyInput);
-                await reload();
-                setGeminiKeyInput('');
-                setSheet(null);
-              })
-            }
-          />
-        }
-      >
-        <Text style={[t.type.label, { color: t.color.textMuted }]}>
-          {tr('settings.geminiPrivacy')}
-        </Text>
-        <TextField
-          value={geminiKeyInput}
-          onChangeText={setGeminiKeyInput}
-          placeholder={tr('settings.apiKeyPlaceholder')}
-          secureTextEntry
-          autoCapitalize="none"
-        />
-      </Sheet>
-
-      <PickerSheet
+      <AccountPickerSheet
         visible={sheet === 'account'}
         onClose={() => setSheet(null)}
         title={tr('settings.defaultAccount')}
-        options={assetAccounts.map((a) => ({ key: a.id, label: a.name }))}
-        selected={defaultAccountId}
-        empty={noAccountsHint}
-        onSelect={act(tr('settings.defaultAccount'), async (id: string | null) => {
-          if (!id) return;
-          await setDefaultSourceAccountId(db, id);
+        accounts={assetAccounts}
+        currencies={currencies}
+        selectedId={defaultAccountId}
+        onSelect={act(tr('settings.defaultAccount'), async (a: { id: string }) => {
+          await setDefaultSourceAccountId(db, a.id);
           await reload();
         })}
       />
@@ -635,16 +351,15 @@ export default function SettingsScreen() {
         })}
       />
 
-      <PickerSheet
+      <AccountPickerSheet
         visible={sheet === 'cashAccount'}
         onClose={() => setSheet(null)}
         title={tr('settings.cashPaymentsUse')}
-        options={assetAccounts.map((a) => ({ key: a.id, label: a.name }))}
-        selected={cashAccountId}
-        empty={noAccountsHint}
-        onSelect={act(tr('settings.cashPaymentsUse'), async (id: string | null) => {
-          if (!id) return;
-          await setCashAccountId(db, id);
+        accounts={assetAccounts}
+        currencies={currencies}
+        selectedId={cashAccountId}
+        onSelect={act(tr('settings.cashPaymentsUse'), async (a: { id: string }) => {
+          await setCashAccountId(db, a.id);
           await reload();
         })}
       />
@@ -665,19 +380,6 @@ export default function SettingsScreen() {
           await setLocale(db, next);
           await reload();
         })}
-      />
-      <PickerSheet
-        visible={sheet === 'reminderLead'}
-        onClose={() => setSheet(null)}
-        title={tr('planned.reminderLead')}
-        options={PLANNED_REMINDER_LEADS.map((days) => ({
-          key: String(days),
-          label: reminderLeadName(days),
-        }))}
-        selected={String(plannedReminderLead)}
-        onSelect={(value) => {
-          if (value != null) void chooseReminderLead(Number(value));
-        }}
       />
     </Screen>
   );

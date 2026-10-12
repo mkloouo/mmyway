@@ -2,46 +2,78 @@
 // the show-inactive eye and +, and the empty-list line. The accounts list adds Reorder to the bar.
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Text, View } from 'react-native';
+import { Text } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { AppBar, BarIconButton, BarRow, Card, Chip } from '../ui/components';
+import { AppBar, BarIconButton, BarRow, Money } from '../ui/components';
+import { ListRow, Tile, type TileTone } from '../ui/kit';
+import { currencyOf } from '../ui/money';
 import { PendingDot } from '../ui/PendingDot';
 import { SearchField } from '../ui/SearchField';
 import { useTheme } from '../ui/theme';
+import { formFromAccount } from './accountEdit';
+import { ROLE_LABEL_KEYS } from './AccountFormParts';
+import { hasEnvelopeMarker } from './envelopeMarker';
 import type { ReferenceAccountRow } from './useAssetAccounts';
 
+/** The tile an account wears and the words under its name: its kind, or its role. */
+export function accountKind(account: ReferenceAccountRow): {
+  icon: keyof typeof Ionicons.glyphMap;
+  tone: TileTone;
+  labelKey: string;
+} {
+  if (account.type === 'liability')
+    return { icon: 'trending-down-outline', tone: 'danger', labelKey: 'account.typeLiability' };
+  if (hasEnvelopeMarker(account.notes))
+    return { icon: 'wallet-outline', tone: 'warn', labelKey: 'accounts.cashEnvelope' };
+  const role = formFromAccount(account).accountRole;
+  if (role === 'savingAsset')
+    return { icon: 'cash-outline', tone: 'income', labelKey: ROLE_LABEL_KEYS[role] };
+  return { icon: 'card-outline', tone: 'accent', labelKey: ROLE_LABEL_KEYS[role] };
+}
+
+/** One account as a row of the list's Card. Inactive accounts say so where the kind would be. */
 export function AccountCard({
   account,
+  currencies,
   pending,
   reordering = false,
-  chips,
+  first = false,
   onPress,
 }: {
   account: ReferenceAccountRow;
+  currencies: Parameters<typeof currencyOf>[0];
   pending: boolean;
   reordering?: boolean;
-  /** Extra chips after "Inactive", e.g. the cash-envelope one. */
-  chips?: ReactNode;
+  /** The first row of its Card: no hairline above it. */
+  first?: boolean;
   onPress?: () => void;
 }) {
   const t = useTheme();
   const { t: tr } = useTranslation();
+  const kind = accountKind(account);
+  // The trailing slot is either the balance or the chevron, never both; a reorder shows its handle.
+  const balance = account.currentBalance;
   return (
-    <Card onPress={onPress} style={account.active ? undefined : { opacity: 0.5 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
-        <PendingDot visible={pending} />
-        <Text style={[t.type.body, { color: t.color.text, flex: 1 }]} numberOfLines={1}>
-          {account.name}
-        </Text>
-        {!account.active && <Chip label={tr('accounts.inactive')} />}
-        {chips}
-        {reordering ? (
-          <Ionicons name="reorder-three" size={22} color={t.color.accent} />
-        ) : (
-          <Text style={[t.type.body, { color: t.color.textFaint }]}>›</Text>
-        )}
-      </View>
-    </Card>
+    <ListRow
+      first={first}
+      label={account.name}
+      sub={account.active ? tr(kind.labelKey) : tr('accounts.inactive')}
+      leading={<Tile icon={kind.icon} tone={kind.tone} />}
+      trailing={
+        <>
+          <PendingDot visible={pending} />
+          {reordering ? (
+            <Ionicons name="reorder-three" size={22} color={t.color.accent} />
+          ) : (
+            balance != null && (
+              <Money amount={balance} currency={currencyOf(currencies, account.currencyCode)} />
+            )
+          )}
+        </>
+      }
+      chevron={!reordering && balance == null}
+      onPress={onPress}
+    />
   );
 }
 

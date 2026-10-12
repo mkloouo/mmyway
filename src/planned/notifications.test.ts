@@ -1,11 +1,19 @@
 import {
   computePlannedNotificationTargets,
   formatPlannedNotificationBody,
+  matchesReminderFilter,
+  planPlannedReminders,
   syncPlannedNotifications,
   NOTIFICATION_PREFIX,
+  type PlannedReminderSettings,
+  type ReminderItem,
 } from './notifications';
 import { createTestDb } from '../db/testDb';
-import { setPlannedNotificationsEnabled, setPlannedReminderLead } from '../settings/appSettings';
+import {
+  setPlannedNotificationsEnabled,
+  setPlannedReminderLead,
+  setReminderWhen,
+} from '../settings/appSettings';
 import * as Notifications from 'expo-notifications';
 import { plannedObjects } from '../db/schema';
 import { plannedKey } from './objects';
@@ -18,6 +26,154 @@ jest.mock('expo-notifications', () => ({
   AndroidImportance: { DEFAULT: 3 },
   SchedulableTriggerInputTypes: { DATE: 'date' },
 }));
+
+describe('planPlannedReminders', () => {
+  const now = new Date(2026, 9, 10, 10, 0, 0); // Oct 10, 2026
+  const eur = [{ code: 'EUR', symbol: '€', decimalPlaces: 2 }] as any[];
+  const baseSettings: PlannedReminderSettings = {
+    when: 'dayBefore',
+    overrides: {},
+    time: '09:00',
+    nudgeOnDay: true,
+    filter: 'all',
+    minAmount: '200',
+    digest: false,
+    warnShort: false,
+  };
+  const itemOf = (
+    key: string,
+    date: string,
+    amount: string,
+    extra: Partial<ReminderItem['fields']> = {},
+  ): ReminderItem => ({
+    key,
+    fields: {
+      name: key,
+      amount,
+      currencyCode: 'EUR',
+      date,
+      time: null,
+      type: 'withdrawal',
+      ...extra,
+    },
+  });
+
+  it('uses a per-payment timing over the global one', () => {
+    const items = [itemOf('gym', '2026-10-20', '30.00'), itemOf('rent', '2026-10-20', '900.00')];
+    const plan = planPlannedReminders(
+      items,
+      [],
+      { ...baseSettings, overrides: { gym: 'week' } },
+      eur,
+      now,
+    );
+    const at = (key: string) =>
+      plan.filter((r) => r.data.plannedKey === key).map((r) => r.triggerDate);
+    // gym: a week ahead (Oct 13) and the day; rent: the global day before (Oct 19) and the day.
+    expect(at('gym')).toEqual([new Date(2026, 9, 13, 9), new Date(2026, 9, 20, 9)]);
+    expect(at('rent')).toEqual([new Date(2026, 9, 19, 9), new Date(2026, 9, 20, 9)]);
+  });
+
+  it('sends nothing for a payment overridden to off', () => {
+    const plan = planPlannedReminders(
+      [itemOf('gym', '2026-10-20', '30.00')],
+      [],
+      { ...baseSettings, overrides: { gym: 'off' } },
+      eur,
+      now,
+    );
+    expect(plan).toEqual([]);
+  });
+
+  it('fires at the reminder time for a payment with no time of its own, and its own time otherwise', () => {
+    const items = [
+      itemOf('gym', '2026-10-20', '30.00'),
+      itemOf('rent', '2026-10-20', '900.00', { time: '14:30' }),
+    ];
+    const plan = planPlannedReminders(items, [], { ...baseSettings, time: '07:30' }, eur, now);
+    const at = (key: string) =>
+      plan.filter((r) => r.data.plannedKey === key).map((r) => r.triggerDate);
+    expect(at('gym')).toEqual([new Date(2026, 9, 19, 7, 30), new Date(2026, 9, 20, 7, 30)]);
+    expect(at('rent')).toEqual([new Date(2026, 9, 19, 14, 30), new Date(2026, 9, 20, 14, 30)]);
+  });
+
+  it('leaves out the on-the-day reminder when nudge is off', () => {
+    const plan = planPlannedReminders(
+      [itemOf('gym', '2026-10-20', '30.00')],
+      [],
+      { ...baseSettings, nudgeOnDay: false },
+      eur,
+      now,
+    );
+    expect(plan.map((r) => r.triggerDate)).toEqual([new Date(2026, 9, 19, 9)]);
+  });
+
+  it('keeps only withdrawals for outgoing, and amounts at least the minimum for bigger', () => {
+    const items = [
+      itemOf('small', '2026-10-20', '15.99'),
+      itemOf('big', '2026-10-20', '350.00'),
+      itemOf('salary', '2026-10-20', '2000.00', { type: 'deposit' }),
+    ];
+    const keys = (filter: PlannedReminderSettings['filter'], minAmount = '200') => [
+      ...new Set(
+        planPlannedReminders(items, [], { ...baseSettings, filter, minAmount }, eur, now).map(
+          (r) => r.data.plannedKey,
+        ),
+      ),
+    ];
+    expect(keys('all')).toEqual(['small', 'big', 'salary']);
+    expect(keys('outgoing')).toEqual(['small', 'big']);
+    expect(keys('bigger')).toEqual(['big', 'salary']);
+    expect(keys('bigger', '400')).toEqual(['salary']);
+    expect(matchesReminderFilter({ amount: '-350.00' }, 'bigger', '200')).toBe(true);
+  });
+
+  it('groups three payments due the same day into one digest with the total', () => {
+    const items = [
+      itemOf('a', '2026-10-20', '10.00'),
+      itemOf('b', '2026-10-20', '20.00'),
+      itemOf('c', '2026-10-20', '30.00'),
+    ];
+    const plan = planPlannedReminders(items, [], { ...baseSettings, digest: true }, eur, now);
+    // One digest the day before (lead) and one on the day (nudge), not six notifications.
+    expect(plan).toHaveLength(2);
+    const lead = plan.find((r) => r.triggerDate.getTime() === new Date(2026, 9, 19, 9).getTime())!;
+    expect(lead.identifier).toMatch(new RegExp(`^${NOTIFICATION_PREFIX}digest:`));
+    expect(lead.title).toContain('3 payments tomorrow');
+    expect(lead.title).toMatch(/60[.,]00/);
+    expect(lead.body).toBe('a, b, c');
+    expect(lead.categoryIdentifier).toBeUndefined();
+  });
+
+  it('warns the day before when an outgoing payment exceeds what the account has left', () => {
+    const accounts = [
+      { id: 'acc1', name: 'Current', currencyCode: 'EUR', currentBalance: '100.00' },
+    ];
+    const items = [
+      itemOf('a', '2026-10-18', '80.00', { sourceId: 'acc1' }),
+      itemOf('b', '2026-10-20', '80.00', { sourceId: 'acc1' }),
+    ];
+    const plan = planPlannedReminders(
+      items,
+      accounts,
+      { ...baseSettings, warnShort: true },
+      eur,
+      now,
+    );
+    // The first one is covered (100 - 80 = 20 left), the second is not (80 > 20).
+    const warnings = plan.filter((r) => r.categoryIdentifier === 'planned-short');
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]?.triggerDate).toEqual(new Date(2026, 9, 19, 9));
+    expect(warnings[0]?.identifier).toBe(`${NOTIFICATION_PREFIX}short:acc1:2026-10-20:b`);
+    expect(warnings[0]?.data).toEqual({
+      plannedKey: 'b',
+      dueDate: '2026-10-20',
+      accountId: 'acc1',
+    });
+    const covered = plan.filter((r) => r.data.plannedKey === 'a');
+    expect(covered.every((r) => r.body.includes('enough in it'))).toBe(true);
+  });
+});
 
 describe('computePlannedNotificationTargets', () => {
   const item = {
@@ -179,6 +335,7 @@ describe('syncPlannedNotifications', () => {
 
   it('schedules notifications for upcoming items when enabled', async () => {
     await setPlannedNotificationsEnabled(db, true);
+    await setReminderWhen(db, 'fewDays'); // the lead this test asserts: 2 days before, then the day
     // Insert a planned trio (bill, rule, recurrence) so plannedItems considers it complete
     const now = new Date(2026, 9, 1, 10, 0, 0); // Oct 1, 2026
     const syncedAt = now.toISOString();
@@ -235,7 +392,7 @@ describe('syncPlannedNotifications', () => {
         identifier: 'planned:gym:2026-10-20:2',
         content: expect.objectContaining({
           title: 'Gym',
-          data: { plannedKey: 'gym' },
+          data: { plannedKey: 'gym', dueDate: '2026-10-20' },
         }),
       }),
     );
@@ -244,7 +401,7 @@ describe('syncPlannedNotifications', () => {
         identifier: 'planned:gym:2026-10-20:0',
         content: expect.objectContaining({
           title: 'Gym',
-          data: { plannedKey: 'gym' },
+          data: { plannedKey: 'gym', dueDate: '2026-10-20' },
         }),
       }),
     );

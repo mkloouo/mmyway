@@ -1,13 +1,15 @@
-// The one place the app opens the system date picker. Android shows its own dialog; the app ships
-// only for Android today (review: "Android-only APIs"), so an iOS build needs one change here —
-// an inline <DateTimePicker> in a Sheet — instead of one per screen.
+// The one place the app opens the date and time pickers. Android shows its own dialog; iOS has none,
+// so the request goes to the mounted PickerHost sheet (src/ui/PickerHost.tsx) instead of one picker
+// per screen.
 import { Platform } from 'react-native';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { logLine } from '../utils/log';
+import { requestPicker } from './PickerHost';
 
 export function pickDate(value: Date, onPick: (picked: Date) => void): void {
   if (Platform.OS !== 'android') {
-    logLine('warn', `pickDate: no date picker on ${Platform.OS} yet`);
+    if (!requestPicker({ mode: 'date', value, onPick }))
+      logLine('warn', `pickDate: no date picker on ${Platform.OS} yet`);
     return;
   }
   DateTimePickerAndroid.open({
@@ -22,9 +24,14 @@ export function pickDate(value: Date, onPick: (picked: Date) => void): void {
 /**
  * The date, then the time: the time dialog opens as soon as a day is picked, starting from
  * `value`'s time. Cancelling the time keeps the new day at the old time; cancelling the date
- * changes nothing.
+ * changes nothing. On iOS both spinners sit in one sheet.
  */
 export function pickDateTime(value: Date, onPick: (picked: Date) => void): void {
+  if (Platform.OS !== 'android') {
+    if (!requestPicker({ mode: 'datetime', value, onPick }))
+      logLine('warn', `pickDate: no date picker on ${Platform.OS} yet`);
+    return;
+  }
   pickDate(value, (day) => {
     const withDay = new Date(
       day.getFullYear(),
@@ -34,10 +41,6 @@ export function pickDateTime(value: Date, onPick: (picked: Date) => void): void 
       value.getMinutes(),
       value.getSeconds(),
     );
-    if (Platform.OS !== 'android') {
-      onPick(withDay);
-      return;
-    }
     DateTimePickerAndroid.open({
       value: withDay,
       mode: 'time',
@@ -61,23 +64,23 @@ export function pickDateTime(value: Date, onPick: (picked: Date) => void): void 
   });
 }
 
-/** The system time dialog alone ("HH:MM" in, "HH:MM" out); cancelling changes nothing. */
+/** The time picker alone ("HH:MM" in, "HH:MM" out); cancelling changes nothing. */
 export function pickTime(value: string | null, onPick: (time: string) => void): void {
-  if (Platform.OS !== 'android') {
-    logLine('warn', `pickTime: no time picker on ${Platform.OS} yet`);
-    return;
-  }
   const [h, m] = (value ?? '09:00').split(':').map(Number);
   const start = new Date();
   start.setHours(h ?? 9, m ?? 0, 0, 0);
+  const hhmm = (d: Date) =>
+    `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  if (Platform.OS !== 'android') {
+    if (!requestPicker({ mode: 'time', value: start, onPick: (picked) => onPick(hhmm(picked)) }))
+      logLine('warn', `pickTime: no time picker on ${Platform.OS} yet`);
+    return;
+  }
   DateTimePickerAndroid.open({
     value: start,
     mode: 'time',
     onChange: (event: { type: string }, picked?: Date) => {
-      if (event.type === 'set' && picked)
-        onPick(
-          `${String(picked.getHours()).padStart(2, '0')}:${String(picked.getMinutes()).padStart(2, '0')}`,
-        );
+      if (event.type === 'set' && picked) onPick(hhmm(picked));
     },
   });
 }

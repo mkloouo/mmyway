@@ -132,6 +132,16 @@ describe('triggerPlanned (#44)', () => {
     });
   });
 
+  it('queues the occurrence it was given, not the next one', async () => {
+    const db = createTestDb();
+    await triggerPlanned(db as any, inFF3, '2026-11-05');
+    const [op] = await db.select().from(outboxOperations);
+    expect(readPayload<TriggerPlannedPayload>('trigger_planned', op!.payloadJson)).toMatchObject({
+      recurrenceId: '3',
+      date: '2026-11-05',
+    });
+  });
+
   it('does nothing for one Firefly III does not hold yet — nothing to fire', async () => {
     const db = createTestDb();
     await triggerPlanned(db as any, { key: 'new:1', fields, group: null, queued: true });

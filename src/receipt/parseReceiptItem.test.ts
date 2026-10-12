@@ -5,6 +5,7 @@ import { parseReceiptItem } from './toDraft';
 import { buildChain } from './buildChain';
 import type { ReceiptExtraction } from './types';
 import { writeDraft } from '../inbox/draftJson';
+import { setReceiptReader } from '../settings/appSettings';
 
 jest.mock('./buildChain', () => ({ buildChain: jest.fn() }));
 jest.mock('../utils/log', () => ({ logLine: jest.fn() }));
@@ -152,5 +153,57 @@ describe('parseReceiptItem date', () => {
     const extraDraft = JSON.parse(extra.draftJson);
     expect(extraDraft.type).toBe('withdrawal');
     expect(extraDraft.amount).toBe('5.00');
+  });
+});
+
+describe('parseReceiptItem with no receipt reader', () => {
+  const stub = writeDraft({
+    type: 'withdrawal',
+    amount: '',
+    currencyCode: '',
+    date: T,
+    description: '',
+    isNewPayee: true,
+  });
+
+  it("parses to a blank draft with no error and no fetch when the reader is 'none'", async () => {
+    const db = createTestDb();
+    await setReceiptReader(db as any, 'none');
+    await capturedReceipt(db, stub);
+    (buildChain as jest.Mock).mockResolvedValue([]);
+    const realFetch = globalThis.fetch;
+    const fetchMock = jest.fn();
+    globalThis.fetch = fetchMock as any;
+    try {
+      const outcome = await parseReceiptItem(db as any, 'r1', 'base64');
+
+      expect(outcome).toBe('parsed');
+      expect(fetchMock).not.toHaveBeenCalled();
+      const [row] = await db.select().from(inboxItems).where(eq(inboxItems.id, 'r1'));
+      expect(row!.state).toBe('parsed');
+      expect(row!.errorMessage).toBeNull();
+      expect(JSON.parse(row!.draftJson)).toMatchObject({
+        amount: '',
+        currencyCode: '',
+        description: '',
+        date: new Date(T).toISOString(),
+      });
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  });
+
+  it("still reports an error when the reader is 'auto' and nothing is configured", async () => {
+    const db = createTestDb();
+    await setReceiptReader(db as any, 'auto');
+    await capturedReceipt(db, stub);
+    (buildChain as jest.Mock).mockResolvedValue([]);
+
+    const outcome = await parseReceiptItem(db as any, 'r1', 'base64');
+
+    expect(outcome).toBe('failed');
+    const [row] = await db.select().from(inboxItems).where(eq(inboxItems.id, 'r1'));
+    expect(row!.state).toBe('error');
+    expect(row!.errorMessage).toContain('No receipt reader is set up');
   });
 });

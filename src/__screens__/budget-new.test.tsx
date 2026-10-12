@@ -1,9 +1,19 @@
-import { render, screen } from '@testing-library/react-native';
+// The New envelope sheet, opened from the Budget tab's +. Validation and the create path are the
+// ones the old create route had: an empty or duplicate name is refused, and a confirmed create is
+// queued as a create_budget operation. New strings are read through i18n.t, so the tests pass
+// before and after the locale merge.
+import { fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import '../i18n';
+import i18n from '../i18n';
 import { createTestDb } from '../db/testDb';
-import { referenceBudgets, referenceCurrencies } from '../db/schema';
-import NewEnvelopeScreen from '../../app/budget/new';
+import {
+  outboxOperations,
+  referenceBudgets,
+  referenceCategories,
+  referenceCurrencies,
+} from '../db/schema';
+import { confirmAction } from '../ui/confirm';
+import BudgetScreen from '../../app/(tabs)/budget';
 
 jest.setTimeout(15_000);
 
@@ -17,6 +27,14 @@ jest.mock('expo-router', () => ({
 jest.mock('../db/useLiveQuery', () => ({
   sameRows: () => false,
   useLiveQuery: (query: { all: () => unknown }) => ({ data: query.all() }),
+}));
+jest.mock('../sync/useSync', () => ({
+  usePullToRefresh: () => ({ refreshing: false, onRefresh: jest.fn() }),
+}));
+jest.mock('../ui/navigateOnce', () => ({ navigateOnce: jest.fn() }));
+jest.mock('../ui/confirm', () => ({
+  confirmAction: jest.fn(async () => true),
+  confirmDestructive: jest.fn(async () => true),
 }));
 
 const SYNCED = '2026-10-11T08:00:00Z';
@@ -38,9 +56,23 @@ beforeAll(() => {
     .insert(referenceBudgets)
     .values([{ id: 'b1', name: 'Groceries', active: true, syncedAt: SYNCED }])
     .run();
+  // "Groceries" already has an envelope, so only the other two are suggested.
+  mockDb
+    .insert(referenceCategories)
+    .values([
+      { id: 'c1', name: 'Groceries', syncedAt: SYNCED },
+      { id: 'c2', name: 'Eating out', syncedAt: SYNCED },
+      { id: 'c3', name: 'Salary', syncedAt: SYNCED },
+    ])
+    .run();
 });
 
-async function renderScreen() {
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockDb.delete(outboxOperations).run();
+});
+
+async function renderTab() {
   return render(
     <SafeAreaProvider
       initialMetrics={{
@@ -48,17 +80,84 @@ async function renderScreen() {
         insets: { top: 0, left: 0, right: 0, bottom: 0 },
       }}
     >
-      <NewEnvelopeScreen />
+      <BudgetScreen />
     </SafeAreaProvider>,
   );
 }
 
-describe('Budget → New Envelope screen', () => {
-  it('renders the create envelope screen', async () => {
-    await renderScreen();
-    expect(screen.getByPlaceholderText('e.g. Groceries, Rent')).toBeTruthy();
-    expect(screen.getByText('Create')).toBeTruthy();
-    expect(screen.getByText('New envelope')).toBeTruthy();
-    expect(screen.getByText('Envelope name')).toBeTruthy();
+// The sheet mounts after the press lands: wait for its name field rather than reading it at once.
+async function openSheet() {
+  fireEvent.press(screen.getByLabelText('New envelope'));
+  return screen.findByPlaceholderText(NAME_PLACEHOLDER);
+}
+
+const NAME_PLACEHOLDER = 'e.g. Groceries, Rent';
+
+describe('Budget tab → New envelope sheet', () => {
+  it('opens from the + with an empty name field', async () => {
+    await renderTab();
+    await openSheet();
+    expect(screen.getByPlaceholderText(NAME_PLACEHOLDER)).toBeTruthy();
+  });
+
+  it('suggests the categories without an envelope, and tapping one fills the name', async () => {
+    await renderTab();
+    await openSheet();
+    expect(await screen.findByText('Eating out')).toBeTruthy();
+    expect(screen.getByText('Salary')).toBeTruthy();
+    // The tab's own row is the only "Groceries": the category that has an envelope is not offered.
+    expect(screen.getAllByText('Groceries')).toHaveLength(1);
+
+    fireEvent.press(screen.getByText('Eating out'));
+    expect(await screen.findByDisplayValue('Eating out')).toBeTruthy();
+  });
+
+  it('refuses an empty name and a name that already has an envelope', async () => {
+    await renderTab();
+    await openSheet();
+    const input = screen.getByPlaceholderText(NAME_PLACEHOLDER);
+
+    fireEvent.changeText(input, '   ');
+    expect(await screen.findByText(i18n.t('budget.emptyNameError'))).toBeTruthy();
+
+    fireEvent.changeText(input, 'groceries');
+    expect(
+      await screen.findByText(i18n.t('budget.duplicateNameError', { name: 'groceries' })),
+    ).toBeTruthy();
+
+    fireEvent.press(screen.getByText(i18n.t('budget.createEnvelope')));
+    await waitFor(() => expect(confirmAction).not.toHaveBeenCalled());
+    expect(mockDb.select().from(outboxOperations).all()).toHaveLength(0);
+  });
+
+  it('queues a confirmed create as a create_budget operation', async () => {
+    await renderTab();
+    await openSheet();
+    fireEvent.changeText(screen.getByPlaceholderText(NAME_PLACEHOLDER), 'Holiday');
+    await screen.findByDisplayValue('Holiday');
+    fireEvent.press(screen.getByText(i18n.t('budget.createEnvelope')));
+
+    await waitFor(() =>
+      expect(confirmAction).toHaveBeenCalledWith(
+        i18n.t('budget.createTitle'),
+        i18n.t('budget.createAction'),
+      ),
+    );
+    await waitFor(() =>
+      expect(
+        mockDb
+          .select()
+          .from(outboxOperations)
+          .all()
+          .map((o) => o.kind),
+      ).toEqual(['create_budget']),
+    );
+    expect(
+      mockDb
+        .select()
+        .from(referenceBudgets)
+        .all()
+        .map((b) => b.name),
+    ).toContain('Holiday');
   });
 });

@@ -119,7 +119,7 @@ describe('describeQueuedChange', () => {
         op('update_account', { accountId: '5', edit: { name: 'Revolut EUR' }, active: false }),
         lookups,
       ).changed,
-    ).toEqual(['accounts.name', 'accounts.active']);
+    ).toEqual(['accounts.name', 'account.fieldActive']);
   });
 
   it('survives an unreadable payload', () => {

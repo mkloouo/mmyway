@@ -14,16 +14,16 @@ import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
 import {
   Screen,
-  AppBar,
-  BarIconButton,
   Card,
   Button,
   Money,
   Row,
   Sheet,
-  CloseButton,
   SCREEN_TOP_PADDING,
 } from '../../src/ui/components';
+import { MoreButton, PushHeader } from '../../src/ui/kit';
+import { SaveBar } from '../../src/ui/SaveBar';
+import { useConfirmDiscard } from '../../src/ui/useConfirmDiscard';
 import { DetailRows, type DetailRowsValue } from '../../src/ui/DetailRows';
 import { Keypad } from '../../src/ui/Keypad';
 import { TextField } from '../../src/ui/TextField';
@@ -100,7 +100,11 @@ export default function TransactionDetailScreen() {
   if (!row)
     return (
       <Screen bottom>
-        <AppBar title={tr('transaction.title')} />
+        <PushHeader
+          backLabel={tr('activity.title')}
+          onBack={() => router.back()}
+          title={tr('transaction.title')}
+        />
       </Screen>
     );
   // Mounted once the row is known, so the editor below never has to re-narrow it.
@@ -522,7 +526,8 @@ function TransactionEditor({ row }: { row: CachedRow }) {
     ...pendingEdit?.changes,
   };
 
-  const onSave = act(tr('common.save'), async () => {
+  // Whether Save would send anything. The save bar shows only then, and leaving with changes asks.
+  function hasChanges(): boolean {
     if (splitMode) {
       const date = effectiveDate.toISOString();
       const payloadSplits = toPayloadSplits(splits, {
@@ -533,7 +538,7 @@ function TransactionEditor({ row }: { row: CachedRow }) {
       const baseTotal =
         (pendingEdit?.splits ? pendingEdit.changes.amount : undefined) ?? row.amount;
       const baseTitle = pendingEdit?.groupTitle ?? row.description;
-      const dirty =
+      return (
         removed.length > 0 ||
         !sameAmount(total, baseTotal) ||
         groupTitle !== baseTitle ||
@@ -541,7 +546,31 @@ function TransactionEditor({ row }: { row: CachedRow }) {
         !sameSplits(
           payloadSplits,
           toPayloadSplits(baseSplits, { type, date, currencyCode: row.currencyCode }),
-        );
+        )
+      );
+    }
+    return Object.keys(changedFields(changes, baseline)).length > 0;
+  }
+  const dirty = hasChanges();
+  const close = useConfirmDiscard(dirty, 'transaction.discardTitle');
+  /** Back to what the screen loaded with: the save bar's Undo. */
+  function undoChanges() {
+    setChanges({});
+    setEdited(null);
+    setTotalEdit(null);
+    setTitleEdit(null);
+    setRemoved([]);
+    setAllocation(null);
+  }
+
+  const onSave = act(tr('common.save'), async () => {
+    if (splitMode) {
+      const date = effectiveDate.toISOString();
+      const payloadSplits = toPayloadSplits(splits, {
+        type,
+        date,
+        currencyCode: row.currencyCode,
+      });
       if (!dirty) {
         router.back();
         return;
@@ -592,8 +621,9 @@ function TransactionEditor({ row }: { row: CachedRow }) {
         : row.type === 'deposit'
           ? row.sourceName
           : null;
+    // The Rules page opens its New rule sheet with these prefilled.
     router.push({
-      pathname: '/settings/rule-new',
+      pathname: '/settings/rules',
       params: {
         match: payee || row.description,
         category: row.categoryName ?? '',
@@ -738,7 +768,9 @@ function TransactionEditor({ row }: { row: CachedRow }) {
   return (
     <Screen bottom>
       <View style={{ flex: 1 }}>
-        <AppBar
+        <PushHeader
+          backLabel={tr('activity.title')}
+          onBack={close}
           title={txTypeLabelKey(type) ? tr(txTypeLabelKey(type)!) : type}
           subtitle={
             pendingEdit
@@ -747,21 +779,7 @@ function TransactionEditor({ row }: { row: CachedRow }) {
                 : tr('transaction.changesNotSent')
               : tr('transaction.syncedAgo', { time: relativeTime(row.syncedAt) })
           }
-          left={<CloseButton onPress={() => router.back()} />}
-          right={
-            <>
-              <BarIconButton
-                icon="copy"
-                label={tr('transaction.duplicate')}
-                onPress={onDuplicate}
-              />
-              <BarIconButton
-                icon="ellipsis-horizontal"
-                label={tr('capture.more')}
-                onPress={() => setMenuOpen(true)}
-              />
-            </>
-          }
+          right={<MoreButton label={tr('capture.more')} onPress={() => setMenuOpen(true)} />}
         />
 
         <ScrollView
@@ -906,22 +924,27 @@ function TransactionEditor({ row }: { row: CachedRow }) {
             {type === 'transfer' ? tr('transaction.pickBothAccounts') : tr('transaction.pickPayee')}
           </Text>
         )}
-        <View style={{ padding: t.space.lg, flexDirection: 'row', gap: t.space.sm }}>
-          <Button
-            title={saving ? tr('common.saving') : tr('common.save')}
-            onPress={onSave}
+        {dirty ? (
+          <SaveBar
+            problemText={null}
+            saving={saving}
             disabled={saving || rest !== 0n || !ready}
-            size="lg"
-            style={{ flex: 1 }}
+            onSave={onSave}
+            summary={tr('tiers.unsaved')}
+            onUndo={undoChanges}
           />
-          <Button
-            title={tr('splits.split')}
-            variant="secondary"
-            onPress={startSplit}
-            disabled={saving || splitsLoading}
-            size="lg"
-          />
-        </View>
+        ) : (
+          <View style={{ padding: t.space.lg, flexDirection: 'row', gap: t.space.sm }}>
+            <Button
+              title={tr('splits.split')}
+              variant="secondary"
+              onPress={startSplit}
+              disabled={saving || splitsLoading}
+              size="lg"
+              style={{ flex: 1 }}
+            />
+          </View>
+        )}
       </View>
 
       <Sheet

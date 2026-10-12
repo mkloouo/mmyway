@@ -49,7 +49,7 @@ const TRANSACTION_FIELD_LABELS: Record<string, string> = {
 const ACCOUNT_FIELD_LABELS: Record<string, string> = {
   name: 'accounts.name',
   currencyCode: 'fields.currency',
-  includeNetWorth: 'account.includeNetWorth',
+  includeNetWorth: 'account.fieldNetWorth',
   virtualBalance: 'account.virtualBalance',
   openingBalance: 'account.openingBalance',
   openingBalanceDate: 'account.openingBalanceDate',
@@ -160,8 +160,8 @@ export function describeQueuedChange(
       const edit = (p.edit as Record<string, unknown> | undefined) ?? {};
       const changed = [
         ...labelsOf(Object.keys(edit), ACCOUNT_FIELD_LABELS),
-        ...(p.active !== undefined ? ['accounts.active'] : []),
-        ...(p.setEnvelopeMarker !== undefined ? ['accounts.cashEnvelope'] : []),
+        ...(p.active !== undefined ? ['account.fieldActive'] : []),
+        ...(p.setEnvelopeMarker !== undefined ? ['account.fieldCashCount'] : []),
         ...(p.order !== undefined ? ['inbox.changedOrder'] : []),
       ];
       return {
@@ -240,10 +240,10 @@ export function describeQueuedChange(
       return {
         subject: null,
         route: `/planned/object/${encodeURIComponent(plannedKey('rule', p.ruleId as string))}`,
-        changed: ['accounts.active'],
+        changed: ['account.fieldActive'],
       };
     case 'toggle_rule_group':
-      return { subject: null, route: null, changed: ['accounts.active'] };
+      return { subject: null, route: null, changed: ['account.fieldActive'] };
     case 'trigger_rule':
       return {
         subject: null,

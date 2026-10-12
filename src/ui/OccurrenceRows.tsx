@@ -9,10 +9,11 @@
 // "Already booked" is `GET /v1/recurrences/{id}/transactions`, which is the only way to see past
 // occurrences — `occurrences` is future-only.
 import { useTranslation } from 'react-i18next';
-import { Text } from 'react-native';
+import { Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { Card, Row, SectionHeader } from './components';
+import { Card, SectionHeader } from './components';
+import { ListRow } from './kit';
 import { useTheme } from './theme';
 import { currencyOf, formatMoney } from './money';
 import { occurrenceLabel } from '../planned/labels';
@@ -65,28 +66,28 @@ export function OccurrenceRows({
     retry: false,
   });
 
+  const action = (text: string) => (
+    <Text style={{ fontSize: 15, fontWeight: '600', color: t.color.accent }}>{text}</Text>
+  );
+
   return (
     <>
       <SectionHeader title={tr('planned.occurrencesAhead')} />
-      <Card style={{ marginHorizontal: t.space.lg }}>
+      <Card flush style={{ marginHorizontal: t.space.lg }}>
         {ahead.length === 0 && (
-          <Text style={[t.type.body, { color: t.color.textMuted }]}>
+          <Text style={[t.type.body, { color: t.color.textMuted, padding: t.space.lg }]}>
             {tr('planned.occurrencesNone')}
           </Text>
         )}
         {ahead.map((day, i) => {
           const skipped = skipDays.includes(day);
           return (
-            <Row
+            <ListRow
               key={day}
               first={i === 0}
-              label={
-                skipped
-                  ? `${occurrenceLabel(day)} · ${tr('planned.skipped')}`
-                  : occurrenceLabel(day)
-              }
-              icon={skipped ? 'refresh' : 'close-circle'}
-              tone={skipped ? undefined : 'danger'}
+              label={occurrenceLabel(day)}
+              sub={skipped ? tr('planned.skipped') : undefined}
+              trailing={action(skipped ? tr('common.undo') : tr('planned.skipShort'))}
               onPress={() => onToggleSkip(day)}
             />
           );
@@ -104,9 +105,9 @@ export function OccurrenceRows({
       {!!recurrenceId && (
         <>
           <SectionHeader title={tr('planned.occurrencesBehind')} />
-          <Card style={{ marginHorizontal: t.space.lg }}>
+          <Card flush style={{ marginHorizontal: t.space.lg }}>
             {(booked.data ?? []).length === 0 && (
-              <Text style={[t.type.body, { color: t.color.textMuted }]}>
+              <Text style={[t.type.body, { color: t.color.textMuted, padding: t.space.lg }]}>
                 {booked.isPending ? tr('common.loading') : tr('planned.occurrencesNoneBehind')}
               </Text>
             )}
@@ -115,11 +116,17 @@ export function OccurrenceRows({
               if (!split) return null;
               const currency = currencyOf(currencies, split.currency_code ?? '');
               return (
-                <Row
+                <ListRow
                   key={group.id}
                   first={i === 0}
                   label={occurrenceLabel(String(split.date ?? '').slice(0, 10))}
-                  value={formatMoney(split.amount ?? '0', currency)}
+                  trailing={
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
+                      <Text style={[t.type.body, { color: t.color.textMuted }]}>
+                        {formatMoney(split.amount ?? '0', currency)}
+                      </Text>
+                    </View>
+                  }
                   chevron
                   onPress={() =>
                     router.push({

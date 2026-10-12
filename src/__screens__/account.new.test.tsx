@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import '../i18n';
@@ -57,28 +57,40 @@ async function renderScreen() {
   );
 }
 
-function saveButton() {
-  return screen.getByRole('button', { name: 'Save' });
+// The step-1 and step-2 buttons are found by their wrapper's testID: their labels are new strings.
+function continueButton() {
+  return within(screen.getByTestId('new-account-continue')).getByRole('button');
+}
+
+function createButton() {
+  return within(screen.getByTestId('new-account-create')).getByRole('button');
 }
 
 describe('Settings → Accounts → New account screen', () => {
-  it('keeps Save disabled until the account has a name', async () => {
+  it('keeps Continue disabled until the account has a name', async () => {
     await renderScreen();
-    expect(saveButton().props.accessibilityState.disabled).toBe(true);
+    expect(continueButton().props.accessibilityState.disabled).toBe(true);
     await fireEvent.changeText(screen.getByPlaceholderText('Name'), 'Checking');
-    expect(saveButton().props.accessibilityState.disabled).toBe(false);
+    expect(continueButton().props.accessibilityState.disabled).toBe(false);
   });
 
-  it('shows the liability fields only for a liability', async () => {
+  it('shows the liability fields only on step 2 for a liability', async () => {
     await renderScreen();
-    expect(screen.queryByText('Interest rate (%)')).toBeNull();
-    expect(screen.queryByText('Credit limit')).toBeNull();
-
-    await fireEvent.press(screen.getByText('Liability'));
+    await fireEvent.changeText(screen.getByPlaceholderText('Name'), 'Checking');
+    await fireEvent.press(screen.getByTestId('kind-liability'));
+    await fireEvent.press(screen.getByText('Liability type'));
+    await fireEvent.press(screen.getByText('Loan'));
+    await fireEvent.press(continueButton());
     expect(screen.getByText('Interest rate (%)')).toBeTruthy();
     expect(screen.getByText('Credit limit')).toBeTruthy();
 
-    await fireEvent.press(screen.getByText('Asset'));
+    // Change goes back to step 1, where the liability fields are not shown.
+    await fireEvent.press(screen.getByTestId('new-account-change'));
+    expect(screen.queryByText('Interest rate (%)')).toBeNull();
+    expect(screen.queryByText('Credit limit')).toBeNull();
+
+    await fireEvent.press(screen.getByTestId('kind-asset'));
+    await fireEvent.press(continueButton());
     expect(screen.queryByText('Interest rate (%)')).toBeNull();
     expect(screen.queryByText('Credit limit')).toBeNull();
   });
@@ -86,16 +98,23 @@ describe('Settings → Accounts → New account screen', () => {
   it('starts on Liability when opened with type=liability (Settings → Liabilities +)', async () => {
     mockParams = { type: 'liability' };
     await renderScreen();
-    expect(screen.getByText('Interest rate (%)')).toBeTruthy();
+    expect(screen.getByTestId('kind-liability').props.accessibilityState.checked).toBe(true);
     expect(screen.queryByText('Account role')).toBeNull();
+    await fireEvent.changeText(screen.getByPlaceholderText('Name'), 'Home loan');
+    await fireEvent.press(screen.getByText('Liability type'));
+    await fireEvent.press(screen.getByText('Loan'));
+    await fireEvent.press(continueButton());
+    expect(screen.getByText('Interest rate (%)')).toBeTruthy();
   });
 
   it('confirms, then queues create_account and shows the account at once', async () => {
     await renderScreen();
     await fireEvent.changeText(screen.getByPlaceholderText('Name'), 'Home loan');
-    await fireEvent.press(screen.getByText('Liability'));
+    await fireEvent.press(screen.getByTestId('kind-liability'));
     await fireEvent.press(screen.getByText('Liability type'));
     await fireEvent.press(screen.getByText('Mortgage'));
+    await fireEvent.press(continueButton());
+
     await fireEvent.press(screen.getByText('Direction'));
     await fireEvent.press(screen.getByText('I owe this'));
     // The amount fields, in order: opening balance, interest rate, credit limit.
@@ -103,7 +122,7 @@ describe('Settings → Accounts → New account screen', () => {
     await fireEvent.changeText(amounts[1]!, '3,5');
     await fireEvent.changeText(amounts[2]!, '5000');
 
-    await fireEvent.press(saveButton());
+    await fireEvent.press(createButton());
 
     await waitFor(() => expect(router.back).toHaveBeenCalled());
     expect(confirmAction).toHaveBeenCalledTimes(1);
@@ -138,7 +157,8 @@ describe('Settings → Accounts → New account screen', () => {
     await renderScreen();
     await fireEvent.changeText(screen.getByPlaceholderText('Name'), 'Checking');
 
-    await fireEvent.press(saveButton());
+    await fireEvent.press(continueButton());
+    await fireEvent.press(createButton());
 
     await waitFor(() => expect(confirmAction).toHaveBeenCalledTimes(1));
     await act(async () => {});

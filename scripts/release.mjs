@@ -15,6 +15,7 @@ import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseWhatsNew } from './whatsNew.mjs';
 
 const APP = 'mmyway';
 // Who may release. In GitHub Actions the workflow's actor is checked; locally, the `gh` login
@@ -100,8 +101,10 @@ A release runs these steps in order. Re-running it skips the steps already done,
 failed build or upload, fix the cause and run the same command again.
   prepare          on main with a clean tree; X.Y.Z newer than package.json; no vX.Y.Z tag
                    or GitHub release yet. Type-check and tests. Then, left uncommitted:
-                   CHANGELOG.md's [Unreleased] moves under "## [X.Y.Z] - <today>", and the
-                   version goes into package.json, package-lock.json and app.config.js.
+                   CHANGELOG.md's [Unreleased] moves under "## [X.Y.Z] - <today>", the
+                   version goes into package.json, package-lock.json and app.config.js, and
+                   src/about/whatsNew.json (the in-app "What's new" notes) is regenerated from
+                   that section.
   build-android    local EAS build (production profile): one APK per ABI plus a universal one,
                    checked, renamed and listed in SHA256SUMS. Always rebuilds when run alone.
   commit           the "release vX.Y.Z" commit of those files, and an annotated vX.Y.Z tag.
@@ -196,9 +199,13 @@ const ctx = { label: tag, outDir: path.join('releases', tag) };
 const headSubject = () => out('git', ['log', '-1', '--format=%s']);
 const readPkgVersion = () => JSON.parse(fs.readFileSync('package.json', 'utf8')).version;
 const versionFiles = () =>
-  ['CHANGELOG.md', 'package.json', 'package-lock.json', 'app.config.js'].filter((f) =>
-    fs.existsSync(f),
-  );
+  [
+    'CHANGELOG.md',
+    'package.json',
+    'package-lock.json',
+    'app.config.js',
+    'src/about/whatsNew.json',
+  ].filter((f) => fs.existsSync(f));
 // `-z`, untrimmed: each entry is "XY path", and X is a space for an unstaged change.
 const changedFiles = () =>
   execFileSync('git', ['status', '--porcelain', '-z'], { encoding: 'utf8' })
@@ -285,6 +292,8 @@ function bumpVersionFiles() {
   const m = changelogSection(changelog, 'Unreleased');
   if (!m || m[1].trim() === '') fail('CHANGELOG.md has nothing under [Unreleased]');
   const released = `## [Unreleased]\n\n## [${version}] - ${today()}\n\n${m[1].trim()}\n\n`;
+  const nextChangelog =
+    changelog.slice(0, m.index) + released + changelog.slice(m.index + m[0].length);
 
   const bump = (file, re) => {
     const text = fs.readFileSync(file, 'utf8');
@@ -293,12 +302,13 @@ function bumpVersionFiles() {
   };
   // Every file is read and checked before any is written, so a refusal leaves none changed.
   const writes = [
-    [
-      'CHANGELOG.md',
-      changelog.slice(0, m.index) + released + changelog.slice(m.index + m[0].length),
-    ],
+    ['CHANGELOG.md', nextChangelog],
     ['package.json', bump('package.json', /"version": "\d+\.\d+\.\d+"/)],
     ['app.config.js', bump('app.config.js', /version: '\d+\.\d+\.\d+'/)],
+    [
+      'src/about/whatsNew.json',
+      JSON.stringify(parseWhatsNew(nextChangelog, version), null, 2) + '\n',
+    ],
   ];
   // The lockfile carries the app's own version twice; left alone, it lagged a release behind
   // until the next `npm install` rewrote it.
@@ -308,7 +318,10 @@ function bumpVersionFiles() {
     if (lock.packages?.['']) lock.packages[''].version = version;
     writes.push(['package-lock.json', JSON.stringify(lock, null, 2) + '\n']);
   }
-  for (const [file, text] of writes) fs.writeFileSync(file, text);
+  for (const [file, text] of writes) {
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(file, text);
+  }
 }
 
 function prepare() {

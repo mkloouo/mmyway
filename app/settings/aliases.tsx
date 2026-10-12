@@ -1,22 +1,22 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
+import { router } from 'expo-router';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
 import { useDb } from '../../src/providers/DbProvider';
 import { SearchField } from '../../src/ui/SearchField';
 import { useTheme } from '../../src/ui/theme';
 import {
   Screen,
-  AppBar,
   BarRow,
   BarIconButton,
   Button,
   Sheet,
   Card,
-  Chip,
   Toast,
   SCREEN_TOP_PADDING,
 } from '../../src/ui/components';
+import { ListRow, PushHeader } from '../../src/ui/kit';
 import { payeeAliases } from '../../src/db/schema';
 import { rememberPayeeAlias, removePayeeAlias, removePayeeGroup } from '../../src/lookup/aliases';
 import { exportAliasesJson, importAliasesJson } from '../../src/lookup/aliasTransfer';
@@ -77,6 +77,9 @@ export default function AliasesScreen() {
     );
   }, [groups, needle]);
 
+  // The payee being edited, when it already has aliases: its aliases can be removed in the sheet.
+  const editing = groups.find((g) => g.payeeName === targetPayee.trim());
+
   function openAddSheet(payee = '') {
     setTargetPayee(payee);
     setNewAlias('');
@@ -129,41 +132,6 @@ export default function AliasesScreen() {
     }
   });
 
-  const renderGroup = ({ item }: { item: PayeeGroupView }) => (
-    <Card style={{ padding: t.space.md, gap: t.space.sm }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm, flex: 1 }}>
-          <Text style={[t.type.body, { color: t.color.text, fontWeight: '600' }]} numberOfLines={1}>
-            {item.payeeName}
-          </Text>
-          <Chip label={tr('aliases.count', { count: item.aliases.length })} />
-        </View>
-        <BarIconButton
-          icon="trash-outline"
-          label={tr('common.delete')}
-          onPress={() => handleDeleteGroup(item)}
-        />
-      </View>
-
-      <View
-        style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.xs, alignItems: 'center' }}
-      >
-        {item.aliases.map((a) => (
-          <Chip
-            key={a.id}
-            label={`${a.alias}  ✕`}
-            onPress={() => handleDeleteAlias(a.alias, item.payeeName)}
-          />
-        ))}
-        <Chip
-          label={`+ ${tr('aliases.add')}`}
-          selected
-          onPress={() => openAddSheet(item.payeeName)}
-        />
-      </View>
-    </Card>
-  );
-
   const empty = (
     <View style={{ alignItems: 'center', padding: t.space.xl, gap: t.space.sm }}>
       <Text style={[t.type.heading, { color: t.color.textFaint }]}>{tr('aliases.empty')}</Text>
@@ -195,7 +163,9 @@ export default function AliasesScreen() {
           />
         </BarRow>
       ) : (
-        <AppBar
+        <PushHeader
+          backLabel={tr('settings.title')}
+          onBack={() => router.back()}
           title={tr('aliases.title')}
           right={
             <>
@@ -215,18 +185,36 @@ export default function AliasesScreen() {
         />
       )}
 
-      <FlatList
-        data={visible}
-        keyExtractor={(item) => item.payeeName}
+      <ScrollView
         contentContainerStyle={{
           padding: t.space.lg,
           paddingTop: SCREEN_TOP_PADDING,
-          gap: t.space.md,
         }}
-        renderItem={renderGroup}
-        ListEmptyComponent={empty}
         keyboardShouldPersistTaps="handled"
-      />
+      >
+        {visible.length === 0 ? (
+          empty
+        ) : (
+          <Card flush>
+            {visible.map((group, i) => (
+              <ListRow
+                key={group.payeeName}
+                first={i === 0}
+                label={group.payeeName}
+                sub={group.aliases.map((a) => a.alias).join(', ')}
+                onPress={() => openAddSheet(group.payeeName)}
+                trailing={
+                  <BarIconButton
+                    icon="trash-outline"
+                    label={tr('common.delete')}
+                    onPress={() => handleDeleteGroup(group)}
+                  />
+                }
+              />
+            ))}
+          </Card>
+        )}
+      </ScrollView>
 
       <Toast message={toast} />
 
@@ -243,7 +231,7 @@ export default function AliasesScreen() {
           />
         }
       >
-        <View style={{ gap: t.space.md }}>
+        <Card style={{ gap: t.space.md }}>
           <View style={{ gap: t.space.xs }}>
             <Text style={[t.type.label, { color: t.color.textMuted }]}>
               {tr('aliases.truePayee')}
@@ -264,7 +252,25 @@ export default function AliasesScreen() {
               placeholder={tr('aliases.aliasPlaceholder')}
             />
           </View>
-        </View>
+        </Card>
+        {!!editing && (
+          <Card flush>
+            {editing.aliases.map((a, i) => (
+              <ListRow
+                key={a.id}
+                first={i === 0}
+                label={a.alias}
+                trailing={
+                  <BarIconButton
+                    icon="trash-outline"
+                    label={tr('common.delete')}
+                    onPress={() => handleDeleteAlias(a.alias, editing.payeeName)}
+                  />
+                }
+              />
+            ))}
+          </Card>
+        )}
       </Sheet>
 
       {/* Export / Import Sheet */}

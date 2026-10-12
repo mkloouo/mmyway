@@ -1,8 +1,7 @@
-// Settings → Rules and its new-rule form. SQLite is real (better-sqlite3, src/db/testDb.ts); the
+// Settings → Rules and its New rule sheet. SQLite is real (better-sqlite3, src/db/testDb.ts); the
 // live-query subscription, the confirm prompt and expo-router are shimmed, as in settings.demo.test.tsx.
 import { configure, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { type ReactElement } from 'react';
-import { router } from 'expo-router';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import '../i18n';
 import { createTestDb } from '../db/testDb';
@@ -11,7 +10,6 @@ import { storePlanned } from '../planned/objects';
 import { enqueueOperation } from '../sync/outbox';
 import { confirmAction } from '../ui/confirm';
 import RulesScreen from '../../app/settings/rules';
-import NewRuleScreen from '../../app/settings/rule-new';
 
 // `mock`-prefixed so Jest's hoisting lets the factories below close over them.
 let mockDb: ReturnType<typeof createTestDb>;
@@ -150,13 +148,29 @@ describe('Settings → Rules', () => {
   });
 });
 
-describe('Settings → Rules → new rule', () => {
+describe('Settings → Rules → New rule sheet', () => {
   const saveButton = () => screen.getByRole('button', { name: 'Save' });
+
+  it('+ opens an empty sheet; a category picked inside it shows back on the fields', async () => {
+    mockDb.insert(referenceCategories).values({ id: 'c1', name: 'Groceries', syncedAt: T }).run();
+    await render(wrap(<RulesScreen />));
+
+    fireEvent.press(screen.getByLabelText('New rule'));
+
+    await waitFor(() => expect(saveButton().props.accessibilityState.disabled).toBe(true));
+    fireEvent.press(screen.getByText('Category'));
+    await waitFor(() => expect(screen.getByText('Groceries')).toBeTruthy());
+    fireEvent.press(screen.getByText('Groceries'));
+    // Back on the fields, with the choice shown on its row.
+    await waitFor(() => expect(screen.getByText('Category')).toBeTruthy());
+    expect(screen.getByText('Groceries')).toBeTruthy();
+    expect(saveButton()).toBeTruthy();
+  });
 
   it('Save stays off without a category or budget, and queues create_rule once one is set', async () => {
     mockParams = { match: 'Lidl' };
     mockDb.insert(referenceCategories).values({ id: 'c1', name: 'Groceries', syncedAt: T }).run();
-    await render(wrap(<NewRuleScreen />));
+    await render(wrap(<RulesScreen />));
 
     expect(saveButton().props.accessibilityState.disabled).toBe(true);
 
@@ -167,7 +181,7 @@ describe('Settings → Rules → new rule', () => {
 
   it('creates a category rule from the params, with the match as its trigger', async () => {
     mockParams = { match: 'Lidl', category: 'Groceries' };
-    await render(wrap(<NewRuleScreen />));
+    await render(wrap(<RulesScreen />));
 
     expect(saveButton().props.accessibilityState.disabled).toBe(false);
     fireEvent.press(saveButton());
@@ -188,7 +202,8 @@ describe('Settings → Rules → new rule', () => {
         actions: [{ type: 'set_category', value: 'Groceries' }],
       },
     });
-    expect(router.back).toHaveBeenCalled();
+    // The sheet closes once the rule is queued.
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Save' })).toBeNull());
   });
 
   it('is prefilled from the params and sets both category and budget', async () => {
@@ -200,7 +215,7 @@ describe('Settings → Rules → new rule', () => {
         { id: 'b2', name: 'Old', active: false, syncedAt: T },
       ])
       .run();
-    await render(wrap(<NewRuleScreen />));
+    await render(wrap(<RulesScreen />));
 
     // Title and "Description contains" both default to the match.
     expect(screen.getAllByDisplayValue('Starbucks')).toHaveLength(2);

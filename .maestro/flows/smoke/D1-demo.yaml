@@ -19,6 +19,7 @@ tags:
     visible: 'Settings, tab, 5 of 5'
     timeout: 30000
 - tapOn: 'Settings, tab, 5 of 5'
+- tapOn: 'Firefly III'
 - tapOn: 'Try the demo'
 - tapOn:
     text: 'Try the demo'
@@ -26,6 +27,7 @@ tags:
 - extendedWaitUntil:
     visible: 'Leave the demo'
     timeout: 15000
+- back # the Firefly III page sits over the tabs
 - tapOn: 'Budget, tab, 4 of 5'
 - extendedWaitUntil:
     visible: 'Food'
@@ -37,6 +39,7 @@ tags:
     timeout: 15000
 - takeScreenshot: D1-activity
 - tapOn: 'Settings, tab, 5 of 5'
+- tapOn: 'Firefly III'
 - tapOn: 'Leave the demo'
 - tapOn:
     text: 'Leave the demo'
@@ -44,5 +47,6 @@ tags:
 - extendedWaitUntil:
     visible: 'Try the demo'
     timeout: 15000
+- back
 - tapOn: 'Budget, tab, 4 of 5'
 - assertNotVisible: 'Food'

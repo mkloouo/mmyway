@@ -49,13 +49,13 @@ tags:
     file: ../../scripts/ff3.js
     env: { ACTION: expectRule, TITLE: 'E2E marker rule', ACTIVE: 'true', TIMEOUT_MS: '90000' }
 
-# Run now: the row under the rule's title. It asks to confirm; the confirm's Run now is the one
-# below the dialog title. The rule is applied on the next sync.
+# Run now: the text button on the rule's row, left of its Switch. It asks to confirm; the confirm's
+# Run now is the one below the dialog title. The rule is applied on the next sync.
 - tapOn: 'Settings, tab, 5 of 5'
 - tapOn: 'Rules'
 - tapOn:
     text: 'Run now'
-    below: 'E2E marker rule'
+    rightOf: 'E2E marker rule'
 - tapOn:
     text: 'Run now'
     below: 'Run "E2E marker rule" now\?'

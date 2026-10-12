@@ -16,9 +16,10 @@ tags:
     index: 1
 - inputText: 'E2E Loan'
 - hideKeyboard
-- tapOn: 'Liability'
+- tapOn: 'Money I owe'
 - tapOn: 'Liability type'
 - tapOn: 'Loan'
+- tapOn: 'Continue'
 - tapOn: 'Direction'
 - tapOn: 'I owe this'
 # Three empty amount fields show "0"; the interest rate is the one under its label.
@@ -29,8 +30,8 @@ tags:
 - hideKeyboard
 - tapOn: 'Interest period'
 - tapOn: 'Monthly'
-- tapOn: 'Save'
-# The confirm dialog's Save, below its title; the screen's own Save is the first match.
+- tapOn: 'Create liability'
+# The confirm dialog's Save, below its title.
 - tapOn:
     text: 'Save'
     below: 'Create this account\?'
@@ -51,7 +52,7 @@ tags:
 - tapOn: 'Settings, tab, 5 of 5'
 - tapOn: 'Liabilities'
 - tapOn: 'E2E Loan'
-- tapOn: 'Active'
+- tapOn: 'In pickers and lists'
 - tapOn: 'Save'
 - runFlow: ../../subflows/home.yaml
 - runFlow: ../../subflows/sync.yaml

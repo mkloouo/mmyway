@@ -6,7 +6,7 @@ import { clientFor } from '../api/ff3/session';
 import { readStoredCredentials, probeAbout } from '../api/ff3/auth';
 import { readHosts } from '../api/ff3/hosts';
 import { readGeminiKey } from '../settings/secrets';
-import { getBalancesStale, setBalancesStale } from '../settings/appSettings';
+import { getBalancesStale, setBalancesStale, setReceiptReader } from '../settings/appSettings';
 import { referenceAccounts } from '../db/schema';
 import { logLine } from '../utils/log';
 
@@ -197,6 +197,30 @@ describe('runSync', () => {
 
     expect(summary.configuredProviders).toEqual(['gemini']);
     expect(summary.providers).toEqual({});
+  });
+
+  it("lists no receipt provider when the reader is 'none', even with a Gemini key", async () => {
+    signedInWith(['https://ff3.example.com']);
+    (clientFor as jest.Mock).mockReturnValue(buildClient());
+    (readGeminiKey as jest.Mock).mockResolvedValueOnce('key');
+    const db = createTestDb();
+    await setReceiptReader(db as any, 'none');
+
+    const summary = await runSync(db as any);
+
+    expect(summary.configuredProviders).toEqual([]);
+  });
+
+  it("leaves Gemini out of the configured providers when the reader is 'local'", async () => {
+    signedInWith(['https://ff3.example.com']);
+    (clientFor as jest.Mock).mockReturnValue(buildClient());
+    (readGeminiKey as jest.Mock).mockResolvedValueOnce('key');
+    const db = createTestDb();
+    await setReceiptReader(db as any, 'local');
+
+    const summary = await runSync(db as any);
+
+    expect(summary.configuredProviders).toEqual([]);
   });
 
   it('keeps the stored last-synced time on a sync that does not replace it', async () => {

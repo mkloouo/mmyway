@@ -1,5 +1,7 @@
-// Search + live re-rank over merchant history (design §6.2). Uses SearchListSheet's list mode: the
-// history can be ~400 rows, which a ScrollView must not try to mount at once.
+// Search + live re-rank over merchant history (design §6.2), the Choose sheet on SearchListSheet: with
+// no query it lists the top-ranked payees under "Suggested", then every payee A–Z with a letter rail;
+// with a query, the re-ranked matches. The history can be ~400 rows, so it is a SectionList, never a
+// ScrollView that mounts them all at once.
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text } from 'react-native';
@@ -10,6 +12,16 @@ import type { MerchantHistory } from '../lookup/merchantLookup';
 
 interface PayeeRow {
   history: MerchantHistory;
+}
+
+function rowsFor(
+  byKey: Map<string, MerchantHistory>,
+  ranked: { merchantKey: string }[],
+): PayeeRow[] {
+  return ranked
+    .map((c) => byKey.get(c.merchantKey))
+    .filter((h): h is MerchantHistory => !!h)
+    .map((history) => ({ history }));
 }
 
 export function PayeeSheet({
@@ -33,11 +45,13 @@ export function PayeeSheet({
   const byKey = useMemo(() => new Map(histories.map((h) => [h.merchantKey, h])), [histories]);
 
   function rows(query: string): PayeeRow[] {
-    return rankCandidates(histories, { merchantQuery: query || undefined })
-      .map((c) => byKey.get(c.merchantKey))
-      .filter((h): h is MerchantHistory => !!h)
-      .map((history) => ({ history }));
+    return rowsFor(byKey, rankCandidates(histories, { merchantQuery: query || undefined }));
   }
+
+  const suggested = useMemo(
+    () => rowsFor(byKey, rankCandidates(histories, {}).slice(0, 5)),
+    [histories, byKey],
+  );
 
   return (
     <SearchListSheet
@@ -47,6 +61,8 @@ export function PayeeSheet({
       placeholder={tr(`payeeSheet.${payeeLabel}.search`)}
       items={rows}
       keyOf={(r) => r.history.merchantKey}
+      labelOf={(r) => r.history.displayName}
+      suggested={suggested}
       onSelect={(r) => onSelect(r.history)}
       renderRow={({ history }) => (
         <>

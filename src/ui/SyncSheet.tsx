@@ -8,6 +8,10 @@ import { useTheme } from './theme';
 import type { SyncSummary } from '../sync/runSync';
 import type { ServerReachability } from '../sync/reachability';
 import { describeSyncTime } from './relativeTime';
+import { useQuery } from '@tanstack/react-query';
+import { useDb } from '../providers/DbProvider';
+import { getReceiptReader } from '../settings/appSettings';
+import { SETTINGS_QUERY_KEY } from '../settings/loadSettings';
 
 const PROVIDER_LABEL_KEYS: Record<string, string> = {
   local: 'sync.providerLocal',
@@ -68,6 +72,11 @@ export function SyncSheet({
 }) {
   const t = useTheme();
   const { t: tr } = useTranslation();
+  const db = useDb();
+  const { data: receiptReader } = useQuery({
+    queryKey: [...SETTINGS_QUERY_KEY, 'receiptReader'],
+    queryFn: () => getReceiptReader(db),
+  });
   const syncing = status === 'syncing';
   const signedIn = summary?.signedIn ?? false;
 
@@ -101,9 +110,18 @@ export function SyncSheet({
             <Row key={name} label={label} value={tr('sync.configured')} />
           );
         })}
-        {signedIn && (summary?.configuredProviders ?? []).length === 0 && (
-          <Row label={tr('sync.receiptProviders')} value={tr('sync.noneConfigured')} tone="warn" />
-        )}
+        {signedIn &&
+          (summary?.configuredProviders ?? []).length === 0 &&
+          (receiptReader === 'none' ? (
+            // Chosen in Settings → Receipt reading, so not a problem to flag.
+            <Row label={tr('sync.receiptProviders')} value={tr('receiptSettings.readerNone')} />
+          ) : (
+            <Row
+              label={tr('sync.receiptProviders')}
+              value={tr('sync.noneConfigured')}
+              tone="warn"
+            />
+          ))}
         <Row
           label={tr('sync.pendingOutbox')}
           value={String(pendingOutboxCount)}

@@ -1,6 +1,6 @@
-// Capture's keypad (src/ui/Keypad.tsx): the More key and the date key.
+// The keypad (src/ui/Keypad.tsx): Capture's full keypad (digits, decimal, backspace) and the
+// compact one the amount sheets use (with its confirm cell).
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import '../i18n';
 import { Keypad } from '../ui/Keypad';
@@ -12,54 +12,37 @@ const metrics = {
   insets: { top: 0, left: 0, right: 0, bottom: 0 },
 };
 
-function keypad(props: { dateLabel?: string; dateCompact?: boolean; moreHasValue?: boolean }) {
-  return (
-    <SafeAreaProvider initialMetrics={metrics}>
-      <Keypad
-        onDigit={jest.fn()}
-        dateLabel={props.dateLabel ?? 'Today ▾'}
-        dateCompact={props.dateCompact}
-        onDatePress={jest.fn()}
-        onMorePress={onMore}
-        moreHasValue={props.moreHasValue}
-        saveLabel="Save & ✓"
-        onSave={jest.fn()}
-      />
-    </SafeAreaProvider>
-  );
-}
-const onMore = jest.fn();
-
-function fontSizeOf(label: string): number | undefined {
-  const text = screen.getByText(label);
-  return StyleSheet.flatten(text.props.style).fontSize;
+function wrap(node: React.ReactElement) {
+  return <SafeAreaProvider initialMetrics={metrics}>{node}</SafeAreaProvider>;
 }
 
 describe('Keypad', () => {
-  beforeEach(() => onMore.mockClear());
-
-  it('calls the fourth-row key More, not Note, and opens the rest of the fields with it', async () => {
-    await render(keypad({}));
-    expect(screen.queryByText('Note')).toBeNull();
-    await fireEvent.press(screen.getByLabelText('More'));
-    expect(onMore).toHaveBeenCalledTimes(1);
+  it('draws digits, decimal and backspace only, with no More, date or save key', async () => {
+    await render(wrap(<Keypad onDigit={jest.fn()} />));
+    expect(screen.getByTestId('keypad-1')).toBeTruthy();
+    expect(screen.getByTestId('keypad-decimal')).toBeTruthy();
+    expect(screen.getByTestId('keypad-backspace')).toBeTruthy();
+    expect(screen.queryByLabelText('More')).toBeNull();
+    expect(screen.queryByLabelText('More ●')).toBeNull();
+    expect(screen.queryByTestId('keypad-date')).toBeNull();
+    expect(screen.queryByTestId('keypad-save')).toBeNull();
+    expect(screen.queryByTestId('keypad-00')).toBeNull();
   });
 
-  it('marks More with a dot when something under it is set', async () => {
-    await render(keypad({ moreHasValue: true }));
-    expect(screen.getByLabelText('More ●')).toBeTruthy();
+  it('passes each digit, the decimal and the backspace to onDigit', async () => {
+    const onDigit = jest.fn();
+    await render(wrap(<Keypad onDigit={onDigit} />));
+    await fireEvent.press(screen.getByTestId('keypad-7'));
+    await fireEvent.press(screen.getByTestId('keypad-decimal'));
+    await fireEvent.press(screen.getByTestId('keypad-backspace'));
+    expect(onDigit.mock.calls).toEqual([['7'], [','], ['⌫']]);
   });
 
-  it('draws a picked date in a much smaller font than a key label', async () => {
-    await render(keypad({ dateLabel: '9/25, 12:23 PM', dateCompact: true }));
-    const date = fontSizeOf('9/25, 12:23 PM');
-    const digit = fontSizeOf('1');
-    expect(digit).toBeGreaterThanOrEqual(17);
-    expect(date).toBeLessThanOrEqual(12);
-  });
-
-  it('keeps the normal size for Today and Yesterday', async () => {
-    await render(keypad({ dateLabel: 'Today ▾' }));
-    expect(fontSizeOf('Today ▾')).toBe(fontSizeOf('1'));
+  it('compact keypad keeps its confirm cell and calls onSave with it', async () => {
+    const onSave = jest.fn();
+    await render(wrap(<Keypad compact saveLabel="Done" onSave={onSave} onDigit={jest.fn()} />));
+    expect(screen.getByTestId('keypad-00')).toBeTruthy();
+    await fireEvent.press(screen.getByTestId('keypad-save'));
+    expect(onSave).toHaveBeenCalledTimes(1);
   });
 });

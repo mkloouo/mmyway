@@ -1,10 +1,10 @@
 // One account's page (design §6.6): everything FF3 lets you set on it, saved together and
 // queued like any other write. A liability shows only the fields that apply to it. Opened from
 // Settings → Accounts or Settings → Liabilities (tap or long-press) and from a
-// balance card on Activity (long-press). The balance itself isn't here — it is on the card that
-// opens this page, and repeating it above fields that edit the opening balance only confused the
-// two.
-import { useState } from 'react';
+// balance card on Activity (long-press). The current balance is shown in the header's subtitle,
+// not near the opening-balance fields: a balance above fields that edit the opening balance only
+// confused the two.
+import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -13,12 +13,21 @@ import { useLiveQuery } from '../../src/db/useLiveQuery';
 import { useCurrencies } from '../../src/db/useReferenceData';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, AppBar, Row, Toast, CloseButton } from '../../src/ui/components';
-import { Checkbox } from '../../src/ui/Checkbox';
-import { TextField } from '../../src/ui/TextField';
+import {
+  Button,
+  Card,
+  Row,
+  Screen,
+  SectionHeader,
+  Sheet,
+  SwitchRow,
+  Toast,
+} from '../../src/ui/components';
+import { GroupFooter, ListRow, PushHeader, Tile } from '../../src/ui/kit';
 import { useAction } from '../../src/ui/useAction';
 import { useConfirmDiscard } from '../../src/ui/useConfirmDiscard';
 import { useToast } from '../../src/ui/useToast';
+import { currencyOf, formatMoney } from '../../src/ui/money';
 import { referenceAccounts } from '../../src/db/schema';
 import { hasEnvelopeMarker, setEnvelopeMarker } from '../../src/accounts/envelopeMarker';
 import {
@@ -36,18 +45,34 @@ import {
 import { parseSignedDecimalInput } from '../../src/api/ff3/decimal';
 import { PendingDot } from '../../src/ui/PendingDot';
 import { usePendingAccountIds } from '../../src/accounts/usePendingAccountIds';
+import { accountKind } from '../../src/accounts/AccountList';
 import {
   FormScroll,
-  FormSection,
   AmountField,
   CurrencySheet,
-  NameField,
+  InlineField,
   RoleSheet,
   ROLE_LABEL_KEYS,
   dayLabel,
   pickDay,
 } from '../../src/accounts/AccountFormParts';
 import { SaveBar } from '../../src/ui/SaveBar';
+
+/** A titled group of rows: a padded Card whose rows bring their own hairlines (kit board 1). */
+function Group({ children }: { children: ReactNode }) {
+  const t = useTheme();
+  return <Card style={{ marginHorizontal: t.space.lg, paddingVertical: 0 }}>{children}</Card>;
+}
+
+/** An amount as a row shows it: formatted once it parses, the typed text until then, '—' when empty. */
+function amountText(
+  text: string,
+  parsed: ReturnType<typeof parseSignedDecimalInput> | null,
+  currency: ReturnType<typeof currencyOf>,
+): string {
+  if (!text.trim()) return '—';
+  return parsed?.ok ? formatMoney(parsed.value, currency) : text.trim();
+}
 
 export default function AccountScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -69,12 +94,14 @@ export default function AccountScreen() {
   const [form, setForm] = useState<AccountForm | null>(null);
   const [active, setActive] = useState(true);
   const [envelope, setEnvelope] = useState(false);
-  // The account's notes without the cash-envelope marker line, which has its own checkbox.
+  // The account's notes without the cash-envelope marker line, which has its own switch.
   const [description, setDescription] = useState('');
   const [initialDescription, setInitialDescription] = useState('');
   // Amount fields are kept as typed ("12,5", "-") and parsed on Save.
   const [openingText, setOpeningText] = useState('');
   const [virtualText, setVirtualText] = useState('');
+  // Which balance the Edit sheet is open on, or none.
+  const [balanceSheet, setBalanceSheet] = useState<'opening' | 'virtual' | null>(null);
   const [currencySheetOpen, setCurrencySheetOpen] = useState(false);
   const [roleSheetOpen, setRoleSheetOpen] = useState(false);
   const act = useAction();
@@ -119,11 +146,41 @@ export default function AccountScreen() {
       envelope !== hasEnvelopeMarker(account.notes));
   const canSave = dirty && amountsValid && !problem && !saving;
 
+  // What the save bar says changed: one field by name, or how many.
+  const changed: string[] = [];
+  if (edit.name !== undefined) changed.push(tr('accounts.name'));
+  if (edit.notes !== undefined) changed.push(tr('account.note'));
+  if (edit.accountRole !== undefined) changed.push(tr('account.kind'));
+  if (edit.currencyCode !== undefined) changed.push(tr('fields.currency'));
+  if (edit.monthlyPaymentDate !== undefined && edit.accountRole === undefined)
+    changed.push(tr('account.monthlyPaymentDate'));
+  if (edit.openingBalance !== undefined || edit.openingBalanceDate !== undefined)
+    changed.push(tr('account.openingBalance'));
+  if (edit.virtualBalance !== undefined) changed.push(tr('account.virtualBalance'));
+  if (edit.includeNetWorth !== undefined) changed.push(tr('account.fieldNetWorth'));
+  if (account && active !== account.active) changed.push(tr('account.fieldActive'));
+  if (account && envelope !== hasEnvelopeMarker(account.notes))
+    changed.push(tr('account.fieldCashCount'));
+  const summary =
+    changed.length === 1
+      ? tr('account.changedOne', { field: changed[0] })
+      : tr('account.changeCount', { count: changed.length });
+
   function patch(fields: Partial<AccountForm>) {
     setForm((cur) => (cur ? { ...cur, ...fields } : cur));
   }
 
   const close = useConfirmDiscard(dirty, 'account.discardTitle');
+
+  function undo() {
+    if (!initial || !account) return;
+    setForm(initial);
+    setActive(account.active);
+    setEnvelope(hasEnvelopeMarker(account.notes));
+    setDescription(initialDescription);
+    setOpeningText(initial.openingBalance ?? '');
+    setVirtualText(initial.virtualBalance ?? '');
+  }
 
   const save = act(
     tr('common.save'),
@@ -141,7 +198,7 @@ export default function AccountScreen() {
   if (!account || !form) {
     return (
       <Screen bottom>
-        <AppBar title={tr('account.title')} left={<CloseButton onPress={() => router.back()} />} />
+        <PushHeader backLabel={tr('accounts.title')} onBack={() => router.back()} />
       </Screen>
     );
   }
@@ -155,33 +212,90 @@ export default function AccountScreen() {
           ? tr('account.problemPaymentDate')
           : null;
 
+  const kind = accountKind(account);
+  const currency = currencyOf(currencies, form.currencyCode);
+  const openingDay = dayLabel(form.openingBalanceDate);
+  // The balance is in the account's own currency, not the one the form may have changed to.
+  const balanceNow =
+    account.currentBalance == null
+      ? null
+      : formatMoney(account.currentBalance, currencyOf(currencies, account.currencyCode));
+
   return (
     <Screen bottom avoidKeyboard>
       <View style={{ flex: 1 }}>
-        <AppBar
-          title={account.name}
-          left={<CloseButton onPress={close} />}
+        <PushHeader
+          backLabel={liability ? tr('liabilities.title') : tr('accounts.title')}
+          onBack={close}
           right={<PendingDot visible={pendingAccounts.has(account.id)} />}
+          title={account.name}
+          subtitle={
+            balanceNow
+              ? tr('account.subtitleNow', { balance: balanceNow, kind: tr(kind.labelKey) })
+              : tr(kind.labelKey)
+          }
+          leading={<Tile icon={kind.icon} tone={kind.tone} size={52} />}
         />
         <FormScroll>
-          <FormSection first title={tr('account.sectionAccount')}>
-            <NameField value={form.name} onChangeText={(name) => patch({ name })} />
-            <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('fields.note')}</Text>
-            <TextField value={description} onChangeText={setDescription} multiline />
+          <View
+            style={{
+              flexDirection: 'row',
+              gap: t.space.sm,
+              paddingHorizontal: t.space.lg,
+              paddingBottom: t.space.sm,
+            }}
+          >
+            {!liability && hasEnvelopeMarker(account.notes) && (
+              <Button
+                title={tr('count.title')}
+                variant="secondary"
+                style={{ flex: 1 }}
+                onPress={() => router.push('/count')}
+              />
+            )}
+            <Button
+              title={tr('account.transactions')}
+              variant="secondary"
+              style={{ flex: 1 }}
+              onPress={() =>
+                router.navigate({
+                  pathname: '/activity',
+                  params: { account: account.id, at: String(Date.now()) },
+                })
+              }
+            />
+          </View>
+
+          <SectionHeader first title={tr('account.sectionDetails')} />
+          <Group>
+            <InlineField
+              first
+              label={tr('accounts.name')}
+              value={form.name}
+              placeholder={tr('accounts.name')}
+              onChangeText={(name) => patch({ name })}
+            />
+            <InlineField
+              label={tr('account.note')}
+              value={description}
+              placeholder={tr('account.optional')}
+              onChangeText={setDescription}
+              multiline
+            />
+            {!liability && (
+              <Row
+                label={tr('account.kind')}
+                value={tr(ROLE_LABEL_KEYS[form.accountRole])}
+                chevron
+                onPress={() => setRoleSheetOpen(true)}
+              />
+            )}
             <Row
               label={tr('fields.currency')}
               value={form.currencyCode}
               chevron
               onPress={() => setCurrencySheetOpen(true)}
             />
-            {!liability && (
-              <Row
-                label={tr('account.role')}
-                value={tr(ROLE_LABEL_KEYS[form.accountRole])}
-                chevron
-                onPress={() => setRoleSheetOpen(true)}
-              />
-            )}
             {!liability && form.accountRole === 'ccAsset' && (
               <Row
                 label={tr('account.monthlyPaymentDate')}
@@ -193,69 +307,124 @@ export default function AccountScreen() {
                 }
               />
             )}
-            {!liability && form.accountRole === 'ccAsset' && (
-              <Text style={[t.type.label, { color: t.color.textFaint }]}>
-                {tr('account.monthlyPaymentDateHint')}
-              </Text>
-            )}
-          </FormSection>
+          </Group>
+          {!liability && form.accountRole === 'ccAsset' && (
+            <GroupFooter>{tr('account.monthlyPaymentDateHint')}</GroupFooter>
+          )}
 
-          <FormSection tight title={tr('account.sectionOptions')}>
-            <Checkbox
-              checked={active}
-              onPress={() => setActive((v) => !v)}
+          <SectionHeader title={tr('account.sectionWhere')} />
+          <Group>
+            <SwitchRow
+              first
+              value={active}
+              onValueChange={() => setActive((v) => !v)}
               label={tr('accounts.active')}
               hint={tr('accounts.activeHint')}
             />
             {!liability && (
-              <Checkbox
-                checked={envelope}
-                onPress={() => setEnvelope((v) => !v)}
+              <SwitchRow
+                value={envelope}
+                onValueChange={() => setEnvelope((v) => !v)}
                 label={tr('accounts.cashEnvelope')}
                 hint={tr('accounts.cashEnvelopeHint')}
               />
             )}
             {!liability && (
-              <Checkbox
-                checked={form.includeNetWorth}
-                onPress={() => patch({ includeNetWorth: !form.includeNetWorth })}
+              <SwitchRow
+                value={form.includeNetWorth}
+                onValueChange={() => patch({ includeNetWorth: !form.includeNetWorth })}
                 label={tr('account.includeNetWorth')}
                 hint={tr('account.includeNetWorthHint')}
               />
             )}
-          </FormSection>
+          </Group>
 
-          <FormSection title={tr('account.sectionBalances')}>
-            <AmountField
+          <SectionHeader title={tr('account.sectionStart')} />
+          <Card flush style={{ marginHorizontal: t.space.lg }}>
+            <ListRow
+              first
               label={tr('account.openingBalance')}
-              text={openingText}
-              onChangeText={setOpeningText}
-              parsed={opening}
-            />
-            <Row
-              label={tr('account.openingBalanceDate')}
-              value={dayLabel(form.openingBalanceDate) ?? tr('account.pickDate')}
-              chevron
-              onPress={() =>
-                pickDay(form.openingBalanceDate, (day) => patch({ openingBalanceDate: day }))
+              sub={
+                openingDay ? tr('account.balanceOn', { date: openingDay }) : tr('account.pickDate')
               }
+              trailing={
+                <Text style={[t.type.body, { color: t.color.textMuted }]}>
+                  {amountText(openingText, opening, currency)}
+                </Text>
+              }
+              chevron
+              onPress={() => setBalanceSheet('opening')}
             />
-            <AmountField
+            <ListRow
               label={tr('account.virtualBalance')}
-              text={virtualText}
-              onChangeText={setVirtualText}
-              parsed={virtual}
-              spaced
+              sub={tr('account.virtualBalanceSub')}
+              trailing={
+                <Text style={[t.type.body, { color: t.color.textMuted }]}>
+                  {amountText(virtualText, virtual, currency)}
+                </Text>
+              }
+              chevron
+              onPress={() => setBalanceSheet('virtual')}
             />
-            <Text style={[t.type.label, { color: t.color.textFaint }]}>
-              {tr('account.virtualBalanceHint')}
-            </Text>
-          </FormSection>
+          </Card>
         </FormScroll>
 
-        <SaveBar problemText={problemText} saving={saving} disabled={!canSave} onSave={save} />
+        {dirty && (
+          <SaveBar
+            problemText={problemText}
+            saving={saving}
+            disabled={!canSave}
+            onSave={save}
+            summary={summary}
+            onUndo={undo}
+          />
+        )}
         <Toast message={toast} />
       </View>
+
+      <Sheet
+        visible={balanceSheet !== null}
+        title={
+          balanceSheet === 'virtual' ? tr('account.virtualBalance') : tr('account.openingBalance')
+        }
+        onClose={() => setBalanceSheet(null)}
+        footer={
+          <Button title={tr('common.done')} onPress={() => setBalanceSheet(null)} size="lg" />
+        }
+      >
+        <Card style={{ gap: t.space.sm }}>
+          {balanceSheet === 'virtual' ? (
+            <>
+              <AmountField
+                label={tr('account.virtualBalance')}
+                text={virtualText}
+                onChangeText={setVirtualText}
+                parsed={virtual}
+              />
+              <Text style={[t.type.label, { color: t.color.textFaint }]}>
+                {tr('account.virtualBalanceHint')}
+              </Text>
+            </>
+          ) : (
+            <>
+              <AmountField
+                label={tr('account.openingBalance')}
+                text={openingText}
+                onChangeText={setOpeningText}
+                parsed={opening}
+              />
+              <Row
+                label={tr('account.openingBalanceDate')}
+                value={openingDay ?? tr('account.pickDate')}
+                chevron
+                onPress={() =>
+                  pickDay(form.openingBalanceDate, (day) => patch({ openingBalanceDate: day }))
+                }
+              />
+            </>
+          )}
+        </Card>
+      </Sheet>
 
       <CurrencySheet
         visible={currencySheetOpen}

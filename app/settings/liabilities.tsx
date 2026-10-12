@@ -1,11 +1,12 @@
 // Liabilities (loans, debts, mortgages) in FF3's order — Settings → Liabilities. Tap one to open its
 // page (app/accounts/[id].tsx); + creates one (app/accounts/new.tsx with type=liability). Asset
 // accounts stay on Settings → Accounts.
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList } from 'react-native';
+import { ScrollView } from 'react-native';
+import { useCurrencies } from '../../src/db/useReferenceData';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, SCREEN_TOP_PADDING } from '../../src/ui/components';
+import { Screen, Card, SCREEN_TOP_PADDING } from '../../src/ui/components';
 import { AccountCard, AccountListBar, AccountListEmpty } from '../../src/accounts/AccountList';
 import {
   useLiabilityAccounts,
@@ -21,6 +22,7 @@ export default function LiabilitiesScreen() {
   const t = useTheme();
   const { t: tr } = useTranslation();
   const pendingAccounts = usePendingAccountIds();
+  const currencies = useCurrencies();
   // In FF3's own order, inactive ones included so the user can see and reopen them.
   const allLiabilities = useLiabilityAccounts({ includeInactive: true }) ?? EMPTY_ACCOUNTS;
   const [search, setSearch] = useState('');
@@ -33,10 +35,12 @@ export default function LiabilitiesScreen() {
   );
   const visible = useMemo(() => filterAccounts(shown, search), [shown, search]);
 
-  const row = (item: ReferenceAccountRow) => (
+  const row = (item: ReferenceAccountRow, first: boolean) => (
     <AccountCard
       account={item}
+      currencies={currencies}
       pending={pendingAccounts.has(item.id)}
+      first={first}
       onPress={() => navigateOnce(`/accounts/${item.id}`)}
     />
   );
@@ -54,23 +58,23 @@ export default function LiabilitiesScreen() {
         newLabel={tr('liabilities.newLiability')}
         onNew={() => navigateOnce({ pathname: '/accounts/new', params: { type: 'liability' } })}
       />
-      <FlatList
-        data={visible}
-        keyExtractor={(a) => a.id}
+      <ScrollView
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{
-          padding: t.space.lg,
-          paddingTop: SCREEN_TOP_PADDING,
-          gap: t.space.sm,
-        }}
-        renderItem={({ item }) => row(item)}
-        ListEmptyComponent={
+        contentContainerStyle={{ paddingTop: SCREEN_TOP_PADDING, paddingBottom: t.space.lg }}
+      >
+        {visible.length === 0 ? (
           <AccountListEmpty
             allHidden={allLiabilities.length > 0 && !showInactive}
             emptyText={tr('liabilities.empty')}
           />
-        }
-      />
+        ) : (
+          <Card flush style={{ marginHorizontal: t.space.lg }}>
+            {visible.map((item, i) => (
+              <Fragment key={item.id}>{row(item, i === 0)}</Fragment>
+            ))}
+          </Card>
+        )}
+      </ScrollView>
     </Screen>
   );
 }

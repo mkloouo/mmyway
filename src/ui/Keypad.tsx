@@ -1,8 +1,8 @@
-// The 4x4 grid of design §6.2: digits plus the date, note and save cells share its layout so
-// the whole bottom cluster reads as one control.
+// The keypad of the amount sheets (design §6.2): digits plus a backspace and a confirm cell share
+// one 4x4 grid so the bottom cluster reads as one control. Capture's keypad is the digits, decimal
+// and backspace only (three across); Capture draws its own save buttons under it.
 import { useState } from 'react';
 import { Animated, Pressable, Text, View } from 'react-native';
-import { useTranslation } from 'react-i18next';
 import { useTheme } from './theme';
 import { PRESSED_OPACITY } from './components';
 import { haptics } from './haptics';
@@ -15,21 +15,25 @@ const DIGIT_ROWS: KeypadKey[][] = [
   [',', '0', '00'],
 ];
 
+const FULL_ROWS: KeypadKey[][] = [
+  ['1', '2', '3'],
+  ['4', '5', '6'],
+  ['7', '8', '9'],
+  [',', '0'],
+];
+
 function Key({
   label,
   onPress,
   tone,
   disabled,
   testID,
-  small,
   height,
 }: {
   label: string;
   onPress: () => void;
   tone?: 'default' | 'accent';
   disabled?: boolean;
-  /** A long label (a picked date and time): drawn much smaller so it fits the key instead of being cut. */
-  small?: boolean;
   /** For the Maestro flows (.maestro/): a digit's label also matches the amount it typed. */
   testID?: string;
   /** A fixed height instead of the width-based 1.4 ratio (Capture sizes its keys to the window). */
@@ -74,13 +78,10 @@ function Key({
       >
         <Text
           style={[
-            small ? t.type.label : t.type.heading,
+            t.type.heading,
             { color: isAccent ? t.color.onAccent : t.color.text, textAlign: 'center' },
-            small && { fontSize: 12, lineHeight: 15 },
           ]}
           numberOfLines={1}
-          adjustsFontSizeToFit={small}
-          minimumFontScale={0.75}
         >
           {label}
         </Text>
@@ -91,86 +92,67 @@ function Key({
 
 interface KeypadBaseProps {
   onDigit: (key: KeypadKey) => void;
-  saveLabel: string;
-  onSave: () => void;
-  saveDisabled?: boolean;
-  saving?: boolean;
   /** Every key's height; without it a key is 1/1.4 of its width. */
   keyHeight?: number;
 }
 
 /**
- * `compact` is digits, backspace and a single confirm cell (a sheet's amount edit); the full
- * keypad also has the date and note cells, and needs all three of their props — a union rather
- * than optional props, so a caller that forgets one doesn't compile.
+ * `compact` is digits, backspace and a single confirm cell (a sheet's amount edit). Without it the
+ * keypad is digits, decimal and backspace only: the confirm lives in the screen's own buttons.
  */
 type KeypadProps = KeypadBaseProps &
   (
-    | { compact: true }
     | {
-        compact?: false;
-        dateLabel: string;
-        /** The date is a picked one, so its label is long: drawn small. */
-        dateCompact?: boolean;
-        onDatePress: () => void;
-        /** Opens the rest of the entry's fields (description, who it is shared with, a photo). */
-        onMorePress: () => void;
-        moreHasValue?: boolean;
+        compact: true;
+        saveLabel: string;
+        onSave: () => void;
+        saveDisabled?: boolean;
+        saving?: boolean;
       }
+    | { compact?: false }
   );
 
-/** The empty cell that stands in for the date and note keys in `compact` mode. */
+/** The empty cell that stands in for the second and third rows' extra key in `compact` mode. */
 function Spacer() {
   return <View style={{ flex: 1, marginHorizontal: 4, marginVertical: 4 }} />;
 }
 
 export function Keypad(props: KeypadProps) {
-  const { onDigit, saveLabel, onSave, saveDisabled, saving, keyHeight } = props;
-  const { t: tr } = useTranslation();
+  const { onDigit, keyHeight } = props;
+  const digit = (label: KeypadKey) => (
+    <Key
+      key={label}
+      label={label}
+      onPress={() => onDigit(label)}
+      testID={`keypad-${label === ',' ? 'decimal' : label}`}
+      height={keyHeight}
+    />
+  );
+  const backspace = (
+    <Key label="⌫" onPress={() => onDigit('⌫')} testID="keypad-backspace" height={keyHeight} />
+  );
+
+  if (!props.compact) {
+    return (
+      <View>
+        {FULL_ROWS.map((row, rowIndex) => (
+          <View key={rowIndex} style={{ flexDirection: 'row' }}>
+            {row.map(digit)}
+            {rowIndex === 3 && backspace}
+          </View>
+        ))}
+      </View>
+    );
+  }
+
+  const { saveLabel, onSave, saveDisabled, saving } = props;
   return (
     <View>
       {DIGIT_ROWS.map((row, rowIndex) => (
         <View key={rowIndex} style={{ flexDirection: 'row' }}>
-          {row.map((key) => (
-            <Key
-              key={key}
-              label={key}
-              onPress={() => onDigit(key)}
-              testID={`keypad-${key === ',' ? 'decimal' : key}`}
-              height={keyHeight}
-            />
-          ))}
-          {rowIndex === 0 && (
-            <Key
-              label="⌫"
-              onPress={() => onDigit('⌫')}
-              testID="keypad-backspace"
-              height={keyHeight}
-            />
-          )}
-          {rowIndex === 1 &&
-            (props.compact ? (
-              <Spacer />
-            ) : (
-              <Key
-                label={props.dateLabel}
-                onPress={props.onDatePress}
-                small={props.dateCompact}
-                testID="keypad-date"
-                height={keyHeight}
-              />
-            ))}
-          {rowIndex === 2 &&
-            (props.compact ? (
-              <Spacer />
-            ) : (
-              <Key
-                label={props.moreHasValue ? `${tr('capture.more')} ●` : tr('capture.more')}
-                onPress={props.onMorePress}
-                testID="keypad-more"
-                height={keyHeight}
-              />
-            ))}
+          {row.map(digit)}
+          {rowIndex === 0 && backspace}
+          {(rowIndex === 1 || rowIndex === 2) && <Spacer />}
           {rowIndex === 3 && (
             <Key
               label={saveLabel}

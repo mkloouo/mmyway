@@ -1,13 +1,14 @@
-// Planned (subscriptions, rules and recurring transactions). The simple view lists one planned
-// transaction per name — the three FF3 objects edited together (app/planned/[key].tsx); the
-// detailed view lists each kind as FF3 has it, read-only (app/planned/object/[key].tsx).
-import { useMemo, useState } from 'react';
+// Planned. "Coming up" lists the next occurrences of every planned transaction, by date; "All plans"
+// lists the planned transactions themselves (app/planned/[key].tsx). Firefly III's objects as it
+// holds them are in Settings → Planned in Firefly III (app/settings/planned-raw.tsx).
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { eq } from 'drizzle-orm';
-import { FlatList, RefreshControl, Text, View } from 'react-native';
-import { router } from 'expo-router';
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useQueries } from '@tanstack/react-query';
 import { useDb } from '../../src/providers/DbProvider';
-import { useLiveQuery } from '../../src/db/useLiveQuery';
+import { getClient } from '../../src/api/ff3/session';
+import { compareDecimal } from '../../src/api/ff3/decimal';
+import { useCaptureDefaults } from '../../src/capture/useCaptureDefaults';
 import { useCurrencies } from '../../src/db/useReferenceData';
 import { useTheme } from '../../src/ui/theme';
 import {
@@ -15,99 +16,170 @@ import {
   AppBar,
   BarIconButton,
   Card,
-  Chip,
   EmptyState,
   Money,
-  Dot,
+  SectionHeader,
   SCREEN_TOP_PADDING,
 } from '../../src/ui/components';
+import { ListRow, Segmented } from '../../src/ui/kit';
 import { PendingDot } from '../../src/ui/PendingDot';
-import { currencyOf } from '../../src/ui/money';
-import { categoryColor } from '../../src/ui/categoryColor';
-import { appSettings } from '../../src/db/schema';
-import {
-  PLANNED_MODE_KEY,
-  parsePlannedMode,
-  setPlannedMode,
-  type PlannedMode,
-} from '../../src/settings/appSettings';
+import { currencyOf, formatMoney } from '../../src/ui/money';
+import { primaryCurrencyCode } from '../../src/ui/currencies';
+import { OccurrenceSheet, type Occurrence } from '../../src/ui/OccurrenceSheet';
 import { usePlanned } from '../../src/planned/usePlanned';
-import { dayLabel, objectSummary, scheduleLabel } from '../../src/planned/labels';
-import type { PlannedKind } from '../../src/planned/objects';
+import { dayLabel, scheduleLabel } from '../../src/planned/labels';
+import { upcomingOccurrences } from '../../src/planned/occurrences';
+import { fetchRecurrenceTransactions } from '../../src/planned/objects';
+import { upcomingTotals } from '../../src/planned/upcomingTotals';
+import type { PlannedItem } from '../../src/planned/items';
 import { usePullToRefresh } from '../../src/sync/useSync';
 import { navigateOnce } from '../../src/ui/navigateOnce';
-import { useAction } from '../../src/ui/useAction';
+import { appLocale } from '../../src/i18n';
+import { dayDate, localDay } from '../../src/utils/day';
 
-const KIND_TABS: { kind: PlannedKind; labelKey: string }[] = [
-  { kind: 'bill', labelKey: 'planned.subscriptions' },
-  { kind: 'rule', labelKey: 'planned.rules' },
-  { kind: 'recurrence', labelKey: 'planned.recurring' },
-];
+// ponytail: two months of dates in one list; paging further out when someone asks for it.
+const HORIZON_DAYS = 62;
+
+const shiftDays = (day: string, days: number): string => {
+  const d = dayDate(day);
+  d.setDate(d.getDate() + days);
+  return localDay(d);
+};
+
+/** The occurrences of one planned transaction from `today` up to `until`, skipped ones included. */
+function occurrencesOf(item: PlannedItem, today: string, until: string): Occurrence[] {
+  const f = item.fields;
+  const from = f.date > today ? f.date : today;
+  const days = f.repeats
+    ? upcomingOccurrences(f.repetitions, from, { count: HORIZON_DAYS + 1, until })
+    : [f.date].filter((d) => d >= today && d <= until);
+  return days.map((day) => ({ item, day, skipped: f.skipDays.includes(day) }));
+}
+
+function DateBlock({ day }: { day: string }) {
+  const t = useTheme();
+  const date = dayDate(day);
+  return (
+    <View style={{ width: 40, alignItems: 'center' }}>
+      <Text style={[t.type.label, { color: t.color.textMuted }]}>
+        {date.toLocaleDateString(appLocale(), { weekday: 'short' }).toUpperCase()}
+      </Text>
+      <Text style={[t.type.heading, { color: t.color.text }]}>{date.getDate()}</Text>
+    </View>
+  );
+}
 
 export default function PlannedScreen() {
-  const db = useDb();
   const t = useTheme();
   const { t: tr } = useTranslation();
-  const act = useAction();
   // Spins only for a pull the user made: tied to the sync status, it spun for every sync (launch,
   // a push after a write, reconnecting) as if the list had been pulled.
   const pull = usePullToRefresh();
-  const { objects, items, loaded } = usePlanned();
+  const { items, loaded } = usePlanned();
   const currencies = useCurrencies();
-  const { data: modeRows } = useLiveQuery(
-    db.select().from(appSettings).where(eq(appSettings.key, PLANNED_MODE_KEY)),
-  );
-  const mode = parsePlannedMode(modeRows?.[0]?.value);
-  const [kind, setKind] = useState<PlannedKind>('bill');
+  const db = useDb();
+  const { defaultCurrencyCode } = useCaptureDefaults();
+  const [view, setView] = useState<'coming' | 'all'>('coming');
+  const [picked, setPicked] = useState<Occurrence | null>(null);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
-  const chooseMode = act(tr('planned.title'), (next: PlannedMode) => setPlannedMode(db, next));
-  const refresh = <RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />;
-  const objectsOfKind = objects
-    .filter((o) => o.kind === kind)
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const today = localDay();
+  const thisWeekEnd = shiftDays(today, 7 - (((dayDate(today).getDay() + 6) % 7) + 1));
+  const until = shiftDays(today, HORIZON_DAYS);
+  const occurrences = items
+    .flatMap((item) => occurrencesOf(item, today, until))
+    .sort(
+      (a, b) => a.day.localeCompare(b.day) || a.item.fields.name.localeCompare(b.item.fields.name),
+    );
 
-  const listHeader = useMemo(
-    () => (
-      <View style={{ gap: t.space.sm, paddingTop: SCREEN_TOP_PADDING, paddingBottom: t.space.xs }}>
-        <View
-          style={{
-            flexDirection: 'row',
-            gap: t.space.sm,
-            paddingHorizontal: t.space.lg,
-          }}
-        >
-          <Chip
-            label={tr('planned.simple')}
-            selected={mode === 'simple'}
-            onPress={() => chooseMode('simple')}
-          />
-          <Chip
-            label={tr('planned.detailed')}
-            selected={mode === 'detailed'}
-            onPress={() => chooseMode('detailed')}
-          />
-        </View>
-        {mode === 'detailed' && (
-          <View
-            style={{
-              flexDirection: 'row',
-              gap: t.space.sm,
-              paddingHorizontal: t.space.lg,
-            }}
-          >
-            {KIND_TABS.map((k) => (
-              <Chip
-                key={k.kind}
-                label={tr(k.labelKey)}
-                selected={kind === k.kind}
-                onPress={() => setKind(k.kind)}
-              />
-            ))}
-          </View>
-        )}
-      </View>
+  // What FF3 already booked from each recurrence: the same query and cache as the planned
+  // transaction's "Already booked" list (src/ui/OccurrenceRows.tsx), read only while Coming up shows.
+  const recurrenceIds = [
+    ...new Set(
+      occurrences.map((o) => o.item.group?.recurrence?.id).filter((id): id is string => !!id),
     ),
-    [t, tr, mode, chooseMode, kind],
+  ];
+  const bookedQueries = useQueries({
+    queries: recurrenceIds.map((recurrenceId) => ({
+      queryKey: ['recurrence-transactions', recurrenceId],
+      enabled: view === 'coming',
+      queryFn: async () => {
+        const client = await getClient(db);
+        return client ? fetchRecurrenceTransactions(client, recurrenceId) : [];
+      },
+      retry: false,
+    })),
+  });
+  // Matched on the booking's date, as the planned transaction's own list does. A "Book it now" is
+  // dated today whatever occurrence fired it, so only an occurrence booked on its own day shows.
+  const bookedKeys = new Set<string>();
+  recurrenceIds.forEach((recurrenceId, i) => {
+    for (const booking of bookedQueries[i]?.data ?? []) {
+      const date = String(booking.attributes.transactions[0]?.date ?? '').slice(0, 10);
+      if (date) bookedKeys.add(`${recurrenceId}:${date}`);
+    }
+  });
+  const isBooked = (o: Occurrence): boolean => {
+    const recurrenceId = o.item.group?.recurrence?.id;
+    return !!recurrenceId && bookedKeys.has(`${recurrenceId}:${o.day}`);
+  };
+
+  // "Out, next 30 days" and "In", per currency. The default currency is the big figures; any other
+  // currency is one line under them.
+  const totals = upcomingTotals(
+    occurrences.map((o) => ({
+      day: o.day,
+      skipped: o.skipped,
+      type: o.item.fields.type,
+      amount: o.item.fields.amount,
+      currencyCode: o.item.fields.currencyCode,
+    })),
+    { from: today, until: shiftDays(today, 29) },
+  );
+  const mainCode =
+    defaultCurrencyCode ?? primaryCurrencyCode(currencies) ?? Object.keys(totals)[0] ?? null;
+  const main = mainCode ? (totals[mainCode] ?? { out: '0', in: '0' }) : null;
+  const otherLine = Object.entries(totals)
+    .filter(([code]) => code !== mainCode)
+    .flatMap(([code, row]) => {
+      const cur = currencyOf(currencies, code);
+      return [
+        compareDecimal(row.out, '0') !== 0
+          ? tr('planned.summary.otherOut', { amount: formatMoney(row.out, cur) })
+          : null,
+        compareDecimal(row.in, '0') !== 0
+          ? tr('planned.summary.otherIn', { amount: formatMoney(row.in, cur) })
+          : null,
+      ];
+    })
+    .filter((line): line is string => line !== null)
+    .join(' · ');
+
+  // Sections: "Today", "This week", "Later in <this month>", then one per later month.
+  const titleOf = (day: string): string => {
+    if (day === today) return tr('planned.coming.today');
+    if (day <= thisWeekEnd) return tr('planned.coming.thisWeek');
+    const sameYear = day.slice(0, 4) === today.slice(0, 4);
+    const month = dayDate(day).toLocaleDateString(appLocale(), {
+      month: 'long',
+      year: sameYear ? undefined : 'numeric',
+    });
+    return day.slice(0, 7) === today.slice(0, 7) ? tr('planned.coming.laterIn', { month }) : month;
+  };
+  const sections: { title: string; rows: Occurrence[] }[] = [];
+  for (const o of occurrences) {
+    const title = titleOf(o.day);
+    const last = sections[sections.length - 1];
+    if (last && last.title === title) last.rows.push(o);
+    else sections.push({ title, rows: [o] });
+  }
+
+  const pick = (o: Occurrence) => {
+    setPicked(o);
+    setSheetOpen(true);
+  };
+  const empty = (
+    <EmptyState glyph="◷" title={tr('planned.emptyTitle')} hint={tr('planned.emptyHint')} />
   );
 
   return (
@@ -115,127 +187,157 @@ export default function PlannedScreen() {
       <AppBar
         title={tr('planned.title')}
         right={
-          mode === 'simple' ? (
-            <BarIconButton
-              icon="add"
-              label={tr('planned.add')}
-              onPress={() => navigateOnce('/planned/new')}
-            />
-          ) : undefined
+          <BarIconButton
+            icon="add"
+            label={tr('planned.add')}
+            onPress={() => navigateOnce('/planned/new')}
+          />
         }
       />
+      <ScrollView
+        contentContainerStyle={{ paddingTop: SCREEN_TOP_PADDING, paddingBottom: t.space.xxl }}
+        refreshControl={<RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
+      >
+        <View style={{ paddingHorizontal: t.space.lg }}>
+          <Segmented
+            options={[
+              { key: 'coming', label: tr('planned.comingUp') },
+              { key: 'all', label: tr('planned.allPlans') },
+            ]}
+            value={view}
+            onChange={setView}
+            accessibilityLabel={tr('planned.title')}
+          />
+        </View>
 
-      {mode === 'simple' ? (
-        <FlatList
-          data={items}
-          keyExtractor={(item) => item.key}
-          refreshControl={refresh}
-          ListHeaderComponent={listHeader}
-          contentContainerStyle={{ paddingBottom: t.space.xxl, gap: t.space.sm }}
-          ListEmptyComponent={
-            loaded ? (
-              <EmptyState
-                glyph="◷"
-                title={tr('planned.emptyTitle')}
-                hint={tr('planned.emptyHint')}
-              />
-            ) : null
-          }
-          renderItem={({ item }) => {
-            const f = item.fields;
-            const counterparty = f.type === 'deposit' ? f.sourceName : f.destinationName;
-            return (
-              <Card
-                style={{ marginHorizontal: t.space.lg }}
-                onPress={() => navigateOnce(`/planned/${encodeURIComponent(item.key)}`)}
+        {view === 'coming' ? (
+          <>
+            {main && mainCode && (
+              <View
+                testID="planned-summary"
+                style={{ paddingHorizontal: t.space.lg, paddingTop: t.space.sm }}
               >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
-                  <PendingDot visible={item.queued} />
-                  <Text
-                    style={[t.type.heading, { color: t.color.text, flex: 1 }]}
-                    numberOfLines={1}
-                  >
-                    {f.name}
-                  </Text>
-                  <Money
-                    amount={f.amount}
-                    currency={currencyOf(currencies, f.currencyCode)}
-                    type={f.type}
-                    size="heading"
-                  />
+                <Card>
+                  <View style={{ flexDirection: 'row' }}>
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Text style={[t.type.label, { color: t.color.textMuted }]}>
+                        {tr('planned.summary.out')}
+                      </Text>
+                      <Text style={[t.type.title, { color: t.color.text }]}>
+                        {formatMoney(main.out, currencyOf(currencies, mainCode))}
+                      </Text>
+                    </View>
+                    <View
+                      style={{
+                        flex: 1,
+                        gap: 2,
+                        borderLeftWidth: StyleSheet.hairlineWidth,
+                        borderLeftColor: t.color.border,
+                        paddingLeft: t.space.lg,
+                      }}
+                    >
+                      <Text style={[t.type.label, { color: t.color.textMuted }]}>
+                        {tr('planned.summary.in')}
+                      </Text>
+                      <Text style={[t.type.title, { color: t.color.income }]}>
+                        {`+${formatMoney(main.in, currencyOf(currencies, mainCode))}`}
+                      </Text>
+                    </View>
+                  </View>
+                  {otherLine !== '' && (
+                    <Text
+                      style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.sm }]}
+                    >
+                      {otherLine}
+                    </Text>
+                  )}
+                </Card>
+              </View>
+            )}
+            {sections.map((section, i) => (
+              <View key={section.title}>
+                <SectionHeader title={section.title} first={i === 0 && !mainCode} />
+                <View style={{ paddingHorizontal: t.space.lg }}>
+                  <Card flush>
+                    {section.rows.map((o, j) => {
+                      const f = o.item.fields;
+                      const route = [f.sourceName, f.destinationName].filter(Boolean).join(' → ');
+                      return (
+                        <ListRow
+                          key={`${o.item.key}:${o.day}`}
+                          first={j === 0}
+                          leading={<DateBlock day={o.day} />}
+                          label={f.name}
+                          sub={
+                            o.skipped
+                              ? tr('planned.coming.skipped')
+                              : isBooked(o)
+                                ? tr('planned.coming.booked')
+                                : [route, scheduleLabel(f, o.item.group)]
+                                    .filter(Boolean)
+                                    .join(' · ')
+                          }
+                          trailing={
+                            <Money
+                              amount={f.amount}
+                              currency={currencyOf(currencies, f.currencyCode)}
+                              type={f.type}
+                            />
+                          }
+                          onPress={() => pick(o)}
+                        />
+                      );
+                    })}
+                  </Card>
                 </View>
-                {/* The payee gets the full width: sharing a line with the schedule cut it off
-                    at "Zina Mishchen…". The schedule and the category follow, muted, under it. */}
-                {!!counterparty && (
-                  <Text
-                    style={[t.type.body, { color: t.color.text, marginTop: t.space.xs }]}
-                    numberOfLines={1}
-                  >
-                    {counterparty}
-                  </Text>
-                )}
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: t.space.xs,
-                    marginTop: t.space.xs,
-                  }}
-                >
-                  {!!f.categoryName && <Dot color={categoryColor(f.categoryName, t.dark)} />}
-                  <Text
-                    style={[t.type.label, { color: t.color.textMuted, flex: 1 }]}
-                    numberOfLines={1}
-                  >
-                    {[
+              </View>
+            ))}
+          </>
+        ) : (
+          <View style={{ paddingHorizontal: t.space.lg }}>
+            <Card flush>
+              {items.map((item, i) => {
+                const f = item.fields;
+                const route = [f.sourceName, f.destinationName].filter(Boolean).join(' → ');
+                return (
+                  <ListRow
+                    key={item.key}
+                    first={i === 0}
+                    leading={item.queued ? <PendingDot visible /> : undefined}
+                    label={f.name}
+                    sub={[
+                      route,
                       f.categoryName,
                       scheduleLabel(f, item.group),
                       tr('planned.next', { date: dayLabel(f.date) }),
                     ]
                       .filter(Boolean)
                       .join(' · ')}
-                  </Text>
-                </View>
-              </Card>
-            );
-          }}
-        />
-      ) : (
-        <FlatList
-          data={objectsOfKind}
-          keyExtractor={(o) => o.key}
-          refreshControl={refresh}
-          ListHeaderComponent={listHeader}
-          contentContainerStyle={{ paddingBottom: t.space.xxl, gap: t.space.sm }}
-          ListEmptyComponent={
-            loaded ? (
-              <EmptyState
-                glyph="◷"
-                title={tr('planned.noneOfKind')}
-                hint={tr('planned.emptyHint')}
-              />
-            ) : null
-          }
-          renderItem={({ item }) => (
-            <Card
-              style={{ marginHorizontal: t.space.lg }}
-              onPress={() =>
-                router.push({ pathname: '/planned/object/[key]', params: { key: item.key } })
-              }
-            >
-              <Text style={[t.type.heading, { color: t.color.text }]} numberOfLines={1}>
-                {item.name || '—'}
-              </Text>
-              <Text
-                style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]}
-                numberOfLines={2}
-              >
-                {objectSummary(item)}
-              </Text>
+                    trailing={
+                      <Money
+                        amount={f.amount}
+                        currency={currencyOf(currencies, f.currencyCode)}
+                        type={f.type}
+                      />
+                    }
+                    chevron
+                    onPress={() => navigateOnce(`/planned/${encodeURIComponent(item.key)}`)}
+                  />
+                );
+              })}
             </Card>
-          )}
-        />
-      )}
+          </View>
+        )}
+
+        {loaded && (view === 'coming' ? sections.length === 0 : items.length === 0) && empty}
+      </ScrollView>
+
+      <OccurrenceSheet
+        visible={sheetOpen}
+        occurrence={picked}
+        booked={picked ? isBooked(picked) : false}
+        onClose={() => setSheetOpen(false)}
+      />
     </Screen>
   );
 }

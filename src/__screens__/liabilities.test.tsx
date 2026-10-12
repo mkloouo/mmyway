@@ -64,6 +64,18 @@ describe('Settings → Liabilities', () => {
     expect(screen.queryByText('Checking')).toBeNull();
   });
 
+  it("shows a liability's current balance on its row", async () => {
+    mockDb
+      .insert(referenceAccounts)
+      .values({ ...account('l1', 'Home loan', 'liability'), currentBalance: '-5000.00' })
+      .run();
+
+    await renderScreen();
+
+    // Digit grouping follows the device locale; the amount is there either way.
+    expect(screen.getByText(/−?5\D?000/)).toBeTruthy();
+  });
+
   it('says so when no liability has been synced', async () => {
     mockDb
       .insert(referenceAccounts)

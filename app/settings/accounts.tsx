@@ -1,16 +1,16 @@
 // Asset accounts in FF3's order (design §6.6). Tap or long-press one to open its page
 // (app/accounts/[id].tsx); Reorder turns the list into a drag list, and Done saves it.
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, Text } from 'react-native';
-import { ScrollView } from 'react-native-gesture-handler';
+import { ScrollView, Text } from 'react-native';
+import { ScrollView as GestureScrollView } from 'react-native-gesture-handler';
 import Animated, { FadeIn } from 'react-native-reanimated';
+import { useCurrencies } from '../../src/db/useReferenceData';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, BarIconButton, Chip, Button, SCREEN_TOP_PADDING } from '../../src/ui/components';
+import { Screen, Button, Card, SCREEN_TOP_PADDING, SectionHeader } from '../../src/ui/components';
 import { AccountCard, AccountListBar, AccountListEmpty } from '../../src/accounts/AccountList';
 import { DragList } from '../../src/ui/DragList';
-import { hasEnvelopeMarker } from '../../src/accounts/envelopeMarker';
 import { useAssetAccounts, type ReferenceAccountRow } from '../../src/accounts/useAssetAccounts';
 import { reorderAccounts } from '../../src/accounts/accountActions';
 import { filterAccounts } from '../../src/accounts/filterAccounts';
@@ -28,6 +28,7 @@ export default function AccountsScreen() {
   const { t: tr } = useTranslation();
   const act = useAction();
   const pendingAccounts = usePendingAccountIds();
+  const currencies = useCurrencies();
   // In FF3's own order — the order every account picker in the app uses, set with Reorder.
   const allAccounts = useAssetAccounts({ includeInactive: true }) ?? EMPTY_ACCOUNTS;
   const [search, setSearch] = useState('');
@@ -86,12 +87,13 @@ export default function AccountsScreen() {
     }
   });
 
-  const row = (item: ReferenceAccountRow) => (
+  const row = (item: ReferenceAccountRow, index: number) => (
     <AccountCard
       account={item}
+      currencies={currencies}
       pending={pendingAccounts.has(item.id)}
       reordering={reordering}
-      chips={hasEnvelopeMarker(item.notes) && <Chip label={tr('accounts.envelope')} />}
+      first={index === 0}
       onPress={reordering ? undefined : () => navigateOnce(`/accounts/${item.id}`)}
     />
   );
@@ -120,18 +122,8 @@ export default function AccountsScreen() {
             : () => navigateOnce({ pathname: '/accounts/new', params: { type: 'asset' } })
         }
       >
-        {reordering ? (
+        {reordering && (
           <Button title={tr('common.done')} variant="ghost" size="bar" onPress={done} />
-        ) : (
-          <BarIconButton
-            icon="swap-vertical"
-            label={tr('accounts.reorder')}
-            onPress={() => {
-              setDraft(allAccounts.map((a) => a.id));
-              setSearch('');
-              setSearchOpen(false);
-            }}
-          />
         )}
       </AccountListBar>
       {/* Reorder swaps both the line under the bar and the list itself. Each side fades in on
@@ -140,44 +132,72 @@ export default function AccountsScreen() {
           keys are what makes React mount a new one, so `entering` runs at all. */}
       {reordering ? (
         <Animated.View key="drag" entering={FadeIn.duration(FADE_MS)} style={{ flex: 1 }}>
-          <ScrollView
-            contentContainerStyle={{
-              padding: t.space.lg,
-              paddingTop: SCREEN_TOP_PADDING,
-              gap: t.space.sm,
-            }}
+          <GestureScrollView
+            contentContainerStyle={{ paddingTop: SCREEN_TOP_PADDING, paddingBottom: t.space.lg }}
           >
-            <Text style={[t.type.label, { color: t.color.textMuted, paddingBottom: t.space.xs }]}>
+            <SectionHeader first title={tr('accounts.listTitle')} />
+            <Text
+              style={[
+                t.type.label,
+                {
+                  color: t.color.textMuted,
+                  marginHorizontal: t.space.lg,
+                  paddingBottom: t.space.sm,
+                },
+              ]}
+            >
               {tr('accounts.reorderHint')}
             </Text>
             {visible.length === 0 ? (
               empty
             ) : (
-              <DragList
-                items={visible}
-                keyOf={(a) => a.id}
-                renderItem={row}
-                onMove={move}
-                gap={t.space.sm}
-                moveLabels={{ up: tr('accounts.moveUp'), down: tr('accounts.moveDown') }}
-              />
+              <Card flush style={{ marginHorizontal: t.space.lg }}>
+                <DragList
+                  items={visible}
+                  keyOf={(a) => a.id}
+                  renderItem={row}
+                  onMove={move}
+                  gap={0}
+                  moveLabels={{ up: tr('accounts.moveUp'), down: tr('accounts.moveDown') }}
+                />
+              </Card>
             )}
-          </ScrollView>
+          </GestureScrollView>
         </Animated.View>
       ) : (
         <Animated.View key="browse" entering={FadeIn.duration(FADE_MS)} style={{ flex: 1 }}>
-          <FlatList
-            data={visible}
-            keyExtractor={(a) => a.id}
+          <ScrollView
             keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{
-              padding: t.space.lg,
-              paddingTop: SCREEN_TOP_PADDING,
-              gap: t.space.sm,
-            }}
-            renderItem={({ item }) => row(item)}
-            ListEmptyComponent={empty}
-          />
+            contentContainerStyle={{ paddingTop: SCREEN_TOP_PADDING, paddingBottom: t.space.lg }}
+          >
+            <SectionHeader
+              first
+              title={tr('accounts.listTitle')}
+              action={
+                <Button
+                  title={tr('accounts.reorderAction')}
+                  variant="ghost"
+                  size="bar"
+                  accessibilityLabel={tr('accounts.reorder')}
+                  style={{ paddingHorizontal: 0 }}
+                  onPress={() => {
+                    setDraft(allAccounts.map((a) => a.id));
+                    setSearch('');
+                    setSearchOpen(false);
+                  }}
+                />
+              }
+            />
+            {visible.length === 0 ? (
+              empty
+            ) : (
+              <Card flush style={{ marginHorizontal: t.space.lg }}>
+                {visible.map((item, i) => (
+                  <Fragment key={item.id}>{row(item, i)}</Fragment>
+                ))}
+              </Card>
+            )}
+          </ScrollView>
         </Animated.View>
       )}
     </Screen>

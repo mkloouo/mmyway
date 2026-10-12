@@ -1,27 +1,30 @@
 // One envelope: what is in it, what it held last month, and the two ways to change it — assign
-// from Ready to Assign, or move money across from another envelope.
+// from Ready to Assign, or move money across from another envelope. Its name is edited on the page
+// (a Save bar appears on change); Delete is a rare action, so it sits behind the •••.
 //
 // A move is one queued operation carrying both absolute amounts (src/bucket/actions.ts), so it can
 // never half-land and lose money out of the budget.
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ScrollView, Text, View } from 'react-native';
+import { Alert, ScrollView, Text, View } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import {
-  AppBar,
   Button,
   Card,
-  CloseButton,
   Money,
   Row,
   Screen,
   SCREEN_TOP_PADDING,
   SectionHeader,
 } from '../../src/ui/components';
+import { MoreButton, PushHeader } from '../../src/ui/kit';
 import { AmountSheet } from '../../src/ui/AmountSheet';
 import { PickerSheet } from '../../src/ui/PickerSheet';
 import { PendingDot } from '../../src/ui/PendingDot';
+import { SaveBar } from '../../src/ui/SaveBar';
 import { TextField } from '../../src/ui/TextField';
+import { useConfirmDiscard } from '../../src/ui/useConfirmDiscard';
 import { useTheme } from '../../src/ui/theme';
 import { formatMoney } from '../../src/ui/money';
 import { useAction } from '../../src/ui/useAction';
@@ -30,10 +33,17 @@ import { useDb } from '../../src/providers/DbProvider';
 import { useBucket } from '../../src/bucket/useBucket';
 import { assignToEnvelope, moveBetweenEnvelopes } from '../../src/bucket/actions';
 import { envelopeHeadroom, type Envelope } from '../../src/bucket/envelopes';
-import { compareDecimal } from '../../src/api/ff3/decimal';
+import { compareDecimal, divideDecimal } from '../../src/api/ff3/decimal';
 import { enqueueBudgetRename, enqueueBudgetDelete } from '../../src/bucket/budgetActions';
 import { appLocale } from '../../src/i18n';
 import { dayDate } from '../../src/utils/day';
+
+/** Share of the assignment spent, 0–1, for the bar. Overspent is a full bar. Display only. */
+function spentFraction(envelope: Envelope): number {
+  if (envelope.overspent) return 1;
+  const spent = envelope.spent.replace(/^[-−]/, '');
+  return Math.min(1, Number(divideDecimal(spent, envelope.assigned, 4)));
+}
 
 export default function EnvelopeScreen() {
   // `cover=1` arrives from the overspent row on the Budget tab: open the move sheet straight away,
@@ -49,8 +59,8 @@ export default function EnvelopeScreen() {
 
   const [sheet, setSheet] = useState<'assign' | 'giver' | 'amount' | null>(null);
   const [giverId, setGiverId] = useState<string | null>(null);
-  const [renaming, setRenaming] = useState(false);
-  const [newName, setNewName] = useState(envelope?.name ?? '');
+  // null: the name as Firefly III has it. Typed text replaces it until saved or undone.
+  const [name, setName] = useState<string | null>(null);
   // Once per visit: reopening it after the user closed the sheet would trap them on this screen.
   const coverHandled = useRef(false);
   useEffect(() => {
@@ -59,10 +69,17 @@ export default function EnvelopeScreen() {
     setSheet('giver');
   }, [cover]);
 
+  // A queued rename is shown as pending (PendingDot) until the sync brings the new name back, so
+  // the bar does not offer to save the same name twice.
+  const queued = bucket.queued.has(budgetId);
+  const typedName = name ?? envelope?.name ?? '';
+  const renameDirty = name !== null && !queued && typedName !== (envelope?.name ?? '');
+  const close = useConfirmDiscard(renameDirty, 'budget.discardTitle');
+
   if (!envelope) {
     return (
       <Screen bottom>
-        <AppBar title={tr('budget.title')} left={<CloseButton onPress={() => router.back()} />} />
+        <PushHeader backLabel={tr('budget.title')} onBack={close} />
         {bucket.loaded && (
           <Text style={[t.type.body, { color: t.color.textMuted, padding: t.space.lg }]}>
             {tr('budget.envelopeGone')}
@@ -73,6 +90,10 @@ export default function EnvelopeScreen() {
   }
 
   const { currency, period } = bucket;
+  const monthLabel = dayDate(period.start).toLocaleString(appLocale(), {
+    month: 'long',
+    year: 'numeric',
+  });
   // What it would take to bring an overspent envelope back to zero.
   const shortfall = envelope.overspent ? envelope.available.replace(/^[-−]/, '') : null;
   const lastMonth = bucket.lastPeriod.get(budgetId) ?? null;
@@ -81,6 +102,7 @@ export default function EnvelopeScreen() {
     (e) => e.budgetId !== budgetId && compareDecimal(envelopeHeadroom(e), '0') > 0,
   );
   const giver = givers.find((e) => e.budgetId === giverId) ?? null;
+  const problemText = renameDirty && !typedName.trim() ? tr('budget.emptyNameError') : null;
 
   const assign = act(tr('budget.assign'), async (amount: string) => {
     await assignToEnvelope(db, period, bucket.currencyCode, envelope, amount);
@@ -93,13 +115,13 @@ export default function EnvelopeScreen() {
   });
 
   const rename = act(tr('budget.renameAction'), async () => {
+    const next = typedName.trim();
     const ok = await confirmAction(
-      tr('budget.renameTitle', { name: newName }),
+      tr('budget.renameTitle', { name: next }),
       tr('budget.renameAction'),
     );
     if (!ok) return;
-    await enqueueBudgetRename(db, envelope.budgetId, newName);
-    setRenaming(false);
+    await enqueueBudgetRename(db, envelope.budgetId, next);
   });
 
   const delete_ = act(tr('budget.deleteAction'), async () => {
@@ -113,15 +135,20 @@ export default function EnvelopeScreen() {
     router.back();
   });
 
+  const more = () =>
+    Alert.alert(envelope.name, undefined, [
+      { text: tr('budget.deleteAction'), style: 'destructive', onPress: () => void delete_() },
+      { text: tr('common.cancel'), style: 'cancel' },
+    ]);
+
   return (
     <Screen bottom>
-      <AppBar
+      <PushHeader
+        backLabel={tr('budget.title')}
+        onBack={close}
+        right={<MoreButton label={tr('budget.moreLabel')} onPress={more} />}
         title={envelope.name}
-        subtitle={dayDate(period.start).toLocaleString(appLocale(), {
-          month: 'long',
-          year: 'numeric',
-        })}
-        left={<CloseButton onPress={() => router.back()} />}
+        subtitle={tr('budget.envelopeSubtitle', { month: monthLabel })}
       />
       <ScrollView
         contentContainerStyle={{
@@ -130,9 +157,9 @@ export default function EnvelopeScreen() {
           gap: t.space.sm,
         }}
       >
-        <Card style={{ marginHorizontal: t.space.lg, gap: t.space.xs }}>
+        <Card style={{ marginHorizontal: t.space.lg, gap: t.space.sm }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
-            <PendingDot visible={bucket.queued.has(budgetId)} />
+            <PendingDot visible={queued} />
             <Text
               style={[t.type.caption, { color: t.color.textMuted, textTransform: 'uppercase' }]}
             >
@@ -145,14 +172,63 @@ export default function EnvelopeScreen() {
             size="display"
             tone={envelope.overspent ? 'warn' : undefined}
           />
+          <View
+            style={{
+              height: 8,
+              borderRadius: 4,
+              overflow: 'hidden',
+              backgroundColor: envelope.overspent ? t.color.warnSoft : t.color.accentSoft,
+            }}
+          >
+            <View
+              style={{
+                width: `${Math.round(spentFraction(envelope) * 100)}%`,
+                height: 8,
+                backgroundColor: envelope.overspent ? t.color.warn : t.color.accent,
+              }}
+            />
+          </View>
           {envelope.overspent && (
-            <Text style={[t.type.label, { color: t.color.warn }]}>
-              {tr('budget.overspentBy', {
-                amount: formatMoney(envelope.available.replace(/^[-−]/, ''), currency),
-              })}
-            </Text>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: t.space.sm,
+                backgroundColor: t.color.warnSoft,
+                borderRadius: t.radius.md,
+                padding: t.space.md,
+              }}
+            >
+              <Ionicons name="warning-outline" size={18} color={t.color.warn} />
+              <Text style={[t.type.label, { color: t.color.warn, flex: 1 }]}>
+                {tr('budget.overspentBy', {
+                  amount: formatMoney(envelope.available.replace(/^[-−]/, ''), currency),
+                })}
+              </Text>
+            </View>
           )}
         </Card>
+
+        <View style={{ flexDirection: 'row', gap: t.space.sm, marginHorizontal: t.space.lg }}>
+          <Button
+            title={tr('budget.assign')}
+            style={{ flex: 1 }}
+            onPress={() => setSheet('assign')}
+            disabled={act.pending(tr('budget.assign'))}
+          />
+          <Button
+            title={tr('budget.moveHere')}
+            variant="secondary"
+            style={{ flex: 1 }}
+            onPress={() => setSheet('giver')}
+            disabled={givers.length === 0 || act.pending(tr('budget.moveHere'))}
+          />
+        </View>
+        {givers.length === 0 && (
+          <Text style={[t.type.label, { color: t.color.textMuted, marginHorizontal: t.space.lg }]}>
+            {tr('budget.nothingToGive')}
+          </Text>
+        )}
 
         <SectionHeader title={tr('budget.thisMonth')} />
         <Card style={{ marginHorizontal: t.space.lg }}>
@@ -171,37 +247,30 @@ export default function EnvelopeScreen() {
           />
         </Card>
 
-        <View style={{ paddingHorizontal: t.space.lg, paddingTop: t.space.md, gap: t.space.sm }}>
-          <Button
-            title={tr('budget.assign')}
-            onPress={() => setSheet('assign')}
-            disabled={act.pending(tr('budget.assign'))}
+        <SectionHeader title={tr('budget.envelopeGroup')} />
+        <Card style={{ marginHorizontal: t.space.lg }}>
+          <Text style={[t.type.label, { color: t.color.text, marginBottom: t.space.xs }]}>
+            {tr('budget.nameLabel')}
+          </Text>
+          <TextField
+            value={typedName}
+            onChangeText={setName}
+            invalid={!!problemText}
+            testID="envelope-name"
           />
-          <Button
-            title={tr('budget.moveHere')}
-            variant="secondary"
-            onPress={() => setSheet('giver')}
-            disabled={givers.length === 0 || act.pending(tr('budget.moveHere'))}
-          />
-          {givers.length === 0 && (
-            <Text style={[t.type.label, { color: t.color.textMuted }]}>
-              {tr('budget.nothingToGive')}
-            </Text>
-          )}
-          <Button
-            title={tr('budget.renameAction')}
-            variant="secondary"
-            onPress={() => setRenaming(true)}
-            disabled={act.pending(tr('budget.renameAction'))}
-          />
-          <Button
-            title={tr('budget.deleteAction')}
-            variant="danger"
-            onPress={() => void delete_()}
-            disabled={act.pending(tr('budget.deleteAction'))}
-          />
-        </View>
+        </Card>
       </ScrollView>
+
+      {renameDirty && (
+        <SaveBar
+          problemText={problemText}
+          saving={act.pending(tr('budget.renameAction'))}
+          disabled={!!problemText || act.pending(tr('budget.renameAction'))}
+          onSave={() => void rename()}
+          summary={tr('budget.nameChanged')}
+          onUndo={() => setName(null)}
+        />
+      )}
 
       {/* The amount is absolute — what the envelope should hold — which is also why the keypad
           opens on what it holds now rather than on zero. */}
@@ -253,48 +322,6 @@ export default function EnvelopeScreen() {
             if (typed !== null) void move(giver, typed);
           }}
         />
-      )}
-
-      {renaming && (
-        <View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            justifyContent: 'center',
-            alignItems: 'center',
-            padding: t.space.lg,
-          }}
-        >
-          <Card style={{ gap: t.space.md, width: '100%', maxWidth: 350 }}>
-            <View>
-              <Text style={[t.type.label, { color: t.color.text, marginBottom: t.space.xs }]}>
-                {tr('budget.nameLabel')}
-              </Text>
-              <TextField value={newName} onChangeText={setNewName} autoFocus />
-            </View>
-            <View style={{ flexDirection: 'row', gap: t.space.sm }}>
-              <Button
-                title={tr('common.cancel')}
-                variant="secondary"
-                onPress={() => {
-                  setRenaming(false);
-                  setNewName(envelope.name);
-                }}
-                size="md"
-              />
-              <Button
-                title={tr('budget.renameAction')}
-                onPress={() => void rename()}
-                disabled={newName === envelope.name || !newName.trim()}
-                size="md"
-              />
-            </View>
-          </Card>
-        </View>
       )}
     </Screen>
   );

@@ -4,16 +4,11 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, Text, View } from 'react-native';
+import { router } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '../../src/ui/theme';
-import {
-  Screen,
-  AppBar,
-  Button,
-  Card,
-  SectionHeader,
-  SCREEN_TOP_PADDING,
-} from '../../src/ui/components';
+import { Screen, Button, Card, SectionHeader, SCREEN_TOP_PADDING } from '../../src/ui/components';
+import { PushHeader } from '../../src/ui/kit';
 import { TextField } from '../../src/ui/TextField';
 import { useAction } from '../../src/ui/useAction';
 import { confirmDestructive } from '../../src/ui/confirm';
@@ -78,7 +73,12 @@ export default function ProxyScreen() {
 
   return (
     <Screen bottom>
-      <AppBar title={tr('proxy.title')} subtitle={tr('proxy.subtitle')} />
+      <PushHeader
+        backLabel={tr('settings.connectionBack')}
+        onBack={() => router.back()}
+        title={tr('proxy.title')}
+        subtitle={tr('proxy.subtitle')}
+      />
       <ScrollView
         contentContainerStyle={{ paddingTop: SCREEN_TOP_PADDING, paddingBottom: t.space.lg }}
         keyboardShouldPersistTaps="handled"
@@ -105,53 +105,65 @@ export default function ProxyScreen() {
           }
         />
 
-        <View style={{ paddingHorizontal: t.space.lg, gap: t.space.sm }}>
-          {pairs.map((pair, index) => {
-            const problem = problemOf(pair);
-            return (
-              <Card key={index}>
-                <View style={{ gap: t.space.sm }}>
-                  <TextField
-                    value={pair.name}
-                    onChangeText={(name) => set(index, { name })}
-                    placeholder={tr('proxy.namePlaceholder')}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    invalid={problem === 'name' || problem === 'reserved'}
-                  />
-                  <TextField
-                    value={pair.value}
-                    onChangeText={(value) => set(index, { value })}
-                    placeholder={tr('proxy.valuePlaceholder')}
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    // A proxy secret is a credential; keep it off the screen like the API token.
-                    secureTextEntry
-                    invalid={problem === 'value'}
-                  />
-                  {problem && (
-                    <Text style={[t.type.label, { color: t.color.danger }]}>
-                      {tr(`proxy.problems.${problem}`)}
-                    </Text>
-                  )}
-                  <Button
-                    title={tr('proxy.removeHeader')}
-                    variant="ghost"
-                    onPress={() => setPairs((list) => list.filter((_, i) => i !== index))}
-                  />
+        {pairs.length > 0 && (
+          <Card flush style={{ marginHorizontal: t.space.lg }}>
+            {pairs.map((pair, index) => {
+              const problem = problemOf(pair);
+              return (
+                <View
+                  key={index}
+                  style={{
+                    padding: t.space.md,
+                    gap: t.space.sm,
+                    borderTopWidth: index === 0 ? 0 : 1,
+                    borderTopColor: t.color.border,
+                  }}
+                >
+                  <View style={{ gap: t.space.sm }}>
+                    <TextField
+                      value={pair.name}
+                      onChangeText={(name) => set(index, { name })}
+                      placeholder={tr('proxy.namePlaceholder')}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      invalid={problem === 'name' || problem === 'reserved'}
+                    />
+                    <TextField
+                      value={pair.value}
+                      onChangeText={(value) => set(index, { value })}
+                      placeholder={tr('proxy.valuePlaceholder')}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      // A proxy secret is a credential; keep it off the screen like the API token.
+                      secureTextEntry
+                      invalid={problem === 'value'}
+                    />
+                    {problem && (
+                      <Text style={[t.type.label, { color: t.color.danger }]}>
+                        {tr(`proxy.problems.${problem}`)}
+                      </Text>
+                    )}
+                    <Button
+                      title={tr('proxy.removeHeader')}
+                      variant="ghost"
+                      onPress={() => setPairs((list) => list.filter((_, i) => i !== index))}
+                    />
+                  </View>
                 </View>
-              </Card>
-            );
-          })}
-        </View>
+              );
+            })}
+          </Card>
+        )}
 
-        <View style={{ paddingHorizontal: t.space.lg, paddingTop: t.space.md }}>
-          <Button
-            title={tr('proxy.addHeader')}
-            variant="ghost"
-            onPress={() => setPairs((list) => [...list, { name: '', value: '' }])}
-          />
-        </View>
+        <Card flush style={{ marginHorizontal: t.space.lg, marginTop: t.space.md }}>
+          <View style={{ padding: t.space.xs }}>
+            <Button
+              title={tr('proxy.addHeader')}
+              variant="ghost"
+              onPress={() => setPairs((list) => [...list, { name: '', value: '' }])}
+            />
+          </View>
+        </Card>
       </ScrollView>
 
       <View

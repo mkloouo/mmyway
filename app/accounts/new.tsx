@@ -1,16 +1,28 @@
-// New account (Settings → Accounts → +): an asset or a liability created on the device and queued like
-// every other write. The form is the one the data layer takes (src/accounts/accountCreate.ts). Amounts
-// are kept as typed and turned into canonical decimals here, so nothing reaches the outbox unparsed.
-// Nothing is queued until the user confirms.
+// New account (Settings → Accounts → +, Settings → Liabilities → +): an asset or a liability created on the
+// device and queued like every other write. A two-step modal: step 1 says what kind it is and its details,
+// step 2 holds the amounts (a liability: what is owed, the interest, the limit). The form is the one the
+// data layer takes (src/accounts/accountCreate.ts). Amounts are kept as typed and turned into canonical
+// decimals here, so nothing reaches the outbox unparsed. Nothing is queued until the user confirms.
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Text, View } from 'react-native';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useDb } from '../../src/providers/DbProvider';
 import { useCurrencies } from '../../src/db/useReferenceData';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, AppBar, Chip, Row, Toast, CloseButton } from '../../src/ui/components';
-import { Checkbox } from '../../src/ui/Checkbox';
+import {
+  Screen,
+  Card,
+  Row,
+  SwitchRow,
+  SectionHeader,
+  Button,
+  Toast,
+  PRESSED_OPACITY,
+  ROW_HEIGHT,
+} from '../../src/ui/components';
+import { ModalHeader, StickyFooter } from '../../src/ui/kit';
 import { TextField } from '../../src/ui/TextField';
 import { PickerSheet } from '../../src/ui/PickerSheet';
 import { primaryCurrencyCode } from '../../src/ui/currencies';
@@ -26,17 +38,13 @@ import {
 import { enqueueAccountCreate } from '../../src/accounts/accountActions';
 import { parseDecimalInput, parseSignedDecimalInput } from '../../src/api/ff3/decimal';
 import {
-  FormScroll,
-  FormSection,
   AmountField,
   CurrencySheet,
-  NameField,
   RoleSheet,
   ROLE_LABEL_KEYS,
   dayLabel,
   pickDay,
 } from '../../src/accounts/AccountFormParts';
-import { SaveBar } from '../../src/ui/SaveBar';
 
 const LIABILITY_TYPE_KEYS = {
   loan: 'account.liabilityLoan',
@@ -67,6 +75,14 @@ const PROBLEM_KEYS: Partial<Record<AccountCreateProblem, string>> = {
   liabilityDirection: 'account.problemLiabilityDirection',
 };
 
+// The problems step 1 owns; anything else is on step 2.
+const STEP1_PROBLEMS = new Set<AccountCreateProblem>([
+  'name',
+  'currencyCode',
+  'monthlyPaymentDate',
+  'liabilityType',
+]);
+
 const EMPTY_FORM: AccountCreateForm = {
   name: '',
   type: 'asset',
@@ -92,6 +108,7 @@ export default function NewAccountScreen() {
   // Opened from Settings → Liabilities with type=liability, from Settings → Accounts with type=asset.
   const { type: initialType } = useLocalSearchParams<{ type?: string }>();
 
+  const [step, setStep] = useState<1 | 2>(1);
   const [form, setForm] = useState<AccountCreateForm>(() => ({
     ...EMPTY_FORM,
     type: initialType === 'liability' ? 'liability' : 'asset',
@@ -136,6 +153,11 @@ export default function NewAccountScreen() {
     rateText !== '' ||
     limitText !== '' ||
     (form.notes ?? '') !== '';
+  const step1Ok =
+    !!form.name.trim() &&
+    !!currencyCode &&
+    (asset || !!form.liabilityType) &&
+    (!asset || form.accountRole !== 'ccAsset' || !!form.monthlyPaymentDate);
   const canSave = !problem && amountsValid && !saving;
 
   function patch(fields: Partial<AccountCreateForm>) {
@@ -161,158 +183,336 @@ export default function NewAccountScreen() {
   );
 
   const problemKey = problem ? PROBLEM_KEYS[problem] : undefined;
-  const problemText = problemKey ? tr(problemKey) : null;
+  // On step 1 only a step-1 problem is shown; step 2 shows whatever still blocks the create.
+  const problemText =
+    problemKey && (step === 2 || (problem && STEP1_PROBLEMS.has(problem))) ? tr(problemKey) : null;
+
+  const liabilityTypeLabel = form.liabilityType
+    ? tr(LIABILITY_TYPE_KEYS[form.liabilityType])
+    : null;
+  const directionLabel = form.liabilityDirection
+    ? tr(DIRECTION_KEYS[form.liabilityDirection])
+    : null;
 
   return (
-    <Screen bottom avoidKeyboard>
-      <View style={{ flex: 1 }}>
-        <AppBar title={tr('account.createTitle')} left={<CloseButton onPress={close} />} />
-        <FormScroll>
-          <FormSection first title={tr('account.sectionAccount')}>
-            <NameField value={form.name} onChangeText={(name) => patch({ name })} />
-            <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('account.type')}</Text>
-            <View style={{ flexDirection: 'row', gap: t.space.sm }}>
-              <Chip
-                label={tr('account.typeAsset')}
+    <Screen modal bottom avoidKeyboard>
+      <ModalHeader
+        title={asset ? tr('account.createTitle') : tr('account.newLiabilityTitle')}
+        onClose={close}
+        step={step}
+        steps={2}
+        stepLabel={tr('account.stepOf', { step, total: 2 })}
+      />
+
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: t.space.xl, paddingTop: t.space.sm }}
+        keyboardShouldPersistTaps="handled"
+      >
+        {step === 1 ? (
+          <>
+            <SectionHeader first title={tr('account.sectionKind')} />
+            <View style={{ flexDirection: 'row', gap: t.space.sm, marginHorizontal: t.space.lg }}>
+              <KindCard
+                testID="kind-asset"
+                icon="card-outline"
+                label={tr('account.kindAsset')}
+                sub={tr('account.kindAssetHint')}
                 selected={asset}
                 onPress={() => patch({ type: 'asset' })}
               />
-              <Chip
-                label={tr('account.typeLiability')}
+              <KindCard
+                testID="kind-liability"
+                icon="trending-down-outline"
+                label={tr('account.kindLiability')}
+                sub={tr('account.kindLiabilityHint')}
                 selected={!asset}
                 onPress={() => patch({ type: 'liability' })}
               />
             </View>
-            <Row
-              label={tr('fields.currency')}
-              value={currencyCode}
-              chevron
-              onPress={() => setCurrencySheetOpen(true)}
-            />
-            {asset && (
-              <Row
-                label={tr('account.role')}
-                value={tr(ROLE_LABEL_KEYS[form.accountRole ?? 'defaultAsset'])}
-                chevron
-                onPress={() => setRoleSheetOpen(true)}
-              />
-            )}
-            {asset && form.accountRole === 'ccAsset' && (
-              <Row
-                label={tr('account.monthlyPaymentDate')}
-                value={dayLabel(form.monthlyPaymentDate ?? null) ?? tr('account.pickDate')}
-                tone={form.monthlyPaymentDate ? 'default' : 'warn'}
-                chevron
-                onPress={() =>
-                  pickDay(form.monthlyPaymentDate ?? null, (day) =>
-                    patch({ monthlyPaymentDate: day }),
-                  )
-                }
-              />
-            )}
-            {asset && form.accountRole === 'ccAsset' && (
-              <Text style={[t.type.label, { color: t.color.textFaint }]}>
-                {tr('account.monthlyPaymentDateHint')}
-              </Text>
-            )}
-            <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('fields.note')}</Text>
-            <TextField
-              value={form.notes ?? ''}
-              onChangeText={(notes) => patch({ notes: notes || null })}
-              multiline
-            />
-          </FormSection>
 
-          <FormSection title={tr('account.sectionBalances')}>
-            <AmountField
-              label={tr('account.openingBalance')}
-              text={openingText}
-              onChangeText={setOpeningText}
-              parsed={opening}
-              keyboardType="decimal-pad"
-            />
-            <Row
-              label={tr('account.openingBalanceDate')}
-              value={dayLabel(form.openingBalanceDate ?? null) ?? tr('account.pickDate')}
-              chevron
-              onPress={() =>
-                pickDay(form.openingBalanceDate ?? null, (day) =>
-                  patch({ openingBalanceDate: day }),
-                )
-              }
-            />
-          </FormSection>
-
-          {!asset && (
-            <>
-              <FormSection title={tr('account.sectionLiability')}>
+            <SectionHeader title={tr('account.sectionDetails')} />
+            <Card style={{ marginHorizontal: t.space.lg }}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: t.space.md,
+                  minHeight: ROW_HEIGHT,
+                }}
+              >
+                <Text style={[t.type.body, { color: t.color.text }]}>{tr('accounts.name')}</Text>
+                <TextField
+                  value={form.name}
+                  onChangeText={(name) => patch({ name })}
+                  placeholder={tr('accounts.name')}
+                  style={{ flex: 1, borderWidth: 0, paddingHorizontal: 0, textAlign: 'right' }}
+                />
+              </View>
+              {asset ? (
+                <Row
+                  label={tr('account.type')}
+                  value={tr(ROLE_LABEL_KEYS[form.accountRole ?? 'defaultAsset'])}
+                  chevron
+                  onPress={() => setRoleSheetOpen(true)}
+                />
+              ) : (
                 <Row
                   label={tr('account.liabilityType')}
-                  value={
-                    form.liabilityType
-                      ? tr(LIABILITY_TYPE_KEYS[form.liabilityType])
-                      : tr('account.choose')
-                  }
-                  tone={form.liabilityType ? 'default' : 'warn'}
+                  value={liabilityTypeLabel ?? tr('account.choose')}
+                  tone={liabilityTypeLabel ? 'default' : 'warn'}
                   chevron
                   onPress={() => setLiabilityTypeSheetOpen(true)}
                 />
-                <Row
-                  label={tr('account.liabilityDirection')}
-                  value={
-                    form.liabilityDirection
-                      ? tr(DIRECTION_KEYS[form.liabilityDirection])
-                      : tr('account.choose')
+              )}
+              <Row
+                label={tr('fields.currency')}
+                value={currencyCode}
+                chevron
+                onPress={() => setCurrencySheetOpen(true)}
+              />
+              {asset && form.accountRole === 'ccAsset' && (
+                <Pressable
+                  onPress={() =>
+                    pickDay(form.monthlyPaymentDate ?? null, (day) =>
+                      patch({ monthlyPaymentDate: day }),
+                    )
                   }
-                  tone={form.liabilityDirection ? 'default' : 'warn'}
+                  accessibilityRole="button"
+                  style={({ pressed }) => ({
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: t.space.md,
+                    minHeight: ROW_HEIGHT,
+                    paddingVertical: t.space.sm,
+                    borderTopWidth: 1,
+                    borderTopColor: t.color.border,
+                    opacity: pressed ? PRESSED_OPACITY : 1,
+                  })}
+                >
+                  <View style={{ flex: 1 }}>
+                    <Text style={[t.type.body, { color: t.color.text }]}>
+                      {tr('account.paidOffOn')}
+                    </Text>
+                    <Text style={[t.type.label, { color: t.color.textMuted }]}>
+                      {tr('account.paidOffOnHint')}
+                    </Text>
+                  </View>
+                  <Text
+                    style={[
+                      t.type.body,
+                      {
+                        color: form.monthlyPaymentDate ? t.color.textMuted : t.color.warn,
+                      },
+                    ]}
+                  >
+                    {dayLabel(form.monthlyPaymentDate ?? null) ?? tr('account.pickDate')}
+                  </Text>
+                  <Text style={[t.type.body, { color: t.color.textFaint }]}>›</Text>
+                </Pressable>
+              )}
+            </Card>
+            {asset && form.accountRole === 'ccAsset' && (
+              <Text
+                style={[
+                  t.type.label,
+                  { color: t.color.textFaint, marginHorizontal: t.space.lg, marginTop: t.space.xs },
+                ]}
+              >
+                {tr('account.monthlyPaymentDateHint')}
+              </Text>
+            )}
+
+            <View style={{ height: t.space.md }} />
+            <Card style={{ marginHorizontal: t.space.lg }}>
+              {asset && (
+                <SwitchRow
+                  first
+                  value={includeNetWorth}
+                  onValueChange={() => patch({ includeNetWorth: !includeNetWorth })}
+                  label={tr('account.inNetWorth')}
+                  hint={tr('account.inNetWorthHint')}
+                />
+              )}
+              <View
+                style={{
+                  gap: t.space.xs,
+                  paddingVertical: t.space.sm,
+                  borderTopWidth: asset ? 1 : 0,
+                  borderTopColor: t.color.border,
+                }}
+              >
+                <Text style={[t.type.body, { color: t.color.text }]}>{tr('fields.note')}</Text>
+                <TextField
+                  value={form.notes ?? ''}
+                  onChangeText={(notes) => patch({ notes: notes || null })}
+                  multiline
+                />
+              </View>
+            </Card>
+          </>
+        ) : (
+          <>
+            {!asset && (
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: t.space.sm,
+                  marginHorizontal: t.space.lg,
+                  marginTop: t.space.sm,
+                }}
+              >
+                <Text
+                  style={[t.type.label, { color: t.color.textMuted, flex: 1 }]}
+                  numberOfLines={2}
+                >
+                  {tr('account.summary', {
+                    name: form.name.trim(),
+                    type: liabilityTypeLabel ?? tr('account.choose'),
+                    direction: directionLabel ?? tr('account.choose'),
+                    currency: currencyCode,
+                  })}
+                </Text>
+                <Pressable
+                  testID="new-account-change"
+                  onPress={() => setStep(1)}
+                  accessibilityRole="button"
+                  accessibilityLabel={tr('account.change')}
+                  hitSlop={8}
+                >
+                  <Text style={[t.type.label, { color: t.color.accent, fontWeight: '600' }]}>
+                    {tr('account.change')}
+                  </Text>
+                </Pressable>
+              </View>
+            )}
+
+            <SectionHeader
+              first={asset}
+              title={asset ? tr('account.sectionBalances') : tr('account.sectionOwe')}
+            />
+            <Card style={{ marginHorizontal: t.space.lg }}>
+              {!asset && (
+                <Row
+                  first
+                  label={tr('account.liabilityDirection')}
+                  value={directionLabel ?? tr('account.choose')}
+                  tone={directionLabel ? 'default' : 'warn'}
                   chevron
                   onPress={() => setDirectionSheetOpen(true)}
                 />
-                <AmountField
-                  label={tr('account.interestRate')}
-                  text={rateText}
-                  onChangeText={setRateText}
-                  parsed={rate}
-                  keyboardType="decimal-pad"
-                />
-                <Row
-                  label={tr('account.interestPeriod')}
-                  value={
-                    form.interestPeriod
-                      ? tr(PERIOD_KEYS[form.interestPeriod])
-                      : tr('account.choose')
-                  }
-                  chevron
-                  onPress={() => setPeriodSheetOpen(true)}
-                />
-                <AmountField
-                  label={tr('account.creditLimit')}
-                  text={limitText}
-                  onChangeText={setLimitText}
-                  parsed={limit}
-                  keyboardType="decimal-pad"
-                />
-              </FormSection>
-            </>
-          )}
+              )}
+              <AmountField
+                label={tr('fields.amount')}
+                text={openingText}
+                onChangeText={setOpeningText}
+                parsed={opening}
+                keyboardType="decimal-pad"
+                spaced={!asset}
+              />
+              <Row
+                label={tr('account.asOf')}
+                value={dayLabel(form.openingBalanceDate ?? null) ?? tr('account.pickDate')}
+                chevron
+                onPress={() =>
+                  pickDay(form.openingBalanceDate ?? null, (day) =>
+                    patch({ openingBalanceDate: day }),
+                  )
+                }
+              />
+            </Card>
 
-          {asset && (
-            <>
-              <FormSection tight title={tr('account.sectionOptions')}>
-                <Checkbox
-                  checked={includeNetWorth}
-                  onPress={() => patch({ includeNetWorth: !includeNetWorth })}
-                  label={tr('account.includeNetWorth')}
-                  hint={tr('account.includeNetWorthHint')}
-                />
-              </FormSection>
-            </>
-          )}
-        </FormScroll>
+            {!asset && (
+              <>
+                <SectionHeader title={tr('account.sectionInterest')} />
+                <Card style={{ marginHorizontal: t.space.lg }}>
+                  <AmountField
+                    label={tr('account.interestRate')}
+                    text={rateText}
+                    onChangeText={setRateText}
+                    parsed={rate}
+                    keyboardType="decimal-pad"
+                  />
+                  <Row
+                    label={tr('account.interestPeriod')}
+                    value={
+                      form.interestPeriod
+                        ? tr(PERIOD_KEYS[form.interestPeriod])
+                        : tr('account.choose')
+                    }
+                    chevron
+                    onPress={() => setPeriodSheetOpen(true)}
+                  />
+                </Card>
 
-        <SaveBar problemText={problemText} saving={saving} disabled={!canSave} onSave={save} />
-        <Toast message={toast} />
-      </View>
+                <SectionHeader title={tr('account.sectionLimit')} />
+                <Card style={{ marginHorizontal: t.space.lg }}>
+                  <AmountField
+                    label={tr('account.creditLimit')}
+                    text={limitText}
+                    onChangeText={setLimitText}
+                    parsed={limit}
+                    keyboardType="decimal-pad"
+                  />
+                </Card>
+              </>
+            )}
+
+            <Text
+              style={[
+                t.type.label,
+                { color: t.color.textMuted, marginHorizontal: t.space.lg, marginTop: t.space.sm },
+              ]}
+            >
+              {tr('account.footnote')}
+            </Text>
+          </>
+        )}
+      </ScrollView>
+
+      {!!problemText && (
+        <Text
+          style={[
+            t.type.label,
+            { color: t.color.danger, marginHorizontal: t.space.lg, marginTop: t.space.sm },
+          ]}
+        >
+          {problemText}
+        </Text>
+      )}
+      {step === 1 ? (
+        <StickyFooter>
+          <View style={{ flex: 1 }} testID="new-account-continue">
+            <Button
+              title={tr('account.continue')}
+              size="lg"
+              disabled={!step1Ok}
+              onPress={() => setStep(2)}
+            />
+          </View>
+        </StickyFooter>
+      ) : (
+        <StickyFooter>
+          <View style={{ flex: 1 }}>
+            <Button
+              title={tr('account.back')}
+              size="lg"
+              variant="secondary"
+              onPress={() => setStep(1)}
+            />
+          </View>
+          <View style={{ flex: 2 }} testID="new-account-create">
+            <Button
+              title={asset ? tr('account.createAccount') : tr('account.createLiability')}
+              size="lg"
+              disabled={!canSave}
+              onPress={save}
+            />
+          </View>
+        </StickyFooter>
+      )}
+      <Toast message={toast} />
 
       <CurrencySheet
         visible={currencySheetOpen}
@@ -365,5 +565,49 @@ export default function NewAccountScreen() {
         onSelect={(key) => key && patch({ interestPeriod: key as keyof typeof PERIOD_KEYS })}
       />
     </Screen>
+  );
+}
+
+/** A "what kind" card: a radio in the group, 2 px accent border and accentSoft fill when selected. */
+function KindCard({
+  testID,
+  icon,
+  label,
+  sub,
+  selected,
+  onPress,
+}: {
+  testID: string;
+  icon: 'card-outline' | 'trending-down-outline';
+  label: string;
+  sub: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  const t = useTheme();
+  return (
+    <Pressable
+      testID={testID}
+      onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityLabel={label}
+      accessibilityState={{ checked: selected }}
+      style={({ pressed }) => ({
+        flex: 1,
+        gap: t.space.sm,
+        padding: selected ? t.space.md - 1 : t.space.md,
+        borderRadius: t.radius.md,
+        borderWidth: selected ? 2 : 1,
+        borderColor: selected ? t.color.accent : t.color.border,
+        backgroundColor: selected ? t.color.accentSoft : t.color.surface,
+        opacity: pressed ? PRESSED_OPACITY : 1,
+      })}
+    >
+      <Ionicons name={icon} size={22} color={selected ? t.color.accent : t.color.textMuted} />
+      <Text style={[t.type.body, { color: t.color.text, fontWeight: '600' }]}>{label}</Text>
+      <Text style={[t.type.label, { color: selected ? t.color.accent : t.color.textMuted }]}>
+        {sub}
+      </Text>
+    </Pressable>
   );
 }

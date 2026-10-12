@@ -1,6 +1,10 @@
 import { and, eq } from 'drizzle-orm';
 import { referenceCategories, referenceCurrencies, inboxItems } from '../db/schema';
-import { getDefaultSourceAccountId, getCashAccountId } from '../settings/appSettings';
+import {
+  getDefaultSourceAccountId,
+  getCashAccountId,
+  getReceiptReader,
+} from '../settings/appSettings';
 import { transition } from '../inbox/state';
 import { buildChain } from './buildChain';
 import { runProviderChain } from './chain';
@@ -288,6 +292,35 @@ export async function parseReceiptItem(
 
   const providers = await buildChain(db);
   if (providers.length === 0) {
+    // Settings → Receipt reading "Nobody": the photo stays attached and the user types the details.
+    // Not an error — the item is parsed with a blank draft, like a manual entry's start.
+    if ((await getReceiptReader(db)) === 'none') {
+      const blank: Draft = {
+        type: 'withdrawal',
+        amount: '',
+        currencyCode: '',
+        date: capturedDate(before).toISOString(),
+        description: '',
+        isNewPayee: true,
+        location: capturedLocation(before),
+      };
+      const moved = await db
+        .update(inboxItems)
+        .set({
+          draftJson: writeDraft(blank),
+          state: transition('captured', 'parsed'),
+          updatedAt: new Date().toISOString(),
+        })
+        .where(
+          and(
+            eq(inboxItems.id, itemId),
+            eq(inboxItems.state, 'captured'),
+            eq(inboxItems.updatedAt, before.updatedAt),
+          ),
+        )
+        .returning({ id: inboxItems.id });
+      return moved.length > 0 ? 'parsed' : 'waiting';
+    }
     await markReceiptError(
       db,
       itemId,

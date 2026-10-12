@@ -23,17 +23,21 @@ tags:
       }
 - runFlow: ../../subflows/close-capture.yaml
 - tapOn: 'Settings, tab, 5 of 5'
+- tapOn: 'Firefly III'
 - tapOn: 'Sign out'
 - assertVisible: "Can't sign out yet"
 - tapOn: 'OK'
+- back # off the Firefly III page, onto the tabs
 - setAirplaneMode: disabled
 - runFlow: ../../subflows/wait-sent.yaml
 - tapOn: 'Settings, tab, 5 of 5'
+- tapOn: 'Firefly III'
 - tapOn: 'Sign out'
 - tapOn:
     text: 'Sign out'
     below: "Sign out\\?"
 - assertVisible: 'not connected'
+- back
 - tapOn: 'Activity, tab, 2 of 5'
 - assertVisible: 'Nothing cached yet'
 - tapOn: 'Inbox, tab, 1 of 5'

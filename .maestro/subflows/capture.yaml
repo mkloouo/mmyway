@@ -9,7 +9,7 @@ appId: ${APP_ID}
 #   TO_ACCOUNT   a transfer's To chip
 #   CATEGORY     a category from the seed, or ""
 #   DESCRIPTION  typed in the Title field between the amount and the payee, or ""
-#   SAVE         confirm (Save & ✓) | inbox (Save to inbox)
+#   SAVE         confirm (Save & confirm) | inbox (To inbox)
 # Capture stays open afterwards (it resets for the next entry); close it with close-capture.yaml.
 - tapOn: 'Add an entry'
 - extendedWaitUntil:
@@ -66,21 +66,22 @@ appId: ${APP_ID}
     when:
       true: ${CATEGORY != ''}
     commands:
-      - tapOn: 'Category'
+      - tapOn:
+          id: 'capture-category'
       - tapOn: ${CATEGORY}
 - runFlow:
     when:
       true: ${DESCRIPTION != ''}
     commands:
-      - tapOn: 'Title'
+      - tapOn:
+          id: 'capture-title'
       - inputText: ${DESCRIPTION}
       - hideKeyboard
 - runFlow:
     when:
       true: ${SAVE == 'confirm'}
     commands:
-      - tapOn:
-          id: 'keypad-save'
+      - tapOn: 'Save & confirm'
       - extendedWaitUntil:
           visible: 'Confirmed · .*'
           timeout: 10000
@@ -88,7 +89,7 @@ appId: ${APP_ID}
     when:
       true: ${SAVE == 'inbox'}
     commands:
-      - tapOn: 'Save to inbox'
+      - tapOn: 'To inbox'
       - extendedWaitUntil:
           visible: 'Saved · .*'
           timeout: 10000

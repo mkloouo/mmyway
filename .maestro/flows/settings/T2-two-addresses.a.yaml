@@ -8,6 +8,7 @@ tags:
 # The runner then switches the phone's Wi-Fi off.
 - runFlow: ../../subflows/ready.yaml
 - tapOn: 'Settings, tab, 5 of 5'
+- tapOn: 'Firefly III'
 - tapOn:
     text: 'Addresses'
     index: 0
@@ -15,7 +16,8 @@ tags:
 - inputText: ${FF3_LAN_URL}
 - tapOn: "\\+ Add address"
 - tapOn: 'Make ${FF3_LAN_URL} primary'
-- back
+- back # the addresses sheet
+- back # the Firefly III page
 - runFlow: ../../subflows/sync.yaml
 - tapOn: 'Sync status'
 - assertVisible:

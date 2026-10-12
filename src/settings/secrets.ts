@@ -9,3 +9,7 @@ export async function saveGeminiKey(key: string): Promise<void> {
 export async function readGeminiKey(): Promise<string | null> {
   return SecureStore.getItemAsync(GEMINI_KEY);
 }
+
+export async function deleteGeminiKey(): Promise<void> {
+  await SecureStore.deleteItemAsync(GEMINI_KEY);
+}

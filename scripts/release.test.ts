@@ -63,6 +63,7 @@ function buildTemplate(): string {
   const repo = path.join(template, 'repo');
   const bin = path.join(template, 'bin');
   fs.mkdirSync(path.join(repo, 'scripts'), { recursive: true });
+  fs.mkdirSync(path.join(repo, 'src', 'about'), { recursive: true });
   fs.mkdirSync(bin);
   for (const tool of ['npx', 'gh']) {
     fs.copyFileSync(path.join(STUBS, `${tool}.js`), path.join(bin, tool));
@@ -95,6 +96,15 @@ function buildTemplate(): string {
   fs.writeFileSync(path.join(repo, 'CHANGELOG.md'), CHANGELOG);
   fs.writeFileSync(path.join(repo, '.gitignore'), '/releases/\n');
   fs.copyFileSync(path.join(__dirname, 'release.mjs'), path.join(repo, 'scripts', 'release.mjs'));
+  fs.copyFileSync(path.join(__dirname, 'whatsNew.mjs'), path.join(repo, 'scripts', 'whatsNew.mjs'));
+  fs.writeFileSync(
+    path.join(repo, 'src', 'about', 'whatsNew.json'),
+    JSON.stringify(
+      { version: '1.2.3', sections: [{ title: 'Fixed', items: ['An old thing.'] }] },
+      null,
+      2,
+    ) + '\n',
+  );
   gitIn(repo, ['add', '-A']);
   gitIn(repo, ['commit', '-q', '-m', 'init']);
   gitIn(repo, ['remote', 'add', 'origin', '../origin.git']);
@@ -209,6 +219,7 @@ describe('release.mjs', () => {
         'app.config.js',
         'package-lock.json',
         'package.json',
+        'src/about/whatsNew.json',
       ]);
       const lock = JSON.parse(fs.readFileSync(path.join(t.repo, 'package-lock.json'), 'utf8'));
       expect([lock.version, lock.packages[''].version]).toEqual(['2.0.0', '2.0.0']);
@@ -281,6 +292,19 @@ describe('release.mjs', () => {
       expect(releaseNotes).toContain('`mmyway-v2.0.0-arm64-v8a.apk`');
     },
   );
+
+  it.concurrent('regenerates src/about/whatsNew.json from the new CHANGELOG section', async () => {
+    const t = setup();
+    const { code } = await t.release(['2.0.0']);
+    expect(code).toBe(0);
+    const whatsNew = JSON.parse(
+      fs.readFileSync(path.join(t.repo, 'src', 'about', 'whatsNew.json'), 'utf8'),
+    );
+    expect(whatsNew).toEqual({
+      version: '2.0.0',
+      sections: [{ title: 'Added', items: ['A new thing.'] }],
+    });
+  });
 
   it.concurrent(
     '--pause builds but commits nothing; running the release again finishes it',

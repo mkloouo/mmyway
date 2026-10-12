@@ -10,8 +10,12 @@ import * as Notifications from 'expo-notifications';
 import { queryClient } from '../src/providers/queryClient';
 import { DbProvider, useDb } from '../src/providers/DbProvider';
 import { useSync } from '../src/sync/useSync';
-import { syncPlannedNotifications } from '../src/planned/notifications';
+import {
+  registerPlannedNotificationCategories,
+  syncPlannedNotifications,
+} from '../src/planned/notifications';
 import { navigateOnce } from '../src/ui/navigateOnce';
+import { PickerHost } from '../src/ui/PickerHost';
 import { useTheme } from '../src/ui/theme';
 import { Button } from '../src/ui/components';
 import { useSharedImages } from '../src/receipt/useSharedImages';
@@ -97,6 +101,7 @@ function PlannedNotificationListener() {
   const handledResponseId = useRef<string | null>(null);
 
   useEffect(() => {
+    void registerPlannedNotificationCategories();
     void syncPlannedNotifications(db);
     const subscription = AppState.addEventListener('change', (state) => {
       if (state === 'active') {
@@ -114,8 +119,19 @@ function PlannedNotificationListener() {
       handledResponseId.current = id;
 
       const data = response.notification.request.content.data;
+      const action = response.actionIdentifier;
+      if (action === 'move' && typeof data?.accountId === 'string') {
+        navigateOnce({ pathname: '/capture', params: { type: 'transfer', to: data.accountId } });
+        return;
+      }
       if (data && typeof data.plannedKey === 'string') {
-        navigateOnce(`/planned/${encodeURIComponent(data.plannedKey)}`);
+        const key = encodeURIComponent(data.plannedKey);
+        // Skip goes to the item, which asks for confirmation: never a skip straight from the banner.
+        if (action === 'skip' && typeof data.dueDate === 'string') {
+          navigateOnce({ pathname: '/planned/[key]', params: { key, skip: data.dueDate } });
+        } else {
+          navigateOnce(`/planned/${key}`);
+        }
       }
     };
 
@@ -183,9 +199,12 @@ export default function RootLayout() {
               <Stack.Screen name="receipt" options={MODAL} />
               <Stack.Screen name="draft/[id]" options={MODAL} />
               <Stack.Screen name="count" options={MODAL} />
+              <Stack.Screen name="accounts/new" options={MODAL} />
+              <Stack.Screen name="planned/new" options={MODAL} />
             </Stack>
             {/* Last inside the provider, so the overlay covers the modals too, not just the tabs. */}
             <LockGate />
+            <PickerHost />
           </DbProvider>
         </QueryClientProvider>
       </SafeAreaProvider>

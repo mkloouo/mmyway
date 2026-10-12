@@ -1,11 +1,10 @@
 // What the account page (app/accounts/[id].tsx) and New account (app/accounts/new.tsx) share: the
-// name and amount fields, the scroll and its titled cards, the currency and role
-// sheets, and how a day is labelled and picked.
+// amount field, the scroll, the currency and role sheets, and how a day is labelled and picked.
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, Text, type KeyboardTypeOptions } from 'react-native';
+import { ScrollView, Text, View, type KeyboardTypeOptions } from 'react-native';
 import { appLocale } from '../i18n';
-import { Card, SCREEN_TOP_PADDING, SectionHeader } from '../ui/components';
+import { ROW_HEIGHT, SCREEN_TOP_PADDING } from '../ui/components';
 import { pickableCurrencies } from '../ui/currencies';
 import { pickDate } from '../ui/pickDate';
 import { PickerSheet } from '../ui/PickerSheet';
@@ -36,20 +35,52 @@ export function pickDay(value: string | null, onPick: (day: string) => void) {
   pickDate(value ? dayDate(value) : new Date(), (picked) => onPick(localDay(picked)));
 }
 
-export function NameField({
+/** A label and its input on one line of a Group; the input takes the rest, its text right-aligned. */
+export function InlineField({
+  label,
   value,
   onChangeText,
+  placeholder,
+  multiline = false,
+  first = false,
 }: {
+  label: string;
   value: string;
-  onChangeText: (name: string) => void;
+  onChangeText: (text: string) => void;
+  placeholder?: string;
+  multiline?: boolean;
+  /** No hairline above: the first row of its group. */
+  first?: boolean;
 }) {
   const t = useTheme();
-  const { t: tr } = useTranslation();
   return (
-    <>
-      <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('accounts.name')}</Text>
-      <TextField value={value} onChangeText={onChangeText} placeholder={tr('accounts.name')} />
-    </>
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: t.space.md,
+        minHeight: ROW_HEIGHT,
+        paddingVertical: t.space.sm,
+        borderTopWidth: first ? 0 : 1,
+        borderTopColor: t.color.border,
+      }}
+    >
+      <Text style={[t.type.body, { color: t.color.text, width: 88 }]}>{label}</Text>
+      <TextField
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        multiline={multiline}
+        style={{
+          flex: 1,
+          borderWidth: 0,
+          paddingHorizontal: 0,
+          paddingVertical: 0,
+          textAlign: 'right',
+          backgroundColor: 'transparent',
+        }}
+      />
+    </View>
   );
 }
 
@@ -101,29 +132,6 @@ export function FormScroll({ children }: { children: ReactNode }) {
     >
       {children}
     </ScrollView>
-  );
-}
-
-/** A titled card of fields; `tight` drops the gap between rows (a card of checkboxes). */
-export function FormSection({
-  title,
-  first = false,
-  tight = false,
-  children,
-}: {
-  title: string;
-  first?: boolean;
-  tight?: boolean;
-  children: ReactNode;
-}) {
-  const t = useTheme();
-  return (
-    <>
-      <SectionHeader first={first} title={title} />
-      <Card style={{ marginHorizontal: t.space.lg, ...(tight ? {} : { gap: t.space.sm }) }}>
-        {children}
-      </Card>
-    </>
   );
 }
 

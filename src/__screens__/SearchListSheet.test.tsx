@@ -13,7 +13,19 @@ function wrap(ui: ReactElement) {
   return render(<SafeAreaProvider initialMetrics={metrics}>{ui}</SafeAreaProvider>);
 }
 
-const NAMES = ['Żabka', 'Biedronka'];
+// More than 8 names: the search field only appears past that many options.
+const NAMES = [
+  'Żabka',
+  'Biedronka',
+  'Orlen',
+  'Aldi',
+  'Auchan',
+  'Bolt',
+  'Lidl',
+  'Kaufland',
+  'Rossmann',
+  'Hebe',
+];
 
 function Sheet({ onSelect = jest.fn() }: { onSelect?: (name: string) => void }) {
   return (
@@ -26,6 +38,37 @@ function Sheet({ onSelect = jest.fn() }: { onSelect?: (name: string) => void }) 
       keyOf={(n) => n}
       renderRow={(n) => <Text>{n}</Text>}
       onSelect={onSelect}
+    />
+  );
+}
+
+// 40 names across many first letters, so the sheet splits them into letter sections.
+const MANY = Array.from(
+  { length: 40 },
+  (_, i) => `${'ABCDEFGHIJKLMNOPQRSTUVWXYZ'[(i * 7) % 26]}-shop ${String(i).padStart(2, '0')}`,
+);
+
+function Chooser({
+  names,
+  labelOf,
+  suggested,
+}: {
+  names: string[];
+  labelOf?: (n: string) => string;
+  suggested?: string[];
+}) {
+  return (
+    <SearchListSheet
+      visible
+      onClose={jest.fn()}
+      title="Payee"
+      placeholder="Search"
+      items={(query) => names.filter((n) => n.toLowerCase().includes(query.toLowerCase()))}
+      keyOf={(n) => n}
+      labelOf={labelOf}
+      suggested={suggested}
+      renderRow={(n) => <Text testID="row">{n}</Text>}
+      onSelect={jest.fn()}
     />
   );
 }
@@ -76,7 +119,7 @@ describe('SearchListSheet', () => {
         onClose={jest.fn()}
         title="Payee"
         placeholder="Search"
-        items={() => []}
+        items={(query) => (query ? [] : NAMES)}
         keyOf={(n) => n}
         renderRow={(n) => <Text>{n}</Text>}
         onSelect={jest.fn()}
@@ -98,5 +141,23 @@ describe('SearchListSheet', () => {
     expect(screen.getByText('Create new "New Shop"')).toBeTruthy();
     await fireEvent.press(screen.getByText('Create new "New Shop"'));
     expect(onCreate).toHaveBeenCalledWith('New Shop');
+  });
+
+  it('sorts A–Z with a letter index above 30 options', async () => {
+    await wrap(<Chooser names={MANY} labelOf={(n) => n} />);
+    const sorted = [...MANY].sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+    const rendered = screen.getAllByTestId('row').map((r) => String(r.props.children));
+    expect(rendered.length).toBeGreaterThan(0);
+    expect(rendered).toEqual(sorted.slice(0, rendered.length));
+    expect(screen.getAllByTestId(/^letter-index-/)).toHaveLength(
+      new Set(MANY.map((n) => n.charAt(0))).size,
+    );
+  });
+
+  it('lists suggested options before the rest', async () => {
+    const last = MANY[MANY.length - 1] ?? '';
+    await wrap(<Chooser names={MANY} labelOf={(n) => n} suggested={[last]} />);
+    const rendered = screen.getAllByTestId('row').map((r) => String(r.props.children));
+    expect(rendered[0]).toBe(last);
   });
 });

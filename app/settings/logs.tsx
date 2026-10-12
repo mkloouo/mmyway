@@ -3,8 +3,10 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FlatList, Share, Text, View } from 'react-native';
+import { router } from 'expo-router';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, AppBar, Button, EmptyState, SCREEN_TOP_PADDING } from '../../src/ui/components';
+import { Screen, Button, EmptyState, SCREEN_TOP_PADDING } from '../../src/ui/components';
+import { PushHeader } from '../../src/ui/kit';
 import { confirmDestructive } from '../../src/ui/confirm';
 import { readLog, clearLog, shareableLog } from '../../src/utils/log';
 import { useAction } from '../../src/ui/useAction';
@@ -28,7 +30,12 @@ export default function LogsScreen() {
 
   return (
     <Screen bottom>
-      <AppBar title={tr('logs.title')} subtitle={tr('logs.subtitle', { count: lines.length })} />
+      <PushHeader
+        backLabel={tr('settings.title')}
+        onBack={() => router.back()}
+        title={tr('logs.title')}
+        subtitle={tr('logs.subtitle', { count: lines.length })}
+      />
       <FlatList
         data={lines}
         keyExtractor={(_, i) => String(i)}

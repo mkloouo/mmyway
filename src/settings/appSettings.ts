@@ -1,9 +1,11 @@
 // Typed accessors over app_settings (non-secret values only). The FF3 token and Gemini key
 // stay in SecureStore (src/api/ff3/auth.ts, src/settings/secrets.ts).
 import { eq } from 'drizzle-orm';
+import { z } from 'zod';
 import { appSettings } from '../db/schema';
 import type { OutboxDb } from '../sync/outbox';
 import type { AppLocale } from '../i18n';
+import { parseDecimalInput } from '../api/ff3/decimal';
 
 const KEYS = {
   defaultSourceAccountId: 'default_source_account_id',
@@ -16,16 +18,24 @@ const KEYS = {
   localModelBaseUrls: 'local_model_base_urls',
   localModelActiveUrl: 'local_model_active_url',
   localModelName: 'local_model_name',
+  receiptReader: 'receipt_reader',
   ff3ActiveHost: 'ff3_active_host',
   lastSyncedAt: 'last_synced_at',
   useServerTime: 'use_server_time',
   accountOrder: 'account_order',
   balancesStale: 'balances_stale',
   locale: 'locale',
-  plannedMode: 'planned_mode',
   recordLocation: 'record_location',
   plannedNotificationsEnabled: 'planned_notifications_enabled',
   plannedReminderLead: 'planned_reminder_lead_days',
+  plannedReminderTime: 'planned_reminder_time',
+  plannedReminderNudgeOnDay: 'planned_reminder_nudge_on_day',
+  plannedReminderFilter: 'planned_reminder_filter',
+  plannedReminderMinAmount: 'planned_reminder_min_amount',
+  plannedReminderDigest: 'planned_reminder_digest',
+  plannedReminderWarnShort: 'planned_reminder_warn_short',
+  plannedReminderOverrides: 'planned_reminder_overrides',
+  plannedReminderPromptShown: 'planned_reminder_prompt_shown',
   appLockEnabled: 'app_lock_enabled',
   demo: 'demo',
 } as const;
@@ -98,6 +108,21 @@ export const setLocalModelBaseUrl = (db: OutboxDb, value: string) =>
 export const getLocalModelName = (db: OutboxDb) => getSetting(db, KEYS.localModelName);
 export const setLocalModelName = (db: OutboxDb, value: string) =>
   setSetting(db, KEYS.localModelName, value);
+
+/**
+ * Who reads a receipt photo (Settings → Receipt reading): 'none' nobody (the photo is attached and
+ * the details are typed), 'local' only the user's own model, 'auto' the model, then Gemini when it
+ * can't. Unset or unknown is 'auto', what the app did before this setting existed.
+ */
+const RECEIPT_READERS = ['none', 'local', 'auto'] as const;
+export type ReceiptReader = (typeof RECEIPT_READERS)[number];
+function parseReceiptReader(raw: string | null | undefined): ReceiptReader {
+  return RECEIPT_READERS.find((r) => r === raw) ?? 'auto';
+}
+export const getReceiptReader = async (db: OutboxDb) =>
+  parseReceiptReader(await getSetting(db, KEYS.receiptReader));
+export const setReceiptReader = (db: OutboxDb, value: ReceiptReader) =>
+  setSetting(db, KEYS.receiptReader, value);
 
 // Several addresses per server (design §6.6): same idea as src/api/ff3/hosts.ts's ff3_hosts, but
 // non-secret so it lives in app_settings rather than SecureStore. Reading falls back to the
@@ -184,15 +209,6 @@ export function parseLocale(raw: string | null | undefined): AppLocale {
 export const getLocale = async (db: OutboxDb) => parseLocale(await getSetting(db, KEYS.locale));
 export const setLocale = (db: OutboxDb, value: AppLocale) => setSetting(db, KEYS.locale, value);
 
-/** The Planned tab's view: `simple` (one row per name, editable) or `detailed` (FF3's objects as they are). */
-export type PlannedMode = 'simple' | 'detailed';
-export const PLANNED_MODE_KEY = KEYS.plannedMode;
-export function parsePlannedMode(raw: string | null | undefined): PlannedMode {
-  return raw === 'detailed' ? 'detailed' : 'simple';
-}
-export const setPlannedMode = (db: OutboxDb, value: PlannedMode) =>
-  setSetting(db, KEYS.plannedMode, value);
-
 /**
  * Whether a new entry records where it was made (#67). On unless it was turned off, so the
  * permission prompt is the only thing standing between a fresh install and a located entry —
@@ -214,7 +230,7 @@ export const setPlannedNotificationsEnabled = (db: OutboxDb, value: boolean) =>
  * How many days before a planned transaction its reminder arrives, besides the one on the day
  * itself. 2 is what the app shipped with, so an install that never touches this keeps it.
  */
-export const PLANNED_REMINDER_LEADS: readonly number[] = [0, 1, 2, 3, 7];
+const PLANNED_REMINDER_LEADS: readonly number[] = [0, 1, 2, 3, 7];
 export const DEFAULT_PLANNED_REMINDER_LEAD = 2;
 function parsePlannedReminderLead(raw: string | null | undefined): number {
   // Not `Number(raw)`: `Number(null)` and `Number('')` are both 0, which is a value the user can
@@ -227,6 +243,123 @@ export const getPlannedReminderLead = async (db: OutboxDb) =>
   parsePlannedReminderLead(await getSetting(db, KEYS.plannedReminderLead));
 export const setPlannedReminderLead = (db: OutboxDb, value: number) =>
   setSetting(db, KEYS.plannedReminderLead, String(value));
+
+/**
+ * The reminder's timing as the settings page names it. Stored as the old lead-days key, so the
+ * scheduler and any older reader agree; there is no separate key.
+ */
+export type ReminderWhen = 'day' | 'dayBefore' | 'fewDays' | 'week';
+export const REMINDER_WHEN_LEAD: Record<ReminderWhen, number> = {
+  day: 0,
+  dayBefore: 1,
+  fewDays: 2,
+  week: 7,
+};
+function reminderWhenFromLead(lead: number): ReminderWhen {
+  if (lead === 0) return 'day';
+  if (lead === 1) return 'dayBefore';
+  if (lead <= 3) return 'fewDays';
+  return 'week';
+}
+/** Read from the stored lead, so an install that never chose keeps the old default (2 → `fewDays`). */
+export const getReminderWhen = async (db: OutboxDb): Promise<ReminderWhen> =>
+  reminderWhenFromLead(await getPlannedReminderLead(db));
+export const setReminderWhen = (db: OutboxDb, value: ReminderWhen) =>
+  setPlannedReminderLead(db, REMINDER_WHEN_LEAD[value]);
+
+const REMINDER_TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+/** The time a reminder fires when the planned transaction has none of its own. */
+export const DEFAULT_REMINDER_TIME = '09:00';
+export async function getReminderTime(db: OutboxDb): Promise<string> {
+  const raw = await getSetting(db, KEYS.plannedReminderTime);
+  return raw && REMINDER_TIME_PATTERN.test(raw) ? raw : DEFAULT_REMINDER_TIME;
+}
+export const setReminderTime = (db: OutboxDb, value: string) => {
+  if (!REMINDER_TIME_PATTERN.test(value)) throw new Error(`invalid reminder time: ${value}`);
+  return setSetting(db, KEYS.plannedReminderTime, value);
+};
+
+/** Whether an on-the-day reminder comes in addition to the lead one. On unless turned off. */
+export async function getReminderNudgeOnDay(db: OutboxDb): Promise<boolean> {
+  return (await getSetting(db, KEYS.plannedReminderNudgeOnDay)) !== '0';
+}
+export const setReminderNudgeOnDay = (db: OutboxDb, value: boolean) =>
+  setSetting(db, KEYS.plannedReminderNudgeOnDay, value ? '1' : '0');
+
+export type ReminderFilter = 'all' | 'bigger' | 'outgoing';
+const REMINDER_FILTERS: readonly ReminderFilter[] = ['all', 'bigger', 'outgoing'];
+export async function getReminderFilter(db: OutboxDb): Promise<ReminderFilter> {
+  const raw = await getSetting(db, KEYS.plannedReminderFilter);
+  return REMINDER_FILTERS.find((f) => f === raw) ?? 'all';
+}
+export const setReminderFilter = (db: OutboxDb, value: ReminderFilter) =>
+  setSetting(db, KEYS.plannedReminderFilter, value);
+
+const DEFAULT_REMINDER_MIN_AMOUNT = '200';
+/** The threshold for the `bigger` filter: a decimal string, validated the way typed amounts are. */
+export async function getReminderMinAmount(db: OutboxDb): Promise<string> {
+  const raw = await getSetting(db, KEYS.plannedReminderMinAmount);
+  const parsed = raw == null ? null : parseDecimalInput(raw);
+  return parsed?.ok ? parsed.value : DEFAULT_REMINDER_MIN_AMOUNT;
+}
+export async function setReminderMinAmount(db: OutboxDb, value: string): Promise<void> {
+  const parsed = parseDecimalInput(value);
+  if (!parsed.ok) throw new Error(`invalid reminder minimum amount: ${value}`);
+  await setSetting(db, KEYS.plannedReminderMinAmount, parsed.value);
+}
+
+/** One message per day instead of one per payment. Off unless turned on. */
+export async function getReminderDigest(db: OutboxDb): Promise<boolean> {
+  return (await getSetting(db, KEYS.plannedReminderDigest)) === '1';
+}
+export const setReminderDigest = (db: OutboxDb, value: boolean) =>
+  setSetting(db, KEYS.plannedReminderDigest, value ? '1' : '0');
+
+/** The "may run short" warning and the "enough in it" note on reminders. On unless turned off. */
+export async function getReminderWarnShort(db: OutboxDb): Promise<boolean> {
+  return (await getSetting(db, KEYS.plannedReminderWarnShort)) !== '0';
+}
+export const setReminderWarnShort = (db: OutboxDb, value: boolean) =>
+  setSetting(db, KEYS.plannedReminderWarnShort, value ? '1' : '0');
+
+const ReminderOverridesSchema = z.record(
+  z.string(),
+  z.enum(['day', 'dayBefore', 'fewDays', 'week', 'off']),
+);
+
+/** Per-payment reminder timing, keyed by planned key. Bad JSON or an unknown value reads as none. */
+export async function getReminderOverrides(
+  db: OutboxDb,
+): Promise<Record<string, ReminderWhen | 'off'>> {
+  const raw = await getSetting(db, KEYS.plannedReminderOverrides);
+  if (raw == null) return {};
+  let json: unknown;
+  try {
+    json = JSON.parse(raw);
+  } catch {
+    return {};
+  }
+  const parsed = ReminderOverridesSchema.safeParse(json);
+  return parsed.success ? parsed.data : {};
+}
+/** `null` removes the override, so the payment goes back to the global setting. */
+export async function setReminderOverride(
+  db: OutboxDb,
+  plannedKey: string,
+  value: ReminderWhen | 'off' | null,
+): Promise<void> {
+  const next = await getReminderOverrides(db);
+  if (value === null) delete next[plannedKey];
+  else next[plannedKey] = value;
+  await setSetting(db, KEYS.plannedReminderOverrides, JSON.stringify(next));
+}
+
+/** Whether the first-time reminder sheet has been shown. */
+export async function getReminderPromptShown(db: OutboxDb): Promise<boolean> {
+  return (await getSetting(db, KEYS.plannedReminderPromptShown)) === '1';
+}
+export const setReminderPromptShown = (db: OutboxDb, value: boolean) =>
+  setSetting(db, KEYS.plannedReminderPromptShown, value ? '1' : '0');
 
 /** The settings key the app lock lives under, for a live query of it (src/lock/useAppLock.ts). */
 export const APP_LOCK_ENABLED_KEY = KEYS.appLockEnabled;

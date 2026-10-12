@@ -1,54 +1,65 @@
 // One planned transaction in the simple view: its subscription, rule and recurring transaction
 // edited together (src/planned/model.ts). Save queues it like any other change.
-import { useEffect, useState } from 'react';
+//
+// A PUSH page: ‹ Planned in the header, the ••• for Book now and Delete, and the save bar only once
+// something differs from what FF3 holds. The schedule is a sheet of its own (ScheduleSheet).
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, ScrollView, Text, View } from 'react-native';
+import { Alert, ScrollView, Text } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useDb } from '../../src/providers/DbProvider';
 import { useCategories, useCurrencyRows } from '../../src/db/useReferenceData';
 import { useTheme } from '../../src/ui/theme';
-import {
-  Screen,
-  AppBar,
-  BarIconButton,
-  Card,
-  Chip,
-  Row,
-  SectionHeader,
-  CloseButton,
-  SCREEN_TOP_PADDING,
-} from '../../src/ui/components';
+import { Screen, Card, Row, SectionHeader, SCREEN_TOP_PADDING } from '../../src/ui/components';
+import { MoreButton, PushHeader, Segmented } from '../../src/ui/kit';
 import { TextField } from '../../src/ui/TextField';
 import { TagsField } from '../../src/ui/TagsField';
 import { PickerSheet } from '../../src/ui/PickerSheet';
 import { AccountPickerSheet } from '../../src/ui/AccountPickerSheet';
 import { PayeeSheet } from '../../src/ui/PayeeSheet';
 import { AmountSheet } from '../../src/ui/AmountSheet';
-import { Checkbox } from '../../src/ui/Checkbox';
-import { pickDate, pickTime } from '../../src/ui/pickDate';
+import { pickTime } from '../../src/ui/pickDate';
 import { currencyOf, formatMoney } from '../../src/ui/money';
 import { pickableCurrencies, primaryCurrencyCode } from '../../src/ui/currencies';
 import { useAction } from '../../src/ui/useAction';
+import { useConfirmDiscard } from '../../src/ui/useConfirmDiscard';
 import { referenceCurrencies } from '../../src/db/schema';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import type { MerchantHistory } from '../../src/lookup/merchantLookup';
 import { useMerchantHistories } from '../../src/lookup/useMerchantHistories';
 import { useRecentTags } from '../../src/lookup/recentTags';
-import { getDefaultCurrencyCode, getDefaultSourceAccountId } from '../../src/settings/appSettings';
+import {
+  getDefaultCurrencyCode,
+  getDefaultSourceAccountId,
+  getReminderOverrides,
+  getReminderWhen,
+  setReminderOverride,
+  type ReminderWhen,
+} from '../../src/settings/appSettings';
 import { usePlanned } from '../../src/planned/usePlanned';
 import { plannedProblems, samePlannedFields, type PlannedFields } from '../../src/planned/model';
 import { defaultRepetition } from '../../src/planned/repetition';
 import { toggleSkipDay } from '../../src/planned/notes';
 import { dayLabel, endLabel, scheduleLabel } from '../../src/planned/labels';
-import { ScheduleRows } from '../../src/ui/ScheduleRows';
+import { ScheduleSheet } from '../../src/ui/ScheduleRows';
 import { OccurrenceRows } from '../../src/ui/OccurrenceRows';
 import { deletePlanned, savePlanned, triggerPlanned } from '../../src/planned/actions';
+import { syncPlannedNotifications } from '../../src/planned/notifications';
 import type { PlannedItem } from '../../src/planned/items';
 import { localDay } from '../../src/utils/day';
 import { TX_TYPES } from '../../src/transactions/txTypes';
 import { SaveBar } from '../../src/ui/SaveBar';
 
 type TxType = PlannedFields['type'];
+
+/** The reminder timings a payment can be given. 'default' is the global setting, i.e. no override. */
+const REMIND_CHOICES: readonly (ReminderWhen | 'off')[] = [
+  'day',
+  'dayBefore',
+  'fewDays',
+  'week',
+  'off',
+];
 
 function blank(): PlannedFields {
   return {
@@ -73,7 +84,7 @@ function blank(): PlannedFields {
 }
 
 export default function PlannedEditScreen() {
-  const { key: rawKey } = useLocalSearchParams<{ key: string }>();
+  const { key: rawKey, skip } = useLocalSearchParams<{ key: string; skip?: string }>();
   const key = decodeURIComponent(rawKey ?? 'new');
   const isNew = key === 'new';
   const t = useTheme();
@@ -84,7 +95,7 @@ export default function PlannedEditScreen() {
   if (!isNew && !item) {
     return (
       <Screen bottom>
-        <AppBar title={tr('planned.title')} left={<CloseButton onPress={() => router.back()} />} />
+        <PushHeader backLabel={tr('planned.title')} onBack={() => router.back()} />
         {loaded && (
           <Text style={[t.type.body, { color: t.color.textMuted, padding: t.space.lg }]}>
             {tr('planned.gone')}
@@ -94,10 +105,10 @@ export default function PlannedEditScreen() {
     );
   }
   // Mounted once the item is known, so the form starts from its fields.
-  return <PlannedEditor item={item} />;
+  return <PlannedEditor item={item} skipDay={typeof skip === 'string' ? skip : null} />;
 }
 
-function PlannedEditor({ item }: { item: PlannedItem | null }) {
+function PlannedEditor({ item, skipDay }: { item: PlannedItem | null; skipDay: string | null }) {
   const isNew = !item;
   const db = useDb();
   const t = useTheme();
@@ -113,8 +124,14 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
   const [fields, setFields] = useState<PlannedFields>(() => item?.fields ?? blank());
   const recentTags = useRecentTags();
   const [sheet, setSheet] = useState<
-    'amount' | 'currency' | 'own' | 'ownTo' | 'payee' | 'category' | null
+    'amount' | 'currency' | 'own' | 'ownTo' | 'payee' | 'category' | 'remind' | null
   >(null);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
+  // Local to this device, not part of the form: it is saved the moment it is picked.
+  const [remind, setRemind] = useState<{
+    override: ReminderWhen | 'off' | null;
+    when: ReminderWhen;
+  } | null>(null);
   // What the user chose themselves: a payee's history never overwrites those. The default
   // account a new one starts with isn't a choice, so history may replace it.
   const [chosen, setChosen] = useState<{ category: boolean; account: boolean }>(() => ({
@@ -138,6 +155,19 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
       }));
     })();
   }, [isNew, db]);
+
+  const itemKey = item?.key ?? null;
+  useEffect(() => {
+    if (!itemKey) return;
+    let live = true;
+    void (async () => {
+      const [overrides, when] = await Promise.all([getReminderOverrides(db), getReminderWhen(db)]);
+      if (live) setRemind({ override: overrides[itemKey] ?? null, when });
+    })();
+    return () => {
+      live = false;
+    };
+  }, [db, itemKey]);
 
   const payeeType = fields.type === 'deposit' ? 'deposit' : 'withdrawal';
   const histories = useMerchantHistories(payeeType);
@@ -204,6 +234,8 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
   };
   // Save stays off until something differs from what Firefly III holds (or a queued save does).
   const unchanged = !!item && samePlannedFields(item.fields, next);
+  const dirty = !!item && !unchanged;
+  const close = useConfirmDiscard(dirty, 'planned.discardTitle');
   const onSave = act(tr('common.save'), async () => {
     if (problems.length > 0 || unchanged) return;
     await savePlanned(db, item, next);
@@ -223,6 +255,15 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
     if (!item) return;
     await triggerPlanned(db, item);
     router.back();
+  });
+
+  const chooseRemind = act(tr('planned.remind.title'), async (key: string) => {
+    if (!item) return;
+    // 'default' is no choice in REMIND_CHOICES, so it clears the override.
+    const value = REMIND_CHOICES.find((x) => x === key) ?? null;
+    await setReminderOverride(db, item.key, value);
+    setRemind((r) => (r ? { ...r, override: value } : r));
+    void syncPlannedNotifications(db);
   });
 
   /**
@@ -245,6 +286,16 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
       { text: tr('planned.skip'), style: 'destructive', onPress: apply },
     ]);
   }
+
+  // "Skip this one" from a notification opens the item with the date: asked once, then not again.
+  // No dependency list: the ref is the guard, and onToggleSkip is a new function each render.
+  const skipHandled = useRef(false);
+  useEffect(() => {
+    if (!skipDay || skipHandled.current || !item) return;
+    skipHandled.current = true;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(skipDay) && !fields.skipDays.includes(skipDay))
+      onToggleSkip(skipDay);
+  });
 
   function onTrigger() {
     if (!item) return;
@@ -270,51 +321,52 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
     ]);
   }
 
+  /** The rare actions behind the ••• : booking early and deleting. */
+  function onMore() {
+    if (!item) return;
+    Alert.alert(item.fields.name, undefined, [
+      ...(item.group?.recurrence ? [{ text: tr('planned.triggerNow'), onPress: onTrigger }] : []),
+      { text: tr('common.delete'), style: 'destructive', onPress: onDelete },
+      { text: tr('common.cancel'), style: 'cancel' },
+    ]);
+  }
+
+  const scheduleText = [scheduleLabel(fields, item?.group), endLabel(fields.end, fields.repeats)]
+    .filter(Boolean)
+    .join(' · ');
+  const amountText = currencyRows ? formatMoney(fields.amount, currency) : '';
+  const remindText = !remind
+    ? '—'
+    : remind.override
+      ? tr(`planned.remind.${remind.override}`)
+      : tr('planned.remind.default', { when: tr(`planned.remind.${remind.when}`) });
+
   return (
     <Screen bottom avoidKeyboard>
-      <AppBar
+      <PushHeader
+        backLabel={tr('planned.title')}
+        onBack={close}
         title={isNew ? tr('planned.newTitle') : fields.name || tr('planned.title')}
-        left={<CloseButton onPress={() => router.back()} />}
-        right={
-          item ? (
-            <BarIconButton icon="trash" label={tr('common.delete')} onPress={onDelete} />
-          ) : undefined
-        }
+        subtitle={isNew ? undefined : [amountText, scheduleText].filter(Boolean).join(' · ')}
+        right={item ? <MoreButton label={tr('planned.more')} onPress={onMore} /> : undefined}
       />
       <ScrollView
         contentContainerStyle={{ paddingTop: SCREEN_TOP_PADDING, paddingBottom: t.space.xxl }}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={{ flexDirection: 'row', gap: t.space.sm, paddingHorizontal: t.space.lg }}>
-          {TX_TYPES.map((x) => (
-            <Chip
-              key={x.type}
-              label={tr(x.labelKey)}
-              selected={fields.type === x.type}
-              onPress={() => changeType(x.type)}
-            />
-          ))}
-        </View>
-
-        <SectionHeader title={tr('planned.sectionWhat')} />
+        <SectionHeader title={tr('planned.sectionPayment')} />
         <Card style={{ marginHorizontal: t.space.lg, gap: t.space.sm }}>
+          <Segmented
+            options={TX_TYPES.map((x) => ({ key: x.type, label: tr(x.labelKey) }))}
+            value={fields.type}
+            onChange={changeType}
+            accessibilityLabel={tr('planned.sectionPayment')}
+          />
           <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('planned.name')}</Text>
           <TextField
             value={fields.name}
             onChangeText={(name) => set({ name })}
             placeholder={tr('planned.namePlaceholder')}
-          />
-          <Row
-            label={tr('fields.amount')}
-            value={currencyRows ? formatMoney(fields.amount, currency) : ''}
-            chevron
-            onPress={() => setSheet('amount')}
-          />
-          <Row
-            label={tr('fields.currency')}
-            value={fields.currencyCode || '—'}
-            chevron
-            onPress={() => setSheet('currency')}
           />
           <Row
             label={tr('fields.from')}
@@ -333,6 +385,18 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
             }
             chevron
             onPress={() => setSheet(ownTo ? 'ownTo' : 'payee')}
+          />
+          <Row
+            label={tr('fields.amount')}
+            value={amountText}
+            chevron
+            onPress={() => setSheet('amount')}
+          />
+          <Row
+            label={tr('fields.currency')}
+            value={fields.currencyCode || '—'}
+            chevron
+            onPress={() => setSheet('currency')}
           />
           <Row
             label={tr('fields.category')}
@@ -354,12 +418,10 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
         <Card style={{ marginHorizontal: t.space.lg }}>
           <Row
             first
-            label={tr('planned.plannedOn')}
-            value={dayLabel(fields.date)}
+            label={tr('planned.repeats')}
+            value={scheduleText}
             chevron
-            onPress={() =>
-              pickDate(new Date(`${fields.date}T12:00:00`), (d) => set({ date: localDay(d) }))
-            }
+            onPress={() => setScheduleOpen(true)}
           />
           <Row
             label={tr('planned.time')}
@@ -374,20 +436,6 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
               onPress={() => set({ time: null })}
             />
           )}
-          <Checkbox
-            checked={fields.repeats}
-            onPress={() => set({ repeats: !fields.repeats })}
-            label={tr('planned.repeats')}
-            hint={tr('planned.repeatsHint')}
-          />
-          {fields.repeats && (
-            <Row
-              label={tr('planned.frequencyLabel')}
-              value={[scheduleLabel(fields, item?.group), endLabel(fields.end)]
-                .filter(Boolean)
-                .join(' · ')}
-            />
-          )}
         </Card>
         {!!fields.time && (
           <Text
@@ -400,15 +448,6 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
           </Text>
         )}
 
-        {fields.repeats && (
-          <ScheduleRows
-            repetitions={fields.repetitions}
-            end={fields.end}
-            date={fields.date}
-            onChange={(patch) => set(patch)}
-          />
-        )}
-
         <OccurrenceRows
           repetitions={fields.repetitions}
           repeats={fields.repeats}
@@ -418,19 +457,17 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
           onToggleSkip={onToggleSkip}
         />
 
-        <SectionHeader title={tr('planned.sectionMore')} />
-        {!!item?.group?.recurrence && (
-          <Card style={{ marginHorizontal: t.space.lg, marginBottom: t.space.sm }}>
+        <SectionHeader title={tr('planned.sectionExtras')} />
+        <Card style={{ marginHorizontal: t.space.lg, gap: t.space.sm }}>
+          {!!item && (
             <Row
               first
-              label={tr('planned.triggerNow')}
-              value={dayLabel(fields.date)}
+              label={tr('planned.remind.title')}
+              value={remindText}
               chevron
-              onPress={onTrigger}
+              onPress={() => setSheet('remind')}
             />
-          </Card>
-        )}
-        <Card style={{ marginHorizontal: t.space.lg, gap: t.space.sm }}>
+          )}
           <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('fields.note')}</Text>
           <TextField
             value={fields.notes ?? ''}
@@ -447,19 +484,33 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
         </Card>
       </ScrollView>
 
-      <SaveBar
-        problemText={
-          problems.length > 0
-            ? tr('readiness.missing', {
-                fields: problems.map((p) => tr(`planned.problem.${p}`)).join(', '),
-              })
-            : null
-        }
-        saving={saving}
-        disabled={saving || unchanged || problems.length > 0}
-        onSave={onSave}
-      />
+      {(isNew || dirty) && (
+        <SaveBar
+          problemText={
+            problems.length > 0
+              ? tr('readiness.missing', {
+                  fields: problems.map((p) => tr(`planned.problem.${p}`)).join(', '),
+                })
+              : null
+          }
+          saving={saving}
+          disabled={saving || unchanged || problems.length > 0}
+          onSave={onSave}
+          summary={item ? tr('planned.changesSummary') : undefined}
+          onUndo={item ? () => setFields(item.fields) : undefined}
+        />
+      )}
 
+      <ScheduleSheet
+        visible={scheduleOpen}
+        onClose={() => setScheduleOpen(false)}
+        group={item?.group}
+        repeats={fields.repeats}
+        repetitions={fields.repetitions}
+        end={fields.end}
+        date={fields.date}
+        onChange={set}
+      />
       <AmountSheet
         visible={sheet === 'amount'}
         title={tr('fields.amount')}
@@ -525,6 +576,24 @@ function PlannedEditor({ item }: { item: PlannedItem | null }) {
         }}
         noneLabel={tr('common.none')}
       />
+      {!!remind && (
+        <PickerSheet
+          visible={sheet === 'remind'}
+          onClose={() => setSheet(null)}
+          title={tr('planned.remind.title')}
+          options={[
+            {
+              key: 'default',
+              label: tr('planned.remind.default', { when: tr(`planned.remind.${remind.when}`) }),
+            },
+            ...REMIND_CHOICES.map((k) => ({ key: k, label: tr(`planned.remind.${k}`) })),
+          ]}
+          selected={remind.override ?? 'default'}
+          onSelect={(key) => {
+            if (key) void chooseRemind(key);
+          }}
+        />
+      )}
     </Screen>
   );
 }

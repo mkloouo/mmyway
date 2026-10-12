@@ -27,7 +27,7 @@ tags:
 - tapOn: 'More'
 - tapOn: 'Count cash'
 - assertVisible: ".*hasn't reached Firefly III yet.*"
-- tapOn: 'Close'
+- tapOn: 'Cancel'
 - setAirplaneMode: disabled
 - runFlow: ../../subflows/wait-sent.yaml
 - runFlow: ../../subflows/sync.yaml
@@ -48,7 +48,9 @@ tags:
 - inputText: ${output.counted}
 - hideKeyboard
 - tapOn: 'Reconcile settings'
+- tapOn: 'Shortfall payee (expense account)'
 - tapOn: 'Cash shortfall'
+- tapOn: 'Surplus payee (revenue account)'
 - tapOn: 'Cash surplus'
 - back
 - tapOn: 'Review 1 adjustment'

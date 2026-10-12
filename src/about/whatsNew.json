@@ -1,0 +1,37 @@
+{
+  "version": "1.12.0",
+  "sections": [
+    {
+      "title": "Rules",
+      "items": [
+        "See and change your Firefly III rules. Settings → Rules lists your rule groups and the rules in them. Switch a rule or a whole group on or off, run a rule now against the last year of transactions, and create a rule from a transaction (… → Create a rule) that sets its category or budget. Works offline and is sent on the next sync."
+      ]
+    },
+    {
+      "title": "Budget",
+      "items": [
+        "Create, rename and delete envelopes. You can now create new budgets, rename existing envelopes, and delete them directly from the app — no need to open Firefly III's web interface. A new envelope shows up straight away, offline too, and reaches Firefly III with your next sync. Deleted envelopes remain visible in transaction history."
+      ]
+    },
+    {
+      "title": "Accounts",
+      "items": [
+        "Create asset and liability accounts. Settings → Accounts → + creates an asset, and Settings → Liabilities → + creates a liability, including loans, debts and mortgages with an interest rate, an interest period and a credit limit. Liabilities have their own Settings → Liabilities list, where you can open, edit and archive them. It works offline, shows up straight away, and is synced to Firefly III with your next sync."
+      ]
+    },
+    {
+      "title": "Settings",
+      "items": [
+        "Try the app without a server. Settings → Try the demo fills the app with sample accounts, envelopes and transactions; nothing is sent anywhere. Leave the demo (or sign in) to clear it."
+      ]
+    },
+    {
+      "title": "Fixed",
+      "items": [
+        "Opening Reorder on the accounts list and leaving it without moving anything no longer queues a change. It used to show up as waiting to sync and was sent to Firefly III every time.",
+        "iPhone: no more empty band at the top of Capture, receipts, drafts and the cash count. These open as a sheet that already sits below the status bar, and the space for the status bar was added on top of it again.",
+        "Signing in to a different Firefly III no longer shows the old one's envelopes. The Budget tab's amounts are now cleared with the rest of the old instance's data."
+      ]
+    }
+  ]
+}

@@ -3,19 +3,23 @@
 // Assigning to a single envelope happens on its own page (app/budget/[id].tsx).
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import {
   AppBar,
+  BarIconButton,
   Button,
   Card,
   EmptyState,
   Money,
-  Row,
   Screen,
   SectionHeader,
   SCREEN_TOP_PADDING,
 } from '../../src/ui/components';
+import { GroupFooter, ListRow } from '../../src/ui/kit';
 import { AmountSheet } from '../../src/ui/AmountSheet';
+import { NewEnvelopeSheet } from '../../src/budget/NewEnvelopeSheet';
+import { divideDecimal } from '../../src/api/ff3/decimal';
+import type { Envelope } from '../../src/bucket/envelopes';
 import { PendingDot } from '../../src/ui/PendingDot';
 import { useTheme } from '../../src/ui/theme';
 import { formatMoney } from '../../src/ui/money';
@@ -30,6 +34,13 @@ import { assignMany, fundMany, setFundAmount } from '../../src/bucket/actions';
 import type { Fund } from '../../src/bucket/funds';
 import { appLocale } from '../../src/i18n';
 import { dayDate, localDay } from '../../src/utils/day';
+
+/** Share of the assignment spent, 0–1, for the bar. Overspent is a full bar. Display only. */
+function spentFraction(envelope: Envelope): number {
+  if (envelope.overspent) return 1;
+  const spent = envelope.spent.replace(/^[-−]/, '');
+  return Math.min(1, Number(divideDecimal(spent, envelope.assigned, 4)));
+}
 
 export default function BudgetScreen() {
   const t = useTheme();
@@ -72,6 +83,7 @@ export default function BudgetScreen() {
     await fundMany(db, plan.funds);
   });
 
+  const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Fund | null>(null);
   const saveFund = act(tr('budget.fundSet'), async (fund: Fund, amount: string) => {
     await setFundAmount(db, fund, amount);
@@ -83,10 +95,10 @@ export default function BudgetScreen() {
         title={tr('budget.title')}
         subtitle={monthLabel}
         right={
-          <Button
-            title={tr('budget.createTitle')}
-            size="bar"
-            onPress={() => navigateOnce('/budget/new')}
+          <BarIconButton
+            icon="add"
+            label={tr('budget.createTitle')}
+            onPress={() => setCreating(true)}
           />
         }
       />
@@ -98,7 +110,8 @@ export default function BudgetScreen() {
           gap: t.space.sm,
         }}
       >
-        <Card style={{ marginHorizontal: t.space.lg, gap: t.space.xs }}>
+        {/* The hero: the one number this tab is about, and its actions. */}
+        <Card style={{ marginHorizontal: t.space.lg, gap: t.space.sm }}>
           <Text style={[t.type.caption, { color: t.color.textMuted, textTransform: 'uppercase' }]}>
             {tr('budget.readyToAssign')}
           </Text>
@@ -114,21 +127,19 @@ export default function BudgetScreen() {
               allocated: formatMoney(rta.allocated, currency),
             })}
           </Text>
-          {/* Said where the number is read, not in a FAQ: Firefly III's own "left to budget" is a
-              different figure, and nothing in the app can maintain the record it rests on. */}
-          <Text style={[t.type.label, { color: t.color.textFaint, marginTop: t.space.xs }]}>
-            {tr('budget.differsFromFireflyNote')}
-          </Text>
           {!autofillIsEmpty(plan) && (
             <Button
               title={tr('budget.autofillWith', { amount: formatMoney(plan.total, currency) })}
               variant="secondary"
               onPress={() => void runAutofill()}
               disabled={act.pending(tr('budget.autofill'))}
-              style={{ marginTop: t.space.sm }}
+              style={{ marginTop: t.space.xs }}
             />
           )}
         </Card>
+        {/* Said where the number is read, not in a FAQ: Firefly III's own "left to budget" is a
+            different figure, and nothing in the app can maintain the record it rests on. */}
+        <GroupFooter>{tr('budget.differsFromFireflyNote')}</GroupFooter>
 
         <SectionHeader title={tr('budget.envelopes')} />
         {envelopes.length === 0 ? (
@@ -140,47 +151,71 @@ export default function BudgetScreen() {
             />
           ) : null
         ) : (
-          envelopes.map((envelope) => (
-            <Card
-              key={envelope.budgetId}
-              style={{ marginHorizontal: t.space.lg }}
-              onPress={() => navigateOnce(`/budget/${encodeURIComponent(envelope.budgetId)}`)}
-            >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
-                <PendingDot visible={queued.has(envelope.budgetId)} />
-                <Text style={[t.type.heading, { color: t.color.text, flex: 1 }]} numberOfLines={1}>
-                  {envelope.name}
-                </Text>
-                <Money
-                  amount={envelope.available}
-                  currency={currency}
-                  size="heading"
-                  tone={envelope.overspent ? 'warn' : undefined}
-                />
-              </View>
-              <Text
-                style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]}
-                numberOfLines={1}
-              >
-                {tr('budget.envelopeLine', {
-                  assigned: formatMoney(envelope.assigned, currency),
-                  spent: unsigned(envelope.spent),
-                })}
-              </Text>
-              {/* An overspent envelope says so and offers the way out: the move sheet from Phase 2,
-                  opened on this envelope with the shortfall already filled in. */}
-              {envelope.overspent && (
-                <Row
-                  label={tr('budget.coverRow', { amount: unsigned(envelope.available) })}
-                  icon="arrow-forward"
-                  tone="warn"
-                  onPress={() =>
-                    navigateOnce(`/budget/${encodeURIComponent(envelope.budgetId)}?cover=1`)
+          <Card flush style={{ marginHorizontal: t.space.lg }}>
+            {envelopes.map((envelope, index) => (
+              <View key={envelope.budgetId}>
+                <ListRow
+                  first={index === 0}
+                  label={envelope.name}
+                  sub={tr('budget.envelopeLine', {
+                    assigned: formatMoney(envelope.assigned, currency),
+                    spent: unsigned(envelope.spent),
+                  })}
+                  trailing={
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
+                      <PendingDot visible={queued.has(envelope.budgetId)} />
+                      <Money
+                        amount={envelope.available}
+                        currency={currency}
+                        size="heading"
+                        tone={envelope.overspent ? 'warn' : undefined}
+                      />
+                    </View>
                   }
+                  onPress={() => navigateOnce(`/budget/${encodeURIComponent(envelope.budgetId)}`)}
                 />
-              )}
-            </Card>
-          ))
+                <View
+                  style={{
+                    paddingHorizontal: t.space.lg,
+                    paddingBottom: t.space.md,
+                    gap: t.space.xs,
+                  }}
+                >
+                  <View
+                    style={{
+                      height: 6,
+                      borderRadius: 3,
+                      overflow: 'hidden',
+                      backgroundColor: envelope.overspent ? t.color.warnSoft : t.color.accentSoft,
+                    }}
+                  >
+                    <View
+                      style={{
+                        width: `${Math.round(spentFraction(envelope) * 100)}%`,
+                        height: 6,
+                        backgroundColor: envelope.overspent ? t.color.warn : t.color.accent,
+                      }}
+                    />
+                  </View>
+                  {/* An overspent envelope says so and offers the way out: the move sheet, opened
+                      on this envelope with the shortfall already filled in. */}
+                  {envelope.overspent && (
+                    <Pressable
+                      onPress={() =>
+                        navigateOnce(`/budget/${encodeURIComponent(envelope.budgetId)}?cover=1`)
+                      }
+                      accessibilityRole="button"
+                      hitSlop={4}
+                    >
+                      <Text style={[t.type.label, { color: t.color.warn, fontWeight: '600' }]}>
+                        {tr('budget.coverRow', { amount: unsigned(envelope.available) })}
+                      </Text>
+                    </Pressable>
+                  )}
+                </View>
+              </View>
+            ))}
+          </Card>
         )}
 
         {funds.length > 0 && (
@@ -264,6 +299,8 @@ export default function BudgetScreen() {
           }}
         />
       )}
+
+      <NewEnvelopeSheet visible={creating} onClose={() => setCreating(false)} />
     </Screen>
   );
 }

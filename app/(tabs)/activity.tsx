@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SectionList, Text, View } from 'react-native';
 import { Collapsible, leaveThen } from '../../src/ui/Collapsible';
-import { useNavigation } from 'expo-router';
+import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
 import { useCurrencies } from '../../src/db/useReferenceData';
 import { useDb } from '../../src/providers/DbProvider';
@@ -86,6 +86,16 @@ export default function ActivityScreen() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [accountFilter, setAccountFilter] = useState<string | null>(null);
+  // An account page's Transactions button opens this tab filtered to that account. A new param
+  // is applied once per tap (`at` tells two taps for the same account apart), so the user can
+  // clear it and the next tap sets it again.
+  const { account: accountParam, at } = useLocalSearchParams<{ account?: string; at?: string }>();
+  const paramTap = accountParam ? `${accountParam}@${at ?? ''}` : undefined;
+  const [seenParamTap, setSeenParamTap] = useState<string | undefined>(undefined);
+  if (paramTap !== seenParamTap) {
+    setSeenParamTap(paramTap);
+    if (accountParam) setAccountFilter(accountParam);
+  }
 
   const rawAssetAccounts = useAssetAccounts();
   const assetAccounts = rawAssetAccounts ?? EMPTY_ACCOUNTS;

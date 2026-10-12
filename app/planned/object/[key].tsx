@@ -5,15 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { ScrollView, Text } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTheme } from '../../../src/ui/theme';
-import {
-  Screen,
-  AppBar,
-  Card,
-  Row,
-  SectionHeader,
-  CloseButton,
-  SCREEN_TOP_PADDING,
-} from '../../../src/ui/components';
+import { Screen, Card, Row, SectionHeader, SCREEN_TOP_PADDING } from '../../../src/ui/components';
+import { PushHeader } from '../../../src/ui/kit';
 import { usePlanned } from '../../../src/planned/usePlanned';
 
 const KIND_LABEL_KEYS = {
@@ -86,10 +79,11 @@ export default function PlannedObjectScreen() {
 
   return (
     <Screen bottom>
-      <AppBar
+      <PushHeader
+        backLabel={tr('settings.plannedRaw')}
+        onBack={() => router.back()}
         title={object?.name || tr('planned.title')}
         subtitle={object ? tr(KIND_LABEL_KEYS[object.kind]) : undefined}
-        left={<CloseButton onPress={() => router.back()} />}
       />
       <ScrollView
         contentContainerStyle={{ paddingTop: SCREEN_TOP_PADDING, paddingBottom: t.space.xxl }}

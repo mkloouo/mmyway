@@ -21,6 +21,7 @@ import {
   getLocalModelName,
   getBalancesStale,
   setBalancesStale,
+  getReceiptReader,
 } from '../settings/appSettings';
 import { readGeminiKey } from '../settings/secrets';
 import { probeReachability, type ServerReachability } from './reachability';
@@ -189,6 +190,7 @@ async function doSync(db: OutboxDb, mode: SyncMode): Promise<SyncSummary> {
     lastSyncedAt,
     localModelName,
     geminiKey,
+    receiptReader,
   ] = await Promise.all([
     readStoredCredentials(),
     readHosts(),
@@ -198,6 +200,7 @@ async function doSync(db: OutboxDb, mode: SyncMode): Promise<SyncSummary> {
     getLastSyncedAt(db),
     getLocalModelName(db),
     readGeminiKey().catch(() => null),
+    getReceiptReader(db),
   ]);
   if (!credentials) return { ...NOT_SIGNED_IN };
 
@@ -216,11 +219,14 @@ async function doSync(db: OutboxDb, mode: SyncMode): Promise<SyncSummary> {
     // The last successful full sync; replaced below if this one succeeds. Starting from null
     // made a push sync (which never sets it) show "never" in the Sync sheet.
     lastSyncedAt,
-    // Same conditions buildChain uses to put a provider in the chain.
-    configuredProviders: [
-      ...(localModelBaseUrls.length > 0 && localModelName ? ['local'] : []),
-      ...(geminiKey ? ['gemini'] : []),
-    ],
+    // Same conditions buildChain uses to put a provider in the chain, and the same reader rule.
+    configuredProviders:
+      receiptReader === 'none'
+        ? []
+        : [
+            ...(localModelBaseUrls.length > 0 && localModelName ? ['local'] : []),
+            ...(geminiKey && receiptReader === 'auto' ? ['gemini'] : []),
+          ],
   };
 
   try {

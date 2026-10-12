@@ -25,8 +25,7 @@ tags:
 - tapOn: 'Search payees'
 - inputText: 'C2 ${RUN_ID}'
 - tapOn: 'Create new payee "C2 ${RUN_ID}"'
-- tapOn:
-    id: 'keypad-save'
+- tapOn: 'Save & confirm'
 - extendedWaitUntil:
     visible: 'Confirmed · .*'
     timeout: 10000

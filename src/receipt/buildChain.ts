@@ -4,6 +4,7 @@ import {
   getLocalModelBaseUrls,
   getLocalModelActiveUrl,
   getLocalModelName,
+  getReceiptReader,
 } from '../settings/appSettings';
 import { readGeminiKey } from '../settings/secrets';
 import type { OutboxDb } from '../sync/outbox';
@@ -16,18 +17,22 @@ import type { ReceiptProvider } from './types';
 // answered a sync's reachability probe (src/sync/reachability.ts writes it) rather than probing
 // again here — a receipt capture shouldn't pay for a second round trip on every parse. If that
 // address later turns out to be unreachable, runProviderChain already falls through to Gemini.
+// The Settings → Receipt reading choice decides which of the two may be in the chain: 'none' leaves
+// it empty, 'local' leaves Gemini out (a photo never goes to Google), 'auto' keeps both.
 export async function buildChain(db: OutboxDb): Promise<ReceiptProvider[]> {
-  const [baseUrls, remembered, localModelName, geminiKey] = await Promise.all([
+  const [reader, baseUrls, remembered, localModelName, geminiKey] = await Promise.all([
+    getReceiptReader(db),
     getLocalModelBaseUrls(db),
     getLocalModelActiveUrl(db),
     getLocalModelName(db),
     readGeminiKey(),
   ]);
+  if (reader === 'none') return [];
 
   const providers: ReceiptProvider[] = [];
   const address = (remembered && baseUrls.includes(remembered) ? remembered : baseUrls[0]) ?? null;
   if (address && localModelName)
     providers.push(createLocalProvider({ baseUrl: address, model: localModelName }));
-  if (geminiKey) providers.push(createGeminiProvider({ apiKey: geminiKey }));
+  if (geminiKey && reader === 'auto') providers.push(createGeminiProvider({ apiKey: geminiKey }));
   return providers;
 }

@@ -10,7 +10,7 @@ import '../i18n';
 import { createTestDb } from '../db/testDb';
 import { cachedTransactions, inboxItems, referenceAccounts } from '../db/schema';
 import { confirmAction, confirmDestructive } from '../ui/confirm';
-import SettingsScreen from '../../app/(tabs)/settings';
+import ConnectionScreen from '../../app/settings/connection';
 
 // `mock`-prefixed so Jest's hoisting lets the factories below close over it.
 let mockDb: ReturnType<typeof createTestDb>;
@@ -68,7 +68,7 @@ async function renderScreen() {
           })
         }
       >
-        <SettingsScreen />
+        <ConnectionScreen />
       </QueryClientProvider>
     </SafeAreaProvider>,
   );

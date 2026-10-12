@@ -10,8 +10,9 @@ tags:
 - tapOn: 'Settings, tab, 5 of 5'
 - scrollUntilVisible:
     element:
-      text: 'Diagnostics'
+      text: 'About and help'
     direction: DOWN
+- tapOn: 'About and help'
 - tapOn: 'Diagnostics'
 - runFlow:
     when:

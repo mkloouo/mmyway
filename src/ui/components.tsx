@@ -11,6 +11,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   Text,
   View,
   type StyleProp,
@@ -234,6 +235,10 @@ export function SectionHeader({
 
 const DEFAULT_LONG_PRESS_MS = 500; // React Native's own default
 
+/**
+ * A white group (kit board 1): 14 px radius, 1 px border, no shadow. `flush` drops its padding and
+ * clips to the radius, for a list of rows that bring their own 16 px inset and hairlines.
+ */
 export function Card({
   children,
   style,
@@ -243,6 +248,7 @@ export function Card({
   longPressPop,
   selected,
   accessibilityHint,
+  flush,
 }: {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
@@ -257,6 +263,7 @@ export function Card({
   longPressPop?: boolean;
   selected?: boolean;
   accessibilityHint?: string;
+  flush?: boolean;
 }) {
   const t = useTheme();
   const popOnHold = !!longPressPop && !!onLongPress;
@@ -272,6 +279,7 @@ export function Card({
           borderColor: t.color.border,
           padding: t.space.lg,
         },
+        flush ? { padding: 0, overflow: 'hidden' } : null,
         selected
           ? { borderColor: t.color.accent, borderWidth: 2, backgroundColor: t.color.accentSoft }
           : null,
@@ -306,6 +314,9 @@ export function Card({
   );
 }
 
+/** Every row in a Card is at least this tall (kit board 1). */
+export const ROW_HEIGHT = 52;
+
 /** A label/value line. Rows stack inside a Card and draw their own hairline separator. */
 export function Row({
   label,
@@ -333,22 +344,23 @@ export function Row({
 }) {
   const t = useTheme();
   const { t: tr } = useTranslation();
+  // Labels are ink and values grey (kit board 1); a tone still colours the value.
   const valueColor =
-    tone === 'warn' ? t.color.warn : tone === 'danger' ? t.color.danger : t.color.text;
+    tone === 'warn' ? t.color.warn : tone === 'danger' ? t.color.danger : t.color.textMuted;
   const content = (
     <View
       style={{
         flexDirection: 'row',
         alignItems: 'center',
         gap: t.space.md,
-        minHeight: hitSize,
+        minHeight: ROW_HEIGHT,
         paddingVertical: t.space.sm,
         borderTopWidth: first ? 0 : 1,
         borderTopColor: t.color.border,
       }}
     >
       {leading}
-      <Text style={[t.type.body, { color: t.color.textMuted, flexShrink: 0 }]}>{label}</Text>
+      <Text style={[t.type.body, { color: t.color.text, flexShrink: 0 }]}>{label}</Text>
       {loading ? (
         <View style={{ flex: 1, alignItems: 'flex-end' }}>
           <ActivityIndicator
@@ -388,6 +400,63 @@ export function Row({
     </Pressable>
   ) : (
     content
+  );
+}
+
+/**
+ * A labelled switch with an optional hint line, a row in a Card (kit board 1). Tapping anywhere on
+ * the row toggles it: the Switch is drawn with `pointerEvents="none"`, so the row's press is the
+ * only handler and a tap can't toggle twice.
+ */
+export function SwitchRow({
+  label,
+  hint,
+  value,
+  onValueChange,
+  first,
+  disabled,
+}: {
+  label: string;
+  hint?: string;
+  value: boolean;
+  onValueChange: (v: boolean) => void;
+  /** The row is the first in its Card: no hairline above it. */
+  first?: boolean;
+  disabled?: boolean;
+}) {
+  const t = useTheme();
+  return (
+    <Pressable
+      onPress={() => onValueChange(!value)}
+      disabled={disabled}
+      accessibilityRole="switch"
+      accessibilityLabel={label}
+      accessibilityState={{ checked: value, disabled: !!disabled }}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: t.space.md,
+        minHeight: ROW_HEIGHT,
+        paddingVertical: t.space.sm,
+        borderTopWidth: first ? 0 : 1,
+        borderTopColor: t.color.border,
+        opacity: disabled ? 0.4 : 1,
+      }}
+    >
+      <View style={{ flex: 1 }}>
+        <Text style={[t.type.body, { color: t.color.text }]}>{label}</Text>
+        {!!hint && <Text style={[t.type.label, { color: t.color.textMuted }]}>{hint}</Text>}
+      </View>
+      <View pointerEvents="none">
+        <Switch
+          value={value}
+          onValueChange={onValueChange}
+          disabled={disabled}
+          trackColor={{ false: t.color.border, true: t.color.accent }}
+          thumbColor={t.color.surface}
+        />
+      </View>
+    </Pressable>
   );
 }
 
@@ -624,15 +693,19 @@ export function Pulse({ active, children }: { active: boolean; children: ReactNo
 }
 
 /**
- * One bottom sheet serves every picker in the app (design §4). `scroll` (the default) wraps the
- * body in a ScrollView; pass `scroll={false}` when the caller supplies its own FlatList, which an
- * unbounded list (~400 payees) must — a ScrollView would mount every row.
+ * One bottom sheet serves every picker in the app (design §4, kit board 2). The frame is the page
+ * colour with a handle, a 56 px header (title left, round close right) and an optional pinned footer;
+ * content groups inside it are Cards. `onBack` adds a chevron left of the title for a page pushed
+ * inside the sheet. `scroll` (the default) wraps the body in a ScrollView; pass `scroll={false}`
+ * when the caller supplies its own FlatList, which an unbounded list (~400 payees) must — a
+ * ScrollView would mount every row.
  * Android back closes it, and the keyboard never covers it: every text field in the app is here.
  */
 export function Sheet({
   visible,
   title,
   onClose,
+  onBack,
   children,
   footer,
   scroll = true,
@@ -640,6 +713,8 @@ export function Sheet({
   visible: boolean;
   title: string;
   onClose: () => void;
+  /** Shows a back chevron in the header, left of the title. */
+  onBack?: () => void;
   children: ReactNode;
   footer?: ReactNode;
   scroll?: boolean;
@@ -690,7 +765,7 @@ export function Sheet({
             // A `scroll={false}` body hands us a flex: 1 FlatList that needs a resolved height to
             // fill, not just a ceiling — `maxHeight` alone leaves it collapsed to 0.
             [scroll ? 'maxHeight' : 'height']: '85%',
-            backgroundColor: t.color.surface,
+            backgroundColor: t.color.bg,
             overflow: 'hidden',
             borderTopLeftRadius: t.radius.lg,
             borderTopRightRadius: t.radius.lg,
@@ -702,20 +777,58 @@ export function Sheet({
             style={{
               alignSelf: 'center',
               width: 36,
-              height: 4,
-              borderRadius: 2,
+              height: 5,
+              borderRadius: 3,
               backgroundColor: t.color.border,
-              marginVertical: t.space.md,
+              marginTop: t.space.sm,
             }}
           />
-          <Text
-            style={[
-              t.type.heading,
-              { color: t.color.text, paddingHorizontal: t.space.lg, paddingBottom: t.space.md },
-            ]}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: t.space.md,
+              height: 56,
+              paddingHorizontal: t.space.lg,
+            }}
           >
-            {title}
-          </Text>
+            {!!onBack && (
+              // A 44 touch area around the 24 glyph. No label yet: `common.back` isn't in the locales.
+              <Pressable
+                onPress={onBack}
+                accessibilityRole="button"
+                hitSlop={4}
+                style={({ pressed }) => ({
+                  width: hitSize,
+                  height: hitSize,
+                  marginLeft: -t.space.sm,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: pressed ? PRESSED_OPACITY : 1,
+                })}
+              >
+                <Ionicons name="chevron-back" size={24} color={t.color.text} />
+              </Pressable>
+            )}
+            <Text style={[t.type.heading, { color: t.color.text, flex: 1 }]}>{title}</Text>
+            <Pressable
+              onPress={onClose}
+              accessibilityRole="button"
+              accessibilityLabel={tr('common.close')}
+              hitSlop={6}
+              style={({ pressed }) => ({
+                width: 32,
+                height: 32,
+                borderRadius: 16,
+                backgroundColor: t.color.surfaceAlt,
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: pressed ? PRESSED_OPACITY : 1,
+              })}
+            >
+              <Ionicons name="close" size={16} color={t.color.textMuted} />
+            </Pressable>
+          </View>
           {scroll ? (
             <ScrollView contentContainerStyle={bodyPadding} keyboardShouldPersistTaps="handled">
               {children}
@@ -730,10 +843,9 @@ export function Sheet({
               style={{
                 borderTopWidth: 1,
                 borderTopColor: t.color.border,
-                backgroundColor: t.color.surface,
+                backgroundColor: t.color.bg,
                 paddingHorizontal: t.space.lg,
-                paddingTop: t.space.sm,
-                paddingBottom: t.space.xs,
+                paddingVertical: t.space.md,
               }}
             >
               {footer}
