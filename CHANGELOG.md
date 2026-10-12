@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [2.0.2] - 2026-10-13
+
 ### Capture
 
 - Aligned keypad digits with design: 48 px height, white keys with 12 px radius, and 22 px font.
