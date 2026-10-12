@@ -333,14 +333,14 @@ function managedActions(f: PlannedFields): RuleAction[] {
   return out;
 }
 
-const cleanTrigger = (t: RuleTrigger): RuleTrigger => ({
+export const cleanTrigger = (t: RuleTrigger): RuleTrigger => ({
   type: t.type,
   value: t.value,
   active: t.active ?? true,
   stop_processing: t.stop_processing ?? false,
   ...(t.prohibited !== undefined ? { prohibited: t.prohibited } : {}),
 });
-const cleanAction = (a: RuleAction): RuleAction => ({
+export const cleanAction = (a: RuleAction): RuleAction => ({
   type: a.type,
   value: a.value,
   active: a.active ?? true,

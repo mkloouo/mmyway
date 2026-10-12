@@ -8,7 +8,9 @@ import { fetchAllPages } from '../api/ff3/paginate';
 import { plannedObjects } from '../db/schema';
 import type { OutboxDb } from '../sync/outbox';
 
-export type PlannedKind = 'bill' | 'rule' | 'recurrence';
+// A rule group is cached alongside the rules (kind 'rule_group') for the Rules screen. It is not a
+// PlannedObject: the Planned tab reads planned_objects through readPlannedRow, which skips it.
+export type PlannedKind = 'bill' | 'rule' | 'recurrence' | 'rule_group';
 
 export interface BillAttributes {
   name: string;
@@ -98,7 +100,22 @@ export type PlannedObject =
   | { key: string; kind: 'rule'; id: string; name: string; attributes: RuleAttributes }
   | { key: string; kind: 'recurrence'; id: string; name: string; attributes: RecurrenceAttributes };
 
-type PlannedRow = typeof plannedObjects.$inferSelect;
+export interface RuleGroupAttributes {
+  title: string;
+  active?: boolean;
+  order?: number;
+  [key: string]: unknown;
+}
+
+export interface RuleGroupObject {
+  key: string;
+  kind: 'rule_group';
+  id: string;
+  name: string;
+  attributes: RuleGroupAttributes;
+}
+
+export type PlannedRow = typeof plannedObjects.$inferSelect;
 
 export function plannedKey(kind: PlannedKind, id: string): string {
   return `${kind}:${id}`;
@@ -109,21 +126,46 @@ function nameOf(kind: PlannedKind, attributes: Record<string, unknown>): string 
   return typeof value === 'string' ? value : '';
 }
 
-/** A cached row back as an object; null when its JSON is unreadable (skipped, not shown broken). */
-export function readPlannedRow(row: PlannedRow): PlannedObject | null {
+/** A row's JSON as an object; null when it is unreadable or not an object. */
+function parseRow(row: PlannedRow): Record<string, unknown> | null {
   try {
     const attributes = JSON.parse(row.attributesJson) as Record<string, unknown>;
-    if (!attributes || typeof attributes !== 'object') return null;
-    return {
-      key: row.key,
-      kind: row.kind,
-      id: row.ff3Id,
-      name: row.name,
-      attributes,
-    } as PlannedObject;
+    return attributes && typeof attributes === 'object' ? attributes : null;
   } catch {
     return null;
   }
+}
+
+/**
+ * A cached row back as an object; null when its JSON is unreadable (skipped, not shown broken).
+ * A rule group is null here, so every reader of the Planned tab's rows (the tab, the reminders,
+ * the bucket's bills) skips it without knowing about it; readRuleGroupRow reads those.
+ */
+export function readPlannedRow(row: PlannedRow): PlannedObject | null {
+  if (row.kind === 'rule_group') return null;
+  const attributes = parseRow(row);
+  if (!attributes) return null;
+  return {
+    key: row.key,
+    kind: row.kind,
+    id: row.ff3Id,
+    name: row.name,
+    attributes,
+  } as PlannedObject;
+}
+
+/** A cached rule group back as an object; null for any other row or unreadable JSON. */
+export function readRuleGroupRow(row: PlannedRow): RuleGroupObject | null {
+  if (row.kind !== 'rule_group') return null;
+  const attributes = parseRow(row);
+  if (!attributes) return null;
+  return {
+    key: row.key,
+    kind: 'rule_group',
+    id: row.ff3Id,
+    name: row.name,
+    attributes,
+  } as RuleGroupObject;
 }
 
 function plannedRow(
@@ -146,6 +188,7 @@ const PATHS: Record<PlannedKind, string> = {
   bill: '/v1/bills',
   rule: '/v1/rules',
   recurrence: '/v1/recurrences',
+  rule_group: '/v1/rule-groups',
 };
 export const plannedPath = (kind: PlannedKind, id?: string) =>
   id ? `${PATHS[kind]}/${id}` : PATHS[kind];
@@ -178,14 +221,15 @@ export async function fetchAllOf(
 }
 
 /**
- * Replaces the cache with what FF3 has now. All three lists are read before anything is written,
+ * Replaces the cache with what FF3 has now. All four lists are read before anything is written,
  * so a failed request leaves the old cache in place rather than a partial one.
  */
 export async function pullPlanned(db: OutboxDb, client: FF3Client): Promise<void> {
-  const [bills, rules, recurrences] = await Promise.all([
+  const [bills, rules, recurrences, ruleGroups] = await Promise.all([
     fetchAllOf(client, 'bill'),
     fetchAllOf(client, 'rule'),
     fetchAllOf(client, 'recurrence'),
+    fetchAllOf(client, 'rule_group'),
   ]);
   const now = new Date().toISOString();
   db.transaction((tx) => {
@@ -194,6 +238,7 @@ export async function pullPlanned(db: OutboxDb, client: FF3Client): Promise<void
       ['bill', bills],
       ['rule', rules],
       ['recurrence', recurrences],
+      ['rule_group', ruleGroups],
     ] as const) {
       for (const item of list)
         tx.insert(plannedObjects)

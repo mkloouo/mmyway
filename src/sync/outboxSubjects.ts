@@ -86,6 +86,18 @@ export function subjectsOf(op: {
       add('account', p.clientId);
       add('account', p.serverId);
       break;
+    case 'toggle_rule':
+    case 'trigger_rule':
+      add('rule', p.ruleId);
+      break;
+    case 'toggle_rule_group':
+      add('rule_group', p.ruleGroupId);
+      break;
+    case 'create_rule':
+      // Both ids, as for create_account: a switch queued on the new rule waits behind this create.
+      add('rule', p.clientId);
+      add('rule', p.serverId);
+      break;
   }
   return keys;
 }

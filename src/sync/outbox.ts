@@ -58,6 +58,16 @@ import {
   type DeleteBudgetPayload,
 } from '../bucket/budgetActions';
 import { replayCreateAccount, type CreateAccountPayload } from '../accounts/accountCreate';
+import {
+  replayCreateRule,
+  replayToggleRule,
+  replayToggleRuleGroup,
+  replayTriggerRule,
+  type CreateRulePayload,
+  type ToggleRuleGroupPayload,
+  type ToggleRulePayload,
+  type TriggerRulePayload,
+} from '../rules/replay';
 
 export type OutboxKind =
   | 'create_transaction'
@@ -76,7 +86,11 @@ export type OutboxKind =
   | 'create_budget'
   | 'update_budget'
   | 'delete_budget'
-  | 'create_account';
+  | 'create_account'
+  | 'toggle_rule'
+  | 'toggle_rule_group'
+  | 'trigger_rule'
+  | 'create_rule';
 
 /** The kinds that change an account balance in FF3 once they land; receipts and account edits don't. */
 export const LEDGER_KINDS = [
@@ -166,6 +180,10 @@ export interface NewOutboxOperation {
     | UpdateBudgetPayload
     | DeleteBudgetPayload
     | CreateAccountPayload
+    | ToggleRulePayload
+    | ToggleRuleGroupPayload
+    | TriggerRulePayload
+    | CreateRulePayload
     | Record<string, unknown>;
 }
 
@@ -902,6 +920,30 @@ async function replayOne(
 
     if (row.kind === 'create_account') {
       await replayCreateAccount(db, client, row.id, payload as CreateAccountPayload);
+      await db.delete(outboxOperations).where(eq(outboxOperations.id, row.id));
+      return 'done';
+    }
+
+    if (row.kind === 'toggle_rule') {
+      await replayToggleRule(db, client, payload as ToggleRulePayload);
+      await db.delete(outboxOperations).where(eq(outboxOperations.id, row.id));
+      return 'done';
+    }
+
+    if (row.kind === 'toggle_rule_group') {
+      await replayToggleRuleGroup(db, client, payload as ToggleRuleGroupPayload);
+      await db.delete(outboxOperations).where(eq(outboxOperations.id, row.id));
+      return 'done';
+    }
+
+    if (row.kind === 'trigger_rule') {
+      await replayTriggerRule(client, payload as TriggerRulePayload);
+      await db.delete(outboxOperations).where(eq(outboxOperations.id, row.id));
+      return 'done';
+    }
+
+    if (row.kind === 'create_rule') {
+      await replayCreateRule(db, client, row.id, payload as CreateRulePayload);
       await db.delete(outboxOperations).where(eq(outboxOperations.id, row.id));
       return 'done';
     }

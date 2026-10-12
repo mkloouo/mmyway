@@ -118,6 +118,10 @@ export const outboxOperations = sqliteTable('outbox_operations', {
       'update_budget',
       'delete_budget',
       'create_account',
+      'toggle_rule',
+      'toggle_rule_group',
+      'trigger_rule',
+      'create_rule',
     ],
   }).notNull(),
   payloadJson: text('payload_json').notNull(),
@@ -133,7 +137,7 @@ export const outboxOperations = sqliteTable('outbox_operations', {
 // FF3 returned them (read through src/planned/objects.ts); the whole table is replaced on each pull.
 export const plannedObjects = sqliteTable('planned_objects', {
   key: text('key').primaryKey(), // `${kind}:${ff3Id}`
-  kind: text('kind', { enum: ['bill', 'rule', 'recurrence'] }).notNull(),
+  kind: text('kind', { enum: ['bill', 'rule', 'recurrence', 'rule_group'] }).notNull(),
   ff3Id: text('ff3_id').notNull(),
   name: text('name').notNull(),
   attributesJson: text('attributes_json').notNull(),

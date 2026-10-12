@@ -4,6 +4,7 @@
 import type { Href } from 'expo-router';
 import type { OutboxKind } from '../sync/outbox';
 import { readPayload } from '../sync/payloadJson';
+import { plannedKey } from '../planned/objects';
 
 interface QueuedChangeLookups {
   accountName: (id: string) => string | undefined;
@@ -235,5 +236,21 @@ export function describeQueuedChange(
         route: '/settings/accounts',
         changed: [],
       };
+    case 'toggle_rule':
+      return {
+        subject: null,
+        route: `/planned/object/${encodeURIComponent(plannedKey('rule', p.ruleId as string))}`,
+        changed: ['accounts.active'],
+      };
+    case 'toggle_rule_group':
+      return { subject: null, route: null, changed: ['accounts.active'] };
+    case 'trigger_rule':
+      return {
+        subject: null,
+        route: `/planned/object/${encodeURIComponent(plannedKey('rule', p.ruleId as string))}`,
+        changed: [],
+      };
+    case 'create_rule':
+      return { subject: str(p.title), route: '/planned', changed: [] };
   }
 }

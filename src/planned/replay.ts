@@ -58,11 +58,11 @@ export interface TriggerPlannedPayload {
 }
 
 /** The rule group new rules go into when the simple view creates them. */
-const PLANNED_RULE_GROUP = 'Planned';
+export const PLANNED_RULE_GROUP = 'Planned';
 
 type Read<T> = { data: { id: string; attributes: T } };
 
-async function ensureRuleGroup(client: FF3Client): Promise<string> {
+export async function ensureRuleGroup(client: FF3Client): Promise<string> {
   return createFF3Service(client).ruleGroups.ensure(PLANNED_RULE_GROUP);
 }
 

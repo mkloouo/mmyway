@@ -163,6 +163,28 @@ const SCHEMAS = {
     }),
     serverId: z.string().optional(), // recorded after FF3 answers
   }),
+  toggle_rule: z.looseObject({
+    v: version,
+    ruleId: z.string(),
+    active: z.boolean(),
+  }),
+  toggle_rule_group: z.looseObject({
+    v: version,
+    ruleGroupId: z.string(),
+    active: z.boolean(),
+  }),
+  trigger_rule: z.looseObject({
+    v: version,
+    ruleId: z.string(),
+  }),
+  create_rule: z.looseObject({
+    v: version,
+    clientId: z.string(), // the temporary mmyway-* id until serverId is recorded
+    title: z.string(),
+    triggers: z.array(z.looseObject({ type: z.string(), value: z.string() })),
+    actions: z.array(z.looseObject({ type: z.string(), value: z.string().nullable() })),
+    serverId: z.string().optional(), // recorded after FF3 answers
+  }),
 } satisfies Record<OutboxKind, z.ZodType>;
 
 export function readPayload<T = Record<string, unknown>>(kind: OutboxKind, json: string): T {
