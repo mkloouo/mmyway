@@ -4,11 +4,7 @@ import '../i18n';
 import { createTestDb } from '../db/testDb';
 import { bucketRow } from '../bucket/objects';
 import { periodOf } from '../bucket/period';
-import {
-  bucketObjects,
-  referenceBudgets,
-  referenceCurrencies,
-} from '../db/schema';
+import { bucketObjects, referenceBudgets, referenceCurrencies } from '../db/schema';
 import { formatMoney } from '../ui/money';
 import { localDay } from '../utils/day';
 import EnvelopeScreen from '../../app/budget/[id]';
@@ -50,9 +46,7 @@ beforeAll(() => {
     .run();
   mockDb
     .insert(referenceBudgets)
-    .values([
-      { id: 'b1', name: 'Groceries', active: true, syncedAt: SYNCED },
-    ])
+    .values([{ id: 'b1', name: 'Groceries', active: true, syncedAt: SYNCED }])
     .run();
   mockDb
     .insert(bucketObjects)

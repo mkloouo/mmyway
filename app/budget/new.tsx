@@ -36,10 +36,7 @@ export default function NewEnvelopeScreen() {
     if (!name.trim() || nameError) {
       return;
     }
-    const ok = await confirmAction(
-      tr('budget.createTitle'),
-      tr('budget.createAction'),
-    );
+    const ok = await confirmAction(tr('budget.createTitle'), tr('budget.createAction'));
     if (!ok) return;
     await enqueueBudgetCreate(db, name, defaultCurrency?.code ?? 'EUR');
     router.back();
