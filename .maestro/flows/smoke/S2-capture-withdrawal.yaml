@@ -53,6 +53,8 @@ tags:
       EXPECT_COUNT: '0'
       TIMEOUT_MS: '3000'
 # Leave the Inbox clean for the next flow.
-- tapOn: 'S2 ${RUN_ID}'
+- tapOn:
+    label: 'S2 ${RUN_ID}'
 - runFlow: ../../subflows/delete-draft.yaml
-- assertNotVisible: 'S2 ${RUN_ID}'
+- assertNotVisible:
+    label: 'S2 ${RUN_ID}'

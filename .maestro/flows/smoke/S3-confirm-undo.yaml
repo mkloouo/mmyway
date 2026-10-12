@@ -23,7 +23,8 @@ tags:
     visible: 'Undone — it is back in the Inbox'
     timeout: 5000
 - runFlow: ../../subflows/close-capture.yaml
-- assertVisible: 'S3 ${RUN_ID}'
+- assertVisible:
+    label: 'S3 ${RUN_ID}'
 - runScript:
     file: ../../scripts/ff3.js
     env:
@@ -31,10 +32,12 @@ tags:
       PAYEE: 'S3 ${RUN_ID}'
       EXPECT_COUNT: '0'
       TIMEOUT_MS: '8000'
-- tapOn: 'S3 ${RUN_ID}'
+- tapOn:
+    label: 'S3 ${RUN_ID}'
 - tapOn: 'Confirm'
 - runFlow: ../../subflows/wait-sent.yaml
-- assertNotVisible: 'S3 ${RUN_ID}'
+- assertNotVisible:
+    label: 'S3 ${RUN_ID}'
 - runScript:
     file: ../../scripts/ff3.js
     env:
@@ -45,4 +48,5 @@ tags:
       EXPECT_CATEGORY: 'Groceries'
       EXPECT_SOURCE: 'Checking'
 - tapOn: 'Activity, tab, 2 of 5'
-- assertVisible: '.*S3 ${RUN_ID}.*'
+- assertVisible:
+    label: '.*S3 ${RUN_ID}.*'
