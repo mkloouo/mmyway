@@ -27,6 +27,7 @@ const KEYS = {
   plannedNotificationsEnabled: 'planned_notifications_enabled',
   plannedReminderLead: 'planned_reminder_lead_days',
   appLockEnabled: 'app_lock_enabled',
+  demo: 'demo',
 } as const;
 
 async function getSetting(db: OutboxDb, key: string): Promise<string | null> {
@@ -239,3 +240,13 @@ export async function getAppLockEnabled(db: OutboxDb): Promise<boolean> {
 }
 export const setAppLockEnabled = (db: OutboxDb, value: boolean) =>
   setSetting(db, KEYS.appLockEnabled, value ? '1' : '0');
+
+/**
+ * Settings → Firefly III → Try the demo. Set while the app shows the seeded sample data
+ * (src/demo/demo.ts). Not an instance setting: it is cleared by leaveDemo, not by a sign-in.
+ */
+export async function getDemoMode(db: OutboxDb): Promise<boolean> {
+  return (await getSetting(db, KEYS.demo)) === '1';
+}
+export const setDemoMode = (db: OutboxDb, value: boolean) =>
+  setSetting(db, KEYS.demo, value ? '1' : '0');

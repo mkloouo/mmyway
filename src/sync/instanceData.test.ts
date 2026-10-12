@@ -5,6 +5,7 @@ import { enqueueOperation } from './outbox';
 import { readDraft, writeDraft } from '../inbox/draftJson';
 import type { Draft } from '../inbox/draft';
 import {
+  bucketObjects,
   cachedTransactions,
   inboxItems,
   referenceAccounts,
@@ -106,6 +107,14 @@ describe('clearInstanceData', () => {
         updatedAt: T,
       },
     ]);
+    await db.insert(bucketObjects).values({
+      key: 'budget_limit:b1:2026-01-01',
+      kind: 'budget_limit',
+      ff3Id: 'b1',
+      periodStart: '2026-01-01',
+      attributesJson: '{"id":"l1","amount":"400.00"}',
+      syncedAt: T,
+    });
     await setLastSyncedAt(db, T);
     await setFf3ActiveHost(db, 'https://ff3.example.com');
     await setBalancesStale(db, true);
@@ -124,6 +133,7 @@ describe('clearInstanceData', () => {
       referenceBudgets,
       referenceCurrencies,
       cachedTransactions,
+      bucketObjects,
     ]) {
       expect(await db.select().from(table)).toEqual([]);
     }

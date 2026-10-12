@@ -6,6 +6,8 @@ import { readHosts } from '../api/ff3/hosts';
 import { loadProxyHeaders } from '../api/ff3/proxyHeaders';
 import type { AuthErrorReason } from '../api/ff3/types';
 import i18n from '../i18n';
+import { leaveDemo } from '../demo/demo';
+import { getDemoMode } from './appSettings';
 import {
   clearInstanceData,
   describeQueuedOperations,
@@ -50,6 +52,8 @@ export async function connectToInstance(
   }
   // The new token is stored and the old instance's rows cleared with no sync in between.
   const result = await withSyncPaused(async () => {
+    // The demo's captures were made for no instance: they go before they could replay into this one.
+    if (await getDemoMode(db)) await leaveDemo(db);
     const signedInAs = await signIn(host, token);
     if (signedInAs.ok && switching) await clearInstanceData(db);
     return signedInAs;

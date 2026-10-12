@@ -6,6 +6,10 @@
 
 - **Create, rename and delete envelopes.** You can now create new budgets, rename existing envelopes, and delete them directly from the app — no need to open Firefly III's web interface. A new envelope shows up straight away, offline too, and reaches Firefly III with your next sync. Deleted envelopes remain visible in transaction history.
 
+### Fixed
+
+- **Signing in to a different Firefly III no longer shows the old one's envelopes.** The Budget tab's amounts are now cleared with the rest of the old instance's data.
+
 ## [1.11.0] - 2026-10-11
 
 ### Security

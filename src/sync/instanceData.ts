@@ -6,6 +6,7 @@
 import { eq, inArray, ne, sql } from 'drizzle-orm';
 import {
   appSettings,
+  bucketObjects,
   cachedTransactions,
   inboxItems,
   outboxOperations,
@@ -57,6 +58,7 @@ export async function clearInstanceData(db: OutboxDb): Promise<void> {
       referenceCurrencies,
       cachedTransactions,
       plannedObjects,
+      bucketObjects,
     ]) {
       tx.delete(table).run();
     }

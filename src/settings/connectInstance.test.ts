@@ -1,7 +1,8 @@
 import { createTestDb } from '../db/testDb';
-import { cachedTransactions, referenceAccounts } from '../db/schema';
+import { cachedTransactions, outboxOperations, referenceAccounts } from '../db/schema';
 import { readStoredCredentials, signIn } from '../api/ff3/auth';
 import { readHosts } from '../api/ff3/hosts';
+import { startDemo, getDemoMode } from '../demo/demo';
 import { enqueueOperation } from '../sync/outbox';
 import { connectFailureText, connectToInstance } from './connectInstance';
 
@@ -138,6 +139,45 @@ describe('connectToInstance', () => {
     });
     expect(await db.select().from(cachedTransactions)).toHaveLength(1);
     expect(mockEvents).toEqual(['pause', 'signIn', 'resume']); // no clearing
+  });
+
+  it('leaves the demo before signing in, so its queued captures never reach the new instance', async () => {
+    const db = await withSyncedData();
+    signedInTo(null);
+    await startDemo(db, new Date(2026, 9, 12, 12));
+    await enqueueOperation(db, {
+      id: 'demo-capture',
+      kind: 'update_account',
+      payload: { accountId: 'demo-1', active: false },
+    });
+    mockEvents.length = 0;
+    let queuedWhenSignedIn = -1;
+    (signIn as jest.Mock).mockImplementation(async () => {
+      mockEvents.push('signIn');
+      queuedWhenSignedIn = (await db.select().from(outboxOperations)).length;
+      return OK;
+    });
+
+    expect((await connectToInstance(db, 'http://localhost:8080', 'tok')).status).toBe('connected');
+    expect(queuedWhenSignedIn).toBe(0);
+    expect(await getDemoMode(db)).toBe(false);
+    expect(await db.select().from(referenceAccounts)).toEqual([]);
+    expect(mockEvents).toEqual(['pause', 'clear', 'signIn', 'resume']);
+  });
+
+  it('does not treat a demo as a switch: no queue check, no refusal', async () => {
+    const db = await withSyncedData();
+    signedInTo(null);
+    await startDemo(db, new Date(2026, 9, 12, 12));
+    await enqueueOperation(db, {
+      id: 'demo-capture',
+      kind: 'update_account',
+      payload: { accountId: 'demo-1', active: false },
+    });
+
+    expect(await connectToInstance(db, 'http://localhost:8080', 'tok')).toEqual({
+      status: 'connected',
+    });
   });
 });
 
