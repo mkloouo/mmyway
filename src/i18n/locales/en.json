@@ -999,10 +999,13 @@
   "sync": {
     "configured": "configured",
     "error": "Sync error",
+    "ff3Reachable": "Firefly III is reachable",
+    "ff3Unreachable": "Firefly III is unreachable",
     "lastSynced": "Last synced",
     "noneConfigured": "none configured",
     "notSignedIn": "Not signed in",
     "notSignedInValue": "not signed in",
+    "nothingWaiting": "Nothing waiting to send",
     "offline": "Offline",
     "pendingOutbox": "Pending outbox",
     "providerGemini": "Gemini",
@@ -1011,11 +1014,17 @@
     "queued_other": "Queued {{count, number}}",
     "reachable": "reachable",
     "receiptProviders": "Receipt providers",
+    "receiptReadingConfigured": "Receipt reading configured",
+    "receiptReadingNoKeys": "No local model or Gemini key",
+    "receiptReadingOff": "Receipt reading is off",
+    "setUp": "Set up",
     "statusLabel": "Sync status",
     "syncNow": "Sync now",
     "syncing": "Syncing…",
     "title": "Sync",
-    "unreachable": "unreachable"
+    "unreachable": "unreachable",
+    "waitingToSend_one": "{{count, number}} waiting to send",
+    "waitingToSend_other": "{{count, number}} waiting to send"
   },
   "tabs": {
     "inbox": "Inbox"

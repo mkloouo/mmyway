@@ -8,6 +8,10 @@
 - Capture Details sheet now includes a When date/time row, inline note input, and a styled Receipt tile with camera/library action.
 - Search inputs across pickers styled with borderless filled background.
 
+### Inbox & Sync
+
+- Aligned Sync sheet with the Review sheet archetype: grouped inside a Card with leading status dots, clear status statements, and a "Set up" link for receipt reading.
+
 ## [2.0.0] - 2026-10-12
 
 ### Look and feel

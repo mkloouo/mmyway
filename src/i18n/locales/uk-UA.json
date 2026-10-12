@@ -1055,10 +1055,13 @@
   "sync": {
     "configured": "налаштовано",
     "error": "Помилка синхронізації",
+    "ff3Reachable": "Firefly III доступний",
+    "ff3Unreachable": "Firefly III недоступний",
     "lastSynced": "Остання синхронізація",
     "noneConfigured": "нічого не налаштовано",
     "notSignedIn": "Ви не ввійшли",
     "notSignedInValue": "не залоговано",
+    "nothingWaiting": "Немає черги на відправку",
     "offline": "Офлайн",
     "pendingOutbox": "Очікують вихідні повідомлення",
     "providerGemini": "Близнюки",
@@ -1069,11 +1072,19 @@
     "queued_other": "Додано в чергу {{count, number}}",
     "reachable": "досяжний",
     "receiptProviders": "Постачальники функцій аналізу чеків",
+    "receiptReadingConfigured": "Розпізнавання чеків налаштовано",
+    "receiptReadingNoKeys": "Немає локальної моделі або ключа Gemini",
+    "receiptReadingOff": "Розпізнавання чеків вимкнено",
+    "setUp": "Налаштувати",
     "statusLabel": "Стан синхронізації",
     "syncNow": "Синхронізувати зараз",
     "syncing": "Синхронізація…",
     "title": "Синхронізація",
-    "unreachable": "недосяжний"
+    "unreachable": "недосяжний",
+    "waitingToSend_one": "{{count, number}} очікує відправки",
+    "waitingToSend_few": "{{count, number}} очікують відправки",
+    "waitingToSend_many": "{{count, number}} очікують відправки",
+    "waitingToSend_other": "{{count, number}} очікують відправки"
   },
   "tabs": {
     "inbox": "Вхідні"
