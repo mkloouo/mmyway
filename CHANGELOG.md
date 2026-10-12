@@ -6,6 +6,10 @@
 
 - **Create, rename and delete envelopes.** You can now create new budgets, rename existing envelopes, and delete them directly from the app — no need to open Firefly III's web interface. A new envelope shows up straight away, offline too, and reaches Firefly III with your next sync. Deleted envelopes remain visible in transaction history.
 
+### Accounts
+
+- **Create asset and liability accounts.** Settings → Accounts → + creates an asset or a liability, including loans, debts and mortgages with an interest rate, an interest period and a credit limit. It works offline, shows up straight away, and is synced to Firefly III with your next sync.
+
 ### Fixed
 
 - **Signing in to a different Firefly III no longer shows the old one's envelopes.** The Budget tab's amounts are now cleared with the rest of the old instance's data.

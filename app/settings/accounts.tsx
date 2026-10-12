@@ -147,6 +147,13 @@ export default function AccountsScreen() {
           title={tr('accounts.title')}
           right={
             <>
+              {!reordering && (
+                <BarIconButton
+                  icon="add"
+                  label={tr('accounts.newAccount')}
+                  onPress={() => navigateOnce('/accounts/new')}
+                />
+              )}
               <BarIconButton
                 icon="search"
                 label={tr('pickers.searchAccounts')}
