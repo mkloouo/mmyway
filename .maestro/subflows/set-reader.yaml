@@ -3,7 +3,7 @@ appId: ${APP_ID}
 # Configures a receipt reader from the runner's env: GEMINI_KEY, or LOCAL_MODEL_URL +
 # LOCAL_MODEL_NAME (an OpenAI-compatible server the phone can reach). Pass both as "" to skip.
 - runFlow: home.yaml
-- tapOn: 'Settings'
+- tapOn: 'Settings, tab, 5 of 5'
 - runFlow:
     when:
       true: ${GEMINI_KEY != ''}
@@ -28,4 +28,4 @@ appId: ${APP_ID}
       - inputText: ${LOCAL_MODEL_URL}
       - tapOn: "\\+ Add address"
       - back
-- tapOn: 'Inbox'
+- tapOn: 'Inbox, tab, 1 of 5'

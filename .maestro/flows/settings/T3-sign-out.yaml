@@ -22,23 +22,23 @@ tags:
         SAVE: confirm,
       }
 - runFlow: ../../subflows/close-capture.yaml
-- tapOn: 'Settings'
+- tapOn: 'Settings, tab, 5 of 5'
 - tapOn: 'Sign out'
 - assertVisible: "Can't sign out yet"
 - tapOn: 'OK'
 - setAirplaneMode: disabled
 - runFlow: ../../subflows/wait-sent.yaml
-- tapOn: 'Settings'
+- tapOn: 'Settings, tab, 5 of 5'
 - tapOn: 'Sign out'
 - tapOn:
     text: 'Sign out'
     below: "Sign out\\?"
 - assertVisible: 'not connected'
-- tapOn: 'Activity'
+- tapOn: 'Activity, tab, 2 of 5'
 - assertVisible: 'Nothing cached yet'
-- tapOn: 'Inbox'
+- tapOn: 'Inbox, tab, 1 of 5'
 - assertVisible: 'Connect Firefly III'
 - runFlow: ../../subflows/sign-in.yaml
 - runFlow: ../../subflows/sync.yaml
-- tapOn: 'Activity'
+- tapOn: 'Activity, tab, 2 of 5'
 - assertVisible: 'Fuel'

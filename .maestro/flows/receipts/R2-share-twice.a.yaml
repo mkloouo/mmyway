@@ -8,7 +8,7 @@ tags:
 - launchApp:
     appId: ${APP_ID}
 - extendedWaitUntil:
-    visible: 'Inbox'
+    visible: 'Inbox, tab, 1 of 5'
     timeout: 20000
 - extendedWaitUntil:
     visible: 'TO CONFIRM'

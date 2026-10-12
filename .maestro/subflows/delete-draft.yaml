@@ -7,5 +7,5 @@ appId: ${APP_ID}
     text: 'Delete'
     below: "Delete this draft\\?"
 - extendedWaitUntil:
-    visible: 'Inbox'
+    visible: 'Inbox, tab, 1 of 5'
     timeout: 10000

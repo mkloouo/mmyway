@@ -10,6 +10,9 @@
       "android": {
         "buildType": "apk"
       },
+      "ios": {
+        "simulator": true
+      },
       "env": {
         "APP_VARIANT": "development"
       }
@@ -31,6 +34,15 @@
         "buildType": "app-bundle"
       },
       "env": {}
+    },
+    "e2e": {
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      },
+      "env": {
+        "APP_VARIANT": "development"
+      }
     }
   }
 }

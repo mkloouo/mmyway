@@ -10,16 +10,16 @@ tags:
 - launchApp:
     appId: ${APP_ID}
 - extendedWaitUntil:
-    visible: 'Inbox'
+    visible: 'Inbox, tab, 1 of 5'
     timeout: 30000
 - extendedWaitUntil:
     notVisible: 'Syncing…'
     timeout: 90000
 - assertNotVisible: 'Sync error'
 - assertNotVisible: 'Not signed in'
-- tapOn: 'Activity'
+- tapOn: 'Activity, tab, 2 of 5'
 - extendedWaitUntil:
     visible: 'Fuel'
     timeout: 15000
 - takeScreenshot: S1-activity
-- tapOn: 'Inbox'
+- tapOn: 'Inbox, tab, 1 of 5'

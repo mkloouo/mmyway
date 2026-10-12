@@ -2,7 +2,7 @@ appId: ${APP_ID}
 ---
 # Activity → search QUERY → opens the first hit. QUERY: description or payee text.
 - runFlow: home.yaml
-- tapOn: 'Activity'
+- tapOn: 'Activity, tab, 2 of 5'
 - tapOn: 'Search'
 - inputText: ${QUERY}
 - hideKeyboard

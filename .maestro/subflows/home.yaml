@@ -5,7 +5,7 @@ appId: ${APP_ID}
 - repeat:
     times: 5
     while:
-      notVisible: 'Inbox'
+      notVisible: 'Inbox, tab, 1 of 5'
     commands:
       - back
-- tapOn: 'Inbox'
+- tapOn: 'Inbox, tab, 1 of 5'

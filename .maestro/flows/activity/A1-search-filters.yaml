@@ -6,7 +6,7 @@ tags:
 # Lower-case, no-diacritic search finds "Żabka"; an account card filters to that account; the
 # type chips filter by type; tapping again / All clears them.
 - runFlow: ../../subflows/ready.yaml
-- tapOn: 'Activity'
+- tapOn: 'Activity, tab, 2 of 5'
 - tapOn: 'Search'
 - inputText: 'zabka'
 - hideKeyboard

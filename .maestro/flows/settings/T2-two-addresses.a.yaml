@@ -7,7 +7,7 @@ tags:
 # Adds the laptop's Wi-Fi address (FF3_LAN_URL) as the primary address; on Wi-Fi a sync uses it.
 # The runner then switches the phone's Wi-Fi off.
 - runFlow: ../../subflows/ready.yaml
-- tapOn: 'Settings'
+- tapOn: 'Settings, tab, 5 of 5'
 - tapOn:
     text: 'Addresses'
     index: 0

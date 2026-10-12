@@ -54,3 +54,8 @@ build-*.apk
 /.ff3-test/
 /e2e-results/
 
+
+builds/
+
+build-*.tar.gz
+build-*.ipa

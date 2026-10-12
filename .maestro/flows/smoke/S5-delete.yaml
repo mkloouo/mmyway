@@ -13,7 +13,7 @@ tags:
       DESCRIPTION: 'S5 ${RUN_ID}'
       AMOUNT: '4.20'
 - runFlow: ../../subflows/ready.yaml
-- tapOn: 'Activity'
+- tapOn: 'Activity, tab, 2 of 5'
 - tapOn: 'Search'
 - inputText: 'S5 ${RUN_ID}'
 - hideKeyboard

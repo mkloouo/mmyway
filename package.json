@@ -9,6 +9,7 @@
     "android:build:dev": "eas build -p android -e development --local",
     "android:build:pro": "eas build -p android -e production --local",
     "android:run:dev": "APP_VARIANT=development npx expo run:android --variant release",
+    "ios:build:e2e": "eas build -p ios -e e2e --local",
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
     "test": "jest",

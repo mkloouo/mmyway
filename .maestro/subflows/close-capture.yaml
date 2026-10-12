@@ -7,5 +7,5 @@ appId: ${APP_ID}
     commands:
       - tapOn: 'Discard'
 - extendedWaitUntil:
-    visible: 'Inbox'
+    visible: 'Inbox, tab, 1 of 5'
     timeout: 10000

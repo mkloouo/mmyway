@@ -7,7 +7,7 @@ tags:
 # Settings → Diagnostics → Share opens the share sheet. The runner then reads the log file over
 # adb and fails the run if it contains the API token or a key.
 - runFlow: ../../subflows/ready.yaml
-- tapOn: 'Settings'
+- tapOn: 'Settings, tab, 5 of 5'
 - scrollUntilVisible:
     element:
       text: 'Diagnostics'

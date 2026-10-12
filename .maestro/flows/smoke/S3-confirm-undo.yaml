@@ -44,5 +44,5 @@ tags:
       EXPECT_AMOUNT: '7.50'
       EXPECT_CATEGORY: 'Groceries'
       EXPECT_SOURCE: 'Checking'
-- tapOn: 'Activity'
+- tapOn: 'Activity, tab, 2 of 5'
 - assertVisible: '.*S3 ${RUN_ID}.*'

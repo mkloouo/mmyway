@@ -6,7 +6,7 @@ tags:
 # The simple view's trio: after Save, one bill, one recurring transaction and one rule; after a
 # schedule change still exactly one recurring transaction; after Delete, none of the three.
 - runFlow: ../../subflows/ready.yaml
-- tapOn: 'Planned'
+- tapOn: 'Planned, tab, 3 of 5'
 - tapOn: 'Add a planned transaction'
 - tapOn: 'e.g. Spotify'
 - inputText: 'P1 ${RUN_ID}'
@@ -43,7 +43,7 @@ tags:
         TIMEOUT_MS: '90000',
       }
 - runFlow: ../../subflows/home.yaml
-- tapOn: 'Planned'
+- tapOn: 'Planned, tab, 3 of 5'
 - tapOn: 'P1 ${RUN_ID}'
 # The schedule is a list of repetitions now, each with its own type: "How often" is the first
 # row of the first one. 'Repeat' would also match the "Repeats" checkbox above it.
@@ -62,7 +62,7 @@ tags:
         TIMEOUT_MS: '90000',
       }
 - runFlow: ../../subflows/home.yaml
-- tapOn: 'Planned'
+- tapOn: 'Planned, tab, 3 of 5'
 - tapOn: 'P1 ${RUN_ID}'
 - tapOn: 'Delete'
 - tapOn:

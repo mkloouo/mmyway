@@ -9,13 +9,13 @@ tags:
     appId: ${APP_ID}
 - runFlow: ../../subflows/home.yaml
 - takeScreenshot: T4-dark-inbox
-- tapOn: 'Activity'
+- tapOn: 'Activity, tab, 2 of 5'
 - takeScreenshot: T4-dark-activity
-- tapOn: 'Planned'
+- tapOn: 'Planned, tab, 3 of 5'
 - takeScreenshot: T4-dark-planned
-- tapOn: 'Settings'
+- tapOn: 'Settings, tab, 5 of 5'
 - takeScreenshot: T4-dark-settings
-- tapOn: 'Inbox'
+- tapOn: 'Inbox, tab, 1 of 5'
 - tapOn: 'Add an entry'
 - takeScreenshot: T4-dark-capture
 - runFlow: ../../subflows/close-capture.yaml

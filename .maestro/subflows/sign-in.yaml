@@ -13,4 +13,4 @@ appId: ${APP_ID}
     visible: 'Connected to Firefly III'
     timeout: 45000
 - tapOn: 'Done'
-- tapOn: 'Inbox'
+- tapOn: 'Inbox, tab, 1 of 5'

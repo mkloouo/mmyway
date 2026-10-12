@@ -7,7 +7,7 @@ tags:
 # Ukrainian everywhere (screenshots for a look at leftovers), then back to English. The runner
 # then turns the phone's dark mode on.
 - runFlow: ../../subflows/ready.yaml
-- tapOn: 'Settings'
+- tapOn: 'Settings, tab, 5 of 5'
 - tapOn: 'Language'
 - tapOn: 'Українська'
 - extendedWaitUntil:
@@ -23,5 +23,5 @@ tags:
 - tapOn: 'Мова'
 - tapOn: 'English|Англійська'
 - extendedWaitUntil:
-    visible: 'Inbox'
+    visible: 'Inbox, tab, 1 of 5'
     timeout: 10000

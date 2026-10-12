@@ -7,7 +7,7 @@ tags:
 - launchApp:
     appId: ${APP_ID}
 - runFlow: ../../subflows/home.yaml
-- tapOn: 'Settings'
+- tapOn: 'Settings, tab, 5 of 5'
 - tapOn:
     text: 'Addresses'
     index: 0

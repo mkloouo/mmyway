@@ -23,7 +23,7 @@ tags:
         SAVE: confirm,
       }
 - runFlow: ../../subflows/close-capture.yaml
-- tapOn: 'Activity'
+- tapOn: 'Activity, tab, 2 of 5'
 - tapOn: 'More'
 - tapOn: 'Count cash'
 - assertVisible: ".*hasn't reached Firefly III yet.*"
@@ -35,7 +35,7 @@ tags:
     file: ../../scripts/ff3.js
     env: { ACTION: balance, NAME: 'Cash wallet' }
 - evalScript: "${output.counted = (Number(output.balance) - 10).toFixed(2).replace('.', ',')}"
-- tapOn: 'Activity'
+- tapOn: 'Activity, tab, 2 of 5'
 - tapOn: 'More'
 - tapOn: 'Count cash'
 - assertNotVisible: ".*hasn't reached Firefly III yet.*"

@@ -9,7 +9,7 @@ tags:
 - launchApp:
     appId: ${APP_ID}
 - extendedWaitUntil:
-    visible: 'Inbox'
+    visible: 'Inbox, tab, 1 of 5'
     timeout: 60000
 - assertNotVisible: '.*[Mm]igration.*'
 - assertVisible: 'U1 draft ${RUN_ID}'

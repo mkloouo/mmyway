@@ -7,7 +7,7 @@ tags:
 # six months ago appears.
 - runFlow: ../../subflows/ready.yaml
 - evalScript: "${output.d = new Date(); output.d.setDate(1); output.d.setMonth(output.d.getMonth() - 6); output.old = 'Salary ' + output.d.getFullYear() + '-' + ('0' + (output.d.getMonth() + 1)).slice(-2)}"
-- tapOn: 'Activity'
+- tapOn: 'Activity, tab, 2 of 5'
 - scrollUntilVisible:
     element:
       text: ${output.old}

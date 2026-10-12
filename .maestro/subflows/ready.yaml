@@ -10,7 +10,7 @@ appId: ${APP_ID}
     commands:
       - tapOn: 'Allow|ALLOW|While using the app'
 - extendedWaitUntil:
-    visible: 'Inbox'
+    visible: 'Inbox, tab, 1 of 5'
     timeout: 30000
 - runFlow:
     when:
