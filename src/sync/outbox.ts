@@ -49,6 +49,14 @@ import {
   type SetBudgetLimitsPayload,
   type SetPiggyAmountPayload,
 } from '../bucket/replay';
+import {
+  replayCreateBudget,
+  replayUpdateBudget,
+  replayDeleteBudget,
+  type CreateBudgetPayload,
+  type UpdateBudgetPayload,
+  type DeleteBudgetPayload,
+} from '../bucket/budgetActions';
 
 export type OutboxKind =
   | 'create_transaction'
@@ -63,7 +71,10 @@ export type OutboxKind =
   | 'delete_planned'
   | 'trigger_planned'
   | 'set_budget_limits'
-  | 'set_piggy_amount';
+  | 'set_piggy_amount'
+  | 'create_budget'
+  | 'update_budget'
+  | 'delete_budget';
 
 /** The kinds that change an account balance in FF3 once they land; receipts and account edits don't. */
 export const LEDGER_KINDS = [
@@ -149,6 +160,9 @@ export interface NewOutboxOperation {
     | TriggerPlannedPayload
     | SetBudgetLimitsPayload
     | SetPiggyAmountPayload
+    | CreateBudgetPayload
+    | UpdateBudgetPayload
+    | DeleteBudgetPayload
     | Record<string, unknown>;
 }
 
@@ -861,6 +875,24 @@ async function replayOne(
 
     if (row.kind === 'set_piggy_amount') {
       await replaySetPiggyAmount(db, client, payload as SetPiggyAmountPayload);
+      await db.delete(outboxOperations).where(eq(outboxOperations.id, row.id));
+      return 'done';
+    }
+
+    if (row.kind === 'create_budget') {
+      await replayCreateBudget(db, client, row.id, payload as CreateBudgetPayload);
+      await db.delete(outboxOperations).where(eq(outboxOperations.id, row.id));
+      return 'done';
+    }
+
+    if (row.kind === 'update_budget') {
+      await replayUpdateBudget(db, client, row.id, payload as UpdateBudgetPayload);
+      await db.delete(outboxOperations).where(eq(outboxOperations.id, row.id));
+      return 'done';
+    }
+
+    if (row.kind === 'delete_budget') {
+      await replayDeleteBudget(db, client, row.id, payload as DeleteBudgetPayload);
       await db.delete(outboxOperations).where(eq(outboxOperations.id, row.id));
       return 'done';
     }

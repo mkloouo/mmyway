@@ -72,6 +72,15 @@ export function subjectsOf(op: {
       for (const entry of (p.entries ?? []) as { budgetId?: unknown }[])
         add('budget', entry.budgetId);
       break;
+    case 'create_budget':
+      add('budget', p.clientId); // until serverId is recorded
+      break;
+    case 'update_budget':
+      add('budget', p.budgetId);
+      break;
+    case 'delete_budget':
+      add('budget', p.budgetId);
+      break;
   }
   return keys;
 }

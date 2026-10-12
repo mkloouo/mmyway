@@ -211,5 +211,23 @@ export function describeQueuedChange(
         changed: [],
       };
     }
+    case 'create_budget':
+      return {
+        subject: str(p.name),
+        route: '/budget',
+        changed: [],
+      };
+    case 'update_budget':
+      return {
+        subject: str(p.name),
+        route: `/budget/${encodeURIComponent(str(p.budgetId) ?? '')}`,
+        changed: [],
+      };
+    case 'delete_budget':
+      return {
+        subject: str(p.name),
+        route: '/budget',
+        changed: [],
+      };
   }
 }

@@ -135,6 +135,25 @@ const SCHEMAS = {
     amount: z.string(),
     expectedUpdatedAt: z.string().optional(),
   }),
+  create_budget: z.looseObject({
+    v: version,
+    clientId: z.string(), // duplicate detection; becomes internal_reference
+    name: z.string(),
+    currencyCode: z.string(),
+    serverId: z.string().optional(), // recorded after FF3 answers
+  }),
+  update_budget: z.looseObject({
+    v: version,
+    budgetId: z.string(), // the FF3 budget id
+    name: z.string(),
+    expectedUpdatedAt: z.string().optional(), // conflict check
+  }),
+  delete_budget: z.looseObject({
+    v: version,
+    budgetId: z.string(), // the FF3 budget id (or mmyway-uuid if create didn't sync)
+    name: z.string(), // for display in Inbox
+    expectedUpdatedAt: z.string().optional(), // conflict check
+  }),
 } satisfies Record<OutboxKind, z.ZodType>;
 
 export function readPayload<T = Record<string, unknown>>(kind: OutboxKind, json: string): T {
