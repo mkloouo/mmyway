@@ -10,6 +10,10 @@
 
 - **Create asset and liability accounts.** Settings → Accounts → + creates an asset or a liability, including loans, debts and mortgages with an interest rate, an interest period and a credit limit. It works offline, shows up straight away, and is synced to Firefly III with your next sync.
 
+### Settings
+
+- **Try the app without a server.** Settings → Try the demo fills the app with sample accounts, envelopes and transactions; nothing is sent anywhere. Leave the demo (or sign in) to clear it.
+
 ### Fixed
 
 - **Signing in to a different Firefly III no longer shows the old one's envelopes.** The Budget tab's amounts are now cleared with the rest of the old instance's data.

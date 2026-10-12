@@ -49,8 +49,10 @@ import {
   setAppLockEnabled,
   setPlannedNotificationsEnabled,
   setPlannedReminderLead,
+  getDemoMode,
   PLANNED_REMINDER_LEADS,
 } from '../../src/settings/appSettings';
+import { leaveDemo, startDemo } from '../../src/demo/demo';
 import { syncPlannedNotifications } from '../../src/planned/notifications';
 import i18n, { type AppLocale } from '../../src/i18n';
 import { authenticate, canUseAppLock } from '../../src/lock/appLock';
@@ -60,7 +62,7 @@ import { Checkbox } from '../../src/ui/Checkbox';
 import { forgetPosition, startPositionRequest } from '../../src/capture/position';
 import { useAction } from '../../src/ui/useAction';
 import { pickableCurrencies, primaryCurrencyCode } from '../../src/ui/currencies';
-import { confirmDestructive } from '../../src/ui/confirm';
+import { confirmAction, confirmDestructive } from '../../src/ui/confirm';
 import { useToast } from '../../src/ui/useToast';
 import { probeLocalModel } from '../../src/receipt/providers/local';
 
@@ -108,6 +110,12 @@ export default function SettingsScreen() {
     void queryClient.invalidateQueries({ queryKey: SETTINGS_QUERY_KEY });
   };
 
+  // Its own query rather than a field of loadSettings: reload() invalidates it with the rest.
+  const demoMode = useQuery({
+    queryKey: [...SETTINGS_QUERY_KEY, 'demo'],
+    queryFn: () => getDemoMode(db),
+  });
+  const demo = demoMode.data ?? false;
   const signedIn = settings?.signedIn ?? false;
   const ff3Hosts = settings?.ff3Hosts ?? [];
   const proxyHeaderCount = settings?.proxyHeaderCount ?? 0;
@@ -241,6 +249,31 @@ export default function SettingsScreen() {
     credentialsChanged();
   });
 
+  const onTryDemo = act(tr('demo.tryAction'), async () => {
+    if (!(await confirmAction(tr('demo.tryTitle'), tr('demo.tryAction'), tr('demo.tryBody'))))
+      return;
+    const result = await startDemo(db);
+    if (result.status === 'has_data') {
+      Alert.alert(tr('demo.hasDataTitle'), tr('demo.hasDataBody'));
+      return;
+    }
+    await reload();
+    if (result.status === 'started') setToast(tr('demo.loaded'));
+  });
+
+  const onLeaveDemo = act(tr('demo.leaveAction'), async () => {
+    if (
+      !(await confirmDestructive(
+        tr('demo.leaveTitle'),
+        tr('demo.leaveAction'),
+        tr('demo.leaveBody'),
+      ))
+    )
+      return;
+    await withSyncPaused(() => leaveDemo(db));
+    await reload();
+  });
+
   function accountLabel(id: string | null): string {
     if (!id) return tr('settings.none');
     const active = assetAccounts.find((a) => a.id === id);
@@ -268,10 +301,21 @@ export default function SettingsScreen() {
             first
             label="Firefly III"
             chevron
-            value={signedIn ? tr('settings.connectedValue') : tr('settings.notConnected')}
-            tone={signedIn ? 'default' : 'warn'}
+            value={
+              demo
+                ? tr('demo.value')
+                : signedIn
+                  ? tr('settings.connectedValue')
+                  : tr('settings.notConnected')
+            }
+            tone={signedIn || demo ? 'default' : 'warn'}
             onPress={() => setSheet('signIn')}
           />
+          {/* Like the sign-out row: kept while the settings load, so the section keeps its height. */}
+          {(!settings || (!signedIn && !demo)) && (
+            <Row label={tr('demo.tryAction')} onPress={settings ? onTryDemo : undefined} />
+          )}
+          {demo && <Row label={tr('demo.leaveAction')} tone="danger" onPress={onLeaveDemo} />}
           <Row
             label={tr('settings.addresses')}
             chevron

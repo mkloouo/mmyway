@@ -15,6 +15,7 @@ import { readBucketRow, type BucketObject } from '../bucket/objects';
 import { periodOf } from '../bucket/period';
 import { billsDueIn } from '../sync/bucketData';
 import { readPlannedRow } from '../planned/objects';
+import { getDefaultSourceAccountId } from '../settings/appSettings';
 
 // Mid-October, noon, Warsaw (the suite's TZ): the seed's "this month" is October 2026.
 const TODAY = new Date(2026, 9, 12, 12);
@@ -123,5 +124,14 @@ describe('loadDemoData', () => {
         date: '2026-10-10',
       },
     ]);
+  });
+
+  it("makes the demo's Checking account the default source, so Capture has one to start from", async () => {
+    const db = createTestDb() as any;
+    await loadDemoData(db, TODAY);
+
+    const checking = demoRows(seed, TODAY).accounts.find((a) => a.name === 'Checking');
+    expect(checking).toBeDefined();
+    expect(await getDefaultSourceAccountId(db)).toBe(checking!.id);
   });
 });

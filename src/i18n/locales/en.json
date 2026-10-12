@@ -284,6 +284,18 @@
     "title": "Count cash",
     "useTotal": "Use this total"
   },
+  "demo": {
+    "hasDataBody": "Clear or sync what's in the Inbox first — leaving the demo deletes everything in it.",
+    "hasDataTitle": "Can't start the demo yet",
+    "leaveAction": "Leave the demo",
+    "leaveBody": "Everything you entered in the demo is deleted.",
+    "leaveTitle": "Leave the demo?",
+    "loaded": "Demo loaded",
+    "tryAction": "Try the demo",
+    "tryBody": "Fills the app with sample accounts, envelopes and transactions. Nothing is sent anywhere. Leave the demo from Settings.",
+    "tryTitle": "Try the demo?",
+    "value": "Demo"
+  },
   "details": {
     "noteAndSharedWith": "Description & shared with",
     "noteTagsAndSharedWith": "Description, tags & shared with",

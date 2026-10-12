@@ -16,6 +16,7 @@ import {
 import { bucketRow } from '../bucket/objects';
 import { inPeriod, periodOf } from '../bucket/period';
 import { plannedKey } from '../planned/objects';
+import { setDefaultSourceAccountId } from '../settings/appSettings';
 import type { OutboxDb } from '../sync/outbox';
 import { cachedRowFromGroup } from '../sync/referenceData';
 import { localDay } from '../utils/day';
@@ -322,4 +323,7 @@ export async function loadDemoData(db: OutboxDb, today: Date = new Date()): Prom
     for (const row of rows.planned) tx.insert(plannedObjects).values(row).run();
     for (const row of rows.buckets) tx.insert(bucketObjects).values(row).run();
   });
+  // Capture's source account defaults to the demo's Checking, so a first capture has one to use.
+  const checking = rows.accounts.find((a) => a.name === 'Checking');
+  if (checking) await setDefaultSourceAccountId(db, checking.id);
 }

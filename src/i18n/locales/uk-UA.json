@@ -294,6 +294,18 @@
     "title": "Рахувати готівку",
     "useTotal": "Використати цю суму"
   },
+  "demo": {
+    "hasDataBody": "",
+    "hasDataTitle": "",
+    "leaveAction": "",
+    "leaveBody": "",
+    "leaveTitle": "",
+    "loaded": "",
+    "tryAction": "",
+    "tryBody": "",
+    "tryTitle": "",
+    "value": ""
+  },
   "details": {
     "noteAndSharedWith": "Примітка та спільний доступ",
     "noteTagsAndSharedWith": "",
