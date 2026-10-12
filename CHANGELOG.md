@@ -20,6 +20,7 @@
 
 ### Fixed
 
+- **Opening Reorder on the accounts list and leaving it without moving anything no longer queues a change.** It used to show up as waiting to sync and was sent to Firefly III every time.
 - **iPhone: no more empty band at the top of Capture, receipts, drafts and the cash count.** These open as a sheet that already sits below the status bar, and the space for the status bar was added on top of it again.
 - **Signing in to a different Firefly III no longer shows the old one's envelopes.** The Budget tab's amounts are now cleared with the rest of the old instance's data.
 

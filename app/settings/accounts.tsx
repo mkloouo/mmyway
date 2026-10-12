@@ -78,7 +78,12 @@ export default function AccountsScreen() {
   const done = act(tr('accounts.reorder'), async () => {
     const next = draft;
     setDraft(null);
-    if (next) await reorderAccounts(db, next);
+    // Done with nothing dragged sends nothing. Compared with the order on screen, not with FF3's
+    // `order` numbers: those have gaps and repeats, so a list FF3 already has in this order used to
+    // read as changed and was queued again.
+    if (next && next.join() !== allAccounts.map((a) => a.id).join()) {
+      await reorderAccounts(db, next);
+    }
   });
 
   const row = (item: ReferenceAccountRow) => (
