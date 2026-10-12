@@ -72,7 +72,7 @@ const FOOD_LIMIT = '400.00';
 const FOOD = 'Food';
 const SYMBOLS: Record<string, string> = { PLN: 'zł', EUR: '€' };
 
-export interface DemoRows {
+interface DemoRows {
   currencies: (typeof referenceCurrencies.$inferInsert)[];
   accounts: (typeof referenceAccounts.$inferInsert)[];
   categories: (typeof referenceCategories.$inferInsert)[];

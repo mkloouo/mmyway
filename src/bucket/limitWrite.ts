@@ -9,7 +9,7 @@
 //    a PUT if the answer to its own earlier POST was lost (src/bucket/replay.ts).
 import { compareDecimal } from '../api/ff3/decimal';
 
-export type LimitVerdict =
+type LimitVerdict =
   | { method: 'POST'; path: string; body: Record<string, unknown> }
   | { method: 'PUT'; path: string; body: Record<string, unknown> }
   | { method: 'DELETE'; path: string }

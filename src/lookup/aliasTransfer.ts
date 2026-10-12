@@ -1,7 +1,7 @@
 import type { OutboxDb } from '../sync/outbox';
 import { getPayeesWithAliases, rememberPayeeAlias } from './aliases';
 
-export type AliasExportFormat = Record<string, string[]>;
+type AliasExportFormat = Record<string, string[]>;
 
 /** Exports all payee aliases grouped by canonical payee as formatted JSON. */
 export async function exportAliasesJson(db: OutboxDb): Promise<string> {

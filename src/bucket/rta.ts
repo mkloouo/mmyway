@@ -9,7 +9,7 @@
 // of the account balance, so counting its negative remainder again would inflate RTA by it twice.
 import { fromMinor, sumMinor, toMinor } from '../splits/allocate';
 
-export interface RtaInput {
+interface RtaInput {
   /** Active asset accounts' balances, as FF3 cached them. */
   cash: readonly string[];
   /** Each envelope's `available` — may be negative; the negatives are dropped here. */

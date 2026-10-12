@@ -7,7 +7,7 @@
 // User tags are all other tags (e.g. `groceries`, `vacation`, `tax-2026`).
 import { SHARED_TAG_PREFIX } from './sharedWith';
 
-export const MMYWAY_TAG_PREFIX = 'mmyway-';
+const MMYWAY_TAG_PREFIX = 'mmyway-';
 
 /** True when the tag is an actual user-facing tag, not an internal mmyway marker. */
 export function isUserTag(tag: string): boolean {

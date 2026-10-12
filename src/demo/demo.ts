@@ -10,7 +10,7 @@ import { loadDemoData } from './seed';
 
 export { getDemoMode } from '../settings/appSettings';
 
-export type StartDemoResult =
+type StartDemoResult =
   | { status: 'started' }
   | { status: 'signed_in' }
   /** Something real is still on the phone (a queued change or an inbox item); leaving the demo would delete it. */

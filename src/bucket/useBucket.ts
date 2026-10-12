@@ -17,7 +17,7 @@ import { periodOf, previousPeriod, type Period } from './period';
 import { readyToAssign, type Rta } from './rta';
 import { localDay } from '../utils/day';
 
-export interface BucketData {
+interface BucketData {
   period: Period;
   previous: Period;
   envelopes: Envelope[];

@@ -4,18 +4,10 @@ import { payeeAliases, referenceAccounts } from '../db/schema';
 import type { OutboxDb } from '../sync/outbox';
 import type { Draft } from '../inbox/draft';
 
-export interface PayeeAlias {
-  id: string;
-  alias: string;
-  normalizedAlias: string;
-  payeeName: string;
-  createdAt: string;
-}
-
-export type AliasMatch =
+type AliasMatch =
   { matched: true; payeeName: string; alias: string } | { matched: false; normalizedKey: string };
 
-export interface PayeeAliasGroup {
+interface PayeeAliasGroup {
   payeeName: string;
   aliases: {
     id: string;
@@ -125,7 +117,7 @@ export async function getPayeesWithAliases(db: OutboxDb): Promise<PayeeAliasGrou
 }
 
 /** The free-text payee end of a draft: a withdrawal's destination, a deposit's source. */
-export function draftPayeeName(draft: Draft): string | undefined {
+function draftPayeeName(draft: Draft): string | undefined {
   if (draft.type === 'withdrawal') return draft.destinationName;
   if (draft.type === 'deposit') return draft.sourceName;
   return undefined;
@@ -135,10 +127,7 @@ export function draftPayeeName(draft: Draft): string | undefined {
  * Points a draft's payee at an alias target, keeping the text it replaced in `payeeReadAs` so the
  * draft screen can show what was originally read from the receipt.
  */
-export function withPayeeAlias(
-  draft: Draft,
-  alias: { payeeName: string; rawInput?: string },
-): Draft {
+function withPayeeAlias(draft: Draft, alias: { payeeName: string; rawInput?: string }): Draft {
   const raw = alias.rawInput ?? draftPayeeName(draft);
   const readAs = raw && raw !== alias.payeeName ? raw : undefined;
 
