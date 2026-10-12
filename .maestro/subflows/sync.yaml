@@ -9,4 +9,3 @@ appId: ${APP_ID}
     timeout: 120000
 - tapOn:
     point: 0%,15%
-

@@ -20,7 +20,7 @@ tags:
 - tapOn: 'Activity, tab, 2 of 5'
 - extendedWaitUntil:
     visible:
-        label: "Fuel"
+      label: 'Fuel'
     timeout: 15000
 - takeScreenshot: S1-activity
 - tapOn: 'Inbox, tab, 1 of 5'

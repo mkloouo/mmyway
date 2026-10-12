@@ -78,8 +78,8 @@ module.exports = {
         tinted: './assets/ios/icon-tinted.png',
       },
       infoPlist: {
-        ITSAppUsesNonExemptEncryption: false
-      }
+        ITSAppUsesNonExemptEncryption: false,
+      },
     },
     android: {
       adaptiveIcon: {
