@@ -6,7 +6,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, Text, TextInput, View } from 'react-native';
 import {
   AppBar,
   Button,
@@ -24,11 +24,13 @@ import { PendingDot } from '../../src/ui/PendingDot';
 import { useTheme } from '../../src/ui/theme';
 import { formatMoney } from '../../src/ui/money';
 import { useAction } from '../../src/ui/useAction';
+import { confirmAction, confirmDestructive } from '../../src/ui/confirm';
 import { useDb } from '../../src/providers/DbProvider';
 import { useBucket } from '../../src/bucket/useBucket';
 import { assignToEnvelope, moveBetweenEnvelopes } from '../../src/bucket/actions';
 import { envelopeHeadroom, type Envelope } from '../../src/bucket/envelopes';
 import { compareDecimal } from '../../src/api/ff3/decimal';
+import { enqueueBudgetRename, enqueueBudgetDelete } from '../../src/bucket/budgetActions';
 import { appLocale } from '../../src/i18n';
 import { dayDate } from '../../src/utils/day';
 
@@ -46,6 +48,8 @@ export default function EnvelopeScreen() {
 
   const [sheet, setSheet] = useState<'assign' | 'giver' | 'amount' | null>(null);
   const [giverId, setGiverId] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState(false);
+  const [newName, setNewName] = useState(envelope?.name ?? '');
   // Once per visit: reopening it after the user closed the sheet would trap them on this screen.
   const coverHandled = useRef(false);
   useEffect(() => {
@@ -84,6 +88,27 @@ export default function EnvelopeScreen() {
 
   const move = act(tr('budget.moveHere'), async (from: Envelope, amount: string) => {
     await moveBetweenEnvelopes(db, period, bucket.currencyCode, from, envelope, amount);
+    router.back();
+  });
+
+  const rename = act(tr('budget.renameAction'), async () => {
+    const ok = await confirmAction(
+      tr('budget.renameTitle', { name: newName }),
+      tr('budget.renameAction'),
+    );
+    if (!ok) return;
+    await enqueueBudgetRename(db, envelope.budgetId, newName);
+    setRenaming(false);
+  });
+
+  const delete_ = act(tr('budget.deleteAction'), async () => {
+    const ok = await confirmDestructive(
+      tr('budget.deleteTitle', { name: envelope.name }),
+      tr('budget.deleteAction'),
+      tr('budget.deleteBody'),
+    );
+    if (!ok) return;
+    await enqueueBudgetDelete(db, envelope.budgetId, envelope.name);
     router.back();
   });
 
@@ -162,6 +187,18 @@ export default function EnvelopeScreen() {
               {tr('budget.nothingToGive')}
             </Text>
           )}
+          <Button
+            title={tr('budget.renameAction')}
+            variant="secondary"
+            onPress={() => setRenaming(true)}
+            disabled={act.pending(tr('budget.renameAction'))}
+          />
+          <Button
+            title={tr('budget.deleteAction')}
+            variant="danger"
+            onPress={() => void delete_()}
+            disabled={act.pending(tr('budget.deleteAction'))}
+          />
         </View>
       </ScrollView>
 
@@ -215,6 +252,64 @@ export default function EnvelopeScreen() {
             if (typed !== null) void move(giver, typed);
           }}
         />
+      )}
+
+      {renaming && (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: t.space.lg,
+          }}
+        >
+          <Card style={{ gap: t.space.md, width: '100%', maxWidth: 350 }}>
+            <View>
+              <Text style={[t.type.label, { color: t.color.text, marginBottom: t.space.xs }]}>
+                {tr('budget.nameLabel')}
+              </Text>
+              <TextInput
+                value={newName}
+                onChangeText={setNewName}
+                autoFocus
+                placeholderTextColor={t.color.textMuted}
+                style={[
+                  t.type.body,
+                  {
+                    color: t.color.text,
+                    borderColor: t.color.border,
+                    borderWidth: 1,
+                    borderRadius: t.radius.md,
+                    paddingHorizontal: t.space.md,
+                    paddingVertical: t.space.sm,
+                  },
+                ]}
+              />
+            </View>
+            <View style={{ flexDirection: 'row', gap: t.space.sm }}>
+              <Button
+                title={tr('common.cancel')}
+                variant="secondary"
+                onPress={() => {
+                  setRenaming(false);
+                  setNewName(envelope.name);
+                }}
+                size="md"
+              />
+              <Button
+                title={tr('budget.renameAction')}
+                onPress={() => void rename()}
+                disabled={newName === envelope.name || !newName.trim()}
+                size="md"
+              />
+            </View>
+          </Card>
+        </View>
       )}
     </Screen>
   );

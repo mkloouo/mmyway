@@ -79,7 +79,17 @@ export default function BudgetScreen() {
 
   return (
     <Screen>
-      <AppBar title={tr('budget.title')} subtitle={monthLabel} />
+      <AppBar
+        title={tr('budget.title')}
+        subtitle={monthLabel}
+        right={
+          <Button
+            title={tr('budget.createTitle')}
+            size="bar"
+            onPress={() => navigateOnce('/budget/new')}
+          />
+        }
+      />
       <ScrollView
         refreshControl={<RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
         contentContainerStyle={{

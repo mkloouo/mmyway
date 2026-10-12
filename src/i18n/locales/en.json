@@ -146,7 +146,18 @@
     "fundReadOnly": "This fund has no linked account in Firefly III, so it can only be read here.",
     "envelopeLeftIn": "{{name}} · {{amount}} left",
     "envelopeOverIn": "{{name}} · {{amount}} over",
-    "coverRow": "Cover {{amount}} from another envelope"
+    "coverRow": "Cover {{amount}} from another envelope",
+    "createTitle": "New envelope",
+    "createAction": "Create",
+    "nameLabel": "Envelope name",
+    "namePlaceholder": "e.g. Groceries, Rent",
+    "emptyNameError": "Envelope name cannot be empty",
+    "duplicateNameError": "An envelope named \"{{name}}\" already exists",
+    "renameTitle": "Rename to \"{{name}}\"?",
+    "renameAction": "Rename",
+    "deleteTitle": "Delete \"{{name}}\"?",
+    "deleteAction": "Delete",
+    "deleteBody": "This cannot be undone. Spending already tracked will remain in Firefly III."
   },
   "capture": {
     "attach": "Attach",

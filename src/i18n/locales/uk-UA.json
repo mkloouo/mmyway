@@ -150,7 +150,18 @@
     "fundReadOnly": "",
     "envelopeLeftIn": "",
     "envelopeOverIn": "",
-    "coverRow": ""
+    "coverRow": "",
+    "createTitle": "",
+    "createAction": "",
+    "nameLabel": "",
+    "namePlaceholder": "",
+    "emptyNameError": "",
+    "duplicateNameError": "",
+    "renameTitle": "",
+    "renameAction": "",
+    "deleteTitle": "",
+    "deleteAction": "",
+    "deleteBody": ""
   },
   "capture": {
     "attach": "Прикріпити",
