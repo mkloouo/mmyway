@@ -749,6 +749,23 @@
     "optional": "Необов'язково",
     "saveFailed": "Не вдалося зберегти чек"
   },
+  "rules": {
+    "changeGroup": "",
+    "changeRule": "",
+    "createBody": "",
+    "createTitle": "",
+    "empty": "",
+    "fieldMatch": "",
+    "newRule": "",
+    "newTitle": "",
+    "pickOne": "",
+    "runBody": "",
+    "runNow": "",
+    "runTitle": "",
+    "sectionRule": "",
+    "sectionSets": "",
+    "title": ""
+  },
   "settings": {
     "account": "Обліковий запис",
     "addresses": "Адреси",
@@ -911,6 +928,7 @@
     "deletePhotoBody": "",
     "deletePhotoTitle": "",
     "deleteTitle": "Видалити цю транзакцію?",
+    "createRule": "",
     "duplicate": "Дублікат",
     "pickBothAccounts": "",
     "pickPayee": "",

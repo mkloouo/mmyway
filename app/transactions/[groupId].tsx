@@ -583,6 +583,25 @@ function TransactionEditor({ row }: { row: CachedRow }) {
     router.push(`/draft/${id}`);
   });
 
+  // A rule from this transaction: it matches the payee and sets the category and budget it has.
+  function onCreateRule() {
+    setMenuOpen(false);
+    const payee =
+      row.type === 'withdrawal'
+        ? row.destinationName
+        : row.type === 'deposit'
+          ? row.sourceName
+          : null;
+    router.push({
+      pathname: '/settings/rule-new',
+      params: {
+        match: payee || row.description,
+        category: row.categoryName ?? '',
+        budget: row.budgetName ?? '',
+      },
+    });
+  }
+
   // A photo Firefly III holds (#69). Queued like every other write, and confirmed first: FF3
   // keeps no copy of a deleted attachment.
   const deletePhoto = act(tr('common.delete'), async () => {
@@ -1002,6 +1021,7 @@ function TransactionEditor({ row }: { row: CachedRow }) {
 
       <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={tr('transaction.title')}>
         <Row first label={tr('transaction.duplicate')} icon="copy" onPress={onDuplicate} />
+        <Row label={tr('transaction.createRule')} icon="options" onPress={onCreateRule} />
         <Row label={tr('common.delete')} icon="trash" tone="danger" onPress={onDelete} />
       </Sheet>
       <PhotoViewer

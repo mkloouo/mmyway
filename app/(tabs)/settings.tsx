@@ -447,6 +447,7 @@ export default function SettingsScreen() {
             value={tr('settings.aliasesCount', { count: aliasesCount })}
             onPress={() => router.push('/settings/aliases')}
           />
+          <Row label={tr('rules.title')} chevron onPress={() => router.push('/settings/rules')} />
         </Card>
 
         <SectionHeader title={tr('settings.sectionLanguage')} />

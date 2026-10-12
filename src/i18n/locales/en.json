@@ -703,6 +703,23 @@
     "optional": "Optional",
     "saveFailed": "Couldn’t save the receipt"
   },
+  "rules": {
+    "changeGroup": "Change rule group",
+    "changeRule": "Change rule",
+    "createBody": "It is queued and sent to Firefly III on the next sync.",
+    "createTitle": "Create this rule?",
+    "empty": "No rules yet. Sync Firefly III to pull yours, or add one with +.",
+    "fieldMatch": "Description contains",
+    "newRule": "New rule",
+    "newTitle": "New rule",
+    "pickOne": "Choose a category, a budget or both.",
+    "runBody": "Applies it to the last year of transactions in Firefly III on the next sync.",
+    "runNow": "Run now",
+    "runTitle": "Run \"{{title}}\" now?",
+    "sectionRule": "Rule",
+    "sectionSets": "Then set",
+    "title": "Rules"
+  },
   "settings": {
     "account": "Account",
     "addresses": "Addresses",
@@ -845,6 +862,7 @@
     "deletePhotoBody": "It is removed from Firefly III for good; this can't be undone.",
     "deletePhotoTitle": "Delete this photo?",
     "deleteTitle": "Delete this transaction?",
+    "createRule": "Create a rule",
     "duplicate": "Duplicate",
     "pickBothAccounts": "Pick the account the money leaves and the one it arrives in",
     "pickPayee": "Say who this was paid to",

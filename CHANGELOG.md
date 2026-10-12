@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Rules
+
+- **See and change your Firefly III rules.** Settings → Rules lists your rule groups and the rules in them. Switch a rule or a whole group on or off, run a rule now against the last year of transactions, and create a rule from a transaction (… → Create a rule) that sets its category or budget. Works offline and is sent on the next sync.
+
 ### Budget
 
 - **Create, rename and delete envelopes.** You can now create new budgets, rename existing envelopes, and delete them directly from the app — no need to open Firefly III's web interface. A new envelope shows up straight away, offline too, and reaches Firefly III with your next sync. Deleted envelopes remain visible in transaction history.
