@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Budget, adding accounts from the app, the demo, app lock, recording the place, payee nicknames, rules and the reverse proxy are hidden for now while they're finished. Nothing you set up is lost: saved proxy headers are still sent, and an app lock you turned on still locks.
+
 ### Capture
 
 - Aligned keypad digits and bottom action buttons into a unified 3-column grid.

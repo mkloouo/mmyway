@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>Capture details sheet</title>
+<script src="9e756301-ff96-4985-a4d0-fdabb0232c21"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.k-grp{background:#FFFFFF;border:1px solid #E3E3DF;border-radius:14px;overflow:hidden}
+.k-row{display:flex;align-items:center;gap:12px;min-height:52px;padding:0 16px;position:relative;box-sizing:border-box}
+.k-row + .k-row::before{content:"";position:absolute;top:0;left:16px;right:0;height:1px;background:#E3E3DF}
+.k-lbl{flex:1;font-size:15px;line-height:20px;color:#14151A}
+.k-sub{font-size:13px;line-height:17px;color:#6B6F76}
+.k-val{font-size:15px;color:#14151A;white-space:nowrap}
+.k-sh{font-size:11px;line-height:14px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:#6B6F76;padding:16px 4px 8px}
+.k-x{width:32px;height:32px;border-radius:50%;background:#E8E8E4;border:0;display:flex;align-items:center;justify-content:center;padding:0}
+.k-tag{height:28px;padding:0 6px 0 10px;border-radius:999px;background:#E7E9FB;color:#3A48B8;font-size:13px;font-weight:600;display:inline-flex;align-items:center;gap:4px;border:0;font-family:inherit}
+.k-sug{height:28px;padding:0 10px;border-radius:999px;border:1px dashed #C9C9C4;background:transparent;color:#6B6F76;font:inherit;font-size:13px}
+.k-chev{flex:none}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; background: #3A3A3C; font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif; color: #14151A; position: relative; overflow: hidden">
+  <div style="position: absolute; left: 0; right: 0; top: 56px; bottom: 0; background: #F5F5F3; border-radius: 14px 14px 0 0; padding: 70px 16px 0; display: flex; flex-direction: column; align-items: center; gap: 16px">
+    <div style="font-size: 52px; font-weight: 700">15,00 zł</div>
+    <div style="width: 100%; height: 190px; border-radius: 14px; background: #fff; border: 1px solid #E3E3DF"></div>
+  </div>
+  <div style="position: absolute; inset: 0; background: rgba(0,0,0,.40)"></div>
+
+  <div role="dialog" aria-label="Details" style="position: absolute; left: 0; right: 0; bottom: 0; background: #F5F5F3; border-radius: 22px 22px 0 0; display: flex; flex-direction: column">
+    <div style="width: 36px; height: 5px; border-radius: 3px; background: #C9C9C4; margin: 8px auto 0"></div>
+    <div style="display: flex; align-items: center; height: 56px; padding: 0 16px; gap: 12px">
+      <span style="flex: 1; font-size: 17px; font-weight: 600">Details</span>
+      <button class="k-x" aria-label="Close"><svg/></button>
+    </div>
+    <div style="padding: 0 16px 16px; display: flex; flex-direction: column">
+      <div class="k-grp">
+        <div class="k-row"><span class="k-lbl">When</span><span class="k-val">Today, 16:59</span><svg/></div>
+        <div class="k-row"><label for="cm-n" class="k-lbl" style="flex: none; width: 92px">Note</label><input id="cm-n" placeholder="Anything to remember" style="flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; font-size: 15px; outline: none"></div>
+        <div class="k-row" style="flex-direction: column; align-items: stretch; gap: 8px; padding-top: 12px; padding-bottom: 12px">
+          <span class="k-lbl">Tags</span>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px">
+            <button class="k-tag" aria-label="Remove tag snacks">snacks<svg/></button>
+            <button class="k-sug">+ work</button><button class="k-sug">+ trip-krakow</button><button class="k-sug">+ Add tag</button>
+          </div>
+        </div>
+        <div class="k-row"><span class="k-lbl">Shared with</span><span class="k-val" style="color: #6B6F76">Nobody</span><svg/></div>
+      </div>
+
+      <div class="k-sh">Receipt</div>
+      <div class="k-grp">
+        <div class="k-row">
+          <div style="width: 40px; height: 40px; border-radius: 8px; background: #EFEFEC; display: flex; align-items: center; justify-content: center; flex: none"><svg/></div>
+          <div style="flex: 1; display: flex; flex-direction: column; padding: 10px 0"><span class="k-lbl">Attach a photo</span><span class="k-sub">Camera or library</span></div>
+          <svg/>
+        </div>
+      </div>
+    </div>
+    <div style="border-top: 1px solid #E3E3DF; padding: 12px 16px 34px">
+      <button style="width: 100%; height: 52px; border: 0; border-radius: 14px; background: #4C5BD4; color: #fff; font: inherit; font-size: 17px; font-weight: 600">Done</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844}}">
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+
+
+</body></html>

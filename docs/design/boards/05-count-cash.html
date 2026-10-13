@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>Count cash</title>
+<script src="50145167-61bc-4af8-91a4-79582c64423e"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#4C5BD4}a:hover{color:#3A48B8}
+.k-grp{background:#FFFFFF;border:1px solid #E3E3DF;border-radius:14px;overflow:hidden}
+.k-row{display:flex;align-items:center;gap:12px;min-height:52px;padding:0 16px;position:relative;box-sizing:border-box}
+.k-row + .k-row::before{content:"";position:absolute;top:0;left:16px;right:0;height:1px;background:#E3E3DF}
+.k-lbl{flex:1;font-size:15px;line-height:20px;color:#14151A}
+.k-sub{font-size:13px;line-height:17px;color:#6B6F76}
+.k-amt{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.k-ibtn{width:44px;height:44px;border:0;background:transparent;padding:0;display:flex;align-items:center;justify-content:center}
+.k-den{display:grid;grid-template-columns:64px minmax(0,1fr) 72px;align-items:center;gap:8px;height:40px}
+.k-step{display:flex;align-items:center;gap:0;border-radius:10px;background:#EFEFEC;height:32px}
+.k-step button{width:36px;height:32px;border:0;background:transparent;font:inherit;font-size:18px;color:#14151A;padding:0}
+.k-step span{flex:1;text-align:center;font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+.k-seg{display:flex;background:#EFEFEC;border-radius:10px;padding:2px}
+.k-seg button{flex:1;height:30px;border:0;border-radius:8px;background:transparent;font:inherit;font-size:13px;font-weight:600;color:#6B6F76}
+.k-seg button.on{background:#fff;color:#14151A;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; background: #3A3A3C; font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif; color: #14151A; position: relative; overflow: hidden">
+  <div style="position: absolute; left: 16px; right: 16px; top: 46px; height: 30px; border-radius: 12px 12px 0 0; background: #8E8E93"></div>
+  <div style="position: absolute; left: 0; right: 0; top: 56px; bottom: 0; background: #F5F5F3; border-radius: 14px 14px 0 0; display: flex; flex-direction: column">
+    <div style="display: flex; align-items: center; height: 56px; padding: 0 8px; gap: 4px">
+      <button class="k-ibtn" aria-label="Cancel"><svg/></button>
+      <div style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 17px; font-weight: 600">Count cash</span><span class="k-sub">Balances from 2 min ago</span></div>
+      <button class="k-ibtn" aria-label="Cash count settings"><svg/></button>
+    </div>
+
+    <div style="padding: 4px 16px 0; display: flex; flex-direction: column; gap: 12px; flex: 1; overflow: hidden">
+      <div class="k-grp">
+        <div style="padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 10px">
+          <div style="display: flex; align-items: baseline; gap: 8px"><span class="k-lbl" style="font-weight: 600">Cash wallet</span><span class="k-sub">expected 485,00 zł</span></div>
+          <div style="display: flex; align-items: flex-end; gap: 12px">
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 2px">
+              <label for="cc1" class="k-sub">Counted</label>
+              <input id="cc1" value="468,00 zł" inputmode="decimal" style="border: 0; border-bottom: 2px solid #4C5BD4; background: transparent; font: inherit; font-size: 32px; font-weight: 700; padding: 0 0 4px; outline: none; width: 100%; font-variant-numeric: tabular-nums">
+            </div>
+            <span style="font-size: 13px; font-weight: 600; color: #8A4006; background: #FDF0DC; border-radius: 999px; padding: 5px 10px; white-space: nowrap; margin-bottom: 8px">−17,00 short</span>
+          </div>
+          <div class="k-seg" role="group" aria-label="How to count"><button>Type the total</button><button class="on" aria-pressed="true">Count notes &amp; coins</button></div>
+          <div style="display: flex; flex-direction: column">
+            <div class="k-den"><span class="k-amt">200 zł</span><div class="k-step"><button aria-label="Fewer 200 notes">−</button><span>2</span><button aria-label="More 200 notes">+</button></div><span class="k-sub" style="text-align: right">400,00</span></div>
+            <div class="k-den"><span class="k-amt">50 zł</span><div class="k-step"><button aria-label="Fewer 50 notes">−</button><span>1</span><button aria-label="More 50 notes">+</button></div><span class="k-sub" style="text-align: right">50,00</span></div>
+            <div class="k-den"><span class="k-amt">10 zł</span><div class="k-step"><button aria-label="Fewer 10 notes">−</button><span>1</span><button aria-label="More 10 notes">+</button></div><span class="k-sub" style="text-align: right">10,00</span></div>
+            <div class="k-den"><span class="k-amt">5 zł</span><div class="k-step"><button aria-label="Fewer 5 coins">−</button><span>1</span><button aria-label="More 5 coins">+</button></div><span class="k-sub" style="text-align: right">5,00</span></div>
+            <div class="k-den"><span class="k-amt">2 zł</span><div class="k-step"><button aria-label="Fewer 2 coins">−</button><span>1</span><button aria-label="More 2 coins">+</button></div><span class="k-sub" style="text-align: right">2,00</span></div>
+            <div class="k-den"><span class="k-amt">1 zł</span><div class="k-step"><button aria-label="Fewer 1 coins">−</button><span>1</span><button aria-label="More 1 coins">+</button></div><span class="k-sub" style="text-align: right">1,00</span></div>
+            <a href="#" style="font-size: 13px; font-weight: 600; text-decoration: none; padding: 6px 0 0">Show all 14 notes and coins</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="k-grp">
+        <div class="k-row"><svg/><div style="flex: 1; display: flex; flex-direction: column; padding: 9px 0"><span class="k-lbl">Jar at home</span><span class="k-sub">Matches · 120,00 zł</span></div><svg/></div>
+        <div class="k-row"><svg/><div style="flex: 1; display: flex; flex-direction: column; padding: 9px 0"><span class="k-lbl">Travel EUR</span><span class="k-sub">Skipped · expected 80,00 €</span></div><button style="border: 0; background: #E7E9FB; color: #4C5BD4; border-radius: 999px; height: 30px; padding: 0 12px; font: inherit; font-size: 13px; font-weight: 600">Count</button></div>
+      </div>
+    </div>
+
+    <div style="border-top: 1px solid #E3E3DF; padding: 10px 16px 34px; display: flex; flex-direction: column; gap: 8px; background: #F5F5F3">
+      <div style="display: flex; justify-content: space-between"><span class="k-sub">2 of 3 counted · 1 skipped</span><span class="k-sub" style="color: #8A4006; font-weight: 600">Drift −17,00 zł</span></div>
+      <button style="width: 100%; height: 52px; border: 0; border-radius: 14px; background: #4C5BD4; color: #fff; font: inherit; font-size: 17px; font-weight: 600">Review 1 adjustment</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844}}">
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+
+
+</body></html>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>Account edit</title>
+<script src="37bfd400-c25f-4182-877d-4ac8f713d33c"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#4C5BD4}a:hover{color:#3A48B8}
+.k-grp{background:#FFFFFF;border:1px solid #E3E3DF;border-radius:14px;overflow:hidden}
+.k-row{display:flex;align-items:center;gap:12px;min-height:52px;padding:0 16px;position:relative;box-sizing:border-box}
+.k-row + .k-row::before{content:"";position:absolute;top:0;left:16px;right:0;height:1px;background:#E3E3DF}
+.k-lbl{flex:1;font-size:15px;line-height:20px;color:#14151A}
+.k-sub{font-size:13px;line-height:17px;color:#6B6F76}
+.k-val{font-size:15px;color:#6B6F76;white-space:nowrap}
+.k-sh{font-size:11px;line-height:14px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:#6B6F76;padding:24px 20px 8px}
+.k-in{flex:1;min-width:0;border:0;font:inherit;font-size:15px;text-align:right;color:#14151A;background:transparent;outline:none}
+.k-sw{width:51px;height:31px;border-radius:999px;background:#4C5BD4;position:relative;flex:none;border:0;padding:0}
+.k-sw::after{content:"";position:absolute;right:2px;top:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.k-sw.off{background:#E3E3DF}.k-sw.off::after{right:auto;left:2px}
+.k-ibtn{width:44px;height:44px;border:0;background:transparent;padding:0;display:flex;align-items:center;justify-content:center}
+.k-stack{flex:1;display:flex;flex-direction:column;padding:10px 0}
+</style>
+</helmet>
+<div style="width: 390px; height: 1180px; background: #F5F5F3; font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif; color: #14151A; position: relative; overflow: hidden">
+  <div style="height: 54px"></div>
+  <div style="display: flex; align-items: center; height: 44px; padding: 0 8px">
+    <a href="#" style="display: flex; align-items: center; gap: 4px; color: #4C5BD4; font-size: 17px; text-decoration: none; padding: 0 8px; height: 44px"><svg/>Accounts</a>
+    <span style="flex: 1"></span>
+    <button class="k-ibtn" aria-label="More"><svg/></button>
+  </div>
+
+  <div style="padding: 6px 20px 4px; display: flex; align-items: center; gap: 14px">
+    <div style="width: 52px; height: 52px; border-radius: 14px; background: #FDF0DC; display: flex; align-items: center; justify-content: center; flex: none"><svg/></div>
+    <div style="flex: 1; display: flex; flex-direction: column; gap: 2px">
+      <h1 style="margin: 0; font-size: 28px; line-height: 34px; font-weight: 700">Cash wallet</h1>
+      <span class="k-sub" style="font-size: 15px">485,00 zł now · cash envelope</span>
+    </div>
+  </div>
+  <div style="display: flex; gap: 8px; padding: 14px 16px 0">
+    <button style="flex: 1; height: 40px; border-radius: 12px; border: 1px solid #E3E3DF; background: #fff; font: inherit; font-size: 15px; font-weight: 600; color: #14151A">Count cash</button>
+    <button style="flex: 1; height: 40px; border-radius: 12px; border: 1px solid #E3E3DF; background: #fff; font: inherit; font-size: 15px; font-weight: 600; color: #14151A">Transactions</button>
+  </div>
+
+  <div class="k-sh">Details</div>
+  <div style="padding: 0 16px">
+    <div class="k-grp">
+      <div class="k-row"><label for="ae1" class="k-lbl" style="flex: none; width: 100px">Name</label><input id="ae1" class="k-in" value="Cash wallet · home"></div>
+      <div class="k-row"><label for="ae2" class="k-lbl" style="flex: none; width: 100px">Note</label><input id="ae2" class="k-in" placeholder="Optional"></div>
+      <div class="k-row"><span class="k-lbl">Kind</span><span class="k-val" style="color: #14151A">Cash wallet</span><svg/></div>
+      <div class="k-row"><span class="k-lbl">Currency</span><span class="k-val" style="color: #14151A">PLN</span><svg/></div>
+    </div>
+  </div>
+
+  <div class="k-sh">Where it shows up</div>
+  <div style="padding: 0 16px">
+    <div class="k-grp">
+      <div class="k-row"><div class="k-stack"><span class="k-lbl">In pickers and lists</span><span class="k-sub">Off hides it but keeps its history</span></div><button class="k-sw" aria-label="Active" aria-pressed="true"></button></div>
+      <div class="k-row"><div class="k-stack"><span class="k-lbl">In the cash count</span><span class="k-sub">Counted when you count cash</span></div><button class="k-sw" aria-label="Cash envelope" aria-pressed="true"></button></div>
+      <div class="k-row"><div class="k-stack"><span class="k-lbl">In net worth</span><span class="k-sub">Firefly III adds it to your total</span></div><button class="k-sw" aria-label="Include in net worth" aria-pressed="true"></button></div>
+    </div>
+  </div>
+
+  <div class="k-sh">Starting point</div>
+  <div style="padding: 0 16px">
+    <div class="k-grp">
+      <div class="k-row"><div class="k-stack"><span class="k-lbl">Opening balance</span><span class="k-sub">on Oct 12, 2025</span></div><span class="k-val" style="color: #14151A">300,00 zł</span><svg/></div>
+      <div class="k-row"><div class="k-stack"><span class="k-lbl">Virtual balance</span><span class="k-sub">Added on top, like a credit limit</span></div><span class="k-val">0,00 zł</span><svg/></div>
+    </div>
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 16px 34px; background: #F5F5F3; border-top: 1px solid #E3E3DF; display: flex; gap: 10px; align-items: center">
+    <span class="k-sub" style="flex: 1">Name changed</span>
+    <button style="height: 44px; padding: 0 16px; border: 0; background: transparent; font: inherit; font-size: 15px; font-weight: 600; color: #6B6F76">Undo</button>
+    <button style="height: 44px; padding: 0 28px; border: 0; border-radius: 12px; background: #4C5BD4; color: #fff; font: inherit; font-size: 15px; font-weight: 600">Save</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:1180}}">
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+
+
+</body></html>

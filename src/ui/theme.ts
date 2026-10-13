@@ -9,15 +9,31 @@ interface Palette {
   text: string;
   textMuted: string;
   textFaint: string;
+  /** Outline of an unselected chip or tag. */
+  borderStrong: string;
+  /** Search field and round close button fill. */
+  fill: string;
   border: string;
   accent: string;
   accentSoft: string;
+  /** Accent text on accentSoft (a selected chip or tag). */
+  accentStrong: string;
+  /** A disabled primary button's fill. */
+  accentDisabled: string;
   /** Text/icon color for content placed on an accent-filled surface (a primary button, the FAB). */
   onAccent: string;
   income: string;
+  /** Background behind an income icon or badge. */
+  incomeSoft: string;
   transfer: string;
+  /** Background behind a transfer icon or badge. */
+  transferSoft: string;
+  /** Background behind a neutral (uncategorised) icon. */
+  neutralSoft: string;
   warn: string;
   warnSoft: string;
+  /** Warn text on warnSoft (a queued badge). */
+  warnStrong: string;
   danger: string;
   dangerSoft: string;
   /** Text/icon color for content placed on a danger-filled surface (a swipe-to-delete reveal). */
@@ -25,6 +41,12 @@ interface Palette {
   scrim: string;
   /** Behind a full-screen photo (a receipt): black in both schemes, so the image reads true. */
   photoBackdrop: string;
+  /** Text/icon color on a photo (the receipt viewer's close button and title). */
+  onPhoto: string;
+  /** Translucent control fill on a photo (the receipt viewer's remove button). */
+  photoControl: string;
+  /** Destructive text/icon on a photo. */
+  onPhotoDanger: string;
 }
 
 const light: Palette = {
@@ -34,19 +56,30 @@ const light: Palette = {
   text: '#14151A',
   textMuted: '#6B6F76',
   textFaint: '#9AA0A6',
+  borderStrong: '#C9C9C4',
+  fill: '#E8E8E4',
   border: '#E3E3DF',
   accent: '#4C5BD4',
   accentSoft: '#E7E9FB',
+  accentStrong: '#3A48B8',
+  accentDisabled: '#B9BFEA',
   onAccent: '#FFFFFF',
   income: '#2E8B57',
+  incomeSoft: '#E6F2EA',
   transfer: '#3B82F6',
+  transferSoft: '#E8F0FE',
+  neutralSoft: '#F0F0EE',
   warn: '#B45309',
   warnSoft: '#FDF0DC',
+  warnStrong: '#8A4006',
   danger: '#C2413A',
   dangerSoft: '#FBE9E7',
   onDanger: '#FFFFFF',
   scrim: 'rgba(0, 0, 0, 0.40)',
-  photoBackdrop: '#000000',
+  photoBackdrop: '#0B0B0D',
+  onPhoto: '#FFFFFF',
+  photoControl: 'rgba(255, 255, 255, 0.12)',
+  onPhotoDanger: '#FF8A80',
 };
 
 const dark: Palette = {
@@ -56,19 +89,30 @@ const dark: Palette = {
   text: '#F2F3F5',
   textMuted: '#A0A5AD',
   textFaint: '#71767E',
+  borderStrong: '#3A3F47',
+  fill: '#23262B',
   border: '#2C3037',
   accent: '#8B95F7',
   accentSoft: '#262B4A',
+  accentStrong: '#8B95F7',
+  accentDisabled: '#3A4170',
   onAccent: '#0F1013',
   income: '#4ADE80',
+  incomeSoft: '#1B3B2B',
   transfer: '#60A5FA',
+  transferSoft: '#1B2C4B',
+  neutralSoft: '#2A2A2E',
   warn: '#FBBF24',
   warnSoft: '#3A2C10',
+  warnStrong: '#FBBF24',
   danger: '#F87171',
   dangerSoft: '#3A1E1C',
   onDanger: '#FFFFFF',
   scrim: 'rgba(0, 0, 0, 0.60)',
-  photoBackdrop: '#000000',
+  photoBackdrop: '#0B0B0D',
+  onPhoto: '#FFFFFF',
+  photoControl: 'rgba(255, 255, 255, 0.12)',
+  onPhotoDanger: '#FF8A80',
 };
 
 const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, xxxl: 32 } as const;

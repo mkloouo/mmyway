@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>Planned schedule sheet</title>
+<script src="3ef96f37-d80e-40b9-b187-8b5b22df6d5f"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#4C5BD4}
+.k-grp{background:#FFFFFF;border:1px solid #E3E3DF;border-radius:14px;overflow:hidden}
+.k-row{display:flex;align-items:center;gap:12px;min-height:48px;padding:0 16px;position:relative;box-sizing:border-box}
+.k-row + .k-row::before{content:"";position:absolute;top:0;left:16px;right:0;height:1px;background:#E3E3DF}
+.k-lbl{flex:1;font-size:15px;line-height:20px;color:#14151A}
+.k-sub{font-size:13px;line-height:17px;color:#6B6F76}
+.k-val{font-size:15px;color:#14151A;white-space:nowrap}
+.k-sh{font-size:11px;line-height:14px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:#6B6F76;padding:16px 4px 8px}
+.k-x{width:32px;height:32px;border-radius:50%;background:#E8E8E4;border:0;display:flex;align-items:center;justify-content:center;padding:0}
+.k-seg{display:flex;background:#EFEFEC;border-radius:10px;padding:2px;flex:1}
+.k-seg button{flex:1;height:30px;border:0;border-radius:8px;background:transparent;font:inherit;font-size:13px;font-weight:600;color:#6B6F76}
+.k-seg button.on{background:#fff;color:#14151A;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.k-radio{width:22px;height:22px;border-radius:50%;border:2px solid #C9C9C4;box-sizing:border-box;flex:none}
+.k-radio.on{border:7px solid #4C5BD4}
+.k-step{display:flex;align-items:center;border-radius:10px;background:#EFEFEC;height:32px}
+.k-step button{width:36px;height:32px;border:0;background:transparent;font:inherit;font-size:18px;padding:0}
+.k-step span{width:28px;text-align:center;font-weight:600}
+.k-chev{flex:none}
+</style>
+</helmet>
+<div style="width: 390px; height: 1000px; background: #F5F5F3; font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif; color: #14151A; position: relative; overflow: hidden">
+  <div style="position: absolute; inset: 0; background: rgba(0,0,0,.40)"></div>
+
+  <div role="dialog" aria-label="Schedule" style="position: absolute; left: 0; right: 0; top: 40px; bottom: 0; background: #F5F5F3; border-radius: 22px 22px 0 0; display: flex; flex-direction: column">
+    <div style="width: 36px; height: 5px; border-radius: 3px; background: #C9C9C4; margin: 8px auto 0"></div>
+    <div style="display: flex; align-items: center; height: 56px; padding: 0 16px; gap: 12px">
+      <span style="flex: 1; font-size: 17px; font-weight: 600">Schedule</span>
+      <button class="k-x" aria-label="Close"><svg/></button>
+    </div>
+
+    <div style="padding: 0 16px; display: flex; flex-direction: column; flex: 1; overflow: hidden">
+      <div style="background: #E7E9FB; border-radius: 14px; padding: 12px 14px; display: flex; flex-direction: column; gap: 4px">
+        <span style="font-size: 15px; font-weight: 600; color: #26307F">Every month on the 15th, until you change it</span>
+        <span style="font-size: 13px; color: #3A48B8">Next: Oct 15 · Nov 13 (moved to Fri) · Dec 15</span>
+      </div>
+
+      <div class="k-sh">Starts</div>
+      <div class="k-grp">
+        <div class="k-row"><span class="k-lbl">First date</span><span class="k-val">Jan 15, 2026</span><svg/></div>
+        <div class="k-row"><span class="k-lbl">Time</span><span class="k-val" style="color: #6B6F76">Any time</span><svg/></div>
+      </div>
+
+      <div class="k-sh">Repeats</div>
+      <div class="k-grp">
+        <div class="k-row" style="padding-top: 8px; padding-bottom: 8px"><div class="k-seg" role="group" aria-label="Frequency"><button>Once</button><button>Day</button><button>Week</button><button class="on" aria-pressed="true">Month</button><button>Year</button></div></div>
+        <div class="k-row"><span class="k-lbl">Every</span><div class="k-step"><button aria-label="Less often">−</button><span>1</span><button aria-label="More often">+</button></div><span class="k-sub" style="width: 48px">month</span></div>
+        <div class="k-row"><span class="k-radio on" aria-hidden="true"></span><span class="k-lbl">On day <b>15</b></span><svg/></div>
+        <div class="k-row"><span class="k-radio" aria-hidden="true"></span><span class="k-lbl">On the third Thursday</span></div>
+        <div class="k-row"><span class="k-lbl">If it falls on a weekend</span><span class="k-val">Move to Friday</span><svg/></div>
+        <div class="k-row"><a href="#" style="font-size: 15px; font-weight: 600; text-decoration: none">+ Add another pattern</a></div>
+      </div>
+
+      <div class="k-sh">Ends</div>
+      <div class="k-grp">
+        <div class="k-row"><span class="k-radio on" aria-hidden="true"></span><span class="k-lbl">When I change it</span></div>
+        <div class="k-row"><span class="k-radio" aria-hidden="true"></span><span class="k-lbl">On a date</span></div>
+        <div class="k-row"><span class="k-radio" aria-hidden="true"></span><span class="k-lbl">After a number of times</span></div>
+      </div>
+    </div>
+
+    <div style="border-top: 1px solid #E3E3DF; padding: 12px 16px 34px">
+      <button style="width: 100%; height: 52px; border: 0; border-radius: 14px; background: #4C5BD4; color: #fff; font: inherit; font-size: 17px; font-weight: 600">Done</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:1000}}">
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+
+
+</body></html>

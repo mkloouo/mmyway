@@ -15,6 +15,7 @@ import {
 import { filterAccounts } from '../../src/accounts/filterAccounts';
 import { navigateOnce } from '../../src/ui/navigateOnce';
 import { usePendingAccountIds } from '../../src/accounts/usePendingAccountIds';
+import { useFlag } from '../../src/flags/useFlag';
 
 const EMPTY_ACCOUNTS: ReferenceAccountRow[] = [];
 
@@ -23,6 +24,7 @@ export default function LiabilitiesScreen() {
   const { t: tr } = useTranslation();
   const pendingAccounts = usePendingAccountIds();
   const currencies = useCurrencies();
+  const createOn = useFlag('account_create');
   // In FF3's own order, inactive ones included so the user can see and reopen them.
   const allLiabilities = useLiabilityAccounts({ includeInactive: true }) ?? EMPTY_ACCOUNTS;
   const [search, setSearch] = useState('');
@@ -56,7 +58,11 @@ export default function LiabilitiesScreen() {
         showInactive={showInactive}
         onToggleInactive={() => setShowInactive((v) => !v)}
         newLabel={tr('liabilities.newLiability')}
-        onNew={() => navigateOnce({ pathname: '/accounts/new', params: { type: 'liability' } })}
+        onNew={
+          createOn
+            ? () => navigateOnce({ pathname: '/accounts/new', params: { type: 'liability' } })
+            : undefined
+        }
       />
       <ScrollView
         keyboardShouldPersistTaps="handled"

@@ -10,18 +10,10 @@ import { cachedTransactions } from '../db/schema';
 import { useLiveQuery } from '../db/useLiveQuery';
 import { useDb } from '../providers/DbProvider';
 import { SHARED_TAG_PREFIX, sharedNamesFromTags } from '../transactions/sharedWith';
+import { parseTags } from '../transactions/tags';
 
 /** At most this many chips: the row is a reminder of who you share with, not a contact list. */
 const MOST = 8;
-
-function parseTags(tagsJson: string): string[] {
-  try {
-    const tags: unknown = JSON.parse(tagsJson);
-    return Array.isArray(tags) ? tags.filter((t): t is string => typeof t === 'string') : [];
-  } catch {
-    return []; // suggestions only: a row that can't be read just doesn't contribute
-  }
-}
 
 /** Pure half, for tests: the people in these rows, the most recently shared with first. */
 export function sharedPeopleFrom(rows: { tagsJson: string; date: string }[]): string[] {

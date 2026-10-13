@@ -8,6 +8,7 @@ import type { OutboxDb } from '../sync/outbox';
 import { generateId } from '../utils/id';
 import { readSplits, type CachedSplit } from './splitsJson';
 import { SHARED_TAG_PREFIX, sharedWithFromTags } from './sharedWith';
+import { parseTags } from './tags';
 
 type CachedRow = typeof cachedTransactions.$inferSelect;
 
@@ -18,15 +19,6 @@ function tagsOf(tags: string[]): { sharedWith?: string; extraTags?: string[] } {
     ...(shared ? { sharedWith: shared } : {}),
     ...(rest.length ? { extraTags: rest } : {}),
   };
-}
-
-function parseTags(json: string): string[] {
-  try {
-    const parsed = JSON.parse(json);
-    return Array.isArray(parsed) ? parsed.filter((t): t is string => typeof t === 'string') : [];
-  } catch {
-    return [];
-  }
 }
 
 const opt = (value: string | null | undefined): string | undefined => value ?? undefined;

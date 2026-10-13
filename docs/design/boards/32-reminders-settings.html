@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>Reminders settings</title>
+<script src="43038e70-490b-4b1c-8bb3-f57f0a219e49"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#4C5BD4}a:hover{color:#3A48B8}
+.k-grp{background:#FFFFFF;border:1px solid #E3E3DF;border-radius:14px;overflow:hidden}
+.k-row{display:flex;align-items:center;gap:12px;min-height:50px;padding:0 16px;position:relative;box-sizing:border-box}
+.k-row + .k-row::before{content:"";position:absolute;top:0;left:16px;right:0;height:1px;background:#E3E3DF}
+.k-lbl{flex:1;font-size:15px;line-height:20px;color:#14151A}
+.k-sub{font-size:13px;line-height:17px;color:#6B6F76}
+.k-val{font-size:15px;color:#14151A;white-space:nowrap}
+.k-sh{font-size:11px;line-height:14px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:#6B6F76;padding:22px 20px 8px}
+.k-stack{flex:1;min-width:0;display:flex;flex-direction:column;padding:9px 0}
+.k-sw{width:51px;height:31px;border-radius:999px;background:#4C5BD4;position:relative;flex:none;border:0;padding:0}
+.k-sw::after{content:"";position:absolute;right:2px;top:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.k-sw.off{background:#E3E3DF}.k-sw.off::after{right:auto;left:2px}
+.k-check{flex:none}
+.k-chev{flex:none}
+</style>
+</helmet>
+<div style="width: 390px; height: 1100px; background: #F5F5F3; font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif; color: #14151A; position: relative; overflow: hidden">
+  <div style="height: 54px"></div>
+  <div style="display: flex; align-items: center; height: 44px; padding: 0 8px">
+    <a href="Settings.dc.html" style="display: flex; align-items: center; gap: 4px; color: #4C5BD4; font-size: 17px; text-decoration: none; padding: 0 8px; height: 44px"><svg/>Settings</a>
+  </div>
+  <div style="padding: 4px 20px 0; display: flex; flex-direction: column; gap: 6px">
+    <h1 style="margin: 0; font-size: 34px; line-height: 41px; font-weight: 700">Reminders</h1>
+    <div style="font-size: 15px; line-height: 21px; color: #6B6F76">A heads-up before planned money moves, so nothing catches you off guard.</div>
+  </div>
+
+  <div style="padding: 16px 16px 0">
+    <div style="background: #1C1D22; border-radius: 18px; padding: 14px">
+      <div style="background: rgba(255,255,255,.92); border-radius: 14px; padding: 10px 12px; display: flex; gap: 10px">
+        <div style="width: 32px; height: 32px; border-radius: 8px; background: #4C5BD4; flex: none; display: flex; align-items: center; justify-content: center"><svg/></div>
+        <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px">
+          <div style="display: flex; justify-content: space-between"><span style="font-size: 13px; font-weight: 600">Rent goes out tomorrow</span><span style="font-size: 12px; color: #6B6F76">9:00</span></div>
+          <span style="font-size: 13px; line-height: 17px">2.400,00 zł from Checking. There's enough in it.</span>
+        </div>
+      </div>
+      <div style="font-size: 12px; color: #C9CBD3; text-align: center; padding-top: 8px">This is how it will look</div>
+    </div>
+  </div>
+
+  <div style="padding: 16px 16px 0">
+    <div class="k-grp">
+      <div class="k-row"><span class="k-lbl" style="font-weight: 600">Remind me about planned payments</span><button class="k-sw" aria-label="Reminders on" aria-pressed="true"></button></div>
+    </div>
+  </div>
+
+  <div class="k-sh">When</div>
+  <div style="padding: 0 16px">
+    <div class="k-grp" role="radiogroup" aria-label="When">
+      <div class="k-row" role="radio" aria-checked="false"><span class="k-lbl">On the day</span></div>
+      <div class="k-row" role="radio" aria-checked="true"><span class="k-lbl" style="font-weight: 600">The day before</span><svg/></div>
+      <div class="k-row" role="radio" aria-checked="false"><span class="k-lbl">A few days before</span><span class="k-sub">2 or 3 days</span></div>
+      <div class="k-row" role="radio" aria-checked="false"><span class="k-lbl">A week before</span></div>
+    </div>
+  </div>
+  <div style="padding: 10px 16px 0">
+    <div class="k-grp">
+      <div class="k-row"><span class="k-lbl">At</span><span class="k-val">9:00</span><svg/></div>
+      <div class="k-row"><div class="k-stack"><span class="k-lbl">Nudge me again on the day</span><span class="k-sub">A second, quieter reminder that morning</span></div><button class="k-sw off" aria-label="Also on the day" aria-pressed="false"></button></div>
+    </div>
+  </div>
+
+  <div class="k-sh">Which payments</div>
+  <div style="padding: 0 16px">
+    <div class="k-grp" role="radiogroup" aria-label="Which payments">
+      <div class="k-row" role="radio" aria-checked="true"><span class="k-lbl" style="font-weight: 600">All of them</span><svg/></div>
+      <div class="k-row" role="radio" aria-checked="false"><span class="k-lbl">Only bigger ones</span><span class="k-sub">over 200 zł</span></div>
+      <div class="k-row" role="radio" aria-checked="false"><span class="k-lbl">Only money going out</span></div>
+    </div>
+  </div>
+
+  <div class="k-sh">Less noise</div>
+  <div style="padding: 0 16px">
+    <div class="k-grp">
+      <div class="k-row"><div class="k-stack"><span class="k-lbl">One message for the whole day</span><span class="k-sub">"3 payments tomorrow · 2.488,99 zł"</span></div><button class="k-sw" aria-label="Bundle reminders" aria-pressed="true"></button></div>
+      <div class="k-row"><div class="k-stack"><span class="k-lbl">Warn me if an account runs short</span><span class="k-sub">When a payment is bigger than what's left</span></div><button class="k-sw" aria-label="Short balance warnings" aria-pressed="true"></button></div>
+    </div>
+    <div class="k-sub" style="padding: 8px 4px 0">Want something different for one payment? Open it in Planned and change Remind me.</div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:1100}}">
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+
+
+</body></html>

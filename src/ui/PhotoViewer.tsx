@@ -22,7 +22,7 @@ export function PhotoViewer({
   const insets = useSafeAreaInsets();
   return (
     <Modal visible={!!uri} transparent animationType="fade" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: '#0B0B0D' }}>
+      <View style={{ flex: 1, backgroundColor: t.color.photoBackdrop }}>
         <View
           style={{
             flexDirection: 'row',
@@ -45,9 +45,9 @@ export function PhotoViewer({
               justifyContent: 'center',
             }}
           >
-            <Ionicons name="close" size={20} color="#FFFFFF" />
+            <Ionicons name="close" size={20} color={t.color.onPhoto} />
           </Pressable>
-          <Text style={{ flex: 1, fontSize: 17, fontWeight: '600', color: '#FFFFFF' }}>
+          <Text style={{ flex: 1, fontSize: 17, fontWeight: '600', color: t.color.onPhoto }}>
             {tr('capture.receiptPhoto')}
           </Text>
         </View>
@@ -81,15 +81,15 @@ export function PhotoViewer({
               style={{
                 height: 52,
                 borderRadius: 14,
-                backgroundColor: 'rgba(255, 255, 255, 0.12)',
+                backgroundColor: t.color.photoControl,
                 flexDirection: 'row',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 8,
               }}
             >
-              <Ionicons name="trash-outline" size={18} color="#FF8A80" />
-              <Text style={{ color: '#FF8A80', fontSize: 16, fontWeight: '600' }}>
+              <Ionicons name="trash-outline" size={18} color={t.color.onPhotoDanger} />
+              <Text style={{ color: t.color.onPhotoDanger, fontSize: 16, fontWeight: '600' }}>
                 {tr('capture.removePhoto')}
               </Text>
             </Pressable>

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>New planned payment (step 1)</title>
+<script src="6eaaf75e-afc7-4863-aa06-31ad3c3996f0"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.k-grp{background:#FFFFFF;border:1px solid #E3E3DF;border-radius:14px;overflow:hidden}
+.k-row{display:flex;align-items:center;gap:12px;min-height:52px;padding:0 16px;position:relative;box-sizing:border-box}
+.k-row + .k-row::before{content:"";position:absolute;top:0;left:16px;right:0;height:1px;background:#E3E3DF}
+.k-lbl{flex:1;font-size:15px;line-height:20px;color:#14151A}
+.k-sub{font-size:13px;line-height:17px;color:#6B6F76}
+.k-val{font-size:15px;color:#14151A;white-space:nowrap}
+.k-sh{font-size:11px;line-height:14px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:#6B6F76;padding:22px 20px 8px;display:flex;justify-content:space-between;align-items:baseline}
+.k-stack{flex:1;min-width:0;display:flex;flex-direction:column;padding:9px 0}
+.k-ibtn{width:44px;height:44px;border:0;background:transparent;padding:0;display:flex;align-items:center;justify-content:center}
+.k-chev{flex:none}
+.k-inp{flex:1;min-width:0;border:0;background:transparent;font:inherit;font-size:15px;color:#14151A;padding:0;outline:none}
+.k-inp::placeholder{color:#6B6F76}
+.k-seg{display:flex;background:#EFEFEC;border-radius:10px;padding:2px}
+.k-seg button{flex:1;height:30px;border:0;border-radius:8px;background:transparent;font:inherit;font-size:13px;font-weight:600;color:#6B6F76}
+.k-seg button.on{background:#fff;color:#14151A;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; background: #3A3A3C; font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif; color: #14151A; position: relative; overflow: hidden">
+  <div style="position: absolute; left: 16px; right: 16px; top: 46px; height: 30px; border-radius: 12px 12px 0 0; background: #8E8E93"></div>
+  <div style="position: absolute; left: 0; right: 0; top: 56px; bottom: 0; background: #F5F5F3; border-radius: 14px 14px 0 0; display: flex; flex-direction: column">
+    <div style="display: flex; align-items: center; height: 56px; padding: 0 8px; gap: 4px">
+      <button class="k-ibtn" aria-label="Cancel"><svg/></button>
+      <div style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 17px; font-weight: 600">New planned payment</span><span class="k-sub">Step 1 of 3</span></div>
+    </div>
+
+    <div role="img" aria-label="Step 1 of 3" style="display: flex; gap: 6px; padding: 0 16px">
+      <div style="flex: 1; height: 4px; border-radius: 2px; background: #4C5BD4"></div>
+      <div style="flex: 1; height: 4px; border-radius: 2px; background: #E3E3DF"></div>
+      <div style="flex: 1; height: 4px; border-radius: 2px; background: #E3E3DF"></div>
+    </div>
+
+    <div style="padding: 4px 0 0; display: flex; flex-direction: column; flex: 1; overflow: hidden">
+      <p style="margin: 0; padding: 12px 20px; font-size: 15px; line-height: 20px; color: #6B6F76">What is it, and where does the money go?</p>
+
+      <div style="padding: 0 16px">
+        <div class="k-seg" role="group" aria-label="Type"><button class="on" aria-pressed="true">Expense</button><button aria-pressed="false">Income</button><button aria-pressed="false">Transfer</button></div>
+      </div>
+
+      <div style="padding: 12px 16px 0; display: flex; flex-direction: column; gap: 12px">
+        <div class="k-grp">
+          <div class="k-row"><label for="pn-name" class="k-lbl" style="flex: none; width: 92px">Name</label><input id="pn-name" class="k-inp" value="Rent"></div>
+          <div class="k-row"><label for="pn-amt" class="k-lbl" style="flex: none; width: 92px">Amount</label><input id="pn-amt" class="k-inp" value="2.400,00" inputmode="decimal" style="text-align: right; font-variant-numeric: tabular-nums"><span class="k-sub">PLN</span><svg/></div>
+          <button class="k-row" style="width: 100%; border: 0; background: transparent; font: inherit; text-align: left"><span class="k-lbl" style="flex: none; width: 92px">From</span><span class="k-val" style="flex: 1">Checking</span><svg/></button>
+          <button class="k-row" style="width: 100%; border: 0; background: transparent; font: inherit; text-align: left"><span class="k-lbl" style="flex: none; width: 92px">To</span><span class="k-val" style="flex: 1">Landlord</span><svg/></button>
+          <button class="k-row" style="width: 100%; border: 0; background: transparent; font: inherit; text-align: left"><span class="k-lbl" style="flex: none; width: 92px">Category</span><span class="k-val" style="flex: 1">Housing</span><svg/></button>
+        </div>
+        <div class="k-sub" style="padding: 0 4px">Amount can be approximate — Firefly III matches anything close.</div>
+      </div>
+    </div>
+
+    <div style="border-top: 1px solid #E3E3DF; padding: 10px 16px 34px; background: #F5F5F3">
+      <button style="width: 100%; height: 52px; border: 0; border-radius: 14px; background: #4C5BD4; color: #fff; font: inherit; font-size: 17px; font-weight: 600">Continue</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844}}">
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+
+
+</body></html>

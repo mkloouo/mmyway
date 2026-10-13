@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>Activity filters</title>
+<script src="726ba7e4-c9f5-4215-bbd4-ed4502dd1ae3"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#4C5BD4}a:hover{color:#3A48B8}
+.k-grp{background:#FFFFFF;border:1px solid #E3E3DF;border-radius:14px;overflow:hidden}
+.k-row{display:flex;align-items:center;gap:12px;min-height:52px;padding:0 16px;position:relative;box-sizing:border-box}
+.k-row + .k-row::before{content:"";position:absolute;top:0;left:16px;right:0;height:1px;background:#E3E3DF}
+.k-stack{flex:1;min-width:0;display:flex;flex-direction:column;padding:9px 0}
+.k-lbl{font-size:15px;line-height:20px;color:#14151A;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.k-sub{font-size:13px;line-height:17px;color:#6B6F76;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.k-amt{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.k-sh{font-size:11px;line-height:14px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:#6B6F76;padding:20px 20px 8px;display:flex;justify-content:space-between;align-items:baseline}
+.k-sh span + span{text-transform:none;letter-spacing:0;font-size:13px;font-weight:500;font-variant-numeric:tabular-nums}
+.k-tile{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:none}
+.k-dot{width:8px;height:8px;border-radius:50%}
+.k-tag{flex:none;font-size:11px;font-weight:600;letter-spacing:.4px;color:#8A4006;background:#FDF0DC;border-radius:999px;padding:3px 8px}
+.k-c{height:32px;padding:0 12px;border-radius:999px;border:1px solid #E3E3DF;background:#fff;font:inherit;font-size:14px;color:#14151A;white-space:nowrap;flex:none}
+.k-c.on{background:#4C5BD4;border-color:#4C5BD4;color:#fff;font-weight:600}
+.k-bal{flex:none;width:132px;border:0;background:transparent;font:inherit;text-align:left;padding:12px 14px;display:flex;flex-direction:column;gap:2px;color:#14151A}
+.k-bal + .k-bal{border-left:1px solid #E3E3DF}
+.k-ibtn{width:44px;height:44px;border:0;background:transparent;padding:0;display:flex;align-items:center;justify-content:center}
+.k-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;font-weight:500;color:#6B6F76;text-decoration:none;padding-top:7px}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; background: #F5F5F3; font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif; color: #14151A; position: relative; overflow: hidden">
+  <div style="height: 54px"></div>
+
+  <div style="display: flex; align-items: center; padding: 6px 8px 0 20px">
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+      <h1 style="margin: 0; font-size: 34px; line-height: 41px; font-weight: 700">Activity</h1>
+    </div>
+    <button class="k-ibtn" aria-label="Search"><svg/></button>
+    <button class="k-ibtn" aria-label="Filter"><svg/></button>
+    <button class="k-ibtn" aria-label="More"><svg/></button>
+  </div>
+
+  <div style="padding: 10px 16px 0">
+    <div class="k-grp" style="display: flex; overflow: hidden">
+      <button class="k-bal"><span class="k-sub">Checking</span><span class="k-amt">49.833,35 zł</span></button>
+      <button class="k-bal"><span class="k-sub" style="display: flex; align-items: center; gap: 6px">Cash wallet<span class="k-dot" style="background: #B45309" aria-label="Changes waiting to send"></span></span><span class="k-amt">485,00 zł</span></button>
+      <button class="k-bal"><span class="k-sub">Savings EUR</span><span class="k-amt">1.000,00 €</span></button>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 6px; padding: 12px 16px 0" role="group" aria-label="Type">
+    <button class="k-c on" aria-pressed="true">All</button><button class="k-c">Spending</button><button class="k-c">Income</button><button class="k-c">Moves</button>
+  </div>
+
+  <div class="k-sh"><span>Today</span><span>−104,37 zł</span></div>
+  <div style="padding: 0 16px">
+    <div class="k-grp">
+      <div class="k-row">
+        <div class="k-tile" style="background: #E6F2EA"><span class="k-dot" style="background: #2E8B57"></span></div>
+        <div class="k-stack"><span class="k-lbl">Lidl</span><span class="k-sub">2 splits · Groceries, Household</span></div>
+        <span class="k-amt">−84,37 zł</span>
+      </div>
+      <div class="k-row">
+        <div class="k-tile" style="background: #FDF0DC"><span class="k-dot" style="background: #C77B30"></span></div>
+        <div class="k-stack"><span class="k-lbl">Coffee</span><span class="k-sub">Eating out · Costa</span></div>
+        <span class="k-tag">QUEUED</span>
+        <span class="k-amt">−20,00 zł</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="k-sh"><span>Yesterday</span><span>+8.400,00 zł</span></div>
+  <div style="padding: 0 16px">
+    <div class="k-grp">
+      <div class="k-row">
+        <div class="k-tile" style="background: #E6F2EA"><svg/></div>
+        <div class="k-stack"><span class="k-lbl">Salary</span><span class="k-sub">Salary · Acme</span></div>
+        <span class="k-amt" style="color: #2E8B57">+8.400,00 zł</span>
+      </div>
+      <div class="k-row">
+        <div class="k-tile" style="background: #E8F0FE"><svg/></div>
+        <div class="k-stack"><span class="k-lbl">To savings</span><span class="k-sub">Checking → Savings EUR</span></div>
+        <span class="k-amt" style="color: #3B82F6">1.000,00 zł</span>
+      </div>
+      <div class="k-row">
+        <div class="k-tile" style="background: #E7E9FB"><span class="k-dot" style="background: #4C5BD4"></span></div>
+        <div class="k-stack"><span class="k-lbl">Fuel</span><span class="k-sub">Car · Orlen</span></div>
+        <span class="k-tag" style="color: #3A48B8; background: #E7E9FB">EDITED</span>
+        <span class="k-amt">−250,00 zł</span>
+      </div>
+    </div>
+  </div>
+
+  <nav aria-label="Tabs" style="position: absolute; left: 0; right: 0; bottom: 0; height: 83px; background: rgba(250,250,248,.96); border-top: 1px solid #E3E3DF; display: flex">
+    <a href="#" class="k-tab"><svg/>Inbox</a>
+    <a href="#" class="k-tab" style="color: #4C5BD4" aria-current="page"><svg/>Activity</a>
+    <a href="#" class="k-tab"><svg/>Planned</a>
+    <a href="#" class="k-tab"><svg/>Budget</a>
+    <a href="#" class="k-tab"><svg/>Settings</a>
+  </nav>
+
+  <div style="position: absolute; inset: 0; background: rgba(0,0,0,.40)"></div>
+  <div role="dialog" aria-label="Filters" style="position: absolute; left: 0; right: 0; bottom: 0; background: #F5F5F3; border-radius: 22px 22px 0 0; display: flex; flex-direction: column">
+    <div style="width: 36px; height: 5px; border-radius: 3px; background: #C9C9C4; margin: 8px auto 0"></div>
+    <div style="display: flex; align-items: center; height: 56px; padding: 0 16px; gap: 12px">
+      <span style="flex: 1; font-size: 17px; font-weight: 600">Filters</span>
+      <button aria-label="Close" style="width: 32px; height: 32px; border-radius: 50%; background: #E8E8E4; border: 0; display: flex; align-items: center; justify-content: center; padding: 0"><svg/></button>
+    </div>
+    <div style="padding: 0 16px 16px; display: flex; flex-direction: column">
+      <div class="k-sh" style="padding: 0 4px 8px">Type</div>
+      <div style="display: flex; background: #EAEAE6; border-radius: 10px; padding: 2px" role="group" aria-label="Type">
+        <button style="flex: 1; height: 32px; border: 0; border-radius: 8px; background: transparent; font: inherit; font-size: 14px; font-weight: 600; color: #6B6F76">All</button>
+        <button aria-pressed="true" style="flex: 1; height: 32px; border: 0; border-radius: 8px; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.08); font: inherit; font-size: 14px; font-weight: 600; color: #14151A">Spending</button>
+        <button style="flex: 1; height: 32px; border: 0; border-radius: 8px; background: transparent; font: inherit; font-size: 14px; font-weight: 600; color: #6B6F76">Income</button>
+        <button style="flex: 1; height: 32px; border: 0; border-radius: 8px; background: transparent; font: inherit; font-size: 14px; font-weight: 600; color: #6B6F76">Moves</button>
+      </div>
+      <div class="k-sh" style="padding: 24px 4px 8px">Account</div>
+      <div class="k-grp">
+        <button class="k-row" style="width: 100%; border: 0; background: transparent; font: inherit; text-align: left"><span class="k-lbl" style="flex: 1">All accounts</span></button>
+        <button class="k-row" style="width: 100%; border: 0; background: transparent; font: inherit; text-align: left"><span class="k-lbl" style="flex: 1">Checking</span></button>
+        <button class="k-row" style="width: 100%; border: 0; background: transparent; font: inherit; text-align: left"><span class="k-lbl" style="flex: 1; display: flex; align-items: center; gap: 8px">Cash wallet<span class="k-dot" style="background: #B45309"></span></span><svg/></button>
+        <button class="k-row" style="width: 100%; border: 0; background: transparent; font: inherit; text-align: left"><span class="k-lbl" style="flex: 1">Savings EUR</span></button>
+      </div>
+      <div class="k-sub" style="padding: 4px 4px 0">The dot marks an account with changes waiting to send.</div>
+    </div>
+    <div style="border-top: 1px solid #E3E3DF; padding: 12px 16px 34px; display: flex; gap: 10px; align-items: center">
+      <button style="height: 52px; padding: 0 16px; border: 0; background: transparent; font: inherit; font-size: 17px; font-weight: 600; color: #6B6F76">Clear</button>
+      <button style="flex: 1; height: 52px; border: 0; border-radius: 14px; background: #4C5BD4; color: #fff; font: inherit; font-size: 17px; font-weight: 600">Show 14 transactions</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844}}">
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+
+
+</body></html>

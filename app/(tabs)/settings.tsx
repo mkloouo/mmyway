@@ -40,6 +40,7 @@ import { AccountPickerSheet } from '../../src/ui/AccountPickerSheet';
 import { forgetPosition, startPositionRequest } from '../../src/capture/position';
 import { useAction } from '../../src/ui/useAction';
 import { pickableCurrencies, primaryCurrencyCode } from '../../src/ui/currencies';
+import { useFlags } from '../../src/flags/useFlag';
 
 const LANGUAGE_OPTIONS: { value: AppLocale; labelKey: string }[] = [
   { value: 'system', labelKey: 'settings.languageSystem' },
@@ -67,6 +68,7 @@ export default function SettingsScreen() {
   const t = useTheme();
   const { t: tr } = useTranslation();
   const act = useAction();
+  const flags = useFlags();
 
   const allAssetAccounts = useAssetAccounts({ includeInactive: true }) ?? [];
   const assetAccounts = useAssetAccounts() ?? [];
@@ -212,12 +214,14 @@ export default function SettingsScreen() {
             chevron
             onPress={() => setSheet('currency')}
           />
-          <SwitchRow
-            value={recordLocation}
-            onValueChange={() => void toggleLocation()}
-            label={tr('settings.recordLocation')}
-            hint={tr('settings.recordLocationHint')}
-          />
+          {flags.record_location && (
+            <SwitchRow
+              value={recordLocation}
+              onValueChange={() => void toggleLocation()}
+              label={tr('settings.recordLocation')}
+              hint={tr('settings.recordLocationHint')}
+            />
+          )}
         </Card>
 
         <SectionHeader title={tr('settings.sectionReceiptReading')} />
@@ -257,25 +261,30 @@ export default function SettingsScreen() {
             chevron
             onPress={() => router.push('/settings/cash')}
           />
-          <ListRow
-            leading={<Tile icon="pricetag-outline" tone="income" />}
-            label={tr('settings.aliases')}
-            trailing={valueText(tr('settings.aliasesCount', { count: aliasesCount }))}
-            chevron
-            onPress={() => router.push('/settings/aliases')}
-          />
+          {flags.payee_nicknames && (
+            <ListRow
+              leading={<Tile icon="pricetag-outline" tone="income" />}
+              label={tr('settings.aliases')}
+              trailing={valueText(tr('settings.aliasesCount', { count: aliasesCount }))}
+              chevron
+              onPress={() => router.push('/settings/aliases')}
+            />
+          )}
         </Card>
 
         <SectionHeader title={tr('settings.sectionAutomation')} />
         <Card flush style={{ marginHorizontal: t.space.lg }}>
+          {flags.ff3_rules && (
+            <ListRow
+              first
+              leading={<Tile icon="flash-outline" />}
+              label={tr('rules.title')}
+              chevron
+              onPress={() => router.push('/settings/rules')}
+            />
+          )}
           <ListRow
-            first
-            leading={<Tile icon="flash-outline" />}
-            label={tr('rules.title')}
-            chevron
-            onPress={() => router.push('/settings/rules')}
-          />
-          <ListRow
+            first={!flags.ff3_rules}
             leading={<Tile icon="repeat-outline" />}
             label={tr('settings.plannedRaw')}
             sub={tr('settings.plannedRawHint')}
@@ -286,14 +295,17 @@ export default function SettingsScreen() {
 
         <SectionHeader title={tr('settings.sectionPrivacyReminders')} />
         <Card flush style={{ marginHorizontal: t.space.lg }}>
-          <SwitchRow
-            first
-            value={appLock}
-            onValueChange={() => void toggleAppLock()}
-            label={tr('settings.appLock')}
-            hint={tr('settings.appLockHint')}
-          />
+          {flags.app_lock && (
+            <SwitchRow
+              first
+              value={appLock}
+              onValueChange={() => void toggleAppLock()}
+              label={tr('settings.appLock')}
+              hint={tr('settings.appLockHint')}
+            />
+          )}
           <ListRow
+            first={!flags.app_lock}
             leading={<Tile icon="notifications-outline" tone="danger" />}
             label={tr('settings.reminders')}
             sub={remindersSummary}

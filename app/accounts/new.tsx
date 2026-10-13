@@ -7,7 +7,6 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { useDb } from '../../src/providers/DbProvider';
 import { useCurrencies } from '../../src/db/useReferenceData';
 import { useTheme } from '../../src/ui/theme';
@@ -28,6 +27,7 @@ import { PickerSheet } from '../../src/ui/PickerSheet';
 import { primaryCurrencyCode } from '../../src/ui/currencies';
 import { confirmAction } from '../../src/ui/confirm';
 import { useAction } from '../../src/ui/useAction';
+import { withFlag } from '../../src/flags/RequireFlag';
 import { useConfirmDiscard } from '../../src/ui/useConfirmDiscard';
 import { useToast } from '../../src/ui/useToast';
 import {
@@ -43,6 +43,7 @@ import {
   RoleSheet,
   ROLE_LABEL_KEYS,
   dayLabel,
+  KindCard,
   pickDay,
 } from '../../src/accounts/AccountFormParts';
 
@@ -100,7 +101,7 @@ const EMPTY_FORM: AccountCreateForm = {
   virtualBalance: null,
 };
 
-export default function NewAccountScreen() {
+function NewAccountScreen() {
   const db = useDb();
   const t = useTheme();
   const { t: tr } = useTranslation();
@@ -568,46 +569,4 @@ export default function NewAccountScreen() {
   );
 }
 
-/** A "what kind" card: a radio in the group, 2 px accent border and accentSoft fill when selected. */
-function KindCard({
-  testID,
-  icon,
-  label,
-  sub,
-  selected,
-  onPress,
-}: {
-  testID: string;
-  icon: 'card-outline' | 'trending-down-outline';
-  label: string;
-  sub: string;
-  selected: boolean;
-  onPress: () => void;
-}) {
-  const t = useTheme();
-  return (
-    <Pressable
-      testID={testID}
-      onPress={onPress}
-      accessibilityRole="radio"
-      accessibilityLabel={label}
-      accessibilityState={{ checked: selected }}
-      style={({ pressed }) => ({
-        flex: 1,
-        gap: t.space.sm,
-        padding: selected ? t.space.md - 1 : t.space.md,
-        borderRadius: t.radius.md,
-        borderWidth: selected ? 2 : 1,
-        borderColor: selected ? t.color.accent : t.color.border,
-        backgroundColor: selected ? t.color.accentSoft : t.color.surface,
-        opacity: pressed ? PRESSED_OPACITY : 1,
-      })}
-    >
-      <Ionicons name={icon} size={22} color={selected ? t.color.accent : t.color.textMuted} />
-      <Text style={[t.type.body, { color: t.color.text, fontWeight: '600' }]}>{label}</Text>
-      <Text style={[t.type.label, { color: selected ? t.color.accent : t.color.textMuted }]}>
-        {sub}
-      </Text>
-    </Pressable>
-  );
-}
+export default withFlag('account_create', NewAccountScreen);

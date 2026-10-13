@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>Budget tab</title>
+<script src="f229b5a1-5dd9-48d5-860f-d7b1c49ec753"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#4C5BD4}a:hover{color:#3A48B8}
+.k-grp{background:#FFFFFF;border:1px solid #E3E3DF;border-radius:14px;overflow:hidden}
+.k-row{display:flex;align-items:center;gap:12px;min-height:52px;padding:0 16px;position:relative;box-sizing:border-box}
+.k-row + .k-row::before{content:"";position:absolute;top:0;left:16px;right:0;height:1px;background:#E3E3DF}
+.k-lbl{flex:1;font-size:15px;line-height:20px;color:#14151A}
+.k-sub{font-size:13px;line-height:17px;color:#6B6F76}
+.k-amt{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.k-sh{font-size:11px;line-height:14px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:#6B6F76;padding:24px 20px 8px;display:flex;justify-content:space-between;align-items:baseline}
+.k-sh a{text-transform:none;letter-spacing:0;font-size:13px;font-weight:600;text-decoration:none}
+.k-bar{height:6px;border-radius:3px;background:#EFEFEC;overflow:hidden}
+.k-bar > div{height:6px;border-radius:3px}
+.k-env{flex-direction:column;align-items:stretch;gap:7px;padding-top:12px;padding-bottom:12px}
+.k-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;font-weight:500;color:#6B6F76;text-decoration:none;padding-top:7px}
+.k-ibtn{width:44px;height:44px;border:0;background:transparent;padding:0;display:flex;align-items:center;justify-content:center}
+</style>
+</helmet>
+<div style="width: 390px; height: 1180px; background: #F5F5F3; font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif; color: #14151A; position: relative; overflow: hidden">
+  <div style="height: 54px"></div>
+
+  <div style="display: flex; align-items: center; padding: 6px 8px 0 20px">
+    <h1 style="margin: 0; flex: 1; font-size: 34px; line-height: 41px; font-weight: 700">Budget</h1>
+    <button class="k-ibtn" aria-label="New envelope"><svg/></button>
+  </div>
+
+  <div style="display: flex; align-items: center; gap: 4px; padding: 2px 12px 12px">
+    <button class="k-ibtn" aria-label="Previous month" style="width: 36px; height: 36px"><svg/></button>
+    <span style="font-size: 15px; font-weight: 600">October 2026</span>
+    <button class="k-ibtn" aria-label="Next month" style="width: 36px; height: 36px"><svg/></button>
+  </div>
+
+  <div style="padding: 0 16px">
+    <div class="k-grp" style="padding: 16px 16px 14px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; justify-content: space-between; align-items: center">
+        <span style="font-size: 11px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; color: #6B6F76">Ready to assign</span>
+        <button aria-label="How this is worked out" style="width: 28px; height: 28px; border-radius: 50%; border: 1px solid #E3E3DF; background: #fff; display: flex; align-items: center; justify-content: center; padding: 0"><svg/></button>
+      </div>
+      <div style="font-size: 40px; line-height: 44px; font-weight: 700; letter-spacing: -.5px; font-variant-numeric: tabular-nums">51.186,35 zł</div>
+      <div style="display: flex; gap: 0; border-top: 1px solid #E3E3DF; margin: 4px -16px 0 0; padding: 10px 16px 0 0">
+        <div style="flex: 1; display: flex; flex-direction: column"><span class="k-sub">In accounts</span><span class="k-amt">51.186,35</span></div>
+        <div style="flex: 1; display: flex; flex-direction: column"><span class="k-sub">Assigned</span><span class="k-amt">0,00</span></div>
+        <div style="flex: 1; display: flex; flex-direction: column"><span class="k-sub">Spent</span><span class="k-amt">195,45</span></div>
+      </div>
+      <div style="display: flex; gap: 8px; padding-top: 6px">
+        <button style="flex: 1; height: 44px; border-radius: 12px; border: 0; background: #4C5BD4; color: #fff; font: inherit; font-size: 15px; font-weight: 600">Assign money</button>
+        <button style="flex: 1; height: 44px; border-radius: 12px; border: 0; background: #EFEFEC; color: #14151A; font: inherit; font-size: 15px; font-weight: 600">Auto-fill 1.240 zł</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="k-sh"><span>Envelopes · 4</span><a href="#">Reorder</a></div>
+  <div style="padding: 0 16px">
+    <div class="k-grp">
+      <div class="k-row k-env">
+        <div style="display: flex; align-items: baseline; gap: 8px"><span class="k-lbl" style="font-weight: 600">Food</span><span class="k-amt" style="color: #B45309">−195,45 zł</span></div>
+        <div class="k-bar" style="background: #FDF0DC"><div style="width: 100%; background: #B45309"></div></div>
+        <div style="display: flex; justify-content: space-between; align-items: center"><span class="k-sub">195,45 spent · nothing assigned</span><a href="#" style="font-size: 13px; font-weight: 600; color: #B45309; text-decoration: none">Cover</a></div>
+      </div>
+      <div class="k-row k-env">
+        <div style="display: flex; align-items: baseline; gap: 8px"><span class="k-lbl" style="font-weight: 600">Groceries</span><span class="k-amt">312,40 zł</span></div>
+        <div class="k-bar"><div style="width: 38%; background: #4C5BD4"></div></div>
+        <span class="k-sub">187,60 spent of 500,00</span>
+      </div>
+      <div class="k-row k-env">
+        <div style="display: flex; align-items: baseline; gap: 8px"><span class="k-lbl" style="font-weight: 600">Fun</span><span class="k-amt" style="color: #6B6F76">0,00 zł</span></div>
+        <div class="k-bar"><div style="width: 0%"></div></div>
+        <span class="k-sub">Nothing assigned yet</span>
+      </div>
+      <div class="k-row k-env">
+        <div style="display: flex; align-items: baseline; gap: 8px"><span class="k-lbl" style="font-weight: 600">Fuel</span><span class="k-amt">50,00 zł</span></div>
+        <div class="k-bar"><div style="width: 83%; background: #4C5BD4"></div></div>
+        <span class="k-sub">250,00 spent of 300,00</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="k-sh"><span>Sinking funds</span></div>
+  <div style="padding: 0 16px">
+    <div class="k-grp">
+      <div class="k-row k-env">
+        <div style="display: flex; align-items: baseline; gap: 8px"><span class="k-lbl" style="font-weight: 600">Holiday</span><span class="k-amt">1.200,00 zł</span></div>
+        <div class="k-bar"><div style="width: 24%; background: #2E8B57"></div></div>
+        <span class="k-sub">of 5.000,00 by Jun 2027 · Savings EUR</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="k-sh"><span>Due this month</span><a href="#">Planned</a></div>
+  <div style="padding: 0 16px">
+    <div class="k-grp">
+      <div class="k-row"><div style="width: 40px; display: flex; flex-direction: column; align-items: center"><span style="font-size: 11px; font-weight: 600; color: #6B6F76">OCT</span><span style="font-size: 17px; font-weight: 700; line-height: 20px">15</span></div><span class="k-lbl">Rent</span><span class="k-amt">−2.400,00 zł</span></div>
+      <div class="k-row"><div style="width: 40px; display: flex; flex-direction: column; align-items: center"><span style="font-size: 11px; font-weight: 600; color: #6B6F76">OCT</span><span style="font-size: 17px; font-weight: 700; line-height: 20px">22</span></div><span class="k-lbl">Spotify</span><span class="k-amt">−23,99 zł</span></div>
+    </div>
+  </div>
+
+  <nav aria-label="Tabs" style="position: absolute; left: 0; right: 0; bottom: 0; height: 83px; background: rgba(250,250,248,.96); border-top: 1px solid #E3E3DF; display: flex">
+    <a href="#" class="k-tab"><svg/>Inbox</a>
+    <a href="#" class="k-tab"><svg/>Activity</a>
+    <a href="#" class="k-tab"><svg/>Planned</a>
+    <a href="#" class="k-tab" style="color: #4C5BD4" aria-current="page"><svg/>Budget</a>
+    <a href="#" class="k-tab"><svg/>Settings</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:1180}}">
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+
+
+</body></html>

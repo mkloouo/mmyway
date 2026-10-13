@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>New account step 1</title>
+<script src="f476e872-d95b-4a2f-9e1f-736336bd7bf4"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.k-grp{background:#FFFFFF;border:1px solid #E3E3DF;border-radius:14px;overflow:hidden}
+.k-row{display:flex;align-items:center;gap:12px;min-height:52px;padding:0 16px;position:relative;box-sizing:border-box}
+.k-row + .k-row::before{content:"";position:absolute;top:0;left:16px;right:0;height:1px;background:#E3E3DF}
+.k-lbl{flex:1;font-size:15px;line-height:20px;color:#14151A}
+.k-sub{font-size:13px;line-height:17px;color:#6B6F76}
+.k-val{font-size:15px;color:#14151A;white-space:nowrap}
+.k-sh{font-size:11px;line-height:14px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:#6B6F76;padding:20px 4px 8px}
+.k-stack{flex:1;min-width:0;display:flex;flex-direction:column;padding:9px 0}
+.k-sw{width:51px;height:31px;border-radius:999px;background:#4C5BD4;position:relative;flex:none;border:0;padding:0}
+.k-sw::after{content:"";position:absolute;right:2px;top:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.k-kind{flex:1;border:1px solid #E3E3DF;background:#fff;border-radius:14px;padding:12px;font:inherit;text-align:left;display:flex;flex-direction:column;gap:6px}
+.k-kind.on{border:2px solid #4C5BD4;background:#E7E9FB;padding:11px}
+.k-ud{flex:none}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; background: #3A3A3C; font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif; color: #14151A; position: relative; overflow: hidden">
+  <div style="position: absolute; left: 16px; right: 16px; top: 46px; height: 30px; border-radius: 12px 12px 0 0; background: #8E8E93"></div>
+  <div style="position: absolute; left: 0; right: 0; top: 56px; bottom: 0; background: #F5F5F3; border-radius: 14px 14px 0 0; display: flex; flex-direction: column">
+    <div style="display: flex; align-items: center; height: 56px; padding: 0 8px; gap: 4px">
+      <button aria-label="Cancel" style="width: 44px; height: 44px; border: 0; background: transparent; padding: 0; display: flex; align-items: center; justify-content: center"><svg/></button>
+      <div style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 17px; font-weight: 600">New account</span><span class="k-sub">Step 1 of 2</span></div>
+    </div>
+    <div style="display: flex; gap: 6px; padding: 0 16px"><div style="flex: 1; height: 4px; border-radius: 2px; background: #4C5BD4"></div><div style="flex: 1; height: 4px; border-radius: 2px; background: #E3E3DF"></div></div>
+
+    <div style="padding: 0 16px; display: flex; flex-direction: column; flex: 1">
+      <div class="k-sh">What kind</div>
+      <div style="display: flex; gap: 8px" role="radiogroup" aria-label="What kind">
+        <button class="k-kind on" role="radio" aria-checked="true">
+          <svg/>
+          <span style="font-size: 15px; font-weight: 600">Money I have</span><span style="font-size: 12px; line-height: 16px; color: #3A48B8">Bank, card, cash, savings</span>
+        </button>
+        <button class="k-kind" role="radio" aria-checked="false">
+          <svg/>
+          <span style="font-size: 15px; font-weight: 600">Loan or debt</span><span style="font-size: 12px; line-height: 16px; color: #6B6F76">Owed by me, or to me</span>
+        </button>
+      </div>
+
+      <div class="k-sh">Details</div>
+      <div class="k-grp">
+        <div class="k-row"><label for="na-n" class="k-lbl" style="flex: none; width: 96px">Name</label><input id="na-n" value="Revolut card" style="flex: 1; min-width: 0; border: 0; font: inherit; font-size: 15px; text-align: right; color: #14151A; background: transparent; outline: none"></div>
+        <div class="k-row"><span class="k-lbl">Type</span><span class="k-val">Credit card</span><svg/></div>
+        <div class="k-row"><span class="k-lbl">Currency</span><span class="k-val">PLN</span><svg/></div>
+        <div class="k-row" style="background: #FAFAF8"><div class="k-stack"><span class="k-lbl">Paid off on</span><span class="k-sub">The day the card bill is due</span></div><span class="k-val">25th of the month</span><svg/></div>
+      </div>
+
+      <div style="height: 10px"></div>
+      <div class="k-grp">
+        <div class="k-row"><div class="k-stack"><span class="k-lbl">In net worth</span><span class="k-sub">Firefly III adds it to your total</span></div><button class="k-sw" aria-label="Include in net worth" aria-pressed="true"></button></div>
+        <div class="k-row"><label for="na-d" class="k-lbl" style="flex: none; width: 96px">Note</label><input id="na-d" placeholder="Optional" style="flex: 1; min-width: 0; border: 0; font: inherit; font-size: 15px; text-align: right; background: transparent; outline: none"></div>
+      </div>
+    </div>
+
+    <div style="border-top: 1px solid #E3E3DF; padding: 12px 16px 34px">
+      <button style="width: 100%; height: 52px; border: 0; border-radius: 14px; background: #4C5BD4; color: #fff; font: inherit; font-size: 17px; font-weight: 600">Continue</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844}}">
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+
+
+</body></html>

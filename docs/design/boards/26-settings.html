@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>Settings</title>
+<script src="b0c0194e-40d4-4b00-b778-fa2b80f24419"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#4C5BD4}a:hover{color:#3A48B8}
+.k-grp{background:#FFFFFF;border:1px solid #E3E3DF;border-radius:14px;overflow:hidden}
+.k-row{display:flex;align-items:center;gap:12px;min-height:52px;padding:0 14px 0 12px;position:relative;box-sizing:border-box}
+.k-row + .k-row::before{content:"";position:absolute;top:0;left:52px;right:0;height:1px;background:#E3E3DF}
+.k-lbl{font-size:15px;line-height:20px;color:#14151A}
+.k-sub{font-size:13px;line-height:17px;color:#6B6F76}
+.k-val{font-size:15px;color:#6B6F76;white-space:nowrap}
+.k-sh{font-size:11px;line-height:14px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:#6B6F76;padding:22px 20px 8px}
+.k-tile{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:none}
+.k-stack{flex:1;min-width:0;display:flex;flex-direction:column;padding:9px 0}
+.k-sw{width:51px;height:31px;border-radius:999px;background:#4C5BD4;position:relative;flex:none;border:0;padding:0}
+.k-sw::after{content:"";position:absolute;right:2px;top:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.k-sw.off{background:#E3E3DF}.k-sw.off::after{right:auto;left:2px}
+.k-chev{flex:none}
+.k-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;font-weight:500;color:#6B6F76;text-decoration:none;padding-top:7px}
+</style>
+</helmet>
+<div style="width: 390px; height: 1500px; background: #F5F5F3; font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif; color: #14151A; position: relative; overflow: hidden">
+  <div style="height: 54px"></div>
+  <h1 style="margin: 0; padding: 6px 20px 14px; font-size: 34px; line-height: 41px; font-weight: 700">Settings</h1>
+
+  <div style="padding: 0 16px">
+    <a href="#" class="k-grp" style="display: flex; align-items: center; gap: 14px; padding: 14px; text-decoration: none; color: #14151A">
+      <div style="width: 48px; height: 48px; border-radius: 12px; background: #E7E9FB; display: flex; align-items: center; justify-content: center; flex: none"><svg/></div>
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 2px">
+        <span style="font-size: 17px; font-weight: 600">Your Firefly III</span>
+        <span class="k-sub" style="display: flex; align-items: center; gap: 6px"><span style="width: 8px; height: 8px; border-radius: 50%; background: #2E8B57"></span>Connected · synced just now</span>
+      </div>
+      <svg/>
+    </a>
+  </div>
+
+  <div class="k-sh">When you add money</div>
+  <div style="padding: 0 16px">
+    <div class="k-grp">
+      <div class="k-row"><div class="k-tile" style="background: #4C5BD4"><svg/></div><div class="k-stack"><span class="k-lbl">Pay from</span><span class="k-sub">Picked first for card payments</span></div><span class="k-val">Checking</span><svg/></div>
+      <div class="k-row"><div class="k-tile" style="background: #B45309"><svg/></div><div class="k-stack"><span class="k-lbl">Cash comes from</span><span class="k-sub">Picked when you pay in cash</span></div><span class="k-val">Cash wallet</span><svg/></div>
+      <div class="k-row"><div class="k-tile" style="background: #2E8B57"><svg/></div><div class="k-stack"><span class="k-lbl">Currency</span></div><span class="k-val">PLN</span><svg/></div>
+      <div class="k-row"><div class="k-tile" style="background: #3B82F6"><svg/></div><div class="k-stack"><span class="k-lbl">Remember the place</span><span class="k-sub">Shown on Firefly III's map</span></div><button class="k-sw off" aria-label="Record where it was made" aria-pressed="false"></button></div>
+    </div>
+  </div>
+
+  <div class="k-sh">Reading receipts</div>
+  <div style="padding: 0 16px">
+    <div class="k-grp">
+      <a href="SettingsReceipts.dc.html" class="k-row" style="text-decoration: none"><div class="k-tile" style="background: #6B6F76"><svg/></div><div class="k-stack"><span class="k-lbl">Receipt reading</span><span class="k-sub" style="color: #8A4006">Off · photos are kept, not read</span></div><span style="font-size: 15px; font-weight: 600; color: #4C5BD4">Set up</span></a>
+    </div>
+  </div>
+
+  <div class="k-sh">Accounts and money</div>
+  <div style="padding: 0 16px">
+    <div class="k-grp">
+      <div class="k-row"><div class="k-tile" style="background: #4C5BD4"><svg/></div><div class="k-stack"><span class="k-lbl">Accounts</span></div><span class="k-val">40 · 1 envelope</span><svg/></div>
+      <div class="k-row"><div class="k-tile" style="background: #C2413A"><svg/></div><div class="k-stack"><span class="k-lbl">Loans and debts</span></div><span class="k-val">2</span><svg/></div>
+      <a href="CashSweepPicker.dc.html" class="k-row" style="text-decoration: none"><div class="k-tile" style="background: #B45309"><svg/></div><div class="k-stack"><span class="k-lbl">Counting cash</span><span class="k-sub">Where differences are booked</span></div><svg/></a>
+      <div class="k-row"><div class="k-tile" style="background: #2E8B57"><svg/></div><div class="k-stack"><span class="k-lbl">Payee nicknames</span><span class="k-sub">"BIEDRONKA 1234" is Biedronka</span></div><span class="k-val">12</span><svg/></div>
+    </div>
+  </div>
+
+  <div class="k-sh">Automation in Firefly III</div>
+  <div style="padding: 0 16px">
+    <div class="k-grp">
+      <div class="k-row"><div class="k-tile" style="background: #7C5BD4"><svg/></div><div class="k-stack"><span class="k-lbl">Rules</span><span class="k-sub">Auto-fill category and budget</span></div><span class="k-val">4</span><svg/></div>
+      <div class="k-row"><div class="k-tile" style="background: #7C5BD4"><svg/></div><div class="k-stack"><span class="k-lbl">Subscriptions and recurring</span><span class="k-sub">Everything behind Planned, as stored</span></div><span class="k-val">12</span><svg/></div>
+    </div>
+  </div>
+
+  <div class="k-sh">Privacy and reminders</div>
+  <div style="padding: 0 16px">
+    <div class="k-grp">
+      <div class="k-row"><div class="k-tile" style="background: #14151A"><svg/></div><div class="k-stack"><span class="k-lbl">Lock the app</span><span class="k-sub">Face, fingerprint or passcode</span></div><button class="k-sw" aria-label="Require unlock" aria-pressed="true"></button></div>
+      <div class="k-row"><div class="k-tile" style="background: #C2413A"><svg/></div><div class="k-stack"><span class="k-lbl">Reminders</span><span class="k-sub">The day before, at 9:00</span></div><svg/></div>
+    </div>
+  </div>
+
+  <div class="k-sh">App</div>
+  <div style="padding: 0 16px">
+    <div class="k-grp">
+      <div class="k-row"><div class="k-tile" style="background: #3B82F6"><svg/></div><div class="k-stack"><span class="k-lbl">Language</span></div><span class="k-val">Like my phone</span><svg/></div>
+      <div class="k-row"><div class="k-tile" style="background: #6B6F76"><svg/></div><div class="k-stack"><span class="k-lbl">About and help</span><span class="k-sub">Version 1.8.0 · diagnostics</span></div><svg/></div>
+    </div>
+  </div>
+
+  <nav aria-label="Tabs" style="position: absolute; left: 0; right: 0; bottom: 0; height: 83px; background: rgba(250,250,248,.96); border-top: 1px solid #E3E3DF; display: flex">
+    <a href="#" class="k-tab"><svg/>Inbox</a>
+    <a href="#" class="k-tab"><svg/>Activity</a>
+    <a href="#" class="k-tab"><svg/>Planned</a>
+    <a href="#" class="k-tab"><svg/>Budget</a>
+    <a href="#" class="k-tab" style="color: #4C5BD4" aria-current="page"><svg/>Settings</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:1500}}">
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+
+
+</body></html>

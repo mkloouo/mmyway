@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>Count cash empty</title>
+<script src="e2344fd0-6282-4c3b-b712-0eb60460aa0d"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#4C5BD4}a:hover{color:#3A48B8}
+.k-grp{background:#FFFFFF;border:1px solid #E3E3DF;border-radius:14px;overflow:hidden}
+.k-row{display:flex;align-items:center;gap:12px;min-height:52px;padding:0 16px;position:relative;box-sizing:border-box}
+.k-row + .k-row::before{content:"";position:absolute;top:0;left:16px;right:0;height:1px;background:#E3E3DF}
+.k-lbl{flex:1;font-size:15px;line-height:20px;color:#14151A}
+.k-sub{font-size:13px;line-height:17px;color:#6B6F76}
+.k-amt{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.k-ibtn{width:44px;height:44px;border:0;background:transparent;padding:0;display:flex;align-items:center;justify-content:center}
+.k-den{display:grid;grid-template-columns:64px minmax(0,1fr) 72px;align-items:center;gap:8px;height:40px}
+.k-step{display:flex;align-items:center;gap:0;border-radius:10px;background:#EFEFEC;height:32px}
+.k-step button{width:36px;height:32px;border:0;background:transparent;font:inherit;font-size:18px;color:#14151A;padding:0}
+.k-step span{flex:1;text-align:center;font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+.k-seg{display:flex;background:#EFEFEC;border-radius:10px;padding:2px}
+.k-seg button{flex:1;height:30px;border:0;border-radius:8px;background:transparent;font:inherit;font-size:13px;font-weight:600;color:#6B6F76}
+.k-seg button.on{background:#fff;color:#14151A;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.k-sw{position:relative;width:51px;height:31px;border:0;border-radius:999px;background:#E3E3DF;padding:0;flex:none}
+.k-sw::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#FFFFFF;box-shadow:0 2px 4px rgba(0,0,0,.2)}
+.k-sw[aria-checked="true"]{background:#4C5BD4}
+.k-sw[aria-checked="true"]::after{left:22px}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; background: #3A3A3C; font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif; color: #14151A; position: relative; overflow: hidden">
+  <div style="position: absolute; left: 16px; right: 16px; top: 46px; height: 30px; border-radius: 12px 12px 0 0; background: #8E8E93"></div>
+  <div style="position: absolute; left: 0; right: 0; top: 56px; bottom: 0; background: #F5F5F3; border-radius: 14px 14px 0 0; display: flex; flex-direction: column">
+    <div style="display: flex; align-items: center; height: 56px; padding: 0 8px; gap: 4px">
+      <button class="k-ibtn" aria-label="Cancel"><svg/></button>
+      <div style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 17px; font-weight: 600">Count cash</span><span class="k-sub">Nothing to count yet</span></div>
+    </div>
+
+    <div style="padding: 4px 16px 0; display: flex; flex-direction: column; gap: 24px; flex: 1; overflow: hidden">
+      <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 12px">
+        <div style="width: 72px; height: 72px; border-radius: 50%; background: #FDF0DC; display: flex; align-items: center; justify-content: center">
+          <svg/>
+        </div>
+        <div style="font-size: 20px; line-height: 25px; font-weight: 700">No cash envelopes yet</div>
+        <div style="font-size: 15px; line-height: 21px; color: #6B6F76; max-width: 290px">Pick the accounts that hold real cash — a wallet, a jar at home — and count them here in one go.</div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px; padding-bottom: 16px">
+        <div style="font-size: 11px; line-height: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; color: #6B6F76; padding: 0 4px">Your accounts</div>
+        <div class="k-grp">
+          <div class="k-row"><span class="k-lbl">Checking</span><button class="k-sw" role="switch" aria-checked="false" aria-label="Checking"></button></div>
+          <div class="k-row"><span class="k-lbl">Cash wallet</span><button class="k-sw" role="switch" aria-checked="true" aria-label="Cash wallet"></button></div>
+          <div class="k-row"><span class="k-lbl">Savings EUR</span><button class="k-sw" role="switch" aria-checked="false" aria-label="Savings EUR"></button></div>
+        </div>
+        <div class="k-sub" style="padding: 0 4px">Switched-on accounts become cash envelopes.</div>
+      </div>
+    </div>
+
+    <div style="border-top: 1px solid #E3E3DF; padding: 10px 16px 34px; background: #F5F5F3">
+      <button style="width: 100%; height: 52px; border: 0; border-radius: 14px; background: #4C5BD4; color: #FFFFFF; font: inherit; font-size: 17px; font-weight: 600">Start counting</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844}}">
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+
+
+</body></html>

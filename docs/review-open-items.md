@@ -2,7 +2,7 @@
 
 2026-09-27 · Mykola Odnosumov
 
-**Superseded (2026-09-28): open items are tracked in [GitHub Issues](https://github.com/mkloouo/mmyway/issues).** The remaining ones link to their issue below: the on-device checks are #39, the release APK build is #40. This file stays as the record of the 2026-09-27 review.
+**Superseded (2026-09-28); historical record only.** Open work is tracked in Linear (team MKL). The issue links below (#39, #40) point at closed GitHub history. This file stays as the record of the 2026-09-27 review.
 
 ## Status
 

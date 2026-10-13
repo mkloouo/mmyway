@@ -29,6 +29,7 @@ import { signOut, readStoredCredentials, probeAbout } from '../../src/api/ff3/au
 import { writeHosts } from '../../src/api/ff3/hosts';
 import { connectFailureText, connectToInstance } from '../../src/settings/connectInstance';
 import { getDemoMode } from '../../src/settings/appSettings';
+import { useFlags } from '../../src/flags/useFlag';
 import { useSync } from '../../src/sync/useSync';
 import { withSyncPaused } from '../../src/sync/runSync';
 import {
@@ -53,6 +54,7 @@ export default function ConnectionScreen() {
   const t = useTheme();
   const { t: tr } = useTranslation();
   const act = useAction();
+  const flags = useFlags();
 
   const { data: settings } = useQuery({
     queryKey: SETTINGS_QUERY_KEY,
@@ -155,7 +157,7 @@ export default function ConnectionScreen() {
   });
 
   // Kept while the settings load, like the sign-out row, so the page keeps its height.
-  const showTryDemo = !settings || (!signedIn && !demo);
+  const showTryDemo = flags.demo_mode && (!settings || (!signedIn && !demo));
 
   // The address the app is using now, the one "Open in browser" opens.
   const activeHost = ff3ActiveHost ?? ff3Hosts[0] ?? null;
@@ -258,18 +260,20 @@ export default function ConnectionScreen() {
             chevron
             onPress={() => setSheet('signIn')}
           />
-          <ListRow
-            label={tr('proxy.title')}
-            trailing={
-              <Text style={[t.type.body, { color: t.color.textMuted }]}>
-                {proxyHeaderCount > 0
-                  ? tr('proxy.headerCount', { count: proxyHeaderCount })
-                  : tr('settings.none')}
-              </Text>
-            }
-            chevron
-            onPress={() => router.push('/settings/proxy')}
-          />
+          {flags.reverse_proxy && (
+            <ListRow
+              label={tr('proxy.title')}
+              trailing={
+                <Text style={[t.type.body, { color: t.color.textMuted }]}>
+                  {proxyHeaderCount > 0
+                    ? tr('proxy.headerCount', { count: proxyHeaderCount })
+                    : tr('settings.none')}
+                </Text>
+              }
+              chevron
+              onPress={() => router.push('/settings/proxy')}
+            />
+          )}
         </Card>
 
         {/* The row is kept while the settings load, so the page is its final height on the first frame. */}

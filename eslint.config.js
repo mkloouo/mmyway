@@ -13,6 +13,43 @@ const TESTS = [
   'src/db/testDb.ts',
 ];
 
+// AGENTS.md: payload_json/draft_json only through their zod-validated readers and writers.
+const JSON_COLUMNS = [
+  {
+    selector:
+      "CallExpression[callee.object.name='JSON'][callee.property.name='parse'] > MemberExpression[property.name=/^(payloadJson|draftJson)$/]",
+    message:
+      'Read payload_json/draft_json through src/sync/payloadJson.ts or src/inbox/draftJson.ts (zod-validated, versioned), never JSON.parse.',
+  },
+  {
+    selector:
+      "Property[key.name=/^(payloadJson|draftJson)$/] > CallExpression[callee.object.name='JSON'][callee.property.name='stringify']",
+    message:
+      'Write payload_json/draft_json with writePayload()/writeDraft(), which stamp the version.',
+  },
+];
+
+const MAX_LINES = 400;
+// Ceilings, in lines of code, for the files that were already too big (2026-10-13).
+const OVERSIZED = {
+  'app/capture.tsx': 1344,
+  'src/ui/components.tsx': 1048,
+  'app/draft/[[]id].tsx': 983,
+  'app/transactions/[[]groupId].tsx': 942,
+  'src/sync/outbox.ts': 930,
+  'app/planned/new.tsx': 705,
+  'app/count.tsx': 682,
+  'app/(tabs)/activity.tsx': 680,
+  'app/(tabs)/index.tsx': 571,
+  'app/accounts/new.tsx': 528,
+  'src/ui/ScheduleRows.tsx': 549,
+  'app/planned/[[]key].tsx': 538,
+  'src/planned/notifications.ts': 469,
+  'src/ui/InboxCards.tsx': 459,
+  'src/sync/referenceData.ts': 436,
+  'app/accounts/[[]id].tsx': 404,
+};
+
 module.exports = defineConfig([
   expoConfig,
   {
@@ -44,21 +81,7 @@ module.exports = defineConfig([
     files: ['app/**/*.{ts,tsx}', 'src/**/*.{ts,tsx}'],
     ignores: [...TESTS, 'src/sync/payloadJson.ts', 'src/inbox/draftJson.ts'],
     rules: {
-      'no-restricted-syntax': [
-        'error',
-        {
-          selector:
-            "CallExpression[callee.object.name='JSON'][callee.property.name='parse'] > MemberExpression[property.name=/^(payloadJson|draftJson)$/]",
-          message:
-            'Read payload_json/draft_json through src/sync/payloadJson.ts or src/inbox/draftJson.ts (zod-validated, versioned), never JSON.parse.',
-        },
-        {
-          selector:
-            "Property[key.name=/^(payloadJson|draftJson)$/] > CallExpression[callee.object.name='JSON'][callee.property.name='stringify']",
-          message:
-            'Write payload_json/draft_json with writePayload()/writeDraft(), which stamp the version.',
-        },
-      ],
+      'no-restricted-syntax': ['error', ...JSON_COLUMNS],
       'no-restricted-globals': [
         'error',
         { name: 'parseFloat', message: 'FF3 amounts are strings: use src/api/ff3/decimal.ts.' },
@@ -94,6 +117,35 @@ module.exports = defineConfig([
         require: 'readonly',
         process: 'readonly',
       },
+    },
+  },
+  {
+    // No file grows into a dump (docs/UI_KIT.md § File size): 400 lines of code at most.
+    files: ['app/**/*.{ts,tsx}', 'src/**/*.{ts,tsx}'],
+    ignores: TESTS,
+    rules: { 'max-lines': ['error', { max: MAX_LINES, skipBlankLines: true, skipComments: true }] },
+  },
+  // Files already over the limit are pinned at today's size: they may shrink, never grow. Lower a
+  // number when a file shrinks; drop its entry once it is under MAX_LINES. Never raise one.
+  ...Object.entries(OVERSIZED).map(([file, max]) => ({
+    files: [file],
+    rules: { 'max-lines': ['error', { max, skipBlankLines: true, skipComments: true }] },
+  })),
+  {
+    // Colours come from the theme (src/ui/theme.ts), never a literal (docs/UI_KIT.md).
+    files: ['app/**/*.tsx', 'src/**/*.tsx'],
+    ignores: TESTS,
+    rules: {
+      // Restates JSON_COLUMNS: a later block's no-restricted-syntax replaces the earlier one.
+      'no-restricted-syntax': [
+        'error',
+        ...JSON_COLUMNS,
+        {
+          selector: 'Literal[value=/^(#[0-9a-fA-F]{3,8}|rgba?\\(|hsla?\\()/]',
+          message:
+            'Use a colour token from useTheme().color; add one to src/ui/theme.ts if missing.',
+        },
+      ],
     },
   },
   {

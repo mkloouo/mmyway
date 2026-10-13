@@ -2,9 +2,10 @@
 // amount field, the scroll, the currency and role sheets, and how a day is labelled and picked.
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, Text, View, type KeyboardTypeOptions } from 'react-native';
+import { Pressable, ScrollView, Text, View, type KeyboardTypeOptions } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { appLocale } from '../i18n';
-import { ROW_HEIGHT, SCREEN_TOP_PADDING } from '../ui/components';
+import { PRESSED_OPACITY, ROW_HEIGHT, SCREEN_TOP_PADDING } from '../ui/components';
 import { pickableCurrencies } from '../ui/currencies';
 import { pickDate } from '../ui/pickDate';
 import { PickerSheet } from '../ui/PickerSheet';
@@ -185,5 +186,49 @@ export function RoleSheet({
       selected={selected}
       onSelect={(role) => role && onSelect(role as AccountRole)}
     />
+  );
+}
+
+/** A "what kind" card: a radio in the group, 2 px accent border and accentSoft fill when selected. */
+export function KindCard({
+  testID,
+  icon,
+  label,
+  sub,
+  selected,
+  onPress,
+}: {
+  testID: string;
+  icon: 'card-outline' | 'trending-down-outline';
+  label: string;
+  sub: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  const t = useTheme();
+  return (
+    <Pressable
+      testID={testID}
+      onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityLabel={label}
+      accessibilityState={{ checked: selected }}
+      style={({ pressed }) => ({
+        flex: 1,
+        gap: t.space.sm,
+        padding: selected ? t.space.md - 1 : t.space.md,
+        borderRadius: t.radius.md,
+        borderWidth: selected ? 2 : 1,
+        borderColor: selected ? t.color.accent : t.color.border,
+        backgroundColor: selected ? t.color.accentSoft : t.color.surface,
+        opacity: pressed ? PRESSED_OPACITY : 1,
+      })}
+    >
+      <Ionicons name={icon} size={22} color={selected ? t.color.accent : t.color.textMuted} />
+      <Text style={[t.type.body, { color: t.color.text, fontWeight: '600' }]}>{label}</Text>
+      <Text style={[t.type.label, { color: selected ? t.color.accent : t.color.textMuted }]}>
+        {sub}
+      </Text>
+    </Pressable>
   );
 }

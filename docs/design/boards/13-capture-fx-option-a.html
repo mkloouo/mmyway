@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>Capture FX option A</title>
+<script src="0db2f5f0-425d-4e79-83d7-c6f3a47fb29c"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.k-grp{background:#FFFFFF;border:1px solid #E3E3DF;border-radius:14px;overflow:hidden}
+.k-row{display:flex;align-items:center;gap:10px;min-height:48px;padding:0 0 0 14px;position:relative;box-sizing:border-box}
+.k-row + .k-row::before{content:"";position:absolute;top:0;left:14px;right:0;height:1px;background:#E3E3DF}
+.k-key{width:58px;flex:none;font-size:13px;color:#6B6F76}
+.k-sub{font-size:13px;line-height:17px;color:#6B6F76}
+.k-chips{flex:1;min-width:0;display:flex;gap:6px;overflow:hidden;padding-right:4px}
+.k-c{height:32px;padding:0 12px;border-radius:999px;border:1px solid #E3E3DF;background:#fff;font:inherit;font-size:14px;color:#14151A;white-space:nowrap;flex:none}
+.k-c.on{background:#4C5BD4;border-color:#4C5BD4;color:#fff;font-weight:600}
+.k-find{width:44px;height:48px;border:0;border-left:1px solid #E3E3DF;background:transparent;display:flex;align-items:center;justify-content:center;flex:none;padding:0}
+.k-pad{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.k-pad button{height:44px;border:0;border-radius:12px;background:#fff;font:inherit;font-size:22px;font-weight:500;color:#14151A}
+.k-seg{display:flex;background:#EAEAE6;border-radius:10px;padding:2px;flex:1}
+.k-seg button{flex:1;height:32px;border:0;border-radius:8px;background:transparent;font:inherit;font-size:14px;font-weight:600;color:#6B6F76}
+.k-seg button.on{background:#fff;color:#14151A;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.k-pill{height:30px;padding:0 10px;border-radius:999px;border:0;background:#EAEAE6;font:inherit;font-size:13px;font-weight:600;color:#14151A;display:flex;align-items:center;gap:4px}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; background: #3A3A3C; font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif; color: #14151A; position: relative; overflow: hidden">
+  <div style="position: absolute; left: 16px; right: 16px; top: 46px; height: 30px; border-radius: 12px 12px 0 0; background: #8E8E93"></div>
+  <div style="position: absolute; left: 0; right: 0; top: 56px; bottom: 0; background: #F5F5F3; border-radius: 14px 14px 0 0; display: flex; flex-direction: column">
+
+    <div style="display: flex; align-items: center; gap: 8px; padding: 8px 12px 0 4px">
+      <button aria-label="Cancel" style="width: 44px; height: 44px; border: 0; background: transparent; padding: 0; display: flex; align-items: center; justify-content: center"><svg/></button>
+      <div class="k-seg" role="group" aria-label="Type"><button class="on" aria-pressed="true">Expense</button><button>Income</button><button>Transfer</button></div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px 16px 10px">
+      <div style="font-size: 52px; line-height: 56px; font-weight: 700; letter-spacing: -1px; font-variant-numeric: tabular-nums">120,00 <span style="color: #6B6F76; font-weight: 600">zł</span></div>
+      <div style="display: flex; gap: 6px">
+        <button class="k-pill">PLN<svg/></button>
+        <button class="k-pill">Today<svg/></button>
+        <button class="k-pill">Details</button>
+      </div>
+    </div>
+
+    <div style="padding: 0 12px; display: flex; flex-direction: column; gap: 8px">
+      <div class="k-grp">
+        <div class="k-row" style="padding-right: 14px">
+          <label for="fxa-a" style="flex: none; font-size: 13px; color: #6B6F76; white-space: nowrap">Savings EUR paid</label>
+          <input id="fxa-a" value="27,85 €" inputmode="decimal" style="flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; font-size: 17px; font-weight: 600; outline: none; text-align: right; font-variant-numeric: tabular-nums">
+          <span class="k-sub" style="white-space: nowrap">1 € ≈ 4,31 zł</span>
+        </div>
+      </div>
+      <div class="k-grp">
+        <div class="k-row" style="padding-right: 14px"><label for="fxa-t" class="k-key">Title</label><input id="fxa-t" value="Dinner in Prague" style="flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; font-size: 15px; outline: none"></div>
+        <div class="k-row" style="box-shadow: inset 3px 0 0 #B45309"><span class="k-key" style="color: #8A4006; font-weight: 600">Payee</span><div class="k-chips"><button class="k-c">Pasta Bar</button><button class="k-c">Lokal</button><button class="k-c">Wolt</button></div><button class="k-find" aria-label="All payees"><svg/></button></div>
+        <div class="k-row"><span class="k-key">From</span><div class="k-chips"><button class="k-c on">Savings EUR</button><button class="k-c">Checking</button><button class="k-c">Cash wallet</button></div><button class="k-find" aria-label="All accounts"><svg/></button></div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid #E3E3DF; margin-left: 14px">
+          <button style="text-align: left; border: 0; background: transparent; padding: 8px 0; font: inherit; display: flex; flex-direction: column; gap: 1px"><span class="k-sub">Category</span><span style="font-size: 15px; display: flex; align-items: center; gap: 6px"><span style="width: 8px; height: 8px; border-radius: 50%; background: #C77B30"></span>Eating out</span></button>
+          <button style="text-align: left; border: 0; border-left: 1px solid #E3E3DF; background: transparent; padding: 8px 14px; font: inherit; display: flex; flex-direction: column; gap: 1px"><span class="k-sub">Budget</span><span style="font-size: 15px">Food <span class="k-sub">· 204,55 left</span></span></button>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex: 1"></div>
+
+    <div style="padding: 0 12px 8px">
+      <div class="k-pad">
+        <button>1</button><button>2</button><button>3</button>
+        <button>4</button><button>5</button><button>6</button>
+        <button>7</button><button>8</button><button>9</button>
+        <button>,</button><button>0</button><button aria-label="Delete digit"><svg/></button>
+      </div>
+    </div>
+    <div style="display: flex; gap: 8px; padding: 4px 12px 30px">
+      <button style="flex: 1; height: 52px; border: 0; border-radius: 14px; background: #EAEAE6; color: #14151A; font: inherit; font-size: 16px; font-weight: 600">To inbox</button>
+      <button aria-disabled="true" style="flex: 2; height: 52px; border: 0; border-radius: 14px; background: #B9BFEA; color: #fff; font: inherit; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px"><span style="font-size: 16px; font-weight: 600">Save &amp; confirm</span><span style="font-size: 12px; font-weight: 500">Add a payee first</span></button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844}}">
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+
+
+</body></html>

@@ -37,6 +37,7 @@ import { compareDecimal, divideDecimal } from '../../src/api/ff3/decimal';
 import { enqueueBudgetRename, enqueueBudgetDelete } from '../../src/bucket/budgetActions';
 import { appLocale } from '../../src/i18n';
 import { dayDate } from '../../src/utils/day';
+import { withFlag } from '../../src/flags/RequireFlag';
 
 /** Share of the assignment spent, 0–1, for the bar. Overspent is a full bar. Display only. */
 function spentFraction(envelope: Envelope): number {
@@ -45,7 +46,7 @@ function spentFraction(envelope: Envelope): number {
   return Math.min(1, Number(divideDecimal(spent, envelope.assigned, 4)));
 }
 
-export default function EnvelopeScreen() {
+function EnvelopeScreen() {
   // `cover=1` arrives from the overspent row on the Budget tab: open the move sheet straight away,
   // with the shortfall as the amount.
   const { id: rawId, cover } = useLocalSearchParams<{ id: string; cover?: string }>();
@@ -326,3 +327,5 @@ export default function EnvelopeScreen() {
     </Screen>
   );
 }
+
+export default withFlag('budget', EnvelopeScreen);

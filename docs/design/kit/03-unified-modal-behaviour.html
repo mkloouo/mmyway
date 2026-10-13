@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>Unified modal behaviour</title>
+<script src="59a45ea0-f691-4e15-bf17-c9209fa87b2b"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#4C5BD4}a:hover{color:#3A48B8}
+.k-grp{background:#FFFFFF;border:1px solid #E3E3DF;border-radius:14px;overflow:hidden}
+.k-row{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 16px;position:relative;box-sizing:border-box}
+.k-row + .k-row::before{content:"";position:absolute;top:0;left:16px;right:0;height:1px;background:#E3E3DF}
+.k-lbl{flex:1;font-size:15px;line-height:20px;color:#14151A}
+.k-sub{font-size:13px;line-height:17px;color:#6B6F76}
+.k-sh{font-size:11px;line-height:14px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:#6B6F76}
+.k-frag{width:390px;height:560px;border-radius:44px 44px 0 0;overflow:hidden;position:relative;background:#F5F5F3;box-shadow:0 0 0 1px #DADAD5}
+.k-skel{height:52px;border-radius:0;background:#fff}
+.k-chip{font-size:11px;font-weight:600;letter-spacing:.4px;color:#4C5BD4;background:#E7E9FB;border-radius:999px;padding:3px 8px}
+.k-tier{font-size:12px;font-weight:600;border-radius:999px;padding:3px 9px;white-space:nowrap}
+.t-push{background:#E7E9FB;color:#3A48B8}
+.t-modal{background:#FDF0DC;color:#8A4006}
+.t-sheet{background:#E6F2EA;color:#22693F}
+table{border-collapse:collapse;width:100%}
+td,th{text-align:left;padding:9px 10px;font-size:14px;line-height:18px;border-bottom:1px solid #E3E3DF;vertical-align:middle}
+th{font-size:11px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:#6B6F76}
+</style>
+</helmet>
+<div style="width: 1460px; height: 1180px; box-sizing: border-box; padding: 56px; background: #FBFBF9; font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif; color: #14151A; display: flex; flex-direction: column; gap: 32px">
+
+  <div style="display: flex; flex-direction: column; gap: 6px">
+    <div style="font-size: 13px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; color: #4C5BD4">Kit · 3 of 3</div>
+    <h1 style="margin: 0; font-size: 40px; line-height: 44px; font-weight: 700">How a screen arrives tells you how it leaves.</h1>
+    <div style="font-size: 17px; line-height: 24px; color: #6B6F76; max-width: 980px">A screen that shows something already in a list is <b style="color: #14151A">pushed</b> and goes back. A task that makes something new is a <b style="color: #14151A">modal</b> and gets cancelled or finished. A single decision is a <b style="color: #14151A">sheet</b>. Each tier has one way in, one way out and one place to save.</div>
+  </div>
+
+  <div style="display: flex; gap: 48px; align-items: flex-start">
+
+    <div style="display: flex; flex-direction: column; gap: 28px">
+      <div style="display: flex; gap: 28px">
+
+        <!-- Push -->
+        <div style="display: flex; flex-direction: column; gap: 12px; width: 390px">
+          <div style="display: flex; gap: 10px; align-items: baseline"><span class="k-tier t-push">PUSH</span><span style="font-size: 18px; font-weight: 700">View and edit in place</span></div>
+          <div class="k-frag">
+            <div style="height: 54px"></div>
+            <div style="display: flex; align-items: center; height: 44px; padding: 0 8px">
+              <button style="display: flex; align-items: center; gap: 2px; border: 0; background: transparent; color: #4C5BD4; font: inherit; font-size: 17px; padding: 0 8px; height: 44px"><svg/>Budget</button>
+              <span style="flex: 1"></span>
+              <button aria-label="More" style="width: 44px; height: 44px; border: 0; background: transparent; padding: 0; display: flex; align-items: center; justify-content: center"><svg/></button>
+            </div>
+            <div style="padding: 4px 16px 16px; font-size: 28px; font-weight: 700">Food</div>
+            <div style="padding: 0 16px; display: flex; flex-direction: column; gap: 12px">
+              <div class="k-grp" style="height: 120px"></div>
+              <div class="k-grp"><div class="k-row"><span class="k-lbl">Assigned</span><span style="color: #4C5BD4; font-weight: 600">400,00 zł</span></div><div class="k-row"><span class="k-lbl">Name</span><span class="k-sub">Food</span></div></div>
+            </div>
+            <div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 16px 20px; background: #F5F5F3; border-top: 1px solid #E3E3DF; display: flex; gap: 10px; align-items: center">
+              <span class="k-sub" style="flex: 1">1 change</span>
+              <button style="height: 44px; padding: 0 16px; border: 0; background: transparent; font: inherit; font-size: 15px; font-weight: 600; color: #6B6F76">Undo</button>
+              <button style="height: 44px; padding: 0 24px; border: 0; border-radius: 12px; background: #4C5BD4; color: #fff; font: inherit; font-size: 15px; font-weight: 600">Save</button>
+            </div>
+          </div>
+          <div style="font-size: 13px; line-height: 18px; display: flex; flex-direction: column; gap: 4px">
+            <div><b>In:</b> tap a row in a list. <b>Out:</b> back chevron or edge swipe.</div>
+            <div><b>Save:</b> a save bar slides up only once something changes. Leaving with changes asks once.</div>
+            <div><b>Delete and other rare actions</b> live in ••• at the top right.</div>
+          </div>
+        </div>
+
+        <!-- Modal -->
+        <div style="display: flex; flex-direction: column; gap: 12px; width: 390px">
+          <div style="display: flex; gap: 10px; align-items: baseline"><span class="k-tier t-modal">MODAL</span><span style="font-size: 18px; font-weight: 700">A task with an end</span></div>
+          <div class="k-frag" style="background: #3A3A3C">
+            <div style="position: absolute; left: 16px; right: 16px; top: 46px; height: 30px; border-radius: 12px 12px 0 0; background: #8E8E93"></div>
+            <div style="position: absolute; left: 0; right: 0; top: 56px; bottom: 0; background: #F5F5F3; border-radius: 14px 14px 0 0">
+              <div style="display: flex; align-items: center; height: 56px; padding: 0 8px; gap: 4px">
+                <button aria-label="Cancel" style="width: 44px; height: 44px; border: 0; background: transparent; padding: 0; display: flex; align-items: center; justify-content: center"><svg/></button>
+                <div style="flex: 1; display: flex; flex-direction: column"><span style="font-size: 17px; font-weight: 600">New account</span><span class="k-sub">Step 1 of 2</span></div>
+              </div>
+              <div style="padding: 8px 16px; display: flex; flex-direction: column; gap: 12px">
+                <div class="k-grp" style="height: 156px"></div>
+                <div class="k-grp" style="height: 104px"></div>
+              </div>
+              <div style="position: absolute; left: 0; right: 0; bottom: 0; padding: 12px 16px 20px; border-top: 1px solid #E3E3DF; background: #F5F5F3">
+                <button style="width: 100%; height: 52px; border: 0; border-radius: 14px; background: #4C5BD4; color: #fff; font: inherit; font-size: 17px; font-weight: 600">Continue</button>
+              </div>
+            </div>
+          </div>
+          <div style="font-size: 13px; line-height: 18px; display: flex; flex-direction: column; gap: 4px">
+            <div><b>In:</b> +, FAB, camera, "Count cash". <b>Out:</b> ✕ at the top left, or swipe down when nothing has changed.</div>
+            <div><b>Finish:</b> one sticky primary button at the bottom, always full width and always in the same place.</div>
+            <div>Longer tasks split into steps rather than one long form.</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 28px">
+        <div style="width: 390px; display: flex; flex-direction: column; gap: 8px">
+          <div style="display: flex; gap: 10px; align-items: baseline"><span class="k-tier t-sheet">SHEET</span><span style="font-size: 18px; font-weight: 700">One decision</span></div>
+          <div style="font-size: 13px; line-height: 18px">Choose, Edit or Review (board 2). <b>Out:</b> round ✕ at the top right, tap the scrim, or swipe. A sheet never opens a second sheet; it navigates inside itself.</div>
+        </div>
+        <div style="width: 390px; display: flex; flex-direction: column; gap: 8px">
+          <div style="display: flex; gap: 10px; align-items: baseline"><span class="k-tier" style="background: #FBE9E7; color: #9C2F29">ALERT</span><span style="font-size: 18px; font-weight: 700">Only for no way back</span></div>
+          <div style="font-size: 13px; line-height: 18px">Delete, sign out, skip a booked occurrence, discard. The title is a question ("Delete Food?") and the button names the verb ("Delete"), never "OK".</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mapping table -->
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px">
+      <div class="k-sh">Every screen, today → proposed</div>
+      <div class="k-grp" style="padding: 4px 6px">
+        <sc-raw-table>
+          <sc-raw-thead><sc-raw-tr><sc-raw-th>Screen</sc-raw-th><sc-raw-th>Today</sc-raw-th><sc-raw-th>Proposed</sc-raw-th></sc-raw-tr></sc-raw-thead>
+          <sc-raw-tbody>
+            <sc-raw-tr><sc-raw-td>Capture</sc-raw-td><sc-raw-td class="k-sub">modal</sc-raw-td><sc-raw-td><span class="k-tier t-modal">MODAL</span></sc-raw-td></sc-raw-tr>
+            <sc-raw-tr><sc-raw-td>Receipt</sc-raw-td><sc-raw-td class="k-sub">modal</sc-raw-td><sc-raw-td><span class="k-tier t-modal">MODAL</span></sc-raw-td></sc-raw-tr>
+            <sc-raw-tr><sc-raw-td>Count cash</sc-raw-td><sc-raw-td class="k-sub">modal</sc-raw-td><sc-raw-td><span class="k-tier t-modal">MODAL</span></sc-raw-td></sc-raw-tr>
+            <sc-raw-tr><sc-raw-td>New account / liability</sc-raw-td><sc-raw-td class="k-sub">push, no ✕</sc-raw-td><sc-raw-td><span class="k-tier t-modal">MODAL</span> 2 steps</sc-raw-td></sc-raw-tr>
+            <sc-raw-tr><sc-raw-td>New planned transaction</sc-raw-td><sc-raw-td class="k-sub">push + ✕</sc-raw-td><sc-raw-td><span class="k-tier t-modal">MODAL</span> 3 steps</sc-raw-td></sc-raw-tr>
+            <sc-raw-tr><sc-raw-td>Transaction detail</sc-raw-td><sc-raw-td class="k-sub">modal + Save</sc-raw-td><sc-raw-td><span class="k-tier t-push">PUSH</span> save bar</sc-raw-td></sc-raw-tr>
+            <sc-raw-tr><sc-raw-td>Account edit</sc-raw-td><sc-raw-td class="k-sub">push + ✕</sc-raw-td><sc-raw-td><span class="k-tier t-push">PUSH</span> save bar</sc-raw-td></sc-raw-tr>
+            <sc-raw-tr><sc-raw-td>Envelope</sc-raw-td><sc-raw-td class="k-sub">push + ✕</sc-raw-td><sc-raw-td><span class="k-tier t-push">PUSH</span> save bar</sc-raw-td></sc-raw-tr>
+            <sc-raw-tr><sc-raw-td>Planned item</sc-raw-td><sc-raw-td class="k-sub">push + ✕</sc-raw-td><sc-raw-td><span class="k-tier t-push">PUSH</span> save bar</sc-raw-td></sc-raw-tr>
+            <sc-raw-tr><sc-raw-td>Settings pages</sc-raw-td><sc-raw-td class="k-sub">push, no back</sc-raw-td><sc-raw-td><span class="k-tier t-push">PUSH</span></sc-raw-td></sc-raw-tr>
+            <sc-raw-tr><sc-raw-td>New envelope</sc-raw-td><sc-raw-td class="k-sub">full screen</sc-raw-td><sc-raw-td><span class="k-tier t-sheet">SHEET</span> Edit</sc-raw-td></sc-raw-tr>
+            <sc-raw-tr><sc-raw-td>New rule</sc-raw-td><sc-raw-td class="k-sub">full screen</sc-raw-td><sc-raw-td><span class="k-tier t-sheet">SHEET</span> Edit</sc-raw-td></sc-raw-tr>
+            <sc-raw-tr><sc-raw-td>Cash count settings</sc-raw-td><sc-raw-td class="k-sub">chip sheet</sc-raw-td><sc-raw-td><span class="k-tier t-push">PUSH</span> → <span class="k-tier t-sheet">SHEET</span> Choose</sc-raw-td></sc-raw-tr>
+            <sc-raw-tr><sc-raw-td>All pickers</sc-raw-td><sc-raw-td class="k-sub">chips / list / search</sc-raw-td><sc-raw-td><span class="k-tier t-sheet">SHEET</span> Choose</sc-raw-td></sc-raw-tr>
+            <sc-raw-tr><sc-raw-td>Sync, review adjustments</sc-raw-td><sc-raw-td class="k-sub">sheet</sc-raw-td><sc-raw-td><span class="k-tier t-sheet">SHEET</span> Review</sc-raw-td></sc-raw-tr>
+          </sc-raw-tbody>
+        </sc-raw-table>
+      </div>
+      <div class="k-sub" style="padding: 4px">Chips stay in two places only: Activity filters, and Capture's single row of ranked suggestions, which always ends in a search button. Picking a value never uses a wrapping wall of chips. Transaction type becomes a segmented control.</div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:1460,&quot;height&quot;:1180}}">
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+
+
+</body></html>

@@ -110,6 +110,11 @@ module.exports = {
       eas: {
         projectId: '88fb2848-3ae9-41a3-9952-b23a72698e6c',
       },
+      // Self-hosted Flagsmith (docs/FEATURE_FLAGS.md). The environment key is a client-side key, safe to ship.
+      flagsmith: {
+        apiUrl: process.env.FLAGSMITH_API_URL ?? '',
+        environmentKey: process.env.FLAGSMITH_ENVIRONMENT_KEY ?? '',
+      },
     },
   },
 };

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>Reminder notifications</title>
+<script src="d4b440f8-e93d-40ce-872a-8e0284a36a36"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.k-n{background:rgba(245,245,243,.94);border-radius:18px;padding:12px 14px;display:flex;gap:10px}
+.k-ic{width:34px;height:34px;border-radius:9px;background:#4C5BD4;flex:none;display:flex;align-items:center;justify-content:center}
+.k-t{font-size:15px;font-weight:600;line-height:20px}
+.k-b{font-size:14px;line-height:19px;color:#14151A}
+.k-time{font-size:12px;color:#6B6F76;white-space:nowrap}
+.k-acts{display:flex;gap:8px;padding-top:8px}
+.k-acts button{flex:1;height:36px;border:0;border-radius:10px;background:rgba(20,21,26,.08);font:inherit;font-size:14px;font-weight:600;color:#14151A}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; background: #1C1D22; font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif; color: #14151A; position: relative; overflow: hidden; display: flex; flex-direction: column">
+  <div style="padding: 80px 0 28px; text-align: center; color: #F2F3F5; display: flex; flex-direction: column; gap: 2px">
+    <span style="font-size: 17px; font-weight: 600; color: #C9CBD3">Wednesday, October 14</span>
+    <span style="font-size: 76px; line-height: 84px; font-weight: 700; letter-spacing: -1px">9:00</span>
+  </div>
+
+  <div style="padding: 0 12px; display: flex; flex-direction: column; gap: 10px">
+    <div class="k-n">
+      <div class="k-ic"><svg/></div>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+        <div style="display: flex; justify-content: space-between; gap: 8px"><span class="k-t">Rent goes out tomorrow</span><span class="k-time">now</span></div>
+        <span class="k-b">2.400,00 zł from Checking to Landlord. There's enough in it.</span>
+        <div class="k-acts"><button>Skip this one</button><button>Open</button></div>
+      </div>
+    </div>
+
+    <div class="k-n">
+      <div class="k-ic" style="background: #B45309"><svg/></div>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+        <div style="display: flex; justify-content: space-between; gap: 8px"><span class="k-t">Savings EUR may run short</span><span class="k-time">now</span></div>
+        <span class="k-b">Insurance takes 140,00 € on Friday. There's 95,00 € in it.</span>
+        <div class="k-acts"><button>Move money</button><button>Open</button></div>
+      </div>
+    </div>
+
+    <div class="k-n">
+      <div class="k-ic"><svg/></div>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+        <div style="display: flex; justify-content: space-between; gap: 8px"><span class="k-t">3 payments tomorrow · 2.488,99 zł</span><span class="k-time">now</span></div>
+        <span class="k-b">Rent, Spotify and Phone. All covered.</span>
+      </div>
+    </div>
+
+    <div class="k-n" style="opacity: .82">
+      <div class="k-ic" style="background: #2E8B57"><svg/></div>
+      <div style="flex: 1; min-width: 0; display: flex; flex-direction: column">
+        <div style="display: flex; justify-content: space-between; gap: 8px"><span class="k-t">Gym membership is booked</span><span class="k-time">Mon</span></div>
+        <span class="k-b">129,00 zł left Checking today.</span>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844}}">
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+
+
+</body></html>

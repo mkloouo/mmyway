@@ -12,3 +12,4 @@ yarn.lock
 *.apk
 docs/private
 scratch
+docs/design

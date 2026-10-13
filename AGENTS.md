@@ -76,6 +76,46 @@ pipeline.
   `useAction()`, and table writes live in `src/`, not in the screen. Screen tests live in
   `src/__screens__/` (never under `app/`, which expo-router would treat as routes).
 
+## UI: Unified Kit V2 (read `docs/UI_KIT.md` before any UI change)
+
+The app is migrating, screen by screen, to **Unified Kit V2** (`docs/design/kit/`) and the **V4
+screen boards** (`docs/design/boards/`). These rules apply to every agent and every UI change:
+
+- **The touch rule.** No whole-file rewrites are required, but **every element you add or change
+  (row, header, footer, sheet, button, list, state) ends up Kit V2 as a whole**: the ✅ components
+  listed in `docs/UI_KIT.md` §3, `useTheme()` tokens, the board's copy and the right tier (PUSH /
+  MODAL / SHEET A·B·C / ALERT). Leave untouched code alone, and don't patch a legacy element so it
+  stays legacy.
+- **Reuse before you write.** Use what `src/ui/` already has. If it lacks something, add a reusable
+  component to the kit (in the right family file) instead of styling a one-off in a screen. Never
+  add a ⛔ legacy component (`Banner`, `Row`, `AppBar`, a card per row, a raw `Pressable`/`TextInput`
+  in `app/`, a wall of chips) where it isn't already used.
+- **No literals.** Colours, spacing, radii and type come from `useTheme()`. ESLint rejects colour
+  literals in `.tsx`. If a token is missing, add it to both palettes in `src/ui/theme.ts`.
+- **Exceptions are rare and written down.** Keeping legacy UI in touched code needs
+  `// kit-exception: <reason> (<issue>)` on the line above it, and a valid reason (the kit
+  component or the board doesn't exist yet, or a pending design decision covers it). "The file
+  already does it this way" is never a valid reason. List every exception in the PR description.
+- **No dump files.** At most 400 lines of code per file (ESLint `max-lines`). Files already over
+  it are pinned at their current size in `eslint.config.js` (`OVERSIZED`). They may only shrink, so
+  extract before you add. Never raise a ceiling or add an entry.
+- **Inbox and Transaction detail have no board yet** (Linear MKL-70). Follow the kit rules there,
+  but don't invent a redesign.
+
+## Feature flags (self-hosted Flagsmith, `docs/FEATURE_FLAGS.md`)
+
+- **Anything unfinished, not yet working, or new ships behind a flag that defaults to off.** Add it
+  to `src/flags/registry.ts` (same name as the Flagsmith feature) and read it with
+  `useFlag('name')`, or `isFlagOn(db, 'name')` outside React. The basics stay unflagged: sign-in,
+  Capture → Inbox → sync, Activity and Transaction detail, Receipts, Splits, Accounts (list and
+  edit), Planned and reminders, Count cash.
+- A flag hides **entry points** (tab, row, button, link) and redirects its routes. It never
+  deletes data. A safety behaviour the user already turned on keeps working while its flag is off
+  (an enabled app lock still locks, saved proxy headers are still sent).
+- Never call a live Flagsmith from tests. Mock `fetch`, like for Firefly III.
+- When a feature is done and on for good, delete the flag from the registry, the code and
+  Flagsmith.
+
 ## Rules
 
 - **Never run a live write against the user's real FF3 instance or a real Gemini/local-model
@@ -104,9 +144,11 @@ pipeline.
   `src/db/migrations.upgrade.test.ts` fails if you don't.
 - `src/api/ff3/types.ts` and `src/db/migrations/**/*.sql` are generated/pinned — don't hand-edit
   generated SQL migrations; edit `src/db/schema.ts` and run `npm run db:generate`.
-- **Open bugs, features and cleanups are GitHub Issues** (`mkloouo/mmyway`), not checklists in
-  `docs/`. File what you find but don't fix as an issue; a PR that resolves one says `Fixes #N`
-  in its description so merging closes it.
+- **Open bugs, features and cleanups are Linear issues** (team **MKL**, workspace `mkloouo`), not
+  checklists in `docs/` and **not GitHub Issues** (no longer used; the old `#N` references in
+  code comments and docs point at closed history). File what you find but don't fix as a Linear
+  issue in the matching project; a branch or PR that resolves one names it (`MKL-123`, or Linear's
+  branch name) so the integration links and closes it.
 
 RTK Golden Rule, Sub-Agents clause, and full command reference live in `~/.claude/RTK.md`
 (global, loaded every session) — see there instead of duplicating it here.

@@ -3,7 +3,7 @@
 Free checks that catch what review would. In CI, `ci.yml` runs Prettier, typecheck, the strict lint
 (type-aware promise rules, AGENTS.md's rules as code, hardcoded UI text) and the tests with a
 coverage floor on the money path; `static-analysis.yml` runs the checks below on every push to
-`main` and every pull request. Tracking issue: [#77](https://github.com/mkloouo/mmyway/issues/77).
+`main` and every pull request. Tracking issue (closed): [#77](https://github.com/mkloouo/mmyway/issues/77).
 `npm run analyze` runs the same checks by hand and reports without failing (`-- --strict` fails).
 
 | Command                  | Tool                                         | Finds                                                                             |

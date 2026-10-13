@@ -11,6 +11,8 @@ import { useLiveQuery } from '../../src/db/useLiveQuery';
 import { useBudgetRows, useCategories, useCurrencyRows } from '../../src/db/useReferenceData';
 import { pickDateTime } from '../../src/ui/pickDate';
 import { useDb } from '../../src/providers/DbProvider';
+import { useFlag } from '../../src/flags/useFlag';
+import { ruleParamsFrom } from '../../src/rules/fromTransaction';
 import { useTheme } from '../../src/ui/theme';
 import {
   Screen,
@@ -114,6 +116,7 @@ export default function TransactionDetailScreen() {
 type CachedRow = typeof cachedTransactions.$inferSelect;
 
 function TransactionEditor({ row }: { row: CachedRow }) {
+  const rulesOn = useFlag('ff3_rules');
   const groupId = row.groupId;
   const db = useDb();
   const t = useTheme();
@@ -612,24 +615,10 @@ function TransactionEditor({ row }: { row: CachedRow }) {
     router.push(`/draft/${id}`);
   });
 
-  // A rule from this transaction: it matches the payee and sets the category and budget it has.
+  // A rule from this transaction; the Rules page opens its New rule sheet with these prefilled.
   function onCreateRule() {
     setMenuOpen(false);
-    const payee =
-      row.type === 'withdrawal'
-        ? row.destinationName
-        : row.type === 'deposit'
-          ? row.sourceName
-          : null;
-    // The Rules page opens its New rule sheet with these prefilled.
-    router.push({
-      pathname: '/settings/rules',
-      params: {
-        match: payee || row.description,
-        category: row.categoryName ?? '',
-        budget: row.budgetName ?? '',
-      },
-    });
+    router.push({ pathname: '/settings/rules', params: ruleParamsFrom(row) });
   }
 
   // A photo Firefly III holds (#69). Queued like every other write, and confirmed first: FF3
@@ -1045,7 +1034,9 @@ function TransactionEditor({ row }: { row: CachedRow }) {
       <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={tr('transaction.title')}>
         <Card flush>
           <Row first label={tr('transaction.duplicate')} icon="copy" onPress={onDuplicate} />
-          <Row label={tr('transaction.createRule')} icon="options" onPress={onCreateRule} />
+          {rulesOn && (
+            <Row label={tr('transaction.createRule')} icon="options" onPress={onCreateRule} />
+          )}
           <Row label={tr('common.delete')} icon="trash" tone="danger" onPress={onDelete} />
         </Card>
       </Sheet>

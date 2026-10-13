@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>Planned tab</title>
+<script src="aef834a2-28bc-4984-aeaa-cff0f197b547"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#4C5BD4}a:hover{color:#3A48B8}
+.k-grp{background:#FFFFFF;border:1px solid #E3E3DF;border-radius:14px;overflow:hidden}
+.k-row{display:flex;align-items:center;gap:12px;min-height:56px;padding:0 16px;position:relative;box-sizing:border-box}
+.k-row + .k-row::before{content:"";position:absolute;top:0;left:68px;right:0;height:1px;background:#E3E3DF}
+.k-lbl{font-size:15px;line-height:20px;color:#14151A}
+.k-sub{font-size:13px;line-height:17px;color:#6B6F76}
+.k-amt{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.k-sh{font-size:11px;line-height:14px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:#6B6F76;padding:22px 20px 8px;display:flex;justify-content:space-between}
+.k-date{width:40px;display:flex;flex-direction:column;align-items:center;flex:none}
+.k-date b{font-size:17px;line-height:20px}
+.k-date span{font-size:11px;font-weight:600;color:#6B6F76;letter-spacing:.3px}
+.k-stack{flex:1;min-width:0;display:flex;flex-direction:column;padding:9px 0}
+.k-seg{display:flex;background:#EAEAE6;border-radius:10px;padding:2px}
+.k-seg button{flex:1;height:32px;border:0;border-radius:8px;background:transparent;font:inherit;font-size:14px;font-weight:600;color:#6B6F76}
+.k-seg button.on{background:#fff;color:#14151A;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.k-tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;font-weight:500;color:#6B6F76;text-decoration:none;padding-top:7px}
+.k-ibtn{width:44px;height:44px;border:0;background:transparent;padding:0;display:flex;align-items:center;justify-content:center}
+.k-badge{font-size:11px;font-weight:600;border-radius:999px;padding:2px 7px}
+</style>
+</helmet>
+<div style="width: 390px; height: 1080px; background: #F5F5F3; font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif; color: #14151A; position: relative; overflow: hidden">
+  <div style="height: 54px"></div>
+  <div style="display: flex; align-items: center; padding: 6px 8px 0 20px">
+    <h1 style="margin: 0; flex: 1; font-size: 34px; line-height: 41px; font-weight: 700">Planned</h1>
+    <button class="k-ibtn" aria-label="Add a planned transaction"><svg/></button>
+  </div>
+
+  <div style="padding: 10px 16px 0; display: flex; flex-direction: column; gap: 12px">
+    <div class="k-seg" role="group" aria-label="View"><button class="on" aria-pressed="true">Coming up</button><button>All plans · 9</button></div>
+
+    <div class="k-grp" style="padding: 14px 16px; display: flex; gap: 0">
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span class="k-sub">Out, next 30 days</span><span style="font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums">3.447,98</span></div>
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 2px; border-left: 1px solid #E3E3DF; padding-left: 16px"><span class="k-sub">In</span><span style="font-size: 22px; font-weight: 700; color: #2E8B57; font-variant-numeric: tabular-nums">+8.000,00</span></div>
+    </div>
+  </div>
+
+  <div class="k-sh"><span>Today</span></div>
+  <div style="padding: 0 16px">
+    <div class="k-grp">
+      <div class="k-row"><div class="k-date"><span>MON</span><b>12</b></div><div class="k-stack"><span class="k-lbl">Gym membership</span><span class="k-sub">Checking → FitPoint</span></div><div style="display: flex; flex-direction: column; align-items: flex-end; gap: 3px"><span class="k-amt">−129,00</span><span class="k-badge" style="background: #E6F2EA; color: #22693F">Booked</span></div></div>
+    </div>
+  </div>
+
+  <div class="k-sh"><span>This week</span></div>
+  <div style="padding: 0 16px">
+    <div class="k-grp">
+      <div class="k-row"><div class="k-date"><span>THU</span><b>15</b></div><div class="k-stack"><span class="k-lbl">Rent</span><span class="k-sub">Checking → Landlord · Housing</span></div><span class="k-amt">−2.400,00</span></div>
+      <div class="k-row"><div class="k-date"><span>FRI</span><b>16</b></div><div class="k-stack"><span class="k-lbl" style="color: #6B6F76; text-decoration: line-through">Cleaning</span><span class="k-sub">Skipped</span></div><span class="k-amt" style="color: #9AA0A6; text-decoration: line-through">−180,00</span></div>
+    </div>
+  </div>
+
+  <div class="k-sh"><span>Later in October</span></div>
+  <div style="padding: 0 16px">
+    <div class="k-grp">
+      <div class="k-row"><div class="k-date"><span>THU</span><b>22</b></div><div class="k-stack"><span class="k-lbl">Spotify</span><span class="k-sub">Checking → Spotify · Fun</span></div><span class="k-amt">−23,99</span></div>
+      <div class="k-row"><div class="k-date"><span>SAT</span><b>24</b></div><div class="k-stack"><span class="k-lbl">Phone</span><span class="k-sub">Checking → Orange</span></div><span class="k-amt">−65,00</span></div>
+      <div class="k-row"><div class="k-date"><span>FRI</span><b>30</b></div><div class="k-stack"><span class="k-lbl">Salary</span><span class="k-sub">Employer → Checking</span></div><span class="k-amt" style="color: #2E8B57">+8.000,00</span></div>
+    </div>
+  </div>
+
+  <div class="k-sh"><span>November</span></div>
+  <div style="padding: 0 16px">
+    <div class="k-grp">
+      <div class="k-row"><div class="k-date"><span>MON</span><b>9</b></div><div class="k-stack"><span class="k-lbl">Gym membership</span><span class="k-sub">Checking → FitPoint</span></div><span class="k-amt">−129,00</span></div>
+      <div class="k-row"><div class="k-date"><span>SUN</span><b>15</b></div><div class="k-stack"><span class="k-lbl">Rent</span><span class="k-sub">Checking → Landlord · Housing</span></div><span class="k-amt">−2.400,00</span></div>
+    </div>
+  </div>
+
+  <nav aria-label="Tabs" style="position: absolute; left: 0; right: 0; bottom: 0; height: 83px; background: rgba(250,250,248,.96); border-top: 1px solid #E3E3DF; display: flex">
+    <a href="#" class="k-tab"><svg/>Inbox</a>
+    <a href="#" class="k-tab"><svg/>Activity</a>
+    <a href="#" class="k-tab" style="color: #4C5BD4" aria-current="page"><svg/>Planned</a>
+    <a href="#" class="k-tab"><svg/>Budget</a>
+    <a href="#" class="k-tab"><svg/>Settings</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:1080}}">
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+
+
+</body></html>

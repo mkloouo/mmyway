@@ -4,6 +4,7 @@
 // pull-to-refresh are shimmed, since neither has a JS implementation outside the app.
 import { render, screen } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '../i18n';
 import { createTestDb } from '../db/testDb';
 import { bucketRow } from '../bucket/objects';
@@ -17,6 +18,8 @@ import {
 import { formatMoney } from '../ui/money';
 import { localDay } from '../utils/day';
 import BudgetScreen from '../../app/(tabs)/budget';
+import { flagsQuery } from '../flags/useFlag';
+import { setFlagOverrides } from '../settings/appSettings';
 
 jest.setTimeout(15_000);
 
@@ -40,6 +43,10 @@ jest.mock('../sync/useSync', () => ({
 // expo-router pulls in an untransformed ESM dependency under Jest; the navigation isn't what is
 // under test here.
 jest.mock('../ui/navigateOnce', () => ({ navigateOnce: jest.fn() }));
+
+// The route guard sends a flag-off visit to "/" through expo-router's Redirect; a stand-in records it.
+const mockRedirect = jest.fn<null, [{ href: string }]>(() => null);
+jest.mock('expo-router', () => ({ Redirect: (props: { href: string }) => mockRedirect(props) }));
 
 // The screen reads the period off the phone's own clock, so the seed is keyed to the same day
 // rather than to a pinned date — a fixture that only lined up in October 2026 would rot.
@@ -128,18 +135,32 @@ beforeAll(() => {
     .run();
 });
 
-async function renderScreen() {
+async function renderScreen(budgetOn = true) {
+  // The route reads its flags from the query cache, so load them from the test db before the first render.
+  await setFlagOverrides(mockDb as never, { budget: budgetOn });
+  const client = new QueryClient();
+  await client.prefetchQuery(flagsQuery(mockDb as never));
   return render(
-    <SafeAreaProvider
-      initialMetrics={{
-        frame: { x: 0, y: 0, width: 390, height: 844 },
-        insets: { top: 0, left: 0, right: 0, bottom: 0 },
-      }}
-    >
-      <BudgetScreen />
-    </SafeAreaProvider>,
+    <QueryClientProvider client={client}>
+      <SafeAreaProvider
+        initialMetrics={{
+          frame: { x: 0, y: 0, width: 390, height: 844 },
+          insets: { top: 0, left: 0, right: 0, bottom: 0 },
+        }}
+      >
+        <BudgetScreen />
+      </SafeAreaProvider>
+    </QueryClientProvider>,
   );
 }
+
+describe('Budget tab with the budget flag off', () => {
+  it('redirects to the Inbox instead of showing the budget', async () => {
+    await renderScreen(false);
+    expect(mockRedirect).toHaveBeenCalledWith({ href: '/' });
+    expect(screen.queryByText('Ready to assign')).toBeNull();
+  });
+});
 
 describe('Budget tab', () => {
   it('shows Ready to Assign as cash minus what is already allocated', async () => {

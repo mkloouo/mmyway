@@ -34,6 +34,7 @@ import { assignMany, fundMany, setFundAmount } from '../../src/bucket/actions';
 import type { Fund } from '../../src/bucket/funds';
 import { appLocale } from '../../src/i18n';
 import { dayDate, localDay } from '../../src/utils/day';
+import { withFlag } from '../../src/flags/RequireFlag';
 
 /** Share of the assignment spent, 0–1, for the bar. Overspent is a full bar. Display only. */
 function spentFraction(envelope: Envelope): number {
@@ -42,7 +43,7 @@ function spentFraction(envelope: Envelope): number {
   return Math.min(1, Number(divideDecimal(spent, envelope.assigned, 4)));
 }
 
-export default function BudgetScreen() {
+function BudgetScreen() {
   const t = useTheme();
   const { t: tr } = useTranslation();
   const db = useDb();
@@ -304,3 +305,5 @@ export default function BudgetScreen() {
     </Screen>
   );
 }
+
+export default withFlag('budget', BudgetScreen);

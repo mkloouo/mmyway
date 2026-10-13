@@ -26,8 +26,9 @@ import { rulesByGroup, type RuleGroupSummary } from '../../src/rules/model';
 import { runRule, toggleRule, toggleRuleGroup } from '../../src/rules/actions';
 import { NewRuleSheet } from '../../src/rules/NewRuleSheet';
 import type { ToggleRuleGroupPayload, ToggleRulePayload } from '../../src/rules/replay';
+import { RequireFlag } from '../../src/flags/RequireFlag';
 
-export default function RulesScreen() {
+function RulesPage() {
   const db = useDb();
   const t = useTheme();
   const { t: tr } = useTranslation();
@@ -174,5 +175,13 @@ export default function RulesScreen() {
         initial={{ match: params.match, category: params.category, budget: params.budget }}
       />
     </Screen>
+  );
+}
+
+export default function RulesRoute() {
+  return (
+    <RequireFlag name="ff3_rules">
+      <RulesPage />
+    </RequireFlag>
   );
 }

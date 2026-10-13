@@ -2,11 +2,14 @@
 // SQLite is real (better-sqlite3, src/db/testDb.ts); the live query and expo-router are shimmed.
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import '../i18n';
 import { createTestDb } from '../db/testDb';
 import { referenceAccounts } from '../db/schema';
 import LiabilitiesScreen from '../../app/settings/liabilities';
+import { flagsQuery } from '../flags/useFlag';
+import { setFlagOverrides } from '../settings/appSettings';
 
 let mockDb: ReturnType<typeof createTestDb>;
 
@@ -37,11 +40,17 @@ beforeEach(() => {
   mockDb = createTestDb();
 });
 
-async function renderScreen() {
+// The route reads its flags from the query cache, so load them from the test db before the first render.
+async function renderScreen(accountCreateOn = true) {
+  await setFlagOverrides(mockDb as never, { account_create: accountCreateOn });
+  const client = new QueryClient();
+  await client.prefetchQuery(flagsQuery(mockDb as never));
   return render(
-    <SafeAreaProvider initialMetrics={metrics}>
-      <LiabilitiesScreen />
-    </SafeAreaProvider>,
+    <QueryClientProvider client={client}>
+      <SafeAreaProvider initialMetrics={metrics}>
+        <LiabilitiesScreen />
+      </SafeAreaProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -96,5 +105,11 @@ describe('Settings → Liabilities', () => {
       pathname: '/accounts/new',
       params: { type: 'liability' },
     });
+  });
+
+  it('has no + while account creation is off', async () => {
+    await renderScreen(false);
+
+    expect(screen.queryByLabelText('New liability')).toBeNull();
   });
 });

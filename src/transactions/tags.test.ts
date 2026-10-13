@@ -55,10 +55,20 @@ describe('parseTags', () => {
     expect(parseTags('["a","b"]')).toEqual(['a', 'b']);
   });
 
+  it('preserves casing and internal tags', () => {
+    expect(parseTags('["Food", "mmyway-shared-Anna"]')).toEqual(['Food', 'mmyway-shared-Anna']);
+  });
+
+  it('filters out non-string and empty/whitespace elements', () => {
+    expect(parseTags('["a", 123, true, null, "", "   ", "b"]')).toEqual(['a', 'b']);
+  });
+
   it('handles invalid json or non-array gracefully', () => {
     expect(parseTags('')).toEqual([]);
     expect(parseTags(null)).toEqual([]);
+    expect(parseTags(undefined)).toEqual([]);
     expect(parseTags('bad-json')).toEqual([]);
     expect(parseTags('{"a":1}')).toEqual([]);
+    expect(parseTags('42')).toEqual([]);
   });
 });

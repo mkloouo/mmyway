@@ -6,6 +6,7 @@ import { appSettings } from '../db/schema';
 import type { OutboxDb } from '../sync/outbox';
 import type { AppLocale } from '../i18n';
 import { parseDecimalInput } from '../api/ff3/decimal';
+import { isFlagName, type FlagValues } from '../flags/registry';
 
 const KEYS = {
   defaultSourceAccountId: 'default_source_account_id',
@@ -38,6 +39,8 @@ const KEYS = {
   plannedReminderPromptShown: 'planned_reminder_prompt_shown',
   appLockEnabled: 'app_lock_enabled',
   demo: 'demo',
+  featureFlags: 'feature_flags',
+  featureFlagOverrides: 'feature_flag_overrides',
 } as const;
 
 async function getSetting(db: OutboxDb, key: string): Promise<string | null> {
@@ -383,3 +386,36 @@ export async function getDemoMode(db: OutboxDb): Promise<boolean> {
 }
 export const setDemoMode = (db: OutboxDb, value: boolean) =>
   setSetting(db, KEYS.demo, value ? '1' : '0');
+
+// Feature flags (src/flags) are per app, not per FF3 instance, so they stay out of
+// INSTANCE_SETTING_KEYS. JSON in a string; a missing or corrupt value reads as no flags.
+const FLAG_MAP = z.record(z.string(), z.boolean());
+
+function parseFlagMap(raw: string | null): FlagValues {
+  if (raw === null) return {};
+  let json: unknown;
+  try {
+    json = JSON.parse(raw);
+  } catch {
+    return {};
+  }
+  const parsed = FLAG_MAP.safeParse(json);
+  if (!parsed.success) return {};
+  const values: FlagValues = {};
+  for (const [name, on] of Object.entries(parsed.data)) {
+    if (isFlagName(name)) values[name] = on;
+  }
+  return values;
+}
+
+/** The last values Flagsmith answered with (src/flags/FlagsSync.tsx). */
+export const getCachedFlags = async (db: OutboxDb) =>
+  parseFlagMap(await getSetting(db, KEYS.featureFlags));
+export const setCachedFlags = (db: OutboxDb, values: FlagValues) =>
+  setSetting(db, KEYS.featureFlags, JSON.stringify(values));
+
+/** Local overrides, for testing a flag on this device. Read by src/flags/resolve.ts. */
+export const getFlagOverrides = async (db: OutboxDb) =>
+  parseFlagMap(await getSetting(db, KEYS.featureFlagOverrides));
+export const setFlagOverrides = (db: OutboxDb, values: FlagValues) =>
+  setSetting(db, KEYS.featureFlagOverrides, JSON.stringify(values));

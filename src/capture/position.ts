@@ -6,6 +6,7 @@
 // Foreground only. There is no watcher and no background task: each request is one fix, asked for
 // when a screen that might book something opens.
 import type { DraftLocation } from '../inbox/draft';
+import { isFlagOn } from '../flags/useFlag';
 import { getRecordLocation } from '../settings/appSettings';
 import type { OutboxDb } from '../sync/outbox';
 import { logLine } from '../utils/log';
@@ -33,7 +34,8 @@ export function startPositionRequest(db: OutboxDb): void {
   inFlight = true;
   void (async () => {
     try {
-      if (!(await getRecordLocation(db))) {
+      // The flag hides the setting, so with it off nothing new is located, and a held fix is dropped.
+      if (!(await getRecordLocation(db)) || !(await isFlagOn(db, 'record_location'))) {
         last = null;
         return;
       }

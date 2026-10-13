@@ -2,11 +2,13 @@
 // `order` numbers have gaps (they did, and every Done was sent as a reorder).
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '../i18n';
 import { createTestDb } from '../db/testDb';
 import { outboxOperations, referenceAccounts } from '../db/schema';
 import { setAccountOrder } from '../settings/appSettings';
 import AccountsScreen from '../../app/settings/accounts';
+import { flagsQuery } from '../flags/useFlag';
 
 let mockDb: ReturnType<typeof createTestDb>;
 
@@ -61,10 +63,14 @@ it('Done after Reorder with nothing dragged queues no reorder', async () => {
   // FF3's numbers, with gaps: already in this order, but not 1, 2, 3.
   await setAccountOrder(mockDb as never, { a1: 2, a2: 5, a3: 9 });
 
+  const client = new QueryClient();
+  await client.prefetchQuery(flagsQuery(mockDb as never));
   await render(
-    <SafeAreaProvider initialMetrics={metrics}>
-      <AccountsScreen />
-    </SafeAreaProvider>,
+    <QueryClientProvider client={client}>
+      <SafeAreaProvider initialMetrics={metrics}>
+        <AccountsScreen />
+      </SafeAreaProvider>
+    </QueryClientProvider>,
   );
   await fireEvent.press(screen.getByLabelText('Reorder accounts'));
   await fireEvent.press(await screen.findByText('Done'));

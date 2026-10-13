@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTheme } from '../../src/ui/theme';
 import { useActionableCount } from '../../src/inbox/useActionableCount';
+import { useFlag } from '../../src/flags/useFlag';
 
 export default function TabsLayout() {
   const t = useTheme();
@@ -10,6 +11,7 @@ export default function TabsLayout() {
   // The badge waits while a modal (a draft, Capture) is open over the tabs, and catches up after.
   const focused = useIsFocused();
   const actionableCount = useActionableCount({ enabled: focused });
+  const budgetOn = useFlag('budget');
 
   return (
     <Tabs
@@ -56,6 +58,7 @@ export default function TabsLayout() {
         name="budget"
         options={{
           title: tr('budget.title'),
+          href: budgetOn ? undefined : null,
           tabBarIcon: ({ color, size }) => <Ionicons name="pie-chart" color={color} size={size} />,
         }}
       />

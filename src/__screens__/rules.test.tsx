@@ -2,10 +2,13 @@
 // live-query subscription, the confirm prompt and expo-router are shimmed, as in settings.demo.test.tsx.
 import { configure, fireEvent, render, screen, waitFor } from '@testing-library/react-native';
 import { type ReactElement } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import '../i18n';
 import { createTestDb } from '../db/testDb';
 import { outboxOperations, referenceBudgets, referenceCategories } from '../db/schema';
+import { flagsQuery } from '../flags/useFlag';
+import { setFlagOverrides } from '../settings/appSettings';
 import { storePlanned } from '../planned/objects';
 import { enqueueOperation } from '../sync/outbox';
 import { confirmAction } from '../ui/confirm';
@@ -13,6 +16,7 @@ import RulesScreen from '../../app/settings/rules';
 
 // `mock`-prefixed so Jest's hoisting lets the factories below close over them.
 let mockDb: ReturnType<typeof createTestDb>;
+let mockClient: QueryClient;
 let mockParams: Record<string, string | undefined> = {};
 
 jest.mock('../providers/DbProvider', () => ({ useDb: () => mockDb }));
@@ -45,7 +49,11 @@ const metrics = {
 configure({ asyncUtilTimeout: 10_000 });
 
 function wrap(ui: ReactElement) {
-  return <SafeAreaProvider initialMetrics={metrics}>{ui}</SafeAreaProvider>;
+  return (
+    <QueryClientProvider client={mockClient}>
+      <SafeAreaProvider initialMetrics={metrics}>{ui}</SafeAreaProvider>
+    </QueryClientProvider>
+  );
 }
 
 /** One group, "Imports", with one rule, "Coffee", that matches "starbucks". */
@@ -70,11 +78,21 @@ function queued() {
     .map((op) => ({ kind: op.kind, payload: JSON.parse(op.payloadJson) }));
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   jest.clearAllMocks();
   mockDb = createTestDb();
   mockParams = {};
   (confirmAction as jest.Mock).mockResolvedValue(true);
+  // The page is behind ff3_rules (off by default). Its flags are loaded before each render, since
+  // the route renders nothing until they are in the cache.
+  await setFlagOverrides(mockDb, { ff3_rules: true });
+  mockClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  await mockClient.prefetchQuery(flagsQuery(mockDb));
+});
+
+afterEach(() => {
+  // Empties the cache, so its garbage-collection timer doesn't keep Jest waiting after the run.
+  mockClient.clear();
 });
 
 describe('Settings → Rules', () => {

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>New envelope sheet</title>
+<script src="d0de3e43-e7e6-4ca4-9769-c27bbe39e57c"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+.k-grp{background:#FFFFFF;border:1px solid #E3E3DF;border-radius:14px;overflow:hidden}
+.k-row{display:flex;align-items:center;gap:12px;min-height:52px;padding:0 16px;position:relative;box-sizing:border-box}
+.k-row + .k-row::before{content:"";position:absolute;top:0;left:16px;right:0;height:1px;background:#E3E3DF}
+.k-lbl{flex:1;font-size:15px;line-height:20px;color:#14151A}
+.k-sub{font-size:13px;line-height:17px;color:#6B6F76}
+.k-sh{font-size:11px;line-height:14px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:#6B6F76;padding:16px 4px 8px}
+.k-x{width:32px;height:32px;border-radius:50%;background:#E8E8E4;border:0;display:flex;align-items:center;justify-content:center;padding:0}
+.k-add{width:28px;height:28px;border-radius:50%;border:0;background:#E7E9FB;display:flex;align-items:center;justify-content:center;padding:0}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; background: #F5F5F3; font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif; color: #14151A; position: relative; overflow: hidden">
+  <div style="padding: 60px 20px 0; display: flex; flex-direction: column; gap: 14px">
+    <div style="font-size: 34px; font-weight: 700">Budget</div>
+    <div style="height: 210px; border-radius: 14px; background: #fff; border: 1px solid #E3E3DF"></div>
+    <div style="height: 260px; border-radius: 14px; background: #fff; border: 1px solid #E3E3DF"></div>
+  </div>
+  <div style="position: absolute; inset: 0; background: rgba(0,0,0,.40)"></div>
+
+  <div role="dialog" aria-label="New envelope" style="position: absolute; left: 0; right: 0; bottom: 0; background: #F5F5F3; border-radius: 22px 22px 0 0; display: flex; flex-direction: column">
+    <div style="width: 36px; height: 5px; border-radius: 3px; background: #C9C9C4; margin: 8px auto 0"></div>
+    <div style="display: flex; align-items: center; height: 56px; padding: 0 16px; gap: 12px">
+      <span style="flex: 1; font-size: 17px; font-weight: 600">New envelope</span>
+      <button class="k-x" aria-label="Close"><svg/></button>
+    </div>
+    <div style="padding: 0 16px 16px; display: flex; flex-direction: column">
+      <div class="k-grp">
+        <div class="k-row"><label for="bc1" class="k-lbl" style="flex: none; width: 92px">Name</label><input id="bc1" value="Household" style="flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; font-size: 15px; outline: none; color: #14151A"></div>
+        <div class="k-row"><label for="bc2" class="k-lbl" style="flex: none; width: 92px">Assign now</label><input id="bc2" placeholder="0,00 zł · optional" inputmode="decimal" style="flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; font-size: 15px; outline: none"></div>
+      </div>
+      <div class="k-sub" style="padding: 8px 4px 0">51.186,35 zł ready to assign</div>
+
+      <div class="k-sh">Your categories without an envelope</div>
+      <div class="k-grp">
+        <div class="k-row"><span class="k-lbl">Groceries</span><button class="k-add" aria-label="Use Groceries"><svg/></button></div>
+        <div class="k-row"><span class="k-lbl">Eating out</span><button class="k-add" aria-label="Use Eating out"><svg/></button></div>
+        <div class="k-row"><span class="k-lbl">Salary</span><button class="k-add" aria-label="Use Salary"><svg/></button></div>
+      </div>
+    </div>
+    <div style="border-top: 1px solid #E3E3DF; padding: 12px 16px 12px">
+      <button style="width: 100%; height: 52px; border: 0; border-radius: 14px; background: #4C5BD4; color: #fff; font: inherit; font-size: 17px; font-weight: 600">Create envelope</button>
+    </div>
+    <div style="height: 236px; background: #D1D3D9; display: flex; align-items: center; justify-content: center; color: #6B6F76; font-size: 13px">keyboard</div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:844}}">
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+
+
+</body></html>

@@ -19,6 +19,7 @@ import {
   type ProxyHeaderProblem,
 } from '../../src/api/ff3/proxyHeaders';
 import { SETTINGS_QUERY_KEY } from '../../src/settings/loadSettings';
+import { RequireFlag } from '../../src/flags/RequireFlag';
 
 interface Pair {
   name: string;
@@ -30,7 +31,7 @@ const CLOUDFLARE_PAIR: Pair[] = [
   { name: 'CF-Access-Client-Secret', value: '' },
 ];
 
-export default function ProxyScreen() {
+function ProxyPage() {
   const t = useTheme();
   const { t: tr } = useTranslation();
   const act = useAction();
@@ -184,5 +185,13 @@ export default function ProxyScreen() {
         />
       </View>
     </Screen>
+  );
+}
+
+export default function ProxyRoute() {
+  return (
+    <RequireFlag name="reverse_proxy">
+      <ProxyPage />
+    </RequireFlag>
   );
 }

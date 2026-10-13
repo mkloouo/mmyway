@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>Unified cards and rows</title>
+<script src="04b48ee9-8b76-4598-88c9-d682acb59619"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#4C5BD4}a:hover{color:#3A48B8}
+.k-grp{background:#FFFFFF;border:1px solid #E3E3DF;border-radius:14px;overflow:hidden}
+.k-row{display:flex;align-items:center;gap:12px;min-height:52px;padding:0 16px;position:relative;box-sizing:border-box}
+.k-row + .k-row::before{content:"";position:absolute;top:0;left:16px;right:0;height:1px;background:#E3E3DF}
+.k-row.ic + .k-row.ic::before{left:56px}
+.k-lbl{flex:1;font-size:15px;line-height:20px;color:#14151A}
+.k-sub{font-size:13px;line-height:17px;color:#6B6F76}
+.k-val{font-size:15px;color:#6B6F76;white-space:nowrap}
+.k-sh{font-size:11px;line-height:14px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:#6B6F76;padding:0 4px 8px;display:flex;justify-content:space-between;align-items:baseline}
+.k-sh a{text-transform:none;letter-spacing:0;font-size:13px;font-weight:500;text-decoration:none}
+.k-sw{width:51px;height:31px;border-radius:999px;background:#4C5BD4;position:relative;flex:none;border:0;padding:0}
+.k-sw::after{content:"";position:absolute;right:2px;top:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.k-sw.off{background:#E3E3DF}.k-sw.off::after{right:auto;left:2px}
+.k-tile{width:28px;height:28px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:none}
+.k-note{font-size:12px;line-height:16px;color:#6B6F76}
+.k-tag{font-size:11px;font-weight:600;letter-spacing:.4px;color:#4C5BD4;background:#E7E9FB;border-radius:999px;padding:3px 8px}
+.k-mini{background:#fff;border:1px solid #E3E3DF;border-radius:14px}
+</style>
+</helmet>
+<div style="width: 1240px; height: 1180px; box-sizing: border-box; padding: 56px; background: #F5F5F3; font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif; color: #14151A; display: flex; flex-direction: column; gap: 36px">
+
+  <div style="display: flex; justify-content: space-between; align-items: flex-end">
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <div style="font-size: 13px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; color: #4C5BD4">Kit · 1 of 3</div>
+      <h1 style="margin: 0; font-size: 40px; line-height: 44px; font-weight: 700">One Group. Every grouped thing.</h1>
+      <div style="font-size: 17px; line-height: 24px; color: #6B6F76; max-width: 760px">Lists, settings, forms, envelopes, accounts and totals all live in the same white Group: 14 px radius, 1 px border, no shadow, rows separated by inset hairlines.</div>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 300px 390px minmax(0, 1fr); gap: 48px; align-items: start">
+
+    <!-- Column 1: today -->
+    <div style="display: flex; flex-direction: column; gap: 16px">
+      <div class="k-sh" style="padding: 0">Today · six container styles</div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <div style="display: flex; flex-direction: column; gap: 4px">
+            <div class="k-mini" style="height: 18px"></div><div class="k-mini" style="height: 18px"></div><div class="k-mini" style="height: 18px"></div>
+          </div>
+          <div class="k-note">Row-per-card · Accounts</div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <div class="k-mini" style="height: 62px; display: flex; flex-direction: column; justify-content: space-evenly; padding: 0 8px"><div style="height: 1px; background: #E3E3DF"></div><div style="height: 1px; background: #E3E3DF"></div></div>
+          <div class="k-note">Grouped rows · Settings</div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <div class="k-mini" style="height: 62px; border-radius: 18px"></div>
+          <div class="k-note">Envelope card · Budget</div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <div style="display: flex; gap: 4px"><div class="k-mini" style="height: 62px; flex: 1"></div><div class="k-mini" style="height: 62px; flex: 1"></div></div>
+          <div class="k-note">Balance tiles · Activity</div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <div class="k-mini" style="height: 62px; padding: 8px; box-sizing: border-box; display: flex; align-items: flex-end"><div style="height: 14px; width: 100%; border: 1px solid #E3E3DF; border-radius: 6px"></div></div>
+          <div class="k-note">Card + field · Count cash</div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <div style="display: flex; justify-content: flex-end"><div style="width: 22px; height: 12px; border-radius: 6px; background: #4C5BD4"></div></div>
+          <div class="k-mini" style="height: 46px"></div>
+          <div class="k-note">Header switch · Rules</div>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; padding-top: 8px">
+        <svg/>
+        <div style="font-size: 15px; font-weight: 600">Collapse into one Group with three uses</div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 10px; font-size: 14px; line-height: 20px; color: #14151A">
+        <div style="display: flex; gap: 10px"><span class="k-tag">ROWS</span><span>settings, forms, details</span></div>
+        <div style="display: flex; gap: 10px"><span class="k-tag">LIST</span><span>accounts, envelopes, planned</span></div>
+        <div style="display: flex; gap: 10px"><span class="k-tag">HERO</span><span>one big number + its actions</span></div>
+      </div>
+      <div class="k-note" style="padding-top: 8px">Rules: one row = one tap target, never a card per row. Labels are ink, values grey (today it is the other way round). Switches, not checkboxes, for on/off. Section header can carry one text action on the right.</div>
+    </div>
+
+    <!-- Column 2: anatomy -->
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <div class="k-sh" style="padding: 0 0 6px 0">Group · rows anatomy</div>
+      <div class="k-sh">Account <a href="#">Edit</a></div>
+      <div class="k-grp">
+        <div class="k-row"><span class="k-lbl">Navigation row</span><span class="k-val">Value</span><svg/></div>
+        <div class="k-row"><div style="flex: 1; display: flex; flex-direction: column; padding: 10px 0"><span class="k-lbl">Row with subtitle</span><span class="k-sub">One line of plain help, never two</span></div><button class="k-sw" aria-label="Toggle"></button></div>
+        <div class="k-row"><label for="k-f1" class="k-lbl" style="flex: none; width: 110px">Inline field</label><input id="k-f1" value="Cash wallet" style="flex: 1; border: 0; font: inherit; font-size: 15px; text-align: right; color: #14151A; background: transparent; outline: none"></div>
+        <div class="k-row"><span class="k-lbl">Picker row</span><span class="k-val" style="color: #14151A">PLN</span><svg/></div>
+        <div class="k-row"><span class="k-lbl" style="color: #C2413A">Destructive row</span></div>
+      </div>
+      <div class="k-note" style="padding: 4px 4px 0">Footnote under a group: 13/17 grey, 4 px in.</div>
+
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 20px; margin-top: 18px; font-size: 13px; line-height: 18px">
+        <div><b>Radius</b> 14 Group · 22 sheet top · 999 chip</div>
+        <div><b>Row</b> min 52 · pad 16 · gap 12</div>
+        <div><b>Hairline</b> inset 16 (56 with icon)</div>
+        <div><b>Between groups</b> 24 + header</div>
+        <div><b>Section header</b> 11/14 caps, 600, +0.6</div>
+        <div><b>Shadow</b> none; FAB and dock only</div>
+      </div>
+    </div>
+
+    <!-- Column 3: variants -->
+    <div style="display: flex; flex-direction: column; gap: 28px">
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <div class="k-sh">Hero · one number, its actions</div>
+        <div class="k-grp" style="padding: 18px 16px 14px; display: flex; flex-direction: column; gap: 12px">
+          <div style="display: flex; justify-content: space-between; align-items: center">
+            <span class="k-sub" style="font-weight: 600; letter-spacing: .6px; font-size: 11px; text-transform: uppercase">Ready to assign</span>
+            <button aria-label="How this is worked out" style="width: 28px; height: 28px; border-radius: 50%; border: 1px solid #E3E3DF; background: #fff; display: flex; align-items: center; justify-content: center; padding: 0"><svg/></button>
+          </div>
+          <div style="font-size: 40px; line-height: 44px; font-weight: 700; letter-spacing: -.5px">51.186,35 zł</div>
+          <div class="k-sub">51.186,35 in accounts · 0,00 allocated</div>
+          <div style="display: flex; gap: 8px; padding-top: 4px">
+            <button style="height: 40px; padding: 0 16px; border-radius: 12px; border: 0; background: #4C5BD4; color: #fff; font: inherit; font-size: 15px; font-weight: 600">Assign</button>
+            <button style="height: 40px; padding: 0 16px; border-radius: 12px; border: 0; background: #EFEFEC; color: #14151A; font: inherit; font-size: 15px; font-weight: 600">Auto-fill 1.240 zł</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <div class="k-sh">List · entities in one Group <a href="#">Reorder</a></div>
+        <div class="k-grp">
+          <div class="k-row ic">
+            <div class="k-tile" style="background: #E7E9FB"><svg/></div>
+            <div style="flex: 1; display: flex; flex-direction: column; padding: 9px 0"><span class="k-lbl">Checking</span><span class="k-sub">Default account</span></div>
+            <span style="font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums">49.833,35 zł</span>
+          </div>
+          <div class="k-row ic">
+            <div class="k-tile" style="background: #FDF0DC"><svg/></div>
+            <div style="flex: 1; display: flex; flex-direction: column; padding: 9px 0"><span class="k-lbl">Cash wallet</span><span class="k-sub">Cash envelope</span></div>
+            <span style="font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums">485,00 zł</span>
+          </div>
+          <div class="k-row ic">
+            <div class="k-tile" style="background: #E6F2EA"><svg/></div>
+            <div style="flex: 1; display: flex; flex-direction: column; padding: 9px 0"><span class="k-lbl">Savings EUR</span><span class="k-sub">Savings</span></div>
+            <span style="font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums">1.000,00 €</span>
+          </div>
+        </div>
+        <div class="k-note" style="padding: 0 4px">Leading 28 px tile carries the kind (envelope, savings, liability) instead of a chip. The trailing slot is either an amount or a chevron, never both.</div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <div class="k-sh">Progress inside a list row</div>
+        <div class="k-grp">
+          <div class="k-row" style="flex-direction: column; align-items: stretch; gap: 8px; padding-top: 12px; padding-bottom: 12px">
+            <div style="display: flex; justify-content: space-between"><span class="k-lbl">Food</span><span style="font-size: 15px; font-weight: 600; color: #B45309">−195,45 zł</span></div>
+            <div style="height: 6px; border-radius: 3px; background: #FDF0DC"><div style="width: 100%; height: 6px; border-radius: 3px; background: #B45309"></div></div>
+            <div class="k-sub">195,45 spent of 0,00 · <a href="#" style="font-weight: 600; text-decoration: none; color: #B45309">Cover it</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 10px; align-items: center; padding-top: 4px; flex-wrap: wrap">
+    <span class="k-sh" style="padding: 0 12px 0 0">Tokens, unchanged</span>
+    <span style="display: flex; align-items: center; gap: 6px; font-size: 12px"><span style="width: 18px; height: 18px; border-radius: 5px; background: #F5F5F3; border: 1px solid #E3E3DF"></span>bg</span>
+    <span style="display: flex; align-items: center; gap: 6px; font-size: 12px"><span style="width: 18px; height: 18px; border-radius: 5px; background: #FFFFFF; border: 1px solid #E3E3DF"></span>surface</span>
+    <span style="display: flex; align-items: center; gap: 6px; font-size: 12px"><span style="width: 18px; height: 18px; border-radius: 5px; background: #EFEFEC"></span>surfaceAlt</span>
+    <span style="display: flex; align-items: center; gap: 6px; font-size: 12px"><span style="width: 18px; height: 18px; border-radius: 5px; background: #4C5BD4"></span>accent</span>
+    <span style="display: flex; align-items: center; gap: 6px; font-size: 12px"><span style="width: 18px; height: 18px; border-radius: 5px; background: #E7E9FB"></span>accentSoft</span>
+    <span style="display: flex; align-items: center; gap: 6px; font-size: 12px"><span style="width: 18px; height: 18px; border-radius: 5px; background: #2E8B57"></span>income</span>
+    <span style="display: flex; align-items: center; gap: 6px; font-size: 12px"><span style="width: 18px; height: 18px; border-radius: 5px; background: #3B82F6"></span>transfer</span>
+    <span style="display: flex; align-items: center; gap: 6px; font-size: 12px"><span style="width: 18px; height: 18px; border-radius: 5px; background: #B45309"></span>warn</span>
+    <span style="display: flex; align-items: center; gap: 6px; font-size: 12px"><span style="width: 18px; height: 18px; border-radius: 5px; background: #C2413A"></span>danger</span>
+    <span style="font-size: 12px; color: #6B6F76; padding-left: 12px">One addition: a <b style="color: #14151A">tile tint</b> per account kind, taken from the existing soft tokens.</span>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:1240,&quot;height&quot;:1180}}">
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+
+
+</body></html>

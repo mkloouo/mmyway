@@ -9,6 +9,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import '../i18n';
 import { createTestDb } from '../db/testDb';
 import { cachedTransactions, inboxItems, referenceAccounts } from '../db/schema';
+import { startDemo } from '../demo/demo';
+import { setFlagOverrides } from '../settings/appSettings';
 import { confirmAction, confirmDestructive } from '../ui/confirm';
 import ConnectionScreen from '../../app/settings/connection';
 
@@ -55,7 +57,7 @@ const metrics = {
 configure({ asyncUtilTimeout: 10_000 });
 
 /** Resolves once the settings have loaded: until then the demo rows have no press handler. */
-async function renderScreen() {
+async function renderScreen(readyText = 'not connected') {
   render(
     <SafeAreaProvider initialMetrics={metrics}>
       <QueryClientProvider
@@ -72,7 +74,7 @@ async function renderScreen() {
       </QueryClientProvider>
     </SafeAreaProvider>,
   );
-  await waitFor(() => expect(screen.getByText('not connected')).toBeTruthy());
+  await waitFor(() => expect(screen.getByText(readyText)).toBeTruthy());
 }
 
 beforeEach(() => {
@@ -83,6 +85,11 @@ beforeEach(() => {
 });
 
 describe('Settings → Firefly III demo rows', () => {
+  beforeEach(async () => {
+    // "Try the demo" is behind demo_mode, which defaults off (see the block at the end).
+    await setFlagOverrides(mockDb, { demo_mode: true });
+  });
+
   it('signed out, "Try the demo" loads the sample data and shows "Leave the demo"', async () => {
     await renderScreen();
 
@@ -140,5 +147,22 @@ describe('Settings → Firefly III demo rows', () => {
     expect(screen.queryByText('Leave the demo')).toBeNull();
     expect(mockDb.select().from(referenceAccounts).all()).toEqual([]);
     alert.mockRestore();
+  });
+});
+
+describe('Settings → Firefly III demo rows with demo_mode off', () => {
+  it('hides "Try the demo" but still offers "Leave the demo" while the demo is on', async () => {
+    await startDemo(mockDb);
+    await renderScreen('Demo');
+
+    expect(screen.getByText('Leave the demo')).toBeTruthy();
+    expect(screen.queryByText('Try the demo')).toBeNull();
+  });
+
+  it('shows neither demo row when no demo is loaded', async () => {
+    await renderScreen();
+
+    expect(screen.queryByText('Try the demo')).toBeNull();
+    expect(screen.queryByText('Leave the demo')).toBeNull();
   });
 });

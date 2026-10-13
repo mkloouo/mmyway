@@ -17,7 +17,7 @@ export function periodOf(day: string = localDay()): Period {
   const y = year ?? 1970;
   const m = month ?? 1;
   // Day 0 of the next month is the last day of this one, in local time.
-  return { start: `${y}-${String(m).padStart(2, '0')}-01`, end: localDay(new Date(y, m, 0)) };
+  return { start: localDay(new Date(y, m - 1, 1)), end: localDay(new Date(y, m, 0)) };
 }
 
 /** The month before `period` — "what you had left last month", for the auto-fill default. */
@@ -25,7 +25,7 @@ export function previousPeriod(period: Period): Period {
   const [year, month] = period.start.split('-').map(Number);
   const y = year ?? 1970;
   const m = month ?? 1;
-  return periodOf(m === 1 ? `${y - 1}-12-01` : `${y}-${String(m - 1).padStart(2, '0')}-01`);
+  return periodOf(localDay(new Date(y, m - 2, 1)));
 }
 
 /** Whether `day` (a YYYY-MM-DD, or a full ISO timestamp) falls inside the period. */

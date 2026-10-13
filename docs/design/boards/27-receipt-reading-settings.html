@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>Receipt reading settings</title>
+<script src="826080b2-52df-4365-b126-e354298e81d8"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#4C5BD4}a:hover{color:#3A48B8}
+.k-grp{background:#FFFFFF;border:1px solid #E3E3DF;border-radius:14px;overflow:hidden}
+.k-row{display:flex;align-items:center;gap:12px;min-height:52px;padding:0 16px;position:relative;box-sizing:border-box}
+.k-row + .k-row::before{content:"";position:absolute;top:0;left:16px;right:0;height:1px;background:#E3E3DF}
+.k-lbl{font-size:15px;line-height:20px;color:#14151A}
+.k-sub{font-size:13px;line-height:17px;color:#6B6F76}
+.k-val{font-size:15px;color:#6B6F76;white-space:nowrap}
+.k-sh{font-size:11px;line-height:14px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:#6B6F76;padding:22px 20px 8px}
+.k-stack{flex:1;min-width:0;display:flex;flex-direction:column;padding:11px 0}
+.k-radio{width:22px;height:22px;border-radius:50%;border:2px solid #C9C9C4;box-sizing:border-box;flex:none;align-self:flex-start;margin-top:13px}
+.k-radio.on{border:7px solid #4C5BD4}
+.k-chev{flex:none}
+</style>
+</helmet>
+<div style="width: 390px; height: 1000px; background: #F5F5F3; font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif; color: #14151A; position: relative; overflow: hidden">
+  <div style="height: 54px"></div>
+  <div style="display: flex; align-items: center; height: 44px; padding: 0 8px">
+    <a href="Settings.dc.html" style="display: flex; align-items: center; gap: 4px; color: #4C5BD4; font-size: 17px; text-decoration: none; padding: 0 8px; height: 44px"><svg/>Settings</a>
+  </div>
+  <div style="padding: 4px 20px 0; display: flex; flex-direction: column; gap: 6px">
+    <h1 style="margin: 0; font-size: 34px; line-height: 41px; font-weight: 700">Receipt reading</h1>
+    <div style="font-size: 15px; line-height: 21px; color: #6B6F76">Snap a receipt and the amount, shop and date are filled in for you. Choose who reads the photo.</div>
+  </div>
+
+  <div class="k-sh">Who reads your photos</div>
+  <div style="padding: 0 16px">
+    <div class="k-grp" role="radiogroup" aria-label="Who reads your photos">
+      <div class="k-row" role="radio" aria-checked="false"><span class="k-radio"></span><div class="k-stack"><span class="k-lbl">Nobody</span><span class="k-sub">Photos are attached; you type the details</span></div></div>
+      <div class="k-row" role="radio" aria-checked="false"><span class="k-radio"></span><div class="k-stack"><span class="k-lbl">My own model</span><span class="k-sub">Runs on your network. Photos never leave it.</span></div></div>
+      <div class="k-row" role="radio" aria-checked="true"><span class="k-radio on"></span><div class="k-stack"><span class="k-lbl">My model, Google as backup</span><span class="k-sub">Google Gemini reads it only when your model can't</span></div></div>
+    </div>
+  </div>
+
+  <div class="k-sh">Your model</div>
+  <div style="padding: 0 16px">
+    <div class="k-grp">
+      <div class="k-row"><span class="k-lbl" style="flex: 1">Model name</span><span class="k-val" style="color: #14151A">qwen3-vl-8b</span><svg/></div>
+      <div class="k-row"><div class="k-stack"><span class="k-lbl">Where it runs</span><span class="k-sub" style="display: flex; align-items: center; gap: 6px"><span style="width: 8px; height: 8px; border-radius: 50%; background: #2E8B57"></span>192.168.1.20 answers · 1 more address</span></div><svg/></div>
+    </div>
+  </div>
+
+  <div class="k-sh">Google Gemini</div>
+  <div style="padding: 0 16px">
+    <div class="k-grp">
+      <div class="k-row"><span class="k-lbl" style="flex: 1">API key</span><span class="k-val">•••• 4f2a</span><svg/></div>
+    </div>
+    <div class="k-sub" style="padding: 8px 4px 0">Get a free key at aistudio.google.com. A photo goes to Google only after your model has failed on it.</div>
+  </div>
+
+  <div style="padding: 24px 16px 0">
+    <button style="width: 100%; height: 48px; border-radius: 14px; border: 1px solid #E3E3DF; background: #fff; font: inherit; font-size: 15px; font-weight: 600; color: #4C5BD4">Test both now</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:390,&quot;height&quot;:1000}}">
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+
+
+</body></html>

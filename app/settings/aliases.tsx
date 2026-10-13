@@ -25,13 +25,14 @@ import { useAction } from '../../src/ui/useAction';
 import { confirmDestructive } from '../../src/ui/confirm';
 import { useToast } from '../../src/ui/useToast';
 import { normkey } from '../../src/lookup/normkey';
+import { RequireFlag } from '../../src/flags/RequireFlag';
 
 interface PayeeGroupView {
   payeeName: string;
   aliases: { id: string; alias: string }[];
 }
 
-export default function AliasesScreen() {
+function AliasesPage() {
   const db = useDb();
   const t = useTheme();
   const { t: tr } = useTranslation();
@@ -296,5 +297,13 @@ export default function AliasesScreen() {
         />
       </Sheet>
     </Screen>
+  );
+}
+
+export default function AliasesRoute() {
+  return (
+    <RequireFlag name="payee_nicknames">
+      <AliasesPage />
+    </RequireFlag>
   );
 }

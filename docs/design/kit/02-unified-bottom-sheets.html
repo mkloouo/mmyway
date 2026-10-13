@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>Unified bottom sheets</title>
+<script src="3719d662-8abb-408e-affc-5fe718d33c2f"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+a{color:#4C5BD4}a:hover{color:#3A48B8}
+.k-grp{background:#FFFFFF;border:1px solid #E3E3DF;border-radius:14px;overflow:hidden}
+.k-row{display:flex;align-items:center;gap:12px;min-height:52px;padding:0 16px;position:relative;box-sizing:border-box}
+.k-row + .k-row::before{content:"";position:absolute;top:0;left:16px;right:0;height:1px;background:#E3E3DF}
+.k-lbl{flex:1;font-size:15px;line-height:20px;color:#14151A}
+.k-sub{font-size:13px;line-height:17px;color:#6B6F76}
+.k-val{font-size:15px;color:#6B6F76;white-space:nowrap}
+.k-sh{font-size:11px;line-height:14px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:#6B6F76;padding:0 4px 8px}
+.k-phone{width:390px;height:844px;border-radius:44px;overflow:hidden;position:relative;background:#F5F5F3;box-shadow:0 0 0 1px #DADAD5}
+.k-scrim{position:absolute;inset:0;background:rgba(0,0,0,.40)}
+.k-sheet{position:absolute;left:0;right:0;bottom:0;background:#F5F5F3;border-radius:22px 22px 0 0;display:flex;flex-direction:column}
+.k-handle{width:36px;height:5px;border-radius:3px;background:#C9C9C4;margin:8px auto 0}
+.k-head{display:flex;align-items:center;gap:12px;height:56px;padding:0 16px}
+.k-title{flex:1;font-size:17px;line-height:22px;font-weight:600}
+.k-x{width:32px;height:32px;border-radius:50%;background:#E8E8E4;border:0;display:flex;align-items:center;justify-content:center;padding:0}
+.k-foot{border-top:1px solid #E3E3DF;padding:12px 16px 34px;display:flex;gap:10px;background:#F5F5F3}
+.k-btn{height:52px;border-radius:14px;border:0;font:inherit;font-size:17px;font-weight:600;flex:1}
+.k-search{display:flex;align-items:center;gap:8px;height:40px;border-radius:12px;background:#E8E8E4;padding:0 12px;margin:0 16px}
+.k-cap{font-size:13px;line-height:18px;color:#14151A}
+.k-chip{font-size:11px;font-weight:600;letter-spacing:.4px;color:#4C5BD4;background:#E7E9FB;border-radius:999px;padding:3px 8px}
+</style>
+</helmet>
+<div style="width: 1460px; height: 1180px; box-sizing: border-box; padding: 56px; background: #FBFBF9; font-family: -apple-system, 'SF Pro Text', system-ui, sans-serif; color: #14151A; display: flex; flex-direction: column; gap: 32px">
+
+  <div style="display: flex; flex-direction: column; gap: 6px">
+    <div style="font-size: 13px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; color: #4C5BD4">Kit · 2 of 3</div>
+    <h1 style="margin: 0; font-size: 40px; line-height: 44px; font-weight: 700">Three sheets replace thirty.</h1>
+    <div style="font-size: 17px; line-height: 24px; color: #6B6F76; max-width: 900px">They share one frame: the same handle, a 56 px header with the title on the left and a round close on the right, the page colour as background with Groups inside, and an optional sticky footer.</div>
+  </div>
+
+  <div style="display: flex; gap: 60px; align-items: flex-start">
+
+    <!-- A · Choose -->
+    <div style="display: flex; flex-direction: column; gap: 16px; width: 390px">
+      <div style="display: flex; align-items: baseline; gap: 10px"><span class="k-chip">A</span><span style="font-size: 20px; font-weight: 700">Choose</span><span class="k-sub">large detent</span></div>
+      <div class="k-phone">
+        <div style="padding: 70px 16px 0; display: flex; flex-direction: column; gap: 12px"><div style="height: 28px; width: 180px; border-radius: 6px; background: #E3E3DF"></div><div style="height: 120px; border-radius: 14px; background: #fff"></div></div>
+        <div class="k-scrim"></div>
+        <div class="k-sheet" style="top: 56px">
+          <div class="k-handle"></div>
+          <div class="k-head"><span class="k-title">Payee</span><button class="k-x" aria-label="Close"><svg/></button></div>
+          <div class="k-search"><svg/><label for="sa" style="position: absolute; left: -9999px">Search payees</label><input id="sa" placeholder="Search 612 payees" style="flex: 1; border: 0; background: transparent; font: inherit; font-size: 15px; outline: none"></div>
+          <div style="padding: 16px 16px 0; display: flex; flex-direction: column; gap: 8px; overflow: hidden">
+            <div class="k-sh">Suggested for this entry</div>
+            <div class="k-grp">
+              <div class="k-row"><span class="k-lbl">Żabka</span><svg/></div>
+              <div class="k-row"><span class="k-lbl">Biedronka</span></div>
+              <div class="k-row"><span class="k-lbl">Orlen</span></div>
+            </div>
+            <div class="k-sh" style="padding-top: 16px">All · A–Z</div>
+            <div class="k-grp">
+              <div class="k-row"><span class="k-lbl">Aldi</span></div>
+              <div class="k-row"><span class="k-lbl">Allegro</span></div>
+              <div class="k-row"><span class="k-lbl">Apteka Gemini</span></div>
+              <div class="k-row"><span class="k-lbl">Auchan</span></div>
+              <div class="k-row"><span class="k-lbl">Bolt</span></div>
+              <div class="k-row"><span class="k-lbl">Biedronka</span></div>
+            </div>
+          </div>
+          <div style="position: absolute; right: 4px; top: 200px; display: flex; flex-direction: column; gap: 2px; font-size: 10px; font-weight: 600; color: #4C5BD4; text-align: center">
+            <span>A</span><span>B</span><span>C</span><span>D</span><span>E</span><span>F</span><span>G</span><span>H</span><span>I</span><span>K</span><span>L</span><span>M</span><span>O</span><span>P</span><span>R</span><span>S</span><span>T</span><span>Z</span><span>Ż</span>
+          </div>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px" class="k-cap">
+        <div><b>For</b> payee, account, category, budget, currency, language, defaults, reminder lead.</div>
+        <div>Search appears above 8 options and gets focus above 30. "Suggested" first, then A–Z with an index rail. A single choice closes the sheet on tap; a multi-choice gets a footer "Done · 3".</div>
+        <div>Typing a name nobody has adds a row at the top: <b>+ Create "Lidl"</b>.</div>
+      </div>
+    </div>
+
+    <!-- B · Edit -->
+    <div style="display: flex; flex-direction: column; gap: 16px; width: 390px">
+      <div style="display: flex; align-items: baseline; gap: 10px"><span class="k-chip">B</span><span style="font-size: 20px; font-weight: 700">Edit</span><span class="k-sub">fits content, rides the keyboard</span></div>
+      <div class="k-phone">
+        <div style="padding: 70px 16px 0; display: flex; flex-direction: column; gap: 12px"><div style="height: 28px; width: 160px; border-radius: 6px; background: #E3E3DF"></div><div style="height: 220px; border-radius: 14px; background: #fff"></div><div style="height: 120px; border-radius: 14px; background: #fff"></div></div>
+        <div class="k-scrim"></div>
+        <div class="k-sheet">
+          <div class="k-handle"></div>
+          <div class="k-head"><span class="k-title">Connect to Firefly III</span><button class="k-x" aria-label="Close"><svg/></button></div>
+          <div style="padding: 0 16px 16px; display: flex; flex-direction: column; gap: 10px">
+            <div class="k-sub" style="padding: 0 4px">The address you open Firefly III at, and a token from Profile → OAuth → Personal access tokens.</div>
+            <div class="k-grp">
+              <div class="k-row"><label for="sb1" class="k-lbl" style="flex: none; width: 76px">Address</label><input id="sb1" placeholder="https://firefly.example.com" style="flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; font-size: 15px; outline: none"></div>
+              <div class="k-row"><label for="sb2" class="k-lbl" style="flex: none; width: 76px">Token</label><input id="sb2" type="password" placeholder="Paste token" style="flex: 1; min-width: 0; border: 0; background: transparent; font: inherit; font-size: 15px; outline: none"><button style="border: 0; background: transparent; color: #4C5BD4; font: inherit; font-size: 15px; font-weight: 600; padding: 0">Paste</button></div>
+            </div>
+          </div>
+          <div class="k-foot"><button class="k-btn" style="background: #4C5BD4; color: #fff">Sign in</button></div>
+          <div style="height: 290px; background: #D1D3D9; display: flex; align-items: center; justify-content: center; color: #6B6F76; font-size: 13px">keyboard</div>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px" class="k-cap">
+        <div><b>For</b> sign-in, local model, Gemini key, amount, rename, new envelope, payee alias, denominations.</div>
+        <div>Fields sit in a Group with the label inline on the left. Help text sits above the Group in one or two lines. The footer is a single primary button; a second action is a text button beside it, never a pink block.</div>
+        <div>Swiping down with edits asks "Discard changes?"</div>
+      </div>
+    </div>
+
+    <!-- C · Review -->
+    <div style="display: flex; flex-direction: column; gap: 16px; width: 390px">
+      <div style="display: flex; align-items: baseline; gap: 10px"><span class="k-chip">C</span><span style="font-size: 20px; font-weight: 700">Review</span><span class="k-sub">medium detent</span></div>
+      <div class="k-phone">
+        <div style="padding: 70px 16px 0; display: flex; flex-direction: column; gap: 12px"><div style="height: 28px; width: 200px; border-radius: 6px; background: #E3E3DF"></div><div style="height: 300px; border-radius: 14px; background: #fff"></div></div>
+        <div class="k-scrim"></div>
+        <div class="k-sheet">
+          <div class="k-handle"></div>
+          <div class="k-head"><span class="k-title">Sync</span><button class="k-x" aria-label="Close"><svg/></button></div>
+          <div style="padding: 0 16px 16px; display: flex; flex-direction: column; gap: 8px">
+            <div class="k-grp">
+              <div class="k-row"><span style="width: 8px; height: 8px; border-radius: 50%; background: #2E8B57"></span><div style="flex: 1; display: flex; flex-direction: column; padding: 9px 0"><span class="k-lbl">Firefly III is reachable</span><span class="k-sub">localhost:8080</span></div></div>
+              <div class="k-row"><span style="width: 8px; height: 8px; border-radius: 50%; background: #B45309"></span><div style="flex: 1; display: flex; flex-direction: column; padding: 9px 0"><span class="k-lbl">Receipt reading is off</span><span class="k-sub">No local model or Gemini key</span></div><a href="#" style="font-size: 15px; font-weight: 600; text-decoration: none">Set up</a></div>
+              <div class="k-row"><span style="width: 8px; height: 8px; border-radius: 50%; background: #2E8B57"></span><span class="k-lbl">Nothing waiting to send</span></div>
+              <div class="k-row"><span style="width: 8px"></span><span class="k-lbl">Last synced</span><span class="k-val">just now</span></div>
+            </div>
+          </div>
+          <div class="k-foot"><button class="k-btn" style="background: #4C5BD4; color: #fff">Sync now</button></div>
+        </div>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 6px" class="k-cap">
+        <div><b>For</b> sync status, review adjustments, one planned occurrence, confirm a receipt result.</div>
+        <div>Status rows say what they mean ("is reachable", "nothing waiting") and each one leads with a status dot. A row that needs a fix carries a text action.</div>
+        <div>A choice made inside a sheet pushes within that sheet (back chevron in the header). Sheets never stack.</div>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;$preview&quot;:{&quot;width&quot;:1460,&quot;height&quot;:1180}}">
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+
+
+</body></html>

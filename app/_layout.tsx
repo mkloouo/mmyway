@@ -26,6 +26,7 @@ import { LocaleSync } from '../src/i18n/LocaleSync';
 import { LockGate } from '../src/lock/LockGate';
 import NetInfo from '@react-native-community/netinfo';
 import { registerBackgroundSync } from '../src/sync/backgroundSync';
+import { FlagsSync } from '../src/flags/FlagsSync';
 
 installLogCapture();
 
@@ -186,6 +187,7 @@ export default function RootLayout() {
           <DbProvider>
             <LocaleSync />
             <SyncOnResume />
+            <FlagsSync />
             <SyncOnReconnect />
             <BackgroundSyncRegistration />
             <PlannedNotificationListener />

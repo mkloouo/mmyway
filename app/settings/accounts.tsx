@@ -18,6 +18,7 @@ import { applyVisibleOrder } from '../../src/accounts/moveAccount';
 import { navigateOnce } from '../../src/ui/navigateOnce';
 import { useAction } from '../../src/ui/useAction';
 import { usePendingAccountIds } from '../../src/accounts/usePendingAccountIds';
+import { useFlag } from '../../src/flags/useFlag';
 
 const FADE_MS = 160;
 const EMPTY_ACCOUNTS: ReferenceAccountRow[] = [];
@@ -29,6 +30,7 @@ export default function AccountsScreen() {
   const act = useAction();
   const pendingAccounts = usePendingAccountIds();
   const currencies = useCurrencies();
+  const createOn = useFlag('account_create');
   // In FF3's own order — the order every account picker in the app uses, set with Reorder.
   const allAccounts = useAssetAccounts({ includeInactive: true }) ?? EMPTY_ACCOUNTS;
   const [search, setSearch] = useState('');
@@ -117,7 +119,7 @@ export default function AccountsScreen() {
         onToggleInactive={() => setShowInactive((v) => !v)}
         newLabel={tr('accounts.newAccount')}
         onNew={
-          reordering
+          reordering || !createOn
             ? undefined
             : () => navigateOnce({ pathname: '/accounts/new', params: { type: 'asset' } })
         }

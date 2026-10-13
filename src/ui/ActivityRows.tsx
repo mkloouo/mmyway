@@ -131,7 +131,7 @@ export const ActivityRow = memo(function ActivityRow({
                 justifyContent: 'center',
               }}
             >
-              <Ionicons name="checkmark" size={16} color="#fff" />
+              <Ionicons name="checkmark" size={16} color={t.color.onAccent} />
             </View>
           ) : (
             <View
@@ -140,7 +140,7 @@ export const ActivityRow = memo(function ActivityRow({
                 height: 22,
                 borderRadius: 11,
                 borderWidth: 1.5,
-                borderColor: t.dark ? t.color.border : '#C9C9C4',
+                borderColor: t.dark ? t.color.border : t.color.borderStrong,
               }}
             />
           )}
@@ -156,18 +156,12 @@ export const ActivityRow = memo(function ActivityRow({
             flexShrink: 0,
             backgroundColor:
               item.type === 'deposit'
-                ? t.dark
-                  ? '#1B3B2B'
-                  : '#E6F2EA'
+                ? t.color.incomeSoft
                 : item.type === 'transfer'
-                  ? t.dark
-                    ? '#1B2C4B'
-                    : '#E8F0FE'
+                  ? t.color.transferSoft
                   : item.categoryName
                     ? categoryColor(item.categoryName, t.dark) + '22'
-                    : t.dark
-                      ? '#2A2A2E'
-                      : '#F0F0EE',
+                    : t.color.neutralSoft,
           }}
         >
           {item.type === 'deposit' ? (
@@ -205,7 +199,7 @@ export const ActivityRow = memo(function ActivityRow({
             paddingHorizontal: 8,
             paddingVertical: 3,
             borderRadius: 999,
-            backgroundColor: '#FDF0DC',
+            backgroundColor: t.color.warnSoft,
           }}
         >
           <Text
@@ -213,7 +207,7 @@ export const ActivityRow = memo(function ActivityRow({
               fontSize: 11,
               fontWeight: '600',
               letterSpacing: 0.4,
-              color: '#8A4006',
+              color: t.color.warnStrong,
             }}
           >
             {tr('draft.queued').toUpperCase()}
@@ -235,7 +229,7 @@ export const ActivityRow = memo(function ActivityRow({
               fontSize: 11,
               fontWeight: '600',
               letterSpacing: 0.4,
-              color: t.dark ? t.color.accent : '#3A48B8',
+              color: t.color.accentStrong,
             }}
           >
             {tr(PENDING_LABEL_KEYS[pendingStatus]).toUpperCase()}
@@ -352,7 +346,7 @@ const BalanceCell = memo(function BalanceCell({
           style={[
             t.type.label,
             {
-              color: selected ? (t.dark ? t.color.accent : '#3A48B8') : t.color.textMuted,
+              color: selected ? t.color.accentStrong : t.color.textMuted,
               fontWeight: selected ? '600' : '400',
               flexShrink: 1,
             },

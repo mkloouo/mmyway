@@ -21,6 +21,8 @@ import { useBudgets, useCategories, useCurrencies } from '../src/db/useReference
 import { useDb } from '../src/providers/DbProvider';
 import { useTheme } from '../src/ui/theme';
 import { useEnvelopeRemaining, useAllEnvelopesRemaining } from '../src/bucket/useEnvelopeRemaining';
+import { useFlag } from '../src/flags/useFlag';
+import { topChips } from '../src/capture/topChips';
 import {
   Screen,
   Button,
@@ -70,9 +72,8 @@ import { divideDecimal, isNegative, parseDecimalInput } from '../src/api/ff3/dec
 import { useToast } from '../src/ui/useToast';
 import { Snackbar, type SnackbarEntry } from '../src/ui/Snackbar';
 import type { Draft } from '../src/inbox/draft';
-import { needsLabel, needsToConfirmLabel } from '../src/ui/readinessLabel';
+import { needsToConfirmLabel } from '../src/ui/readinessLabel';
 import { TextField } from '../src/ui/TextField';
-import { SharedWithField } from '../src/ui/SharedWithField';
 import { PickerSheet } from '../src/ui/PickerSheet';
 import { useAction } from '../src/ui/useAction';
 import { logLine } from '../src/utils/log';
@@ -269,25 +270,6 @@ function WarnBar() {
   );
 }
 
-// The chip row shows a handful of choices, not a wall — the rest live behind the 🔍 button's
-// AccountPickerSheet. A selection outside that handful still needs to be visible, so it's pinned
-// first rather than left unrepresented in the row.
-function topChips<T extends AccountPickerAccount>(
-  accounts: T[],
-  selectedId: string | null | undefined,
-  limit = 5,
-): T[] {
-  const top = accounts.slice(0, limit);
-  if (selectedId) {
-    const selected = accounts.find((a) => a.id === selectedId);
-    if (selected) {
-      const rest = top.filter((a) => a.id !== selectedId);
-      return [selected, ...rest.slice(0, limit - 1)];
-    }
-  }
-  return top;
-}
-
 /** A field row of account chips. Capture draws this for from, to, and the single account of a non-transfer. */
 function AccountFieldRow({
   label,
@@ -320,6 +302,9 @@ function AccountFieldRow({
   );
 }
 
+// ponytail: the tag composer duplicates src/ui/TagsField; MKL-112 removes it.
+const TAG_TEXT = { fontSize: 13, fontWeight: '700' } as const;
+
 function labelKeyForType(t: Draft['type']): string {
   return TX_TYPES.find((x) => x.type === t)!.labelKey;
 }
@@ -331,7 +316,7 @@ export default function CaptureScreen() {
   const act = useAction();
   // Visual twins of the haptics below (src/ui/feedback.ts): a refused Save & confirm shakes what's
   // missing; a save floats the saved amount away while the cleared field fades in.
-  const { shake, shakeStyle } = useShake();
+  const { shake } = useShake();
   const { fly, ghost, ghostStyle, fieldStyle } = useFlyAway();
   const { defaultAccountId, defaultCurrencyCode } = useCaptureDefaults();
   const window = useWindowDimensions();
@@ -540,6 +525,7 @@ export default function CaptureScreen() {
   // What is left in that envelope this month, from the Budget tab's cache (src/bucket/).
   const envelopeLeft = useEnvelopeRemaining(budgetId);
   const allEnvelopes = useAllEnvelopesRemaining();
+  const envelopesOn = useFlag('budget');
 
   // FX (design §6.2): reveal when the account leg's currency differs from the chosen currency.
   // The same rule as the draft screen's, from src/inbox/fx.ts.
@@ -1045,7 +1031,7 @@ export default function CaptureScreen() {
                     <Text style={{ color: budget ? t.color.text : t.color.textMuted }}>
                       {budget?.name ?? tr('common.none')}
                     </Text>
-                    {!!budget && envelopeLeft !== null && (
+                    {!!budget && envelopesOn && envelopeLeft !== null && (
                       <Text
                         style={{
                           fontSize: 13,
@@ -1166,7 +1152,7 @@ export default function CaptureScreen() {
         onClose={() => setSheet(null)}
         title={tr('fields.budget')}
         options={budgets.map((b) => {
-          const rem = allEnvelopes.get(b.id);
+          const rem = envelopesOn ? allEnvelopes.get(b.id) : undefined;
           const trailing =
             rem !== undefined
               ? `${formatMoney(rem.replace(/^[-−]/, ''), currency)} ${isNegative(rem) ? tr('capture.overShort') : tr('capture.leftShort')}`
@@ -1276,14 +1262,14 @@ export default function CaptureScreen() {
                   style={{
                     flexDirection: 'row',
                     alignItems: 'center',
-                    backgroundColor: '#E7E9FB',
+                    backgroundColor: t.color.accentSoft,
                     borderRadius: t.radius.pill,
                     paddingHorizontal: 10,
                     paddingVertical: 5,
                     gap: 4,
                   }}
                 >
-                  <Text style={{ color: '#3A48B8', fontSize: 13, fontWeight: '700' }}>{tag}</Text>
+                  <Text style={[TAG_TEXT, { color: t.color.accentStrong }]}>{tag}</Text>
                   <Pressable
                     hitSlop={6}
                     accessibilityRole="button"
@@ -1292,7 +1278,7 @@ export default function CaptureScreen() {
                       setDraftTags(draftTags.filter((tg) => tg.toLowerCase() !== tag.toLowerCase()))
                     }
                   >
-                    <Ionicons name="close" size={14} color="#3A48B8" />
+                    <Ionicons name="close" size={14} color={t.color.accentStrong} />
                   </Pressable>
                 </View>
               ))}
@@ -1309,13 +1295,13 @@ export default function CaptureScreen() {
                       alignItems: 'center',
                       borderWidth: 1,
                       borderStyle: 'dashed',
-                      borderColor: '#C9C9C4',
+                      borderColor: t.color.borderStrong,
                       borderRadius: t.radius.pill,
                       paddingHorizontal: 10,
                       paddingVertical: 5,
                     }}
                   >
-                    <Text style={{ color: '#6B6F76', fontSize: 13, fontWeight: '600' }}>
+                    <Text style={{ color: t.color.textMuted, fontSize: 13, fontWeight: '600' }}>
                       {`+ ${suggestion}`}
                     </Text>
                   </Pressable>
@@ -1380,13 +1366,13 @@ export default function CaptureScreen() {
                     alignItems: 'center',
                     borderWidth: 1,
                     borderStyle: 'dashed',
-                    borderColor: '#C9C9C4',
+                    borderColor: t.color.borderStrong,
                     borderRadius: t.radius.pill,
                     paddingHorizontal: 10,
                     paddingVertical: 5,
                   }}
                 >
-                  <Text style={{ color: '#6B6F76', fontSize: 13, fontWeight: '600' }}>
+                  <Text style={{ color: t.color.textMuted, fontSize: 13, fontWeight: '600' }}>
                     {`+ ${tr('fields.addTag', { tag: '' }).trim()}`}
                   </Text>
                 </Pressable>

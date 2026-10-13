@@ -88,8 +88,7 @@ strings are synced.
 
 ## Feedback
 
-Found a bug or have an idea? [Open an issue](https://github.com/mkloouo/mmyway/issues)
-or email [feedback@mkloouo.com](mailto:feedback@mkloouo.com).
+Found a bug or have an idea? Email [feedback@mkloouo.com](mailto:feedback@mkloouo.com).
 
 ## License
 

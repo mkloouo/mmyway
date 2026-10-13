@@ -633,7 +633,7 @@ export function Button({
   const fill =
     variant === 'primary'
       ? disabled
-        ? '#B9BFEA'
+        ? t.color.accentDisabled
         : t.color.accent
       : variant === 'danger'
         ? t.color.dangerSoft
@@ -954,7 +954,7 @@ export function Sheet({
                 width: 32,
                 height: 32,
                 borderRadius: 16,
-                backgroundColor: t.dark ? t.color.surfaceAlt : '#E8E8E4',
+                backgroundColor: t.color.fill,
                 alignItems: 'center',
                 justifyContent: 'center',
                 opacity: pressed ? PRESSED_OPACITY : 1,
