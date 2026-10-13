@@ -307,7 +307,8 @@
     "ok": "OK",
     "save": "Save",
     "saving": "Saving…",
-    "undo": "Undo"
+    "undo": "Undo",
+    "clear": "Clear"
   },
   "conflict": {
     "changedInFf3": "{{description}} was changed in Firefly III {{time}} after you edited it here.",

@@ -2,6 +2,11 @@
 
 ## [Unreleased]
 
+### Changed
+
+- deploy only arm64-v8a and universal without helper message
+- Fix missing keys
+
 ## [2.1.0] - 2026-10-13
 
 ### Changed
