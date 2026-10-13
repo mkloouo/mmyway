@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { Animated, Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useTheme } from './theme';
-import { PRESSED_OPACITY } from './components';
+import { PRESSED_OPACITY } from './kit';
 import { haptics } from './haptics';
 import type { KeypadKey } from '../capture/amountInput';
 

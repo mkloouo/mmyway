@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { Text } from 'react-native';
 import '../i18n';
-import { Card } from '../ui/components';
+import { Card } from '../ui/kit';
 
 describe('Card with a long-press pop', () => {
   beforeEach(() => jest.useFakeTimers());

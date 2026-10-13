@@ -11,13 +11,14 @@ import { useLiveQuery } from '../../src/db/useLiveQuery';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
 import {
-  Screen,
   BarIconButton,
   Card,
-  SectionHeader,
+  ListRow,
+  PushHeader,
   SCREEN_TOP_PADDING,
-} from '../../src/ui/components';
-import { ListRow, PushHeader } from '../../src/ui/kit';
+  Screen,
+  SectionHeader,
+} from '../../src/ui/kit';
 import { confirmAction } from '../../src/ui/confirm';
 import { useAction } from '../../src/ui/useAction';
 import { isUnsent } from '../../src/sync/outbox';

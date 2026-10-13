@@ -16,7 +16,7 @@ import {
   PRESSED_OPACITY,
   Row,
   Sheet,
-} from '../src/ui/components';
+} from '../src/ui/kit';
 import { captureReceipt, attachReceiptToJournal } from '../src/receipt/ingest';
 import { startPositionRequest } from '../src/capture/position';
 import { pickPhoto, type PhotoSource } from '../src/receipt/pickPhoto';

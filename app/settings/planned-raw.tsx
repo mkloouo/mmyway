@@ -5,8 +5,15 @@ import { useTranslation } from 'react-i18next';
 import { ScrollView, View } from 'react-native';
 import { router } from 'expo-router';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, Card, EmptyState, SCREEN_TOP_PADDING } from '../../src/ui/components';
-import { ListRow, PushHeader, Segmented } from '../../src/ui/kit';
+import {
+  Card,
+  EmptyState,
+  ListRow,
+  PushHeader,
+  SCREEN_TOP_PADDING,
+  Screen,
+  Segmented,
+} from '../../src/ui/kit';
 import { usePlanned } from '../../src/planned/usePlanned';
 import { objectSummary } from '../../src/planned/labels';
 import type { PlannedKind } from '../../src/planned/objects';

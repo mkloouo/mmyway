@@ -3,7 +3,7 @@
 import { useTranslation } from 'react-i18next';
 import { ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import { AppBar, Button, Card, CloseButton, Screen } from './components';
+import { AppBar, Button, Card, CloseButton, Screen } from './kit';
 import { useTheme } from './theme';
 import { relativeTime } from './relativeTime';
 import { formatMoney, type DisplayCurrency } from './money';

@@ -10,20 +10,20 @@ import { useDb } from '../../src/providers/DbProvider';
 import { SearchField } from '../../src/ui/SearchField';
 import { useTheme } from '../../src/ui/theme';
 import {
-  Screen,
   AppBar,
-  BarRow,
   BarIconButton,
+  BarRow,
+  Button,
   Card,
   Chip,
   EmptyState,
-  Sheet,
   Row,
-  Button,
-  SectionHeader,
   SCREEN_TOP_PADDING,
-} from '../../src/ui/components';
-import { Segmented } from '../../src/ui/kit';
+  Screen,
+  SectionHeader,
+  Segmented,
+  Sheet,
+} from '../../src/ui/kit';
 import { PendingDot } from '../../src/ui/PendingDot';
 import { CaptureDock } from '../../src/ui/CaptureDock';
 import {

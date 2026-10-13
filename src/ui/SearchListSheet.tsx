@@ -8,7 +8,7 @@ import { useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Keyboard, Pressable, SectionList, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Button, PRESSED_OPACITY, Sheet } from './components';
+import { Button, PRESSED_OPACITY, Sheet } from './kit';
 import { SearchField } from './SearchField';
 import { useTheme } from './theme';
 

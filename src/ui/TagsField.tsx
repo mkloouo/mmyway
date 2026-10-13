@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { View } from 'react-native';
-import { Chip } from './components';
+import { Chip } from './kit';
 import { TextField } from './TextField';
 import { useTheme } from './theme';
 import { splitTags } from '../transactions/tags';

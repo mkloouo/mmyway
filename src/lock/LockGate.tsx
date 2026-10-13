@@ -12,7 +12,7 @@ import { useDb } from '../providers/DbProvider';
 import { useLiveQuery } from '../db/useLiveQuery';
 import { appSettings } from '../db/schema';
 import { APP_LOCK_ENABLED_KEY } from '../settings/appSettings';
-import { Button } from '../ui/components';
+import { Button } from '../ui/kit';
 import { useTheme } from '../ui/theme';
 import { authenticate, canUseAppLock, shouldLock } from './appLock';
 

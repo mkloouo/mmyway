@@ -14,7 +14,7 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
-import { Banner, Button, Dot, Money } from './components';
+import { Banner, Button, Dot, Money } from './kit';
 import { useTheme } from './theme';
 import { formatMoney, type DisplayCurrency } from './money';
 import { fromMinor } from '../splits/allocate';

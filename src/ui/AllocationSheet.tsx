@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
-import { Button, Money, Sheet } from './components';
+import { Button, Money, Sheet } from './kit';
 import { Keypad } from './Keypad';
 import { Slider } from './Slider';
 import { useTheme } from './theme';

@@ -71,6 +71,9 @@ pipeline.
   key by key. It answers only when `extra.appVariant` is `development`/`preview`, and only the Dev
   build has the `mmyway-dev` scheme. **Never widen that:** a link that signs the app in to any
   server is a way to point a real install at someone else's Firefly III.
+- `src/ui/kit/` — Unified Kit V2 family files: `layout.tsx`, `rows.tsx`, `headers.tsx`,
+  `actions.tsx`, `sheet.tsx`, `feedback.tsx`, and `index.ts` (re-exports). Every kit file is
+  ≤ 400 lines of code.
 - `app/` — expo-router screens: amount-first capture, an Inbox
   that behaves as an approval queue, and a shared `src/ui/` component kit every screen draws
   from — no screen inlines a literal colour, styling always goes through `useTheme()`. Text

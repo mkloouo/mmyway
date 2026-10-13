@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, Text, View } from 'react-native';
-import { Dot, Sheet, Button } from './components';
+import { Dot, Sheet, Button } from './kit';
 import { confirmDestructive } from './confirm';
 import { useTheme } from './theme';
 import { TextField } from './TextField';

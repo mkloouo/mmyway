@@ -12,20 +12,8 @@ import { useLiveQuery } from '../src/db/useLiveQuery';
 import { useCategories, useCurrencies } from '../src/db/useReferenceData';
 import { useDb } from '../src/providers/DbProvider';
 import { useTheme } from '../src/ui/theme';
-import {
-  Screen,
-  Card,
-  Button,
-  Sheet,
-  Money,
-  Banner,
-  Dot,
-  SectionHeader,
-  SwitchRow,
-  useKeyboardHeight,
-  SCREEN_TOP_PADDING,
-} from '../src/ui/components';
-import { ModalHeader, StickyFooter, ListRow, GroupFooter } from '../src/ui/kit';
+// prettier-ignore
+import { Banner, Button, Card, Dot, GroupFooter, ListRow, ModalHeader, Money, SCREEN_TOP_PADDING, Screen, SectionHeader, Sheet, StickyFooter, SwitchRow, useKeyboardHeight } from '../src/ui/kit';
 import { PickerSheet } from '../src/ui/PickerSheet';
 import { AccountPickerSheet, type AccountPickerAccount } from '../src/ui/AccountPickerSheet';
 import { currencyOf, formatMoney } from '../src/ui/money';

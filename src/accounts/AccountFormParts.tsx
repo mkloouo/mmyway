@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, ScrollView, Text, View, type KeyboardTypeOptions } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { appLocale } from '../i18n';
-import { PRESSED_OPACITY, ROW_HEIGHT, SCREEN_TOP_PADDING } from '../ui/components';
+import { PRESSED_OPACITY, ROW_HEIGHT, SCREEN_TOP_PADDING } from '../ui/kit';
 import { pickableCurrencies } from '../ui/currencies';
 import { pickDate } from '../ui/pickDate';
 import { PickerSheet } from '../ui/PickerSheet';

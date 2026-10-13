@@ -4,7 +4,7 @@
 import { Pressable, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
-import { Button, Card, Dot, Sheet } from './components';
+import { Button, Card, Dot, Sheet } from './kit';
 import { useTheme } from './theme';
 import type { SyncSummary } from '../sync/runSync';
 import { describeSyncTime } from './relativeTime';

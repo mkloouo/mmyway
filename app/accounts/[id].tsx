@@ -13,17 +13,8 @@ import { useLiveQuery } from '../../src/db/useLiveQuery';
 import { useCurrencies } from '../../src/db/useReferenceData';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
-import {
-  Button,
-  Card,
-  Row,
-  Screen,
-  SectionHeader,
-  Sheet,
-  SwitchRow,
-  Toast,
-} from '../../src/ui/components';
-import { GroupFooter, ListRow, PushHeader, Tile } from '../../src/ui/kit';
+// prettier-ignore
+import { Button, Card, GroupFooter, ListRow, PushHeader, Row, Screen, SectionHeader, Sheet, SwitchRow, Tile, Toast } from '../../src/ui/kit';
 import { useAction } from '../../src/ui/useAction';
 import { useConfirmDiscard } from '../../src/ui/useConfirmDiscard';
 import { useToast } from '../../src/ui/useToast';

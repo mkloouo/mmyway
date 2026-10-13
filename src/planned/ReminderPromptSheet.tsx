@@ -9,7 +9,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useDb } from '../providers/DbProvider';
 import { useCurrencies } from '../db/useReferenceData';
 import { useTheme } from '../ui/theme';
-import { Button, Sheet } from '../ui/components';
+import { Button, Sheet } from '../ui/kit';
 import { useAction } from '../ui/useAction';
 import { syncPlannedNotifications } from './notifications';
 import {

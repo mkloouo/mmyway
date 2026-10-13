@@ -9,16 +9,8 @@ import { router } from 'expo-router';
 import { useDb } from '../../src/providers/DbProvider';
 import { useCategories, useCurrencyRows } from '../../src/db/useReferenceData';
 import { useTheme } from '../../src/ui/theme';
-import {
-  Screen,
-  Card,
-  Row,
-  SectionHeader,
-  Button,
-  Toast,
-  ROW_HEIGHT,
-} from '../../src/ui/components';
-import { ModalHeader, Segmented, StickyFooter } from '../../src/ui/kit';
+// prettier-ignore
+import { Button, Card, ModalHeader, ROW_HEIGHT, Row, Screen, SectionHeader, Segmented, StickyFooter, Toast } from '../../src/ui/kit';
 import { TextField } from '../../src/ui/TextField';
 import { TagsField } from '../../src/ui/TagsField';
 import { PickerSheet } from '../../src/ui/PickerSheet';

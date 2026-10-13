@@ -6,7 +6,7 @@ import { Pressable, TextInput, View, type StyleProp, type ViewStyle } from 'reac
 import { useTranslation } from 'react-i18next';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTheme } from './theme';
-import { PRESSED_OPACITY } from './components';
+import { PRESSED_OPACITY } from './kit';
 
 export function SearchField({
   value,

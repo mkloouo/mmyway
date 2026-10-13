@@ -7,8 +7,14 @@ import { ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, Button, Card, SectionHeader, SCREEN_TOP_PADDING } from '../../src/ui/components';
-import { PushHeader } from '../../src/ui/kit';
+import {
+  Button,
+  Card,
+  PushHeader,
+  SCREEN_TOP_PADDING,
+  Screen,
+  SectionHeader,
+} from '../../src/ui/kit';
 import { TextField } from '../../src/ui/TextField';
 import { useAction } from '../../src/ui/useAction';
 import { confirmDestructive } from '../../src/ui/confirm';

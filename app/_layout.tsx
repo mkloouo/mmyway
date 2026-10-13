@@ -17,7 +17,7 @@ import {
 import { navigateOnce } from '../src/ui/navigateOnce';
 import { PickerHost } from '../src/ui/PickerHost';
 import { useTheme } from '../src/ui/theme';
-import { Button } from '../src/ui/components';
+import { Button } from '../src/ui/kit';
 import { useSharedImages } from '../src/receipt/useSharedImages';
 import { installLogCapture, logLine } from '../src/utils/log';
 import { loadProxyHeaders } from '../src/api/ff3/proxyHeaders';

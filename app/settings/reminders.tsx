@@ -14,14 +14,16 @@ import { useTheme } from '../../src/ui/theme';
 import {
   Button,
   Card,
+  GroupFooter,
+  ListRow,
+  PushHeader,
   Row,
-  Screen,
   SCREEN_TOP_PADDING,
+  Screen,
   SectionHeader,
   Sheet,
   SwitchRow,
-} from '../../src/ui/components';
-import { GroupFooter, ListRow, PushHeader } from '../../src/ui/kit';
+} from '../../src/ui/kit';
 import { TextField } from '../../src/ui/TextField';
 import { useAction } from '../../src/ui/useAction';
 import { pickTime } from '../../src/ui/pickDate';

@@ -11,15 +11,17 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
 import {
-  Screen,
   Button,
   Card,
+  GroupFooter,
+  ListRow,
+  PushHeader,
   Row,
-  Sheet,
-  SectionHeader,
   SCREEN_TOP_PADDING,
-} from '../../src/ui/components';
-import { PushHeader, GroupFooter, ListRow } from '../../src/ui/kit';
+  Screen,
+  SectionHeader,
+  Sheet,
+} from '../../src/ui/kit';
 import { AddressesSheet } from '../../src/ui/AddressesSheet';
 import { TextField } from '../../src/ui/TextField';
 import { useAction } from '../../src/ui/useAction';

@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { ScrollView } from 'react-native';
 import { useCurrencies } from '../../src/db/useReferenceData';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, Card, SCREEN_TOP_PADDING } from '../../src/ui/components';
+import { Screen, Card, SCREEN_TOP_PADDING } from '../../src/ui/kit';
 import { AccountCard, AccountListBar, AccountListEmpty } from '../../src/accounts/AccountList';
 import {
   useLiabilityAccounts,

@@ -4,7 +4,7 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, Text, View } from 'react-native';
-import { Button, Chip, Money } from './components';
+import { Button, Chip, Money } from './kit';
 import { useTheme } from './theme';
 import type { DisplayCurrency } from './money';
 

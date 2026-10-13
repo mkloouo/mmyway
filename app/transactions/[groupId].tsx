@@ -14,16 +14,8 @@ import { useDb } from '../../src/providers/DbProvider';
 import { useFlag } from '../../src/flags/useFlag';
 import { ruleParamsFrom } from '../../src/rules/fromTransaction';
 import { useTheme } from '../../src/ui/theme';
-import {
-  Screen,
-  Card,
-  Button,
-  Money,
-  Row,
-  Sheet,
-  SCREEN_TOP_PADDING,
-} from '../../src/ui/components';
-import { MoreButton, PushHeader } from '../../src/ui/kit';
+// prettier-ignore
+import { Button, Card, Money, MoreButton, PushHeader, Row, SCREEN_TOP_PADDING, Screen, Sheet } from '../../src/ui/kit';
 import { SaveBar } from '../../src/ui/SaveBar';
 import { useConfirmDiscard } from '../../src/ui/useConfirmDiscard';
 import { DetailRows, type DetailRowsValue } from '../../src/ui/DetailRows';

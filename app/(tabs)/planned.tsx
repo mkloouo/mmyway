@@ -12,16 +12,17 @@ import { useCaptureDefaults } from '../../src/capture/useCaptureDefaults';
 import { useCurrencies } from '../../src/db/useReferenceData';
 import { useTheme } from '../../src/ui/theme';
 import {
-  Screen,
   AppBar,
   BarIconButton,
   Card,
   EmptyState,
+  ListRow,
   Money,
-  SectionHeader,
   SCREEN_TOP_PADDING,
-} from '../../src/ui/components';
-import { ListRow, Segmented } from '../../src/ui/kit';
+  Screen,
+  SectionHeader,
+  Segmented,
+} from '../../src/ui/kit';
 import { PendingDot } from '../../src/ui/PendingDot';
 import { currencyOf, formatMoney } from '../../src/ui/money';
 import { primaryCurrencyCode } from '../../src/ui/currencies';

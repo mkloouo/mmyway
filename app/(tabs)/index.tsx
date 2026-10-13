@@ -21,7 +21,7 @@ import {
   EmptyState,
   Banner,
   SCREEN_TOP_PADDING,
-} from '../../src/ui/components';
+} from '../../src/ui/kit';
 import { CaptureDock } from '../../src/ui/CaptureDock';
 import { SyncSheet } from '../../src/ui/SyncSheet';
 import { haptics } from '../../src/ui/haptics';

@@ -23,19 +23,8 @@ import { useTheme } from '../src/ui/theme';
 import { useEnvelopeRemaining, useAllEnvelopesRemaining } from '../src/bucket/useEnvelopeRemaining';
 import { useFlag } from '../src/flags/useFlag';
 import { topChips } from '../src/capture/topChips';
-import {
-  Screen,
-  Button,
-  Sheet,
-  Toast,
-  Row,
-  CloseButton,
-  Card,
-  Dot,
-  SectionHeader,
-  PRESSED_OPACITY,
-} from '../src/ui/components';
-import { ListRow, Segmented, Tile } from '../src/ui/kit';
+// prettier-ignore
+import { Button, Card, CloseButton, Dot, ListRow, PRESSED_OPACITY, Row, Screen, SectionHeader, Segmented, Sheet, Tile, Toast } from '../src/ui/kit';
 import { Keypad } from '../src/ui/Keypad';
 import { PayeeSheet } from '../src/ui/PayeeSheet';
 import { AccountPickerSheet, type AccountPickerAccount } from '../src/ui/AccountPickerSheet';

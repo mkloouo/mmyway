@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Button, Sheet } from './components';
+import { Button, Sheet } from './kit';
 import { useTheme } from './theme';
 
 type PickerRequest = {

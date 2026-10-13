@@ -7,8 +7,15 @@ import { useQuery } from '@tanstack/react-query';
 import Constants from 'expo-constants';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, Card, SectionHeader, SCREEN_TOP_PADDING } from '../../src/ui/components';
-import { PushHeader, ListRow, GroupFooter } from '../../src/ui/kit';
+import {
+  Card,
+  GroupFooter,
+  ListRow,
+  PushHeader,
+  SCREEN_TOP_PADDING,
+  Screen,
+  SectionHeader,
+} from '../../src/ui/kit';
 import { relativeTime } from '../../src/ui/relativeTime';
 import { loadSettings, SETTINGS_QUERY_KEY } from '../../src/settings/loadSettings';
 import whatsNew from '../../src/about/whatsNew.json';

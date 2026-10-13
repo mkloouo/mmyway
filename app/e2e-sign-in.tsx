@@ -12,7 +12,7 @@ import { useDb } from '../src/providers/DbProvider';
 import { connectFailureText, connectToInstance } from '../src/settings/connectInstance';
 import { SETTINGS_QUERY_KEY } from '../src/settings/loadSettings';
 import { useSync } from '../src/sync/useSync';
-import { Button, Screen } from '../src/ui/components';
+import { Button, Screen } from '../src/ui/kit';
 import { useTheme } from '../src/ui/theme';
 import { errorMessage } from '../src/utils/errorMessage';
 

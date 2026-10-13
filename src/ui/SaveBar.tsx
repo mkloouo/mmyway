@@ -3,7 +3,7 @@
 // a ghost Undo and a Save at its natural width. The caller shows it only while there are changes.
 import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
-import { Button } from './components';
+import { Button } from './kit';
 import { useTheme } from './theme';
 
 export function SaveBar({

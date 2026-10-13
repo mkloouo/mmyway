@@ -7,7 +7,7 @@ import { Animated, Pressable, ScrollView, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { usePopOnChange } from './feedback';
 import { useTheme } from './theme';
-import { Card, Money, PRESSED_OPACITY, SectionHeader } from './components';
+import { Card, Money, PRESSED_OPACITY, SectionHeader } from './kit';
 import { currencyOf, formatMoney } from './money';
 import { categoryColor } from './categoryColor';
 import { navigateOnce } from './navigateOnce';

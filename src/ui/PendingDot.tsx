@@ -1,7 +1,7 @@
 // The yellow dot on an account card whose changes are still waiting to reach Firefly III.
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Dot } from './components';
+import { Dot } from './kit';
 import { useTheme } from './theme';
 
 export function PendingDot({ visible }: { visible: boolean }) {

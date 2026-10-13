@@ -8,16 +8,18 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
 import {
-  Screen,
-  Card,
   Button,
+  Card,
   Dot,
-  Sheet,
-  SectionHeader,
-  Toast,
+  GroupFooter,
+  ListRow,
+  PushHeader,
   SCREEN_TOP_PADDING,
-} from '../../src/ui/components';
-import { PushHeader, ListRow, GroupFooter } from '../../src/ui/kit';
+  Screen,
+  SectionHeader,
+  Sheet,
+  Toast,
+} from '../../src/ui/kit';
 import { AddressesSheet } from '../../src/ui/AddressesSheet';
 import { relativeTime } from '../../src/ui/relativeTime';
 import { TextField } from '../../src/ui/TextField';

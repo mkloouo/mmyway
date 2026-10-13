@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Split the UI kit into focused family modules under src/ui/kit/ and retired legacy duplicate components (MKL-80).
 - Standardized Firefly III top tile icon size on settings screen to match row proportions.
 
 ### Fixed

@@ -82,6 +82,15 @@ is the debt ledger, and it should only shrink.
 
 ## 3. Components: which to use
 
+The kit lives in family files under `src/ui/kit/` (each ≤ 400 lines of code) and re-exports from `src/ui/kit/index.ts`:
+
+- `layout.tsx`: `Screen`, `SCREEN_TOP_PADDING`, `Card` (Group), `SectionHeader`, `GroupFooter`
+- `rows.tsx`: `ListRow`, `SwitchRow`, `Tile`, `ROW_HEIGHT`, `PRESSED_OPACITY` (deprecated `Row`)
+- `headers.tsx`: `PushHeader`, `ModalHeader`, `MoreButton` (deprecated `AppBar`, `BarRow`, `BarIconButton`, `CloseButton`)
+- `actions.tsx`: `Button`, `Segmented`, `Chip`, `Fab`, `StickyFooter`
+- `sheet.tsx`: `Sheet`, `useKeyboardHeight`
+- `feedback.tsx`: `Toast`, `EmptyState`, `Dot`, `Pulse`, `StatusPill`, `Money` (deprecated `Banner`)
+
 ✅ = Kit V2, use it. ⛔ = legacy: don't use in new or touched code; it goes away once its last use
 migrates.
 

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
-import { Card, Dot, Row, Button, Sheet } from './components';
+import { Card, Dot, Row, Button, Sheet } from './kit';
 import { useTheme } from './theme';
 import { categoryColor } from './categoryColor';
 import { AccountPickerSheet, type AccountPickerAccount } from './AccountPickerSheet';

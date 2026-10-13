@@ -13,12 +13,13 @@ import {
   Button,
   Card,
   Money,
+  MoreButton,
+  PushHeader,
   Row,
-  Screen,
   SCREEN_TOP_PADDING,
+  Screen,
   SectionHeader,
-} from '../../src/ui/components';
-import { MoreButton, PushHeader } from '../../src/ui/kit';
+} from '../../src/ui/kit';
 import { AmountSheet } from '../../src/ui/AmountSheet';
 import { PickerSheet } from '../../src/ui/PickerSheet';
 import { PendingDot } from '../../src/ui/PendingDot';

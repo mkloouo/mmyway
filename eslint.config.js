@@ -33,7 +33,6 @@ const MAX_LINES = 400;
 // Ceilings, in lines of code, for the files that were already too big (2026-10-13).
 const OVERSIZED = {
   'app/capture.tsx': 1344,
-  'src/ui/components.tsx': 1048,
   'app/draft/[[]id].tsx': 983,
   'app/transactions/[[]groupId].tsx': 942,
   'src/sync/outbox.ts': 930,

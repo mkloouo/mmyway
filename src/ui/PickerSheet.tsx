@@ -7,7 +7,7 @@ import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
 import { ChooseRow, SearchListSheet } from './SearchListSheet';
-import { Dot } from './components';
+import { Dot } from './kit';
 import { useTheme } from './theme';
 
 export interface PickerOption {

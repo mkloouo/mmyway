@@ -8,7 +8,7 @@
 // away again, and nothing is sent before Confirm.
 import { View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { Chip } from './components';
+import { Chip } from './kit';
 import { TextField } from './TextField';
 import { useTheme } from './theme';
 import { sharedNames, toggleSharedName } from '../transactions/sharedWith';

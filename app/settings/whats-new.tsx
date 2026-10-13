@@ -5,8 +5,14 @@ import { useTranslation } from 'react-i18next';
 import { ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, Card, SectionHeader, SCREEN_TOP_PADDING } from '../../src/ui/components';
-import { PushHeader, ListRow } from '../../src/ui/kit';
+import {
+  Card,
+  ListRow,
+  PushHeader,
+  SCREEN_TOP_PADDING,
+  Screen,
+  SectionHeader,
+} from '../../src/ui/kit';
 import whatsNew from '../../src/about/whatsNew.json';
 
 export default function WhatsNewScreen() {

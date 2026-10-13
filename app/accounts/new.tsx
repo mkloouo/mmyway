@@ -10,18 +10,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useDb } from '../../src/providers/DbProvider';
 import { useCurrencies } from '../../src/db/useReferenceData';
 import { useTheme } from '../../src/ui/theme';
-import {
-  Screen,
-  Card,
-  Row,
-  SwitchRow,
-  SectionHeader,
-  Button,
-  Toast,
-  PRESSED_OPACITY,
-  ROW_HEIGHT,
-} from '../../src/ui/components';
-import { ModalHeader, StickyFooter } from '../../src/ui/kit';
+// prettier-ignore
+import { Button, Card, ModalHeader, PRESSED_OPACITY, ROW_HEIGHT, Row, Screen, SectionHeader, StickyFooter, SwitchRow, Toast } from '../../src/ui/kit';
 import { TextField } from '../../src/ui/TextField';
 import { PickerSheet } from '../../src/ui/PickerSheet';
 import { primaryCurrencyCode } from '../../src/ui/currencies';

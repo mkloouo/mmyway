@@ -3,7 +3,7 @@ import { Pressable, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTheme } from './theme';
-import { Fab, PRESSED_OPACITY } from './components';
+import { Fab, PRESSED_OPACITY } from './kit';
 import { navigateOnce } from './navigateOnce';
 
 export function CaptureDock() {

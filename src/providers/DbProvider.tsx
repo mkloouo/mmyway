@@ -4,7 +4,7 @@ import { ActivityIndicator, InteractionManager, ScrollView, Share, Text, View } 
 import { warmMerchantLookup } from '../lookup/merchantLookup';
 import { getDb, getMigrationDone, schema } from '../db/client';
 import { useTheme } from '../ui/theme';
-import { Button } from '../ui/components';
+import { Button } from '../ui/kit';
 import { shareableLog } from '../utils/log';
 import type { ExpoSQLiteDatabase } from 'drizzle-orm/expo-sqlite';
 

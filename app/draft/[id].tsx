@@ -2,7 +2,7 @@
 // entry (Split, or a duplicated split transaction) shows its tracked total and one page per split.
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Animated, Image, Pressable, ScrollView, Text, View } from 'react-native';
+import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { useShake } from '../../src/ui/feedback';
 import { useLocalSearchParams, router } from 'expo-router';
 import { eq } from 'drizzle-orm';
@@ -11,23 +11,8 @@ import { useBudgetRows, useCategories, useCurrencyRows } from '../../src/db/useR
 import { pickDateTime } from '../../src/ui/pickDate';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
-import {
-  Screen,
-  AppBar,
-  BarIconButton,
-  Card,
-  Chip,
-  Button,
-  Money,
-  StatusPill,
-  Sheet,
-  Row,
-  Banner,
-  CloseButton,
-  SCREEN_TOP_PADDING,
-  SectionHeader,
-} from '../../src/ui/components';
-import { ModalHeader, Segmented, StickyFooter, Tile } from '../../src/ui/kit';
+// prettier-ignore
+import { AppBar, Banner, BarIconButton, Button, Card, Chip, CloseButton, ModalHeader, Money, Row, Screen, SectionHeader, Segmented, Sheet, StatusPill, StickyFooter, Tile } from '../../src/ui/kit';
 import { rewireForType, type TxEnds } from '../../src/transactions/changeType';
 import { DetailRows, type DetailRowsValue } from '../../src/ui/DetailRows';
 import { PayeeSheet } from '../../src/ui/PayeeSheet';

@@ -7,7 +7,7 @@ import { Alert, View } from 'react-native';
 import { useDb } from '../providers/DbProvider';
 import { useCurrencies } from '../db/useReferenceData';
 import { useTheme } from './theme';
-import { Button, Card, Money, Row, Sheet } from './components';
+import { Button, Card, Money, Row, Sheet } from './kit';
 import { currencyOf } from './money';
 import { useAction } from './useAction';
 import { navigateOnce } from './navigateOnce';

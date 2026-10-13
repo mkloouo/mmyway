@@ -7,16 +7,17 @@ import { useDb } from '../../src/providers/DbProvider';
 import { SearchField } from '../../src/ui/SearchField';
 import { useTheme } from '../../src/ui/theme';
 import {
-  Screen,
-  BarRow,
   BarIconButton,
+  BarRow,
   Button,
-  Sheet,
   Card,
-  Toast,
+  ListRow,
+  PushHeader,
   SCREEN_TOP_PADDING,
-} from '../../src/ui/components';
-import { ListRow, PushHeader } from '../../src/ui/kit';
+  Screen,
+  Sheet,
+  Toast,
+} from '../../src/ui/kit';
 import { payeeAliases } from '../../src/db/schema';
 import { rememberPayeeAlias, removePayeeAlias, removePayeeGroup } from '../../src/lookup/aliases';
 import { exportAliasesJson, importAliasesJson } from '../../src/lookup/aliasTransfer';

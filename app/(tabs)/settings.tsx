@@ -12,12 +12,13 @@ import { useTheme } from '../../src/ui/theme';
 import {
   AppBar,
   Card,
-  SectionHeader,
-  SwitchRow,
+  ListRow,
   SCREEN_TOP_PADDING,
   Screen,
-} from '../../src/ui/components';
-import { ListRow, Tile } from '../../src/ui/kit';
+  SectionHeader,
+  SwitchRow,
+  Tile,
+} from '../../src/ui/kit';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { loadSettings, SETTINGS_QUERY_KEY } from '../../src/settings/loadSettings';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';

@@ -5,8 +5,14 @@ import { useTranslation } from 'react-i18next';
 import { ScrollView, Text } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useTheme } from '../../../src/ui/theme';
-import { Screen, Card, Row, SectionHeader, SCREEN_TOP_PADDING } from '../../../src/ui/components';
-import { PushHeader } from '../../../src/ui/kit';
+import {
+  Card,
+  PushHeader,
+  Row,
+  SCREEN_TOP_PADDING,
+  Screen,
+  SectionHeader,
+} from '../../../src/ui/kit';
 import { usePlanned } from '../../../src/planned/usePlanned';
 
 const KIND_LABEL_KEYS = {

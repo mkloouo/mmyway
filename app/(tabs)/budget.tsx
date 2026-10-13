@@ -10,12 +10,13 @@ import {
   Button,
   Card,
   EmptyState,
+  GroupFooter,
+  ListRow,
   Money,
+  SCREEN_TOP_PADDING,
   Screen,
   SectionHeader,
-  SCREEN_TOP_PADDING,
-} from '../../src/ui/components';
-import { GroupFooter, ListRow } from '../../src/ui/kit';
+} from '../../src/ui/kit';
 import { AmountSheet } from '../../src/ui/AmountSheet';
 import { NewEnvelopeSheet } from '../../src/budget/NewEnvelopeSheet';
 import { divideDecimal } from '../../src/api/ff3/decimal';

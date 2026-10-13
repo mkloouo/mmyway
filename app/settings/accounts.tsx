@@ -8,7 +8,7 @@ import Animated, { FadeIn } from 'react-native-reanimated';
 import { useCurrencies } from '../../src/db/useReferenceData';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
-import { Screen, Button, Card, SCREEN_TOP_PADDING, SectionHeader } from '../../src/ui/components';
+import { Screen, Button, Card, SCREEN_TOP_PADDING, SectionHeader } from '../../src/ui/kit';
 import { AccountCard, AccountListBar, AccountListEmpty } from '../../src/accounts/AccountList';
 import { DragList } from '../../src/ui/DragList';
 import { useAssetAccounts, type ReferenceAccountRow } from '../../src/accounts/useAssetAccounts';

@@ -37,6 +37,9 @@ resolve_main() {
   local common
   common="$(git rev-parse --path-format=absolute --git-common-dir)"
   MAIN="$(cd "$(dirname "$common")" && pwd -P)"
+  if [[ -d "$MAIN/main" && -e "$MAIN/main/.git" ]]; then
+    MAIN="$MAIN/main"
+  fi
 }
 
 current_branch() {
@@ -44,7 +47,7 @@ current_branch() {
 }
 
 is_main_checkout() {
-  [[ "$(git rev-parse --path-format=absolute --git-dir)" == "$(git rev-parse --path-format=absolute --git-common-dir)" ]]
+  [[ "$(git rev-parse --show-toplevel 2>/dev/null)" == "$MAIN" ]]
 }
 
 require_id() {
@@ -104,6 +107,9 @@ cmd_finish() {
   require_id "$id"
   resolve_main
   local wt="$MAIN/.worktrees/$id"
+  if [[ ! -d "$wt" && -d "$(dirname "$MAIN")/.worktrees/$id" ]]; then
+    wt="$(dirname "$MAIN")/.worktrees/$id"
+  fi
   local top
   top="$(git rev-parse --show-toplevel)"
   if [[ "$top" != "$wt" || "$(current_branch .)" != "$id" ]]; then
@@ -178,6 +184,9 @@ cmd_abort() {
   require_id "$id"
   resolve_main
   local wt="$MAIN/.worktrees/$id"
+  if [[ ! -d "$wt" && -d "$(dirname "$MAIN")/.worktrees/$id" ]]; then
+    wt="$(dirname "$MAIN")/.worktrees/$id"
+  fi
   if [[ "${2:-}" != --yes ]]; then
     echo "DRY RUN, nothing changed. Would run:"
     echo "  git -C $MAIN worktree remove --force $wt"

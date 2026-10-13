@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import type { Href } from 'expo-router';
 import { useTheme } from './theme';
-import { Card, Chip, Button, Dot, Money, PRESSED_OPACITY, Pulse } from './components';
+import { Card, Chip, Button, Dot, Money, PRESSED_OPACITY, Pulse } from './kit';
 import { SwipeableCard } from './SwipeableCard';
 import { haptics } from './haptics';
 import { currencyOf } from './money';

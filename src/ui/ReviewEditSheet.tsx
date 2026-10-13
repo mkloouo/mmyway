@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text } from 'react-native';
 import { AccountPickerSheet } from './AccountPickerSheet';
-import { Button, Sheet } from './components';
+import { Button, Sheet } from './kit';
 import { TextField } from './TextField';
 import { useTheme } from './theme';
 import { currencyOf, formatMoney } from './money';
