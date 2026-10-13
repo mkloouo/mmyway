@@ -1168,6 +1168,7 @@
     "newSplitTitle": "Новий поділ",
     "partN": "",
     "partNOfM": "",
+    "partSelector": "Частини",
     "position": "Розділити {{index}} / {{count}}",
     "reassign": "Перепризначити",
     "remove": "Видалити цей поділ",

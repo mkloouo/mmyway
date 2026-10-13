@@ -114,7 +114,7 @@
     "android": {
       "profile": "production",
       "aabProfile": "production-aab",
-       "uploadAbis": [
+      "uploadAbis": [
         "arm64-v8a",
         "universal"
       ],

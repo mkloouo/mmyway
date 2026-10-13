@@ -1107,6 +1107,7 @@
     "newSplitTitle": "New split",
     "partN": "Part {{number}}",
     "partNOfM": "Part {{number}} of {{total}}",
+    "partSelector": "Parts",
     "position": "Split {{index}} / {{count}}",
     "reassign": "Reassign",
     "remove": "Remove this split",

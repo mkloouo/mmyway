@@ -4,8 +4,11 @@
 
 ### Changed
 
-- deploy only arm64-v8a and universal without helper message
-- Fix missing keys
+- Standardized Firefly III top tile icon size on settings screen to match row proportions.
+
+### Fixed
+
+- Added missing `splits.partSelector` translation key in English and Ukrainian (MKL-146).
 
 ## [2.1.0] - 2026-10-13
 

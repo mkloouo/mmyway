@@ -154,3 +154,21 @@ screen boards** (`docs/design/boards/`). These rules apply to every agent and ev
 
 RTK Golden Rule, Sub-Agents clause, and full command reference live in `~/.claude/RTK.md`
 (global, loaded every session) — see there instead of duplicating it here.
+
+## Parallel work protocol
+
+Linear + git worktrees, local only. Agents never push; the owner pushes.
+
+Linear: team \`MKL\`. Main checkout: \`/Users/mkloouo/Projects/mmyway/main\` (branch \`main\`).
+
+Worktrees: \`.worktrees/<ID>\` inside the repo (gitignored). Branch: the issue ID in uppercase, e.g. \`MKL-12\`. All git steps go through \`scripts/wt.sh\`.
+
+1. _Pick._ If given an issue ID, use it. Otherwise pick an issue that is \`Todo\` + \`agent-ready\` + all blockers \`Done\`; highest Linear priority first (Urgent → Low), then lowest issue number. Read the whole issue: Goal, Owns, Namespace, Depends on, Spec, Check, Test plan, Out of scope.
+2. _Claim (the lock)._ From the main checkout: \`scripts/wt.sh start <ID>\`. Exit 2 (\`ALREADY CLAIMED\`) means another agent owns the issue; pick a different one. The last line is \`WORKTREE: <path>\`; work only there. In Linear: state \`In Progress\`, assign yourself if possible, comment \`Claimed by <agent/model name> · branch <ID> · worktree .worktrees/<ID>\`.
+3. _Work._ Only inside your worktree. Edit only files matching the issue's **Owns** list (plus new files inside those folders, your namespace files, and one line in \`CHANGELOG.md\`). If you need a change outside Owns, do not make it: comment the exact change on the issue, then stop as Blocked. Commit often; message format \`<ID>: <imperative summary>\`.
+4. _Verify._ \`scripts/wt.sh check\` (runs \`npm run check\`, must print \`CHECK OK\`). Run the issue's Check command too.
+5. _Changelog._ Add one bullet under \`## [Unreleased]\` → \`### Added\` (or \`Changed\`/\`Fixed\`) in \`CHANGELOG.md\`, ending with \`(<ID>)\`.
+6. _Integrate._ Inside the worktree: \`scripts/wt.sh finish <ID>\`. It refuses uncommitted changes (exit 3) and rebases on main; on a conflict (exit 5) it aborts and lists the files. \`CHANGELOG.md\` uses git's union merge (\`.gitattributes\`), so its bullets should never conflict; if one does, keep both sides and check that no conflict markers remain. The merge into main is fast-forward only and needs a clean main checkout (exit 6 = Blocked). Never stash or discard someone else's changes.
+7. _Close._ \`finish\` removes the worktree and branch. In Linear: state \`In Review\` (or \`Done\` per team settings), and a comment with: summary of changes, files changed, check output tail, and a numbered **manual test plan** for the owner (what to open, what to tap/swipe, what to expect). The owner tests on a phone and then moves the issue to \`Done\`.
+8. _Blocked._ Comment the reason and the exact unblocking change in Linear. Set state back to \`Todo\`, remove label \`agent-ready\`, add label \`blocked\`. Leave the worktree and branch for inspection. Stop.
+9. _Never:_ force-push or rewrite \`main\`; commit in the main checkout except via \`wt.sh finish\`; touch another agent's worktree or branch; edit files outside Owns; commit secrets or \`.env.local\`; start dev servers or drive the app to test UI. Leave UI testing to the owner via the test plan.

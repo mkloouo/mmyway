@@ -178,7 +178,7 @@ export default function SettingsScreen() {
         <Card flush style={{ marginHorizontal: t.space.lg }}>
           <ListRow
             first
-            leading={<Tile icon="server-outline" size={48} />}
+            leading={<Tile icon="server-outline" />}
             label="Firefly III"
             sub={connectionSub}
             chevron

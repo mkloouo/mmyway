@@ -60,3 +60,4 @@ builds/
 
 build-*.tar.gz
 build-*.ipa
+.worktrees/

@@ -1,32 +1,48 @@
 {
-  "version": "2.0.2",
+  "version": "2.1.0",
   "sections": [
     {
-      "title": "Capture",
+      "title": "Changed",
       "items": [
-        "Aligned keypad digits with design: 48 px height, white keys with 12 px radius, and 22 px font.",
-        "Picker items in sheets now select on first tap when search input is focused.",
-        "Added checkmark icon to Save & confirm button, and prevented truncation on To inbox button.",
-        "Details sheet now isolates changes in a draft and only commits on Done; aligned When padding, inline Note row, styled tag chips with suggestions, and Shared with row.",
-        "Selected Payee and From suggestion chips are now bold."
+        "Budget, adding accounts from the app, the demo, app lock, recording the place, payee nicknames, rules and the reverse proxy are hidden for now while they're finished. Nothing you set up is lost: saved proxy headers are still sent, and an app lock you turned on still locks."
       ]
     },
     {
-      "title": "Developer",
-      "items": ["Removed local release script"]
-    },
-    {
-      "title": "Inbox & Sync",
+      "title": "Capture",
       "items": [
-        "Aligned Sync sheet with the Review sheet archetype: grouped inside a Card with leading status dots, clear status statements, and a \"Set up\" link for receipt reading."
+        "Aligned keypad digits and bottom action buttons into a unified 3-column grid.",
+        "Save & confirm button features a checkmark icon and readiness guidance starting with \"Needs a payee to confirm\".",
+        "Selected Payee and From suggestion chips are pinned and styled in bold.",
+        "FX card sits above details with inverted exchange rate display.",
+        "Category and budget picker sheets now include an A–Z rail and show remaining envelope balances."
       ]
     },
     {
       "title": "Draft Review",
       "items": [
-        "Grouped menu sheet actions in a card, and added SectionHeader to receipt photo section.",
-        "Details sheet for notes, tags, and shared with now uses unified Card grouping.",
-        "Fullscreen photo viewer now features a floating close button and clean deletion action instead of a solid pink banner."
+        "Aligned header with ✕, Review title, and ••• action menu.",
+        "Added segmented type control to switch between Expense, Income, and Transfer.",
+        "Grouped details rows with warning indicator for missing fields and footnote explaining uncertain values.",
+        "Split mode features dedicated part controls and sticky footer actions.",
+        "Fullscreen receipt photo viewer features a floating close button and translucent delete action."
+      ]
+    },
+    {
+      "title": "Activity",
+      "items": [
+        "Balances strip sits in a single flush card with 132 px account cells and bottom accent indicator on the active account.",
+        "Transactions are grouped into rounded cards with 28 px leading tiles for income, transfer, and category dot.",
+        "Subtitle displays clean transfer path (From → To) and split summary (N splits · categories).",
+        "Filtered state highlights active filters in the top bar with a quick Clear action.",
+        "Filters sheet features a segmented type control and structured accounts list with checkmarks and pending sync dots.",
+        "Selection mode replaces the bottom dock with a full-width deletion button."
+      ]
+    },
+    {
+      "title": "Receipts",
+      "items": [
+        "Aligned receipt capture fallback tiles with the unified card style (white surface, 14 px radius, 1 px border).",
+        "Aligned Hint for the reader sheet with the Edit sheet archetype: help text positioned above group, and inline field inside a Card."
       ]
     }
   ]
