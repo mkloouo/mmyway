@@ -8,7 +8,7 @@ module.exports = {
   expo: {
     name: IS_DEV ? `${BASE_NAME} (Dev)` : BASE_NAME,
     slug: 'mmyway',
-    version: '2.0.2',
+    version: '2.1.0',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'automatic',

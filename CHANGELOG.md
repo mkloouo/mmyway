@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-10-13
+
 ### Changed
 
 - Budget, adding accounts from the app, the demo, app lock, recording the place, payee nicknames, rules and the reverse proxy are hidden for now while they're finished. Nothing you set up is lost: saved proxy headers are still sent, and an app lock you turned on still locks.
