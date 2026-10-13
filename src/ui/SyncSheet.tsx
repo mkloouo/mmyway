@@ -204,8 +204,11 @@ export function SyncSheet({
           <Text style={[t.type.body, { color: t.color.text, flex: 1 }]}>
             {tr('sync.lastSynced')}
           </Text>
-          <Text style={[t.type.body, { color: t.color.textMuted }]}>
-            {describeSyncTime(summary?.lastSyncedAt)}
+          <Text
+            style={[t.type.body, { color: t.color.textMuted, flexShrink: 0 }]}
+            numberOfLines={1}
+          >
+            {describeSyncTime(summary?.lastSyncedAt).replace(/ /g, '\u00A0')}
           </Text>
         </View>
       </Card>

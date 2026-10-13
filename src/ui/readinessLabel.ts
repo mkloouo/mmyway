@@ -14,14 +14,23 @@ const MISSING_KEYS: Record<string, string> = {
   'split total': 'splitTotal',
 };
 
-function fieldList(missing: string[]): string {
+function fieldList(missing: string[], forHint = false): string {
   return missing
-    .map((m) => (MISSING_KEYS[m] ? i18n.t(`readiness.${MISSING_KEYS[m]}`) : m))
+    .map((m) => {
+      if (forHint && m === 'payee') {
+        return i18n.t('readiness.payeeForHint', { defaultValue: 'a payee' });
+      }
+      return MISSING_KEYS[m] ? i18n.t(`readiness.${MISSING_KEYS[m]}`) : m;
+    })
     .join(', ');
 }
 
 export function needsLabel(missing: string[]): string {
   return i18n.t('readiness.needs', { fields: fieldList(missing) });
+}
+
+export function needsToConfirmLabel(missing: string[]): string {
+  return i18n.t('readiness.needsToConfirm', { fields: fieldList(missing, true) });
 }
 
 export function missingLabel(missing: string[]): string {

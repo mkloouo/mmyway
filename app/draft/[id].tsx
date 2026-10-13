@@ -27,6 +27,8 @@ import {
   SCREEN_TOP_PADDING,
   SectionHeader,
 } from '../../src/ui/components';
+import { ModalHeader, Segmented, StickyFooter, Tile } from '../../src/ui/kit';
+import { rewireForType, type TxEnds } from '../../src/transactions/changeType';
 import { DetailRows, type DetailRowsValue } from '../../src/ui/DetailRows';
 import { PayeeSheet } from '../../src/ui/PayeeSheet';
 import { AmountSheet } from '../../src/ui/AmountSheet';
@@ -322,6 +324,25 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
     pickDateTime(new Date(draft.date), (picked) => patch({ date: picked.toISOString() }));
   }
 
+  function handleTypeChange(newType: 'withdrawal' | 'deposit' | 'transfer') {
+    if (newType === draft.type) return;
+    const ends: TxEnds = {
+      sourceId: draft.sourceId ?? null,
+      sourceName: draft.type === 'deposit' ? (draft.sourceName ?? null) : null,
+      destinationId: draft.destinationId ?? null,
+      destinationName: draft.type === 'withdrawal' ? (draft.destinationName ?? null) : null,
+    };
+    const rewired = rewireForType(draft.type, newType, ends);
+    patch({
+      type: newType,
+      sourceId: rewired.source_id ?? undefined,
+      destinationId: rewired.destination_id ?? undefined,
+      sourceName: rewired.source_name ?? undefined,
+      destinationName: rewired.destination_name ?? undefined,
+      budgetId: newType === 'transfer' ? undefined : draft.budgetId,
+    });
+  }
+
   const handleConfirm = act(tr('inbox.confirm'), async () => {
     if (!readiness.ready) {
       haptics.warn();
@@ -520,9 +541,9 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
   return (
     <Screen bottom modal>
       <View style={{ flex: 1 }}>
-        <AppBar
+        <ModalHeader
           title={tr('draft.title')}
-          left={<CloseButton onPress={() => router.back()} />}
+          onClose={() => router.back()}
           right={
             <BarIconButton
               icon="ellipsis-horizontal"
@@ -532,12 +553,26 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
           }
         />
 
+        {!readOnly && (
+          <View style={{ paddingHorizontal: t.space.lg, paddingBottom: t.space.xs }}>
+            <Segmented
+              options={[
+                { key: 'withdrawal', label: tr('capture.typeExpense') },
+                { key: 'deposit', label: tr('capture.typeIncome') },
+                { key: 'transfer', label: tr('capture.typeTransfer') },
+              ]}
+              value={draft.type}
+              onChange={(key) => handleTypeChange(key as 'withdrawal' | 'deposit' | 'transfer')}
+            />
+          </View>
+        )}
+
         {!splitMode && (
           <View
             style={{
               alignItems: 'center',
-              paddingTop: SCREEN_TOP_PADDING,
-              paddingBottom: t.space.lg,
+              paddingTop: t.space.sm,
+              paddingBottom: t.space.md,
               paddingHorizontal: t.space.xl,
             }}
           >
@@ -589,29 +624,12 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
         <ScrollView
           style={{ flex: 1 }}
           contentContainerStyle={{
-            paddingTop: splitMode ? SCREEN_TOP_PADDING : 0,
+            paddingTop: splitMode ? t.space.sm : 0,
             gap: t.space.md,
             paddingBottom: t.space.lg,
           }}
         >
           {!!row.errorMessage && !readOnly && <Banner inset>{row.errorMessage}</Banner>}
-          {unsure.length > 0 && (
-            <Banner inset>
-              {tr('draft.checkUnsure', {
-                fields: unsure
-                  .map((f) =>
-                    f === 'amount'
-                      ? tr('fields.amount')
-                      : f === 'date'
-                        ? tr('fields.date')
-                        : draft.type === 'deposit'
-                          ? tr('capture.payer')
-                          : tr('capture.payee'),
-                  )
-                  .join(', '),
-              })}
-            </Banner>
-          )}
           {/* A receipt the model couldn't read a currency from can't be confirmed without one. */}
           {!readOnly && !draft.currencyCode && (
             <View style={{ alignItems: 'center' }}>
@@ -622,22 +640,113 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
               />
             </View>
           )}
+
+          {showFx && (
+            <Card flush style={{ marginHorizontal: t.space.lg }}>
+              <Row
+                first
+                label={chargedLabel}
+                value={`${draft.foreignAmount || '—'} ${accountCurrencyCode}`}
+                tone={draft.foreignAmount ? 'default' : 'warn'}
+                check={!draft.foreignAmount}
+                chevron={!readOnly}
+                onPress={readOnly ? undefined : () => setKeypadFor('foreign')}
+              />
+              {!draft.foreignAmount && !readOnly && (
+                <View style={{ paddingHorizontal: t.space.lg, paddingBottom: t.space.sm }}>
+                  <Text style={[t.type.label, { color: t.color.warn }]}>
+                    {tr('capture.enterAccountPaid', { currency: accountCurrencyCode })}
+                  </Text>
+                </View>
+              )}
+              {!!draft.foreignAmount && !!impliedRate && impliedRate !== '0' && (
+                <View style={{ paddingHorizontal: t.space.lg, paddingBottom: t.space.sm }}>
+                  <Text style={[t.type.caption, { color: t.color.textMuted }]}>
+                    {`1 ${draft.currencyCode} ≈ ${impliedRate} ${accountCurrencyCode}`}
+                  </Text>
+                </View>
+              )}
+            </Card>
+          )}
+
           {splitMode ? (
             <>
-              <Pressable
-                onPress={() => setTextFor('title')}
-                disabled={readOnly}
-                style={{ paddingHorizontal: t.space.xl, paddingTop: t.space.md }}
-                accessibilityRole="button"
-                accessibilityLabel={tr('splits.title')}
-              >
-                <Text
-                  style={[t.type.heading, { color: t.color.text, textAlign: 'center' }]}
-                  numberOfLines={2}
-                >
-                  {draft.groupTitle || draft.description}
+              <View style={{ alignItems: 'center', gap: 2, paddingHorizontal: t.space.xl }}>
+                <Text style={[t.type.caption, { color: t.color.textMuted }]}>
+                  {tr('splits.total')}
                 </Text>
-              </Pressable>
+                <Pressable onPress={() => setKeypadFor('total')} disabled={readOnly}>
+                  <Money
+                    amount={total}
+                    currency={currency}
+                    type={draft.type}
+                    size="title"
+                    loading={currenciesLoading}
+                  />
+                </Pressable>
+                <Pressable
+                  onPress={() => setTextFor('title')}
+                  disabled={readOnly}
+                  accessibilityRole="button"
+                  accessibilityLabel={tr('splits.title')}
+                >
+                  <Text
+                    style={[t.type.heading, { color: t.color.text, textAlign: 'center' }]}
+                    numberOfLines={2}
+                  >
+                    {draft.groupTitle || draft.description}
+                  </Text>
+                </Pressable>
+              </View>
+
+              <View
+                style={{ flexDirection: 'row', gap: 6, paddingHorizontal: t.space.lg }}
+                role="tablist"
+                aria-label={tr('splits.partSelector', { defaultValue: 'Parts' })}
+              >
+                {amounts.map((amt, idx) => {
+                  const isSelected = idx === pageIndex;
+                  return (
+                    <Pressable
+                      key={idx}
+                      onPress={() => setPage(idx)}
+                      role="tab"
+                      aria-selected={isSelected}
+                      style={{
+                        flex: 1,
+                        height: 44,
+                        borderRadius: 12,
+                        borderWidth: isSelected ? 2 : 1,
+                        borderColor: isSelected ? t.color.accent : t.color.border,
+                        backgroundColor: isSelected ? t.color.accentSoft : t.color.surface,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <Text
+                        style={{
+                          fontSize: 12,
+                          fontWeight: '600',
+                          color: isSelected ? t.color.accent : t.color.textMuted,
+                        }}
+                      >
+                        {tr('splits.partN', { number: idx + 1, defaultValue: `Part ${idx + 1}` })}
+                      </Text>
+                      <Text
+                        style={{
+                          fontSize: 13,
+                          fontWeight: '500',
+                          color: isSelected ? t.color.accent : t.color.text,
+                          fontVariant: ['tabular-nums'],
+                        }}
+                      >
+                        {amt}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
               <SplitPager
                 total={total}
                 count={amounts.length}
@@ -653,54 +762,32 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
               />
             </>
           ) : (
-            detailRows(true)
-          )}
-
-          {/* Where it was made (#67). The coordinates as they are: naming the place would need a
-              geocoder, and Firefly III's own map is where this is worth looking at. */}
-          {!!draft.location && (
-            <Text
-              style={[
-                t.type.label,
-                { color: t.color.textFaint, paddingHorizontal: t.space.xl, paddingTop: t.space.sm },
-              ]}
-            >
-              {tr('draft.near', {
-                latitude: draft.location.latitude,
-                longitude: draft.location.longitude,
-              })}
-            </Text>
-          )}
-
-          {showFx && (
-            <Card style={{ marginHorizontal: t.space.lg, gap: t.space.xs }}>
-              <Row
-                first
-                label={chargedLabel}
-                value={`${draft.foreignAmount || '—'} ${accountCurrencyCode}`}
-                tone={draft.foreignAmount ? 'default' : 'warn'}
-                chevron={!readOnly}
-                onPress={readOnly ? undefined : () => setKeypadFor('foreign')}
-              />
-              {!draft.foreignAmount && !readOnly && (
-                <Text style={[t.type.label, { color: t.color.warn }]}>
-                  {tr('capture.enterAccountPaid', { currency: accountCurrencyCode })}
+            <>
+              {detailRows(true)}
+              {unsure.length > 0 && (
+                <Text
+                  style={[
+                    t.type.caption,
+                    {
+                      color: t.color.textMuted,
+                      paddingHorizontal: t.space.xl,
+                      marginTop: -t.space.xs,
+                    },
+                  ]}
+                >
+                  {tr('draft.readerUnsureNote')}
                 </Text>
               )}
-              {!!draft.foreignAmount && !!impliedRate && impliedRate !== '0' && (
-                <Text style={[t.type.label, { color: t.color.textFaint }]}>
-                  1 {draft.currencyCode} ≈ {impliedRate} {accountCurrencyCode}
-                </Text>
-              )}
-            </Card>
+            </>
           )}
 
           {row.kind !== 'receipt' && !row.receiptImagePath && row.state !== 'synced' && (
-            <Card style={{ marginHorizontal: t.space.lg }}>
+            <Card flush style={{ marginHorizontal: t.space.lg }}>
               <Row
                 first
+                leading={<Tile icon="camera" size={40} />}
                 label={tr('capture.receiptPhoto')}
-                value={tr('capture.attach')}
+                subtitle={tr('capture.cameraOrLibrary')}
                 chevron
                 onPress={attachPhoto}
               />
@@ -709,47 +796,64 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
           {(row.kind === 'receipt' || !!row.receiptImagePath) && (
             <>
               <SectionHeader title={tr('capture.receiptPhoto')} />
-              <Card
-                flush
-                style={{ marginHorizontal: t.space.lg, padding: t.space.md, gap: t.space.sm }}
-              >
-                {row.receiptImagePath ? (
-                  <Pressable
-                    onPress={() => setSheet('photo')}
-                    accessibilityRole="imagebutton"
-                    accessibilityLabel={tr('draft.showPhoto')}
-                  >
-                    <Image
-                      source={{ uri: row.receiptImagePath }}
-                      resizeMode="cover"
-                      style={{
-                        width: '100%',
-                        height: 140,
-                        borderRadius: t.radius.sm,
-                        backgroundColor: t.color.surfaceAlt,
-                      }}
-                    />
-                  </Pressable>
-                ) : (
-                  <Text style={[t.type.label, { color: t.color.textFaint }]}>
-                    {tr('draft.photoInFf3')}
-                  </Text>
-                )}
-                <Text style={[t.type.body, { color: t.color.text }]}>
-                  {itemCount > 0
-                    ? tr('draft.itemCount', { count: itemCount })
-                    : tr('draft.receipt')}
-                </Text>
-                {!!draft.readBy && (
-                  <Text style={[t.type.label, { color: t.color.textMuted }]}>
-                    {tr('draft.readBy', {
-                      provider: draft.readBy.provider,
-                      model: draft.readBy.model,
-                    })}
-                  </Text>
-                )}
+              <Card flush style={{ marginHorizontal: t.space.lg }}>
+                <Pressable
+                  onPress={() => setSheet('photo')}
+                  accessibilityRole="button"
+                  accessibilityLabel={tr('draft.showPhoto')}
+                >
+                  <Row
+                    first
+                    leading={
+                      row.receiptImagePath ? (
+                        <Image
+                          source={{ uri: row.receiptImagePath }}
+                          resizeMode="cover"
+                          style={{
+                            width: 40,
+                            height: 40,
+                            borderRadius: t.radius.sm,
+                            backgroundColor: t.color.surfaceAlt,
+                          }}
+                        />
+                      ) : (
+                        <Tile icon="receipt-outline" size={40} />
+                      )
+                    }
+                    label={
+                      itemCount > 0
+                        ? tr('draft.itemCount', { count: itemCount })
+                        : tr('draft.receipt')
+                    }
+                    subtitle={
+                      draft.readBy
+                        ? tr('draft.readBy', {
+                            provider: draft.readBy.provider,
+                            model: draft.readBy.model,
+                          })
+                        : undefined
+                    }
+                    chevron
+                  />
+                </Pressable>
               </Card>
             </>
+          )}
+
+          {/* Where it was made (#67). The coordinates as they are: naming the place would need a
+              geocoder, and Firefly III's own map is where this is worth looking at. */}
+          {!!draft.location && (
+            <Text
+              style={[
+                t.type.caption,
+                { color: t.color.textFaint, paddingHorizontal: t.space.xl, marginTop: -t.space.xs },
+              ]}
+            >
+              {tr('draft.near', {
+                latitude: draft.location.latitude,
+                longitude: draft.location.longitude,
+              })}
+            </Text>
           )}
         </ScrollView>
 
@@ -773,31 +877,34 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
             )}
           </View>
         ) : (
-          <View style={{ padding: t.space.lg, gap: t.space.sm }}>
-            {readiness.missing.length > 0 && (
-              <Animated.Text
-                style={[t.type.label, { color: t.color.warn, textAlign: 'center' }, shakeStyle]}
-              >
-                {missingLabel(readiness.missing)}
-              </Animated.Text>
-            )}
-            <View style={{ flexDirection: 'row', gap: t.space.sm }}>
+          <StickyFooter>
+            {splitMode ? (
+              <View style={{ flexDirection: 'row', gap: t.space.sm, width: '100%' }}>
+                <Button
+                  title={tr('splits.addPart')}
+                  variant="secondary"
+                  onPress={() => setAllocation({ kind: 'newSplit' })}
+                  disabled={confirming}
+                  style={{ flex: 1 }}
+                />
+                <Button
+                  title={confirming ? tr('draft.confirming') : tr('inbox.confirm')}
+                  onPress={handleConfirm}
+                  disabled={confirming || !readiness.ready}
+                  hint={!readiness.ready ? missingLabel(readiness.missing) : undefined}
+                  style={{ flex: 2 }}
+                />
+              </View>
+            ) : (
               <Button
                 title={confirming ? tr('draft.confirming') : tr('inbox.confirm')}
                 onPress={handleConfirm}
                 disabled={confirming || !readiness.ready}
-                size="lg"
-                style={{ flex: 1 }}
-              />
-              <Button
-                title={tr('splits.split')}
-                variant="secondary"
-                onPress={() => setAllocation({ kind: 'newSplit' })}
-                disabled={confirming}
+                hint={!readiness.ready ? missingLabel(readiness.missing) : undefined}
                 size="lg"
               />
-            </View>
-          </View>
+            )}
+          </StickyFooter>
         )}
       </View>
 
@@ -885,35 +992,54 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
       )}
 
       <Sheet visible={sheet === 'menu'} onClose={closeSheet} title={tr('draft.menuTitle')}>
-        <Card flush>
-          {readOnly && !!row.ff3GroupId && (
-            <Row
-              first
-              label={tr('draft.openInActivity')}
-              icon="open"
-              onPress={() => {
-                closeSheet();
-                navigateOnce(`/transactions/${row.ff3GroupId}`);
-              }}
-            />
-          )}
-          {!readOnly && (
-            <Row
-              first={!row.ff3GroupId}
-              label={tr('fields.currency')}
-              value={draft.currencyCode || '—'}
-              chevron
-              onPress={() => setSheet('currency')}
-            />
-          )}
-          <Row
-            first={readOnly && !row.ff3GroupId}
-            label={tr('draft.deleteDraft')}
-            icon="trash"
-            tone="danger"
-            onPress={handleDeleteDraft}
-          />
-        </Card>
+        <View style={{ gap: t.space.lg, paddingBottom: t.space.lg }}>
+          <Card flush>
+            {readOnly && !!row.ff3GroupId && (
+              <Row
+                first
+                label={tr('draft.openInActivity')}
+                chevron
+                onPress={() => {
+                  closeSheet();
+                  navigateOnce(`/transactions/${row.ff3GroupId}`);
+                }}
+              />
+            )}
+            {!readOnly && (
+              <Row
+                first
+                label={tr('splits.splitIntoParts')}
+                chevron
+                onPress={() => {
+                  closeSheet();
+                  setAllocation({ kind: 'newSplit' });
+                }}
+              />
+            )}
+            {!readOnly && (
+              <Row
+                first={readOnly && !row.ff3GroupId}
+                label={tr('fields.currency')}
+                value={draft.currencyCode || '—'}
+                chevron
+                onPress={() => setSheet('currency')}
+              />
+            )}
+            {!readOnly && !!row.receiptImagePath && (
+              <Row
+                label={tr('draft.replacePhoto')}
+                chevron
+                onPress={() => {
+                  closeSheet();
+                  void attachPhoto();
+                }}
+              />
+            )}
+          </Card>
+          <Card flush>
+            <Row first label={tr('draft.deleteDraft')} tone="danger" onPress={handleDeleteDraft} />
+          </Card>
+        </View>
       </Sheet>
       <PickerSheet
         visible={sheet === 'currency'}

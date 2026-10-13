@@ -1,7 +1,7 @@
 // Activity (design §6.4) — balances, grouped-by-day history with totals, paging, search.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { SectionList, Text, View } from 'react-native';
+import { Pressable, SectionList, Text, View } from 'react-native';
 import { Collapsible, leaveThen } from '../../src/ui/Collapsible';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
@@ -14,13 +14,17 @@ import {
   AppBar,
   BarRow,
   BarIconButton,
+  Card,
   Chip,
   EmptyState,
   Sheet,
   Row,
   Button,
+  SectionHeader,
   SCREEN_TOP_PADDING,
 } from '../../src/ui/components';
+import { Segmented } from '../../src/ui/kit';
+import { PendingDot } from '../../src/ui/PendingDot';
 import { CaptureDock } from '../../src/ui/CaptureDock';
 import {
   useTransactionPage,
@@ -381,7 +385,7 @@ export default function ActivityScreen() {
     [toggleSelected],
   );
   const renderItem = useCallback(
-    ({ item }: { item: ActivityItem }) => (
+    ({ item, index, section }: { item: ActivityItem; index: number; section: DisplaySection }) => (
       <Collapsible collapsed={leavingIds.has(item.groupId)}>
         <ActivityRow
           item={item}
@@ -390,6 +394,8 @@ export default function ActivityScreen() {
           currencies={currencies}
           onPress={onRowPress}
           onLongPress={onRowLongPress}
+          isFirst={index === 0}
+          isLast={index === section.data.length - 1}
         />
       </Collapsible>
     ),
@@ -487,19 +493,15 @@ export default function ActivityScreen() {
           <AppBar
             title={tr('inbox.selected', { count: selectedIds.size })}
             left={
-              <BarIconButton
-                icon="close"
-                label={tr('inbox.cancelSelection')}
+              <Pressable
                 onPress={clearSelection}
-              />
-            }
-            right={
-              <Button
-                title={tr('common.delete')}
-                variant="danger"
-                size="bar"
-                onPress={deleteSelected}
-              />
+                hitSlop={8}
+                style={{ paddingHorizontal: 12, height: 44, justifyContent: 'center' }}
+              >
+                <Text style={[t.type.body, { color: t.color.accent, fontSize: 17 }]}>
+                  {tr('common.cancel')}
+                </Text>
+              </Pressable>
             }
           />
         ) : searchOpen ? (
@@ -521,7 +523,26 @@ export default function ActivityScreen() {
         ) : (
           <AppBar
             title={tr('activity.title')}
-            subtitle={activeFilterSubtitle || undefined}
+            subtitle={
+              isFiltered ? (
+                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
+                  <Text style={[t.type.label, { color: t.color.textMuted }]} numberOfLines={1}>
+                    {activeFilterSubtitle}
+                  </Text>
+                  <Pressable
+                    onPress={() => {
+                      setAccountFilter(null);
+                      setType('all');
+                    }}
+                    hitSlop={6}
+                  >
+                    <Text style={[t.type.label, { color: t.color.accent, fontWeight: '600' }]}>
+                      {tr('common.clear')}
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : undefined
+            }
             right={
               <>
                 <BarIconButton
@@ -624,7 +645,36 @@ export default function ActivityScreen() {
           />
         )}
 
-        <CaptureDock />
+        {selecting ? (
+          <View
+            style={{
+              position: 'absolute',
+              left: 0,
+              right: 0,
+              bottom: 0,
+              borderTopWidth: 1,
+              borderTopColor: t.color.border,
+              paddingHorizontal: t.space.lg,
+              paddingTop: 12,
+              paddingBottom: 34,
+              backgroundColor: t.color.surface,
+            }}
+          >
+            <Button
+              title={
+                selectedIds.size > 0
+                  ? tr('activity.deleteSelected', { count: selectedIds.size })
+                  : tr('common.delete')
+              }
+              variant="danger"
+              disabled={selectedIds.size === 0}
+              onPress={deleteSelected}
+              style={{ height: 52, borderRadius: 14 }}
+            />
+          </View>
+        ) : (
+          <CaptureDock />
+        )}
       </View>
 
       <Sheet
@@ -632,42 +682,72 @@ export default function ActivityScreen() {
         onClose={() => setFilterOpen(false)}
         title={tr('activity.filters')}
       >
-        <View style={{ gap: t.space.xs }}>
-          <Text style={[t.type.label, { color: t.color.textMuted }]}>
-            {tr('activity.filterAccounts')}
-          </Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
-            <Chip
-              label={tr('activity.allAccounts')}
-              selected={accountFilter === null}
-              onPress={() => setAccountFilter(null)}
-            />
-            {assetAccounts.map((a) => (
-              <Chip
-                key={a.id}
-                label={a.name}
-                selected={accountFilter === a.id}
-                dotColor={pendingAccounts.has(a.id) ? t.color.warn : undefined}
-                onPress={() => toggleAccountFilter(a.id)}
-              />
-            ))}
-          </View>
-        </View>
+        <SectionHeader
+          title={tr('activity.filterType')}
+          first
+          style={{ paddingHorizontal: 4, paddingBottom: 8 }}
+        />
+        <Segmented<ActivityTypeFilter>
+          value={type}
+          onChange={setType}
+          options={FILTERS.map((f) => ({ key: f.type, label: tr(f.labelKey) }))}
+        />
 
-        <View style={{ gap: t.space.xs }}>
-          <Text style={[t.type.label, { color: t.color.textMuted }]}>
-            {tr('activity.filterType')}
-          </Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: t.space.sm }}>
-            {FILTERS.map((f) => (
-              <Chip
-                key={f.type}
-                label={tr(f.labelKey)}
-                selected={type === f.type}
-                onPress={() => setType(f.type)}
-              />
-            ))}
-          </View>
+        <SectionHeader
+          title={tr('activity.filterAccounts')}
+          style={{ paddingHorizontal: 4, paddingTop: 20, paddingBottom: 8 }}
+        />
+        <Card flush>
+          <Row
+            first
+            label={tr('activity.allAccounts')}
+            icon={accountFilter === null ? 'checkmark' : undefined}
+            onPress={() => setAccountFilter(null)}
+          />
+          {assetAccounts.map((a) => (
+            <Row
+              key={a.id}
+              label={a.name}
+              leading={pendingAccounts.has(a.id) ? <PendingDot visible /> : undefined}
+              icon={accountFilter === a.id ? 'checkmark' : undefined}
+              onPress={() => toggleAccountFilter(a.id)}
+            />
+          ))}
+        </Card>
+        <Text
+          style={[t.type.label, { color: t.color.textMuted, paddingHorizontal: 4, paddingTop: 6 }]}
+        >
+          {tr('activity.pendingDotHint')}
+        </Text>
+
+        <View
+          style={{
+            borderTopWidth: 1,
+            borderTopColor: t.color.border,
+            marginTop: t.space.md,
+            paddingTop: 12,
+            paddingBottom: 8,
+            flexDirection: 'row',
+            gap: 10,
+            alignItems: 'center',
+          }}
+        >
+          <Button
+            title={tr('common.clear')}
+            variant="ghost"
+            onPress={() => {
+              setAccountFilter(null);
+              setType('all');
+            }}
+            style={{ height: 52 }}
+          />
+          <Button
+            title={tr('activity.showTransactions', {
+              count: displaySections.reduce((s, sec) => s + sec.data.length, 0),
+            })}
+            onPress={() => setFilterOpen(false)}
+            style={{ flex: 1, height: 52, borderRadius: 14 }}
+          />
         </View>
       </Sheet>
 

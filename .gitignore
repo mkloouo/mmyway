@@ -42,6 +42,7 @@ yarn-error.*
 
 # agent scratch directory
 .superpowers/
+scratch/
 
 # claude runtime state
 .claude/*.lock

@@ -1,7 +1,5 @@
 // Activity's rows (design §6.4): one transaction's row, the account cards above the list, and a
 // day's header. All memoized — a filter tap or a sync used to redraw every one of them.
-// A card shows its balance at the top of the list and shrinks to a name-only pill once the list
-// is scrolled, where the strip would otherwise eat a third of the screen.
 import { memo } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n, { appLocale } from '../i18n';
@@ -9,16 +7,14 @@ import { Animated, Pressable, ScrollView, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { usePopOnChange } from './feedback';
 import { useTheme } from './theme';
-import { Card, Chip, Dot, Money, PRESSED_OPACITY, SectionHeader } from './components';
+import { Card, Money, PRESSED_OPACITY, SectionHeader } from './components';
 import { currencyOf, formatMoney } from './money';
 import { categoryColor } from './categoryColor';
-import { relativeTime } from './relativeTime';
 import { navigateOnce } from './navigateOnce';
 import { PendingDot } from './PendingDot';
 import type { ReferenceAccountRow } from '../accounts/useAssetAccounts';
 import type { PendingEditStatus } from '../transactions/pendingEdits';
 import {
-  MAX_SPLIT_LINES,
   REMOTE_SECTION_KEY,
   cachedSplitLines,
   type ActivityItem,
@@ -51,6 +47,8 @@ export const ActivityRow = memo(function ActivityRow({
   currencies,
   onPress,
   onLongPress,
+  isFirst = false,
+  isLast = false,
 }: {
   item: ActivityItem;
   selecting: boolean;
@@ -58,6 +56,8 @@ export const ActivityRow = memo(function ActivityRow({
   currencies: Currencies;
   onPress: (item: ActivityItem) => void;
   onLongPress: (item: ActivityItem) => void;
+  isFirst?: boolean;
+  isLast?: boolean;
 }) {
   const t = useTheme();
   const { t: tr } = useTranslation();
@@ -71,16 +71,26 @@ export const ActivityRow = memo(function ActivityRow({
     (item.type === 'withdrawal' ? item.destinationName : item.sourceName) ||
     '—';
   const accountLeg = item.type === 'deposit' ? item.sourceName : item.destinationName;
-  const dotColor = item.categoryName
-    ? categoryColor(item.categoryName, t.dark)
-    : item.type === 'transfer'
-      ? t.color.transfer
-      : t.color.textFaint;
   const selectable = !queued && !remote;
   // The mark pops as it toggles, alongside the tick haptic (src/ui/feedback.ts).
   const markPop = usePopOnChange(selected, 1.4);
   const splitLines = queued ? item.splits : remote ? [] : cachedSplitLines(item);
   const currency = currencyOf(currencies, item.currencyCode);
+
+  let subtitle: string;
+  if (item.type === 'transfer') {
+    subtitle = `${item.sourceName || '—'} → ${item.destinationName || '—'}`;
+  } else if (splitLines.length > 0) {
+    const cats = Array.from(
+      new Set(splitLines.map((s) => s.categoryName || s.label).filter(Boolean)),
+    ).join(', ');
+    subtitle = `${tr('splits.count', { count: splitLines.length })} · ${cats || tr('splits.title')}`;
+  } else {
+    subtitle =
+      [item.categoryName, accountLeg].filter(Boolean).join(' · ') ||
+      (queued ? tr('draft.queued') : '—');
+  }
+
   return (
     <Pressable
       onPress={() => onPress(item)}
@@ -88,76 +98,172 @@ export const ActivityRow = memo(function ActivityRow({
       // 500ms by default, which felt like the long-press hadn't registered.
       delayLongPress={300}
       style={({ pressed }) => ({
+        marginHorizontal: t.space.lg,
+        backgroundColor: selected ? t.color.accentSoft : t.color.surface,
+        borderTopLeftRadius: isFirst ? 14 : 0,
+        borderTopRightRadius: isFirst ? 14 : 0,
+        borderBottomLeftRadius: isLast ? 14 : 0,
+        borderBottomRightRadius: isLast ? 14 : 0,
+        borderTopWidth: isFirst ? 1 : 0,
+        borderBottomWidth: isLast ? 1 : 0,
+        borderLeftWidth: 1,
+        borderRightWidth: 1,
+        borderColor: t.color.border,
+        minHeight: 52,
+        paddingHorizontal: 16,
         flexDirection: 'row',
         alignItems: 'center',
-        gap: t.space.sm,
-        paddingHorizontal: t.space.lg,
-        paddingVertical: t.space.sm,
+        gap: 12,
+        position: 'relative',
         opacity: pressed ? PRESSED_OPACITY : 1,
-        backgroundColor: selected ? t.color.accentSoft : undefined,
       })}
     >
-      <Animated.View style={markPop}>
-        {selecting && selectable ? (
-          <Ionicons
-            name={selected ? 'checkmark-circle' : 'ellipse-outline'}
-            size={20}
-            color={selected ? t.color.accent : t.color.textFaint}
-          />
-        ) : (
-          <Dot color={dotColor} />
-        )}
-      </Animated.View>
-      <View style={{ flex: 1 }}>
+      {selecting && selectable ? (
+        <Animated.View style={markPop}>
+          {selected ? (
+            <View
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: 12,
+                backgroundColor: t.color.accent,
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <Ionicons name="checkmark" size={16} color="#fff" />
+            </View>
+          ) : (
+            <View
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: 11,
+                borderWidth: 1.5,
+                borderColor: t.dark ? t.color.border : '#C9C9C4',
+              }}
+            />
+          )}
+        </Animated.View>
+      ) : (
+        <View
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: 8,
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            backgroundColor:
+              item.type === 'deposit'
+                ? t.dark
+                  ? '#1B3B2B'
+                  : '#E6F2EA'
+                : item.type === 'transfer'
+                  ? t.dark
+                    ? '#1B2C4B'
+                    : '#E8F0FE'
+                  : item.categoryName
+                    ? categoryColor(item.categoryName, t.dark) + '22'
+                    : t.dark
+                      ? '#2A2A2E'
+                      : '#F0F0EE',
+          }}
+        >
+          {item.type === 'deposit' ? (
+            <Ionicons name="arrow-up" size={14} color={t.color.income} />
+          ) : item.type === 'transfer' ? (
+            <Ionicons name="swap-horizontal" size={14} color={t.color.transfer} />
+          ) : (
+            <View
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: item.categoryName
+                  ? categoryColor(item.categoryName, t.dark)
+                  : t.color.textFaint,
+              }}
+            />
+          )}
+        </View>
+      )}
+
+      <View style={{ flex: 1, minWidth: 0, paddingVertical: 9 }}>
         <Text style={[t.type.body, { color: t.color.text }]} numberOfLines={1}>
           {description}
         </Text>
         <Text style={[t.type.label, { color: t.color.textMuted }]} numberOfLines={1}>
-          {[
-            splitLines.length
-              ? tr('splits.count', { count: splitLines.length })
-              : item.categoryName,
-            accountLeg,
-          ]
-            .filter(Boolean)
-            .join(' · ') || (queued ? tr('draft.queued') : '—')}
+          {subtitle}
         </Text>
-        {splitLines.slice(0, MAX_SPLIT_LINES).map((s, i) => (
-          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.xs }}>
-            <View
-              style={{
-                width: 6,
-                height: 6,
-                borderRadius: 3,
-                backgroundColor: s.categoryName
-                  ? categoryColor(s.categoryName, t.dark)
-                  : t.color.textFaint,
-              }}
-            />
-            <Text style={[t.type.label, { color: t.color.textMuted, flex: 1 }]} numberOfLines={1}>
-              {s.label || '—'}
-            </Text>
-            <Text style={[t.type.label, t.type.money, { color: t.color.textMuted }]}>
-              {formatMoney(s.amount, currency)}
-            </Text>
-          </View>
-        ))}
-        {splitLines.length > MAX_SPLIT_LINES && (
-          <Text style={[t.type.label, { color: t.color.textFaint }]}>
-            {tr('splits.more', { count: splitLines.length - MAX_SPLIT_LINES })}
-          </Text>
-        )}
       </View>
-      {queued && !item.landing && <Chip label={tr('draft.queued')} tone="warn" />}
-      {!!pendingStatus && <Chip label={tr(PENDING_LABEL_KEYS[pendingStatus])} tone="warn" />}
+
+      {queued && !item.landing && (
+        <View
+          style={{
+            flexShrink: 0,
+            paddingHorizontal: 8,
+            paddingVertical: 3,
+            borderRadius: 999,
+            backgroundColor: '#FDF0DC',
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: '600',
+              letterSpacing: 0.4,
+              color: '#8A4006',
+            }}
+          >
+            {tr('draft.queued').toUpperCase()}
+          </Text>
+        </View>
+      )}
+      {!!pendingStatus && (
+        <View
+          style={{
+            flexShrink: 0,
+            paddingHorizontal: 8,
+            paddingVertical: 3,
+            borderRadius: 999,
+            backgroundColor: t.color.accentSoft,
+          }}
+        >
+          <Text
+            style={{
+              fontSize: 11,
+              fontWeight: '600',
+              letterSpacing: 0.4,
+              color: t.dark ? t.color.accent : '#3A48B8',
+            }}
+          >
+            {tr(PENDING_LABEL_KEYS[pendingStatus]).toUpperCase()}
+          </Text>
+        </View>
+      )}
+
       <Money amount={item.amount} currency={currency} type={item.type} />
+
+      {!isLast && (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 56,
+            right: 0,
+            height: 1,
+            backgroundColor: t.color.border,
+          }}
+        />
+      )}
     </Pressable>
   );
 });
 
 /**
- * The balance cards above the list. Memoized, as is each card: a filter tap used to redraw every
- * card (and format all their dates) when only two change.
+ * The balance cards above the list. Memoized, as is each cell.
  */
 export const BalanceStrip = memo(function BalanceStrip({
   accounts,
@@ -174,36 +280,33 @@ export const BalanceStrip = memo(function BalanceStrip({
 }) {
   const t = useTheme();
   return (
-    // A ScrollView defaults to flexGrow/flexShrink 1, so this row competed with the SectionList for
-    // height and had its cards clipped along the bottom edge. The top padding is the room a card's
-    // long-press pop grows into: without it the ScrollView clipped the card's top edge.
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      style={{ flexGrow: 0, flexShrink: 0 }}
-      contentContainerStyle={{
-        paddingHorizontal: t.space.lg,
-        gap: t.space.sm,
-        paddingTop: t.space.xs,
-        paddingBottom: t.space.sm,
-      }}
-    >
-      {accounts.map((a) => (
-        <BalanceCard
-          key={a.id}
-          account={a}
-          selected={selectedId === a.id}
-          pending={pendingAccounts.has(a.id)}
-          currencies={currencies}
-          onToggle={onToggle}
-        />
-      ))}
-    </ScrollView>
+    <View style={{ paddingHorizontal: t.space.lg, paddingTop: 10, paddingBottom: t.space.xs }}>
+      <Card flush style={{ overflow: 'hidden' }}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={{ flexGrow: 0, flexShrink: 0 }}
+        >
+          {accounts.map((a, index) => (
+            <BalanceCell
+              key={a.id}
+              account={a}
+              isFirst={index === 0}
+              selected={selectedId === a.id}
+              pending={pendingAccounts.has(a.id)}
+              currencies={currencies}
+              onToggle={onToggle}
+            />
+          ))}
+        </ScrollView>
+      </Card>
+    </View>
   );
 });
 
-const BalanceCard = memo(function BalanceCard({
+const BalanceCell = memo(function BalanceCell({
   account: a,
+  isFirst,
   selected,
   pending,
   currencies,
@@ -211,6 +314,7 @@ const BalanceCard = memo(function BalanceCard({
   onLongPress,
 }: {
   account: ReferenceAccountRow;
+  isFirst: boolean;
   selected: boolean;
   pending: boolean;
   currencies: Currencies;
@@ -220,34 +324,59 @@ const BalanceCard = memo(function BalanceCard({
   const t = useTheme();
   const { t: tr } = useTranslation();
   const stale = isBalanceStale(a.currentBalanceDate);
+  const currency = currencyOf(currencies, a.currencyCode);
+
   return (
-    <Card
+    <Pressable
       onPress={() => onToggle(a.id)}
       onLongPress={onLongPress ?? (() => navigateOnce(`/accounts/${a.id}`))}
       delayLongPress={300}
-      longPressPop
+      accessibilityRole="button"
+      accessibilityState={{ selected }}
       accessibilityHint={tr('account.openHint')}
-      selected={selected}
-      style={{
-        minWidth: 120,
-        opacity: stale ? 0.5 : 1,
-      }}
+      style={({ pressed }) => ({
+        width: 132,
+        paddingVertical: 12,
+        paddingHorizontal: 14,
+        gap: 2,
+        borderLeftWidth: isFirst ? 0 : 1,
+        borderLeftColor: t.color.border,
+        backgroundColor: selected ? t.color.accentSoft : 'transparent',
+        borderBottomWidth: selected ? 3 : 0,
+        borderBottomColor: t.color.accent,
+        opacity: stale ? 0.5 : pressed ? PRESSED_OPACITY : 1,
+      })}
     >
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.xs }}>
-        <Text style={[t.type.label, { color: t.color.textMuted, flexShrink: 1 }]} numberOfLines={1}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        <Text
+          style={[
+            t.type.label,
+            {
+              color: selected ? (t.dark ? t.color.accent : '#3A48B8') : t.color.textMuted,
+              fontWeight: selected ? '600' : '400',
+              flexShrink: 1,
+            },
+          ]}
+          numberOfLines={1}
+        >
           {a.name}
         </Text>
         <PendingDot visible={pending} />
       </View>
-      <Money
-        amount={a.currentBalance ?? '0'}
-        currency={currencyOf(currencies, a.currencyCode)}
-        size="heading"
-      />
-      <Text style={[t.type.label, { color: t.color.textFaint }]}>
-        {tr('count.asOf', { time: relativeTime(a.currentBalanceDate) })}
+      <Text
+        style={[
+          t.type.body,
+          t.type.money,
+          {
+            color: t.color.text,
+            fontWeight: '600',
+          },
+        ]}
+        numberOfLines={1}
+      >
+        {formatMoney(a.currentBalance ?? '0', currency)}
       </Text>
-    </Card>
+    </Pressable>
   );
 });
 
@@ -267,7 +396,18 @@ export const DayHeader = memo(function DayHeader({
       title={sectionKey === REMOTE_SECTION_KEY ? tr('activity.fromFf3') : dayTitle(sectionKey)}
       action={
         totals.length > 0 ? (
-          <Text style={[t.type.label, { color: t.color.textMuted }]}>
+          <Text
+            style={[
+              t.type.label,
+              t.type.money,
+              {
+                color: t.color.textMuted,
+                fontVariant: ['tabular-nums'],
+                fontSize: 13,
+                fontWeight: '500',
+              },
+            ]}
+          >
             {totals
               .map((tot) => formatMoney(tot.amount, currencyOf(currencies, tot.currencyCode ?? '')))
               .join(' · ')}

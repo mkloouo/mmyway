@@ -139,7 +139,7 @@ export function AppBar({
   divider,
 }: {
   title: string;
-  subtitle?: string;
+  subtitle?: ReactNode;
   left?: ReactNode;
   right?: ReactNode;
   /** See BarRow: off when the screen draws the line under more header of its own. */
@@ -153,11 +153,14 @@ export function AppBar({
         <Text style={[t.type.title, { color: t.color.text }]} numberOfLines={1}>
           {title}
         </Text>
-        {!!subtitle && (
-          <Text style={[t.type.label, { color: t.color.textMuted }]} numberOfLines={1}>
-            {subtitle}
-          </Text>
-        )}
+        {!!subtitle &&
+          (typeof subtitle === 'string' ? (
+            <Text style={[t.type.label, { color: t.color.textMuted }]} numberOfLines={1}>
+              {subtitle}
+            </Text>
+          ) : (
+            subtitle
+          ))}
       </View>
       {!!right && (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.xs }}>{right}</View>
@@ -321,17 +324,20 @@ export const ROW_HEIGHT = 52;
 /** A label/value line. Rows stack inside a Card and draw their own hairline separator. */
 export function Row({
   label,
+  subtitle,
   value,
   icon,
   leading,
   chevron,
   onPress,
   tone,
+  check,
   first,
   loading,
   style,
 }: {
   label: string;
+  subtitle?: string;
   /** Omitted on an action row (Delete, Duplicate): it shows `icon` there instead of a value. */
   value?: string;
   /** What the action does, where a value would be. */
@@ -340,6 +346,7 @@ export function Row({
   chevron?: boolean;
   onPress?: () => void;
   tone?: 'default' | 'warn' | 'danger';
+  check?: boolean;
   first?: boolean;
   /** The value is still being read: a spinner stands where "—" would flash. */
   loading?: boolean;
@@ -358,15 +365,50 @@ export function Row({
           alignItems: 'center',
           gap: t.space.md,
           minHeight: ROW_HEIGHT,
+          paddingHorizontal: t.space.lg,
           paddingVertical: t.space.sm,
-          borderTopWidth: first ? 0 : 1,
-          borderTopColor: t.color.border,
+          position: 'relative',
         },
         style,
       ]}
     >
+      {check && (
+        <View
+          style={{
+            position: 'absolute',
+            left: 0,
+            top: 0,
+            bottom: 0,
+            width: 3,
+            backgroundColor: t.color.warn,
+          }}
+        />
+      )}
+      {!first && (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            left: leading ? 56 : 16,
+            height: 1,
+            backgroundColor: t.color.border,
+          }}
+        />
+      )}
       {leading}
-      <Text style={[t.type.body, { color: t.color.text, flexShrink: 0 }]}>{label}</Text>
+      {subtitle ? (
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={[t.type.body, { color: t.color.text }]} numberOfLines={1}>
+            {label}
+          </Text>
+          <Text style={[t.type.label, { color: t.color.textMuted }]} numberOfLines={1}>
+            {subtitle}
+          </Text>
+        </View>
+      ) : (
+        <Text style={[t.type.body, { color: t.color.text, flexShrink: 0 }]}>{label}</Text>
+      )}
       {loading ? (
         <View style={{ flex: 1, alignItems: 'flex-end' }}>
           <ActivityIndicator
@@ -376,12 +418,33 @@ export function Row({
           />
         </View>
       ) : value !== undefined || !icon ? (
-        <Text
-          style={[t.type.body, { color: valueColor, flex: 1, textAlign: 'right' }]}
-          numberOfLines={1}
+        <View
+          style={{
+            flex: 1,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'flex-end',
+            gap: 6,
+          }}
         >
-          {value ?? '—'}
-        </Text>
+          {check && (
+            <View
+              style={{
+                backgroundColor: t.color.warnSoft,
+                borderRadius: 4,
+                paddingHorizontal: 5,
+                paddingVertical: 1,
+              }}
+            >
+              <Text style={{ color: t.color.warn, fontSize: 11, fontWeight: '600' }}>
+                {tr('common.check')}
+              </Text>
+            </View>
+          )}
+          <Text style={[t.type.body, { color: valueColor, textAlign: 'right' }]} numberOfLines={1}>
+            {value ? value.replace(/ /g, '\u00A0') : '—'}
+          </Text>
+        </View>
       ) : (
         <View style={{ flex: 1, alignItems: 'flex-end' }}>
           <Ionicons
@@ -397,7 +460,7 @@ export function Row({
           />
         </View>
       )}
-      {chevron && <Text style={[t.type.body, { color: t.color.textFaint }]}>›</Text>}
+      {chevron && <Ionicons name="chevron-forward" size={16} color={t.color.textFaint} />}
     </View>
   );
   return onPress ? (
@@ -443,12 +506,24 @@ export function SwitchRow({
         alignItems: 'center',
         gap: t.space.md,
         minHeight: ROW_HEIGHT,
+        paddingHorizontal: t.space.lg,
         paddingVertical: t.space.sm,
-        borderTopWidth: first ? 0 : 1,
-        borderTopColor: t.color.border,
+        position: 'relative',
         opacity: disabled ? 0.4 : 1,
       }}
     >
+      {!first && (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            left: 16,
+            height: 1,
+            backgroundColor: t.color.border,
+          }}
+        />
+      )}
       <View style={{ flex: 1 }}>
         <Text style={[t.type.body, { color: t.color.text }]}>{label}</Text>
         {!!hint && <Text style={[t.type.label, { color: t.color.textMuted }]}>{hint}</Text>}
@@ -530,6 +605,7 @@ export function Chip({
 
 export function Button({
   title,
+  hint,
   onPress,
   variant = 'primary',
   size = 'md',
@@ -540,6 +616,8 @@ export function Button({
   icon,
 }: {
   title: string;
+  /** A second line (12 px) saying what is missing when primary action is blocked (design §1). */
+  hint?: string;
   onPress?: () => void;
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
   /** `bar`: a text action in a top bar, the same height as a BarIconButton. */
@@ -554,7 +632,9 @@ export function Button({
   const t = useTheme();
   const fill =
     variant === 'primary'
-      ? t.color.accent
+      ? disabled
+        ? '#B9BFEA'
+        : t.color.accent
       : variant === 'danger'
         ? t.color.dangerSoft
         : variant === 'secondary'
@@ -568,16 +648,18 @@ export function Button({
         : variant === 'ghost'
           ? t.color.accent
           : t.color.text;
+  const a11y = accessibilityLabel ?? (hint ? `${title}, ${hint}` : title);
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="button"
-      accessibilityLabel={accessibilityLabel}
+      accessibilityLabel={a11y}
       accessibilityState={{ disabled: !!disabled }}
       style={({ pressed }) => [
         {
           minHeight: size === 'lg' ? 52 : size === 'bar' ? BAR_CONTROL_SIZE : hitSize,
+          height: size === 'lg' ? 52 : undefined,
           paddingHorizontal: size === 'bar' ? t.space.lg : t.space.xl,
           borderRadius: t.radius.md,
           flexDirection: 'row',
@@ -585,23 +667,54 @@ export function Button({
           justifyContent: 'center',
           gap: 8,
           backgroundColor: fill,
-          opacity: disabled ? 0.4 : pressed ? PRESSED_OPACITY : 1,
+          opacity: disabled && variant !== 'primary' ? 0.4 : pressed ? PRESSED_OPACITY : 1,
         },
         style,
       ]}
     >
-      {icon && <Ionicons name={icon} size={18} color={label} />}
-      <Text
-        numberOfLines={1}
-        adjustsFontSizeToFit
-        style={[
-          size === 'lg' ? t.type.heading : t.type.body,
-          { color: label, fontWeight: '600', flexShrink: 1 },
-          textStyle,
-        ]}
-      >
-        {title}
-      </Text>
+      {hint ? (
+        <View style={{ alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            {icon && <Ionicons name={icon} size={16} color={label} />}
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.8}
+              style={[{ color: label, fontWeight: '700', fontSize: 15, lineHeight: 19 }, textStyle]}
+            >
+              {title.replace(/ /g, '\u00A0')}
+            </Text>
+          </View>
+          <Text
+            numberOfLines={1}
+            style={{
+              color: label,
+              fontSize: 12,
+              lineHeight: 15,
+              fontWeight: '500',
+              opacity: 0.9,
+            }}
+          >
+            {hint}
+          </Text>
+        </View>
+      ) : (
+        <>
+          {icon && <Ionicons name={icon} size={18} color={label} />}
+          <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.8}
+            style={[
+              size === 'lg' ? t.type.heading : t.type.body,
+              { color: label, fontWeight: '700', flexShrink: 1 },
+              textStyle,
+            ]}
+          >
+            {title.replace(/ /g, '\u00A0')}
+          </Text>
+        </>
+      )}
     </Pressable>
   );
 }

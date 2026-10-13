@@ -2,6 +2,31 @@
 
 ## [Unreleased]
 
+### Capture
+
+- Aligned keypad digits and bottom action buttons into a unified 3-column grid.
+- Save & confirm button features a checkmark icon and readiness guidance starting with "Needs a payee to confirm".
+- Selected Payee and From suggestion chips are pinned and styled in bold.
+- FX card sits above details with inverted exchange rate display.
+- Category and budget picker sheets now include an A–Z rail and show remaining envelope balances.
+
+### Draft Review
+
+- Aligned header with ✕, Review title, and ••• action menu.
+- Added segmented type control to switch between Expense, Income, and Transfer.
+- Grouped details rows with warning indicator for missing fields and footnote explaining uncertain values.
+- Split mode features dedicated part controls and sticky footer actions.
+- Fullscreen receipt photo viewer features a floating close button and translucent delete action.
+
+### Activity
+
+- Balances strip sits in a single flush card with 132 px account cells and bottom accent indicator on the active account.
+- Transactions are grouped into rounded cards with 28 px leading tiles for income, transfer, and category dot.
+- Subtitle displays clean transfer path (`From → To`) and split summary (`N splits · categories`).
+- Filtered state highlights active filters in the top bar with a quick Clear action.
+- Filters sheet features a segmented type control and structured accounts list with checkmarks and pending sync dots.
+- Selection mode replaces the bottom dock with a full-width deletion button.
+
 ### Receipts
 
 - Aligned receipt capture fallback tiles with the unified card style (white surface, 14 px radius, 1 px border).

@@ -110,7 +110,8 @@ export function DetailRows({
   const budget = budgets.find((b) => b.id === value.budgetId);
   const accountChoices = pickableAccounts ?? accounts;
   const showPayee = !!payee && value.type !== 'transfer';
-  const check = (row: UnsureRow) => (unsure?.has(row) ? { tone: 'warn' as const } : {});
+  const check = (row: UnsureRow) =>
+    unsure?.has(row) ? { check: true, tone: 'warn' as const } : {};
 
   return (
     <>

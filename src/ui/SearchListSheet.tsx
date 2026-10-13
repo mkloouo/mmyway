@@ -6,14 +6,14 @@
 // query is cleared whenever the sheet closes, whichever path closed it.
 import { useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, SectionList, Text, View } from 'react-native';
+import { Keyboard, Pressable, SectionList, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Button, PRESSED_OPACITY, Sheet } from './components';
 import { SearchField } from './SearchField';
 import { useTheme } from './theme';
 
 const SEARCH_THRESHOLD = 8;
-const SPLIT_BY_LETTER_THRESHOLD = 30;
+const SPLIT_BY_LETTER_THRESHOLD = 5;
 
 interface Row<T> {
   key: string;
@@ -149,7 +149,7 @@ export function SearchListSheet<T>({
           value={query}
           onChangeText={setQuery}
           placeholder={placeholder}
-          autoFocus={results.length > SPLIT_BY_LETTER_THRESHOLD}
+          autoFocus={results.length > 30}
           style={{ marginBottom: t.space.sm }}
         />
       )}
@@ -265,7 +265,12 @@ export function ChooseRow({
   const t = useTheme();
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => {
+        Keyboard.dismiss();
+        onPress();
+      }}
+      unstable_pressDelay={0}
+      hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
       accessibilityRole="button"
       accessibilityState={{ selected }}
       style={({ pressed }) => ({

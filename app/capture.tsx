@@ -3,7 +3,15 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { appLocale } from '../src/i18n';
-import { Animated, Pressable, ScrollView, Text, View, useWindowDimensions } from 'react-native';
+import {
+  Animated,
+  LayoutAnimation,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useLocalSearchParams } from 'expo-router';
 import { useFlyAway, useShake } from '../src/ui/feedback';
@@ -12,7 +20,7 @@ import { useConfirmDiscard } from '../src/ui/useConfirmDiscard';
 import { useBudgets, useCategories, useCurrencies } from '../src/db/useReferenceData';
 import { useDb } from '../src/providers/DbProvider';
 import { useTheme } from '../src/ui/theme';
-import { useEnvelopeRemaining } from '../src/bucket/useEnvelopeRemaining';
+import { useEnvelopeRemaining, useAllEnvelopesRemaining } from '../src/bucket/useEnvelopeRemaining';
 import {
   Screen,
   Button,
@@ -54,6 +62,7 @@ import {
   type MerchantHistory,
 } from '../src/lookup/merchantLookup';
 import { useSharedPeople } from '../src/lookup/sharedPeople';
+import { sharedNames, toggleSharedName } from '../src/transactions/sharedWith';
 import { useRecentTags } from '../src/lookup/recentTags';
 import { matchPayeeAlias } from '../src/lookup/aliases';
 import { rankCandidates } from '../src/suggest/rank';
@@ -61,7 +70,7 @@ import { divideDecimal, isNegative, parseDecimalInput } from '../src/api/ff3/dec
 import { useToast } from '../src/ui/useToast';
 import { Snackbar, type SnackbarEntry } from '../src/ui/Snackbar';
 import type { Draft } from '../src/inbox/draft';
-import { needsLabel } from '../src/ui/readinessLabel';
+import { needsLabel, needsToConfirmLabel } from '../src/ui/readinessLabel';
 import { TextField } from '../src/ui/TextField';
 import { SharedWithField } from '../src/ui/SharedWithField';
 import { PickerSheet } from '../src/ui/PickerSheet';
@@ -81,11 +90,13 @@ function Pill({
   accessibilityLabel,
   onPress,
   dot,
+  caret,
 }: {
   label: string;
   accessibilityLabel?: string;
   onPress: () => void;
   dot?: boolean;
+  caret?: boolean;
 }) {
   const t = useTheme();
   return (
@@ -96,15 +107,16 @@ function Pill({
       style={({ pressed }) => ({
         flexDirection: 'row',
         alignItems: 'center',
-        gap: t.space.xs,
+        gap: 4,
         height: 30,
-        paddingHorizontal: t.space.md,
+        paddingHorizontal: 10,
         borderRadius: t.radius.pill,
         backgroundColor: t.color.surfaceAlt,
         opacity: pressed ? PRESSED_OPACITY : 1,
       })}
     >
       <Text style={[t.type.label, { color: t.color.text, fontWeight: '600' }]}>{label}</Text>
+      {caret && <Ionicons name="caret-down" size={10} color={t.color.textMuted} />}
       {!!dot && <Dot color={t.color.accent} size={6} />}
     </Pressable>
   );
@@ -136,8 +148,8 @@ function SuggestChip({
         flexDirection: 'row',
         alignItems: 'center',
         gap: t.space.xs,
-        height: 32,
-        paddingHorizontal: t.space.md,
+        height: 30,
+        paddingHorizontal: 10,
         borderRadius: t.radius.pill,
         borderWidth: 1,
         borderColor: selected ? t.color.accent : t.color.border,
@@ -151,9 +163,9 @@ function SuggestChip({
         style={[
           t.type.label,
           {
-            fontSize: 13,
+            fontSize: 12.5,
             color: selected ? t.color.onAccent : t.color.text,
-            fontWeight: selected ? '700' : '400',
+            fontWeight: selected ? '700' : '500',
           },
         ]}
       >
@@ -266,9 +278,12 @@ function topChips<T extends AccountPickerAccount>(
   limit = 5,
 ): T[] {
   const top = accounts.slice(0, limit);
-  if (selectedId && !top.some((a) => a.id === selectedId)) {
+  if (selectedId) {
     const selected = accounts.find((a) => a.id === selectedId);
-    if (selected) return [selected, ...top.slice(0, limit - 1)];
+    if (selected) {
+      const rest = top.filter((a) => a.id !== selectedId);
+      return [selected, ...rest.slice(0, limit - 1)];
+    }
   }
   return top;
 }
@@ -320,7 +335,6 @@ export default function CaptureScreen() {
   const { fly, ghost, ghostStyle, fieldStyle } = useFlyAway();
   const { defaultAccountId, defaultCurrencyCode } = useCaptureDefaults();
   const window = useWindowDimensions();
-  const keyHeight = Math.min(48, captureKeyHeight(window));
   const short = window.height < SHORT_WINDOW;
   const amountType = short ? t.type.title : t.type.display;
 
@@ -386,6 +400,7 @@ export default function CaptureScreen() {
     | 'category'
     | 'budget'
     | 'more'
+    | 'sharedWith'
     | 'date'
     | null
   >(null);
@@ -504,20 +519,27 @@ export default function CaptureScreen() {
       ? matchedFor.caption
       : null;
 
-  const rankedPayees = useMemo(
-    () =>
-      rankCandidates(histories, {})
-        .slice(0, 6)
-        .map((c) => histories.find((h) => h.merchantKey === c.merchantKey))
-        .filter((h): h is MerchantHistory => !!h),
-    [histories],
-  );
+  const rankedPayees = useMemo(() => {
+    const list = rankCandidates(histories, {})
+      .slice(0, 6)
+      .map((c) => histories.find((h) => h.merchantKey === c.merchantKey))
+      .filter((h): h is MerchantHistory => !!h);
+    if (merchantRawInput) {
+      const idx = list.findIndex((h) => h.displayName === merchantRawInput);
+      if (idx > 0) {
+        const [selected] = list.splice(idx, 1);
+        if (selected) list.unshift(selected);
+      }
+    }
+    return list;
+  }, [histories, merchantRawInput]);
 
   const sourceAccount = assetAccounts.find((a) => a.id === effectiveSourceId);
   const destinationAccount = assetAccounts.find((a) => a.id === destinationId);
   const budget = budgets.find((b) => b.id === budgetId);
   // What is left in that envelope this month, from the Budget tab's cache (src/bucket/).
   const envelopeLeft = useEnvelopeRemaining(budgetId);
+  const allEnvelopes = useAllEnvelopesRemaining();
 
   // FX (design §6.2): reveal when the account leg's currency differs from the chosen currency.
   // The same rule as the draft screen's, from src/inbox/fx.ts.
@@ -528,6 +550,10 @@ export default function CaptureScreen() {
     destinationAccount?.currencyCode,
   );
   const showFx = needsForeignAmount(accountCurrencyCode, effectiveCurrencyCode);
+  useEffect(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+  }, [showFx]);
+  const keyHeight = Math.min(showFx ? 44 : 48, captureKeyHeight(window));
   // The account whose currency is the foreign one: its name labels the FX row.
   const fxAccount =
     type === 'deposit'
@@ -549,7 +575,7 @@ export default function CaptureScreen() {
   const fxMissing = showFx && isDirty && !parsedForeignAmount;
   const impliedRate =
     showFx && parsedForeignAmount && amount !== '0'
-      ? divideDecimal(parsedForeignAmount, amount, 2)
+      ? divideDecimal(amount, parsedForeignAmount, 2)
       : null;
 
   const formState: CaptureFormState = {
@@ -754,34 +780,16 @@ export default function CaptureScreen() {
               </Animated.Text>
             )}
           </View>
-          {isDirty && !readiness.ready && (
-            <Animated.View
-              style={[
-                {
-                  marginTop: t.space.sm,
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  backgroundColor: t.color.warnSoft,
-                  borderRadius: t.radius.pill,
-                  paddingHorizontal: t.space.md,
-                  paddingVertical: t.space.xs,
-                },
-                shakeStyle,
-              ]}
-            >
-              <Text style={[t.type.label, { color: t.color.warn }]}>
-                {needsLabel(readiness.missing)}
-              </Text>
-            </Animated.View>
-          )}
           <View style={{ flexDirection: 'row', gap: t.space.sm, marginTop: t.space.sm }}>
             <Pill
-              label={`${effectiveCurrencyCode ?? '—'} ▾`}
+              label={effectiveCurrencyCode ?? '—'}
+              caret
               accessibilityLabel={tr('capture.changeCurrency')}
               onPress={() => setSheet('currency')}
             />
             <Pill
-              label={`${dateText} ▾`}
+              label={dateText}
+              caret
               accessibilityLabel={tr('fields.date')}
               onPress={() => setSheet('date')}
             />
@@ -801,6 +809,56 @@ export default function CaptureScreen() {
           contentContainerStyle={{ paddingBottom: t.space.sm }}
           keyboardShouldPersistTaps="handled"
         >
+          {showFx && (
+            <Card flush style={{ marginHorizontal: t.space.lg, marginBottom: t.space.sm }}>
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  minHeight: 48,
+                  paddingLeft: t.space.lg,
+                  paddingRight: t.space.lg,
+                  gap: t.space.sm,
+                }}
+              >
+                {fxMissing && <WarnBar />}
+                <Text
+                  numberOfLines={1}
+                  style={[
+                    t.type.label,
+                    {
+                      color: fxMissing ? t.color.warn : t.color.textFaint,
+                    },
+                  ]}
+                >
+                  {tr('capture.accountPaid', { account: fxAccountName })}
+                </Text>
+                <TextField
+                  value={foreignAmount}
+                  onChangeText={(foreignAmount) => set({ foreignAmount })}
+                  keyboardType="decimal-pad"
+                  placeholder={`___ ${accountCurrencyCode}`}
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    borderWidth: 0,
+                    paddingHorizontal: 0,
+                    backgroundColor: 'transparent',
+                    fontSize: 17,
+                    fontWeight: '600',
+                    textAlign: 'right',
+                    fontVariant: ['tabular-nums'],
+                  }}
+                />
+                {!!impliedRate && !isNegative(impliedRate) && (
+                  <Text numberOfLines={1} style={[t.type.label, { color: t.color.textFaint }]}>
+                    1 {accountCurrencyCode} ≈ {impliedRate} {effectiveCurrencyCode}
+                  </Text>
+                )}
+              </View>
+            </Card>
+          )}
+
           <Card flush style={{ marginHorizontal: t.space.lg }}>
             <View
               style={{
@@ -912,55 +970,6 @@ export default function CaptureScreen() {
               />
             )}
 
-            {showFx && (
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  minHeight: 48,
-                  paddingLeft: t.space.lg,
-                  paddingRight: t.space.lg,
-                  gap: t.space.sm,
-                  borderTopWidth: 1,
-                  borderTopColor: t.color.border,
-                }}
-              >
-                {fxMissing && <WarnBar />}
-                <Text
-                  numberOfLines={2}
-                  style={[
-                    t.type.label,
-                    {
-                      width: 58,
-                      color: fxMissing ? t.color.warn : t.color.textFaint,
-                    },
-                  ]}
-                >
-                  {tr('capture.accountPaid', { account: fxAccountName })}
-                </Text>
-                <TextField
-                  value={foreignAmount}
-                  onChangeText={(foreignAmount) => set({ foreignAmount })}
-                  keyboardType="decimal-pad"
-                  placeholder={`___ ${accountCurrencyCode}`}
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    borderWidth: 0,
-                    paddingHorizontal: 0,
-                    backgroundColor: 'transparent',
-                    fontSize: 17,
-                    fontWeight: '600',
-                  }}
-                />
-                {!!impliedRate && !isNegative(impliedRate) && (
-                  <Text numberOfLines={1} style={[t.type.label, { color: t.color.textFaint }]}>
-                    1 {effectiveCurrencyCode} ≈ {impliedRate} {accountCurrencyCode}
-                  </Text>
-                )}
-              </View>
-            )}
-
             {type !== 'transfer' && (
               <View
                 style={{
@@ -1055,61 +1064,55 @@ export default function CaptureScreen() {
               </View>
             )}
           </Card>
-
-          {foreignAmountInvalid && (
-            <Text
-              style={[
-                t.type.label,
-                { color: t.color.danger, paddingHorizontal: t.space.lg, marginTop: t.space.sm },
-              ]}
-            >
-              {tr('common.invalidAmount')}
-            </Text>
-          )}
-          {fxMissing && (
-            <Text
-              style={[
-                t.type.label,
-                { color: t.color.warn, paddingHorizontal: t.space.lg, marginTop: t.space.sm },
-              ]}
-            >
-              {tr('capture.enterAccountPaid', { currency: accountCurrencyCode })}
-            </Text>
-          )}
         </ScrollView>
 
         <View style={{ flex: 1 }} />
 
         <Keypad
+          style={{ paddingHorizontal: 13 }}
           keyHeight={keyHeight}
           onDigit={(key: KeypadKey) => pressKey(key, currency.decimalPlaces)}
         />
         <View
           style={{
             flexDirection: 'row',
-            gap: t.space.sm,
-            paddingHorizontal: t.space.lg,
+            paddingHorizontal: 13,
             paddingTop: t.space.xs,
             paddingBottom: t.space.lg,
           }}
         >
-          <Button
-            title={tr('capture.toInbox')}
-            variant="secondary"
-            size="lg"
-            style={{ flex: 1, paddingHorizontal: 12 }}
-            textStyle={{ fontSize: 15 }}
-            disabled={saving || foreignAmountInvalid || fxMissing}
-            onPress={() => handleSave(false)}
-          />
-          <Button
-            title={tr('capture.saveAndConfirm')}
-            icon="checkmark"
-            size="lg"
-            style={{ flex: 2 }}
-            disabled={!readiness.ready || foreignAmountInvalid || fxMissing || saving}
-            onPress={() => handleSave(true)}
-          />
+          <View style={{ flex: 1, marginHorizontal: 3 }}>
+            <Button
+              title={tr('capture.toInbox')}
+              variant="secondary"
+              size="lg"
+              textStyle={{ fontSize: 15 }}
+              disabled={saving || foreignAmountInvalid || fxMissing}
+              onPress={() => handleSave(false)}
+            />
+          </View>
+          <View style={{ flex: 2, marginHorizontal: 3 }}>
+            <Button
+              title={tr('capture.saveAndConfirm')}
+              icon="checkmark-circle"
+              size="lg"
+              disabled={!readiness.ready || foreignAmountInvalid || fxMissing || saving}
+              hint={
+                !readiness.ready
+                  ? needsToConfirmLabel(
+                      readiness.missing.filter((m) => m !== 'amount').length > 0
+                        ? readiness.missing.filter((m) => m !== 'amount')
+                        : readiness.missing,
+                    )
+                  : fxMissing
+                    ? tr('capture.enterAccountPaid', { currency: accountCurrencyCode })
+                    : foreignAmountInvalid
+                      ? tr('common.invalidAmount')
+                      : undefined
+              }
+              onPress={() => handleSave(true)}
+            />
+          </View>
         </View>
 
         <Toast message={toast} />
@@ -1162,7 +1165,14 @@ export default function CaptureScreen() {
         visible={sheet === 'budget'}
         onClose={() => setSheet(null)}
         title={tr('fields.budget')}
-        options={budgets.map((b) => ({ key: b.id, label: b.name }))}
+        options={budgets.map((b) => {
+          const rem = allEnvelopes.get(b.id);
+          const trailing =
+            rem !== undefined
+              ? `${formatMoney(rem.replace(/^[-−]/, ''), currency)} ${isNegative(rem) ? tr('capture.overShort') : tr('capture.leftShort')}`
+              : undefined;
+          return { key: b.id, label: b.name, trailing };
+        })}
         selected={budgetId}
         onSelect={(budgetId) => set({ budgetId })}
         noneLabel={tr('common.none')}
@@ -1273,7 +1283,7 @@ export default function CaptureScreen() {
                     gap: 4,
                   }}
                 >
-                  <Text style={{ color: '#3A48B8', fontSize: 13, fontWeight: '600' }}>{tag}</Text>
+                  <Text style={{ color: '#3A48B8', fontSize: 13, fontWeight: '700' }}>{tag}</Text>
                   <Pressable
                     hitSlop={6}
                     accessibilityRole="button"
@@ -1306,7 +1316,7 @@ export default function CaptureScreen() {
                     }}
                   >
                     <Text style={{ color: '#6B6F76', fontSize: 13, fontWeight: '600' }}>
-                      {suggestion}
+                      {`+ ${suggestion}`}
                     </Text>
                   </Pressable>
                 ))}
@@ -1383,32 +1393,19 @@ export default function CaptureScreen() {
               )}
             </View>
           </View>
-          <View
-            style={{
-              paddingHorizontal: t.space.lg,
-              paddingVertical: t.space.sm,
-              borderTopWidth: 1,
-              borderTopColor: t.color.border,
-              minHeight: 48,
-              justifyContent: 'center',
-            }}
-          >
-            <Text style={[t.type.caption, { color: t.color.textFaint, marginBottom: 2 }]}>
-              {tr('fields.sharedWith')}
-            </Text>
-            <SharedWithField
-              live
-              value={draftSharedWith}
-              people={sharedPeople}
-              onApply={setDraftSharedWith}
-            />
-          </View>
+          <Row
+            label={tr('fields.sharedWith')}
+            value={draftSharedWith || tr('common.nobody')}
+            chevron
+            onPress={() => setSheet('sharedWith')}
+            style={{ paddingHorizontal: t.space.lg }}
+          />
         </Card>
         <SectionHeader title={tr('capture.receiptPhoto')} />
         <Card flush>
           <ListRow
             first
-            leading={<Tile icon="camera-outline" tone="muted" size={40} />}
+            leading={<Tile icon="camera-outline" tone="muted" size={40} iconSize={20} />}
             label={photoUri ? tr('capture.attached') : tr('capture.attachPhoto')}
             sub={tr('capture.cameraOrLibrary')}
             chevron
@@ -1422,6 +1419,38 @@ export default function CaptureScreen() {
             onPress={() => set({ photoUri: null })}
           />
         )}
+      </Sheet>
+
+      <Sheet
+        visible={sheet === 'sharedWith'}
+        onClose={() => setSheet('more')}
+        title={tr('fields.sharedWith')}
+        footer={<Button title={tr('common.done')} onPress={() => setSheet('more')} />}
+      >
+        <Card flush>
+          <Row
+            first
+            label={tr('common.nobody')}
+            icon={!draftSharedWith ? 'checkmark' : undefined}
+            onPress={() => {
+              setDraftSharedWith('');
+              setSheet('more');
+            }}
+          />
+          {Array.from(new Set([...sharedPeople, ...sharedNames(draftSharedWith)])).map((name) => {
+            const isSelected = sharedNames(draftSharedWith).some(
+              (n) => n.toLowerCase() === name.toLowerCase(),
+            );
+            return (
+              <Row
+                key={name}
+                label={name}
+                icon={isSelected ? 'checkmark' : undefined}
+                onPress={() => setDraftSharedWith(toggleSharedName(draftSharedWith, name))}
+              />
+            );
+          })}
+        </Card>
       </Sheet>
     </Screen>
   );

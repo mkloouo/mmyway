@@ -20,7 +20,8 @@ tags:
       SAVE: inbox
 - runFlow: ../../subflows/close-capture.yaml
 - tapOn: 'C3 ${RUN_ID}'
-- tapOn: 'Split'
+- tapOn: 'More'
+- tapOn: 'Split into parts'
 - extendedWaitUntil:
     visible: 'New split'
     timeout: 5000

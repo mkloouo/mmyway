@@ -10,10 +10,11 @@ import { ChooseRow, SearchListSheet } from './SearchListSheet';
 import { Dot } from './components';
 import { useTheme } from './theme';
 
-interface PickerOption {
+export interface PickerOption {
   key: string;
   label: string;
   dotColor?: string;
+  trailing?: string;
 }
 
 /** Case- and diacritic-insensitive, so "zabka" finds "Żabka". */
@@ -95,6 +96,9 @@ export function PickerSheet({
           <Text style={[t.type.body, { color: t.color.text, flex: 1 }]} numberOfLines={1}>
             {o.label}
           </Text>
+          {!!o.trailing && (
+            <Text style={[t.type.label, { color: t.color.textMuted }]}>{o.trailing}</Text>
+          )}
         </View>
       )}
       onSelect={(o) => onSelect(o.key)}

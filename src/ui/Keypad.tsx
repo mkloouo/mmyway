@@ -2,7 +2,7 @@
 // one 4x4 grid so the bottom cluster reads as one control. Capture's keypad is the digits, decimal
 // and backspace only (three across); Capture draws its own save buttons under it.
 import { useState } from 'react';
-import { Animated, Pressable, Text, View } from 'react-native';
+import { Animated, Pressable, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useTheme } from './theme';
 import { PRESSED_OPACITY } from './components';
 import { haptics } from './haptics';
@@ -96,6 +96,7 @@ interface KeypadBaseProps {
   onDigit: (key: KeypadKey) => void;
   /** Every key's height; without it a key is 1/1.4 of its width. */
   keyHeight?: number;
+  style?: StyleProp<ViewStyle>;
 }
 
 /**
@@ -120,7 +121,7 @@ function Spacer() {
 }
 
 export function Keypad(props: KeypadProps) {
-  const { onDigit, keyHeight } = props;
+  const { onDigit, keyHeight, style } = props;
   const digit = (label: KeypadKey) => (
     <Key
       key={label}
@@ -136,7 +137,7 @@ export function Keypad(props: KeypadProps) {
 
   if (!props.compact) {
     return (
-      <View>
+      <View style={style}>
         {FULL_ROWS.map((row, rowIndex) => (
           <View key={rowIndex} style={{ flexDirection: 'row' }}>
             {row.map(digit)}
@@ -149,7 +150,7 @@ export function Keypad(props: KeypadProps) {
 
   const { saveLabel, onSave, saveDisabled, saving } = props;
   return (
-    <View>
+    <View style={style}>
       {DIGIT_ROWS.map((row, rowIndex) => (
         <View key={rowIndex} style={{ flexDirection: 'row' }}>
           {row.map(digit)}

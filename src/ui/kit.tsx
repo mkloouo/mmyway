@@ -107,6 +107,7 @@ export function ModalHeader({
   step,
   steps,
   stepLabel,
+  right,
 }: {
   title: string;
   onClose: () => void;
@@ -115,6 +116,7 @@ export function ModalHeader({
   steps?: number;
   /** "Step 1 of 2"; read by screen readers on the progress bars too. */
   stepLabel?: string;
+  right?: React.ReactNode;
 }) {
   const t = useTheme();
   const { t: tr } = useTranslation();
@@ -152,6 +154,7 @@ export function ModalHeader({
             <Text style={[t.type.label, { color: t.color.textMuted }]}>{stepLabel}</Text>
           )}
         </View>
+        {right}
       </View>
       {steps != null && steps > 1 && (
         <View
@@ -265,10 +268,12 @@ export function Tile({
   icon,
   tone = 'accent',
   size = 28,
+  iconSize,
 }: {
   icon: IconName;
   tone?: TileTone;
   size?: number;
+  iconSize?: number;
 }) {
   const t = useTheme();
   const { bg, fg } = tileColors(t, tone);
@@ -284,7 +289,7 @@ export function Tile({
         backgroundColor: bg,
       }}
     >
-      <Ionicons name={icon} size={Math.round(size * 0.57)} color={fg} />
+      <Ionicons name={icon} size={iconSize ?? Math.round(size * 0.57)} color={fg} />
     </View>
   );
 }

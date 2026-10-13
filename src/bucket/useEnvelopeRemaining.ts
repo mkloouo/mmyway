@@ -52,3 +52,45 @@ export function useEnvelopeRemaining(budgetId: string | null | undefined): strin
     return envelopeAmounts(limit, unbudgeted).available;
   }, [rows, budgetId]);
 }
+
+/**
+ * Returns a map of `budgetId -> available amount` for all budgets with limits or spending
+ * in the current period, so pickers can display each budget's remaining balance.
+ */
+export function useAllEnvelopesRemaining(): Map<string, string> {
+  const db = useDb();
+  const period = periodOf(localDay());
+  const { data: rows } = useLiveQuery(
+    db
+      .select()
+      .from(bucketObjects)
+      .where(inArray(bucketObjects.kind, ['budget_limit', 'budget_spent'])),
+    [period.start],
+  );
+
+  return useMemo(() => {
+    const result = new Map<string, string>();
+    if (!rows) return result;
+    const objects = rows
+      .filter((r) => r.periodStart === period.start)
+      .map(readBucketRow)
+      .filter(Boolean);
+    const byBudget = new Map<
+      string,
+      { limit?: BudgetLimitAttributes; spent?: BudgetSpentAttributes }
+    >();
+    for (const obj of objects) {
+      if (!obj || !obj.ff3Id) continue;
+      const cur = byBudget.get(obj.ff3Id) ?? {};
+      if (obj.kind === 'budget_limit') cur.limit = obj.attributes as BudgetLimitAttributes;
+      if (obj.kind === 'budget_spent') cur.spent = obj.attributes as BudgetSpentAttributes;
+      byBudget.set(obj.ff3Id, cur);
+    }
+    for (const [id, { limit, spent }] of byBudget) {
+      if (limit || spent) {
+        result.set(id, envelopeAmounts(limit, spent).available);
+      }
+    }
+    return result;
+  }, [rows, period.start]);
+}
