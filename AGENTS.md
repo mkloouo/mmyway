@@ -29,6 +29,8 @@ pipeline.
   the coverage floors (`docs/STATIC_ANALYSIS.md`)
 - `npm run i18n:push` / `npm run i18n:pull` — sync UI strings with Tolgee (needs `.env.local`,
   see `docs/LOCALIZATION.md`)
+- `npm run flags:sync [-- --dry-run]` — create the `src/flags/registry.ts` flags missing from Flagsmith,
+  switched off (needs the admin key in `.env.local`, see `docs/FEATURE_FLAGS.md`)
 
 ## Module layout
 

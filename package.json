@@ -21,6 +21,7 @@
     "release": "release --android-only",
     "i18n:push": "tolgee push",
     "i18n:pull": "tolgee pull",
+    "flags:sync": "node scripts/flags-sync.mjs",
     "android:build:aab": "eas build -p android -e production-aab --local",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

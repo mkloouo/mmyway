@@ -23,20 +23,34 @@ The app reads flags from a self-hosted [Flagsmith](https://docs.flagsmith.com/de
 
 1. Run Flagsmith (see the link above for the Docker setup) and open its web UI.
 2. Create one project called `mmyway`, with environments such as `Development` and `Production`.
-3. In the project, create one **Feature** per `FLAGS` key, with the same name and type boolean
-   (`budget`, `account_create`, and so on).
-4. Set two values in the build environment (EAS secrets, or `.env.local` for local builds):
+3. Create the features with `npm run flags:sync` (below). It makes one boolean **Feature** per
+   `FLAGS` key, same name, switched off.
+4. Set two values in the build environment (EAS environment variables per build profile, or
+   `.env.local` for local dev, which Expo loads; EAS builds don't upload `.env.local`):
    - `FLAGSMITH_API_URL`: the API root, `https://<host>/api/v1`
    - `FLAGSMITH_ENVIRONMENT_KEY`: the environment's **client-side** key. It is safe to ship in the app.
 
 `app.config.js` reads both into `extra.flagsmith`. If either is empty, the app never calls Flagsmith
 and uses the code defaults.
 
+## Creating flags in Flagsmith: `npm run flags:sync`
+
+`scripts/flags-sync.mjs` creates every `FLAGS` key the project doesn't have yet, switched off. It
+never deletes or switches anything. It reports descriptions that differ (`~`) and features that
+exist only in Flagsmith (`?`). It needs two more values in `.env.local` (see `.env.example`):
+
+- `FLAGSMITH_ADMIN_API_KEY`: an **Organisation API key** (Organisation settings → API Keys). It can
+  change everything, so it stays in `.env.local` and never goes in the app or EAS.
+- `FLAGSMITH_PROJECT_ID`: leave it empty on the first run and the script lists the projects the key
+  can see.
+
+Run `npm run flags:sync -- --dry-run` first to see what it would create.
+
 ## Adding a flag
 
 1. Add it to `FLAGS` in `src/flags/registry.ts` with a **safe default** (`false` for anything new).
    Write a one-line description of what "off" means.
-2. Create a feature with the same name in Flagsmith.
+2. Run `npm run flags:sync` to create it in Flagsmith (off).
 3. Read it in React with `useFlag('name')`, or in non-React code with `await isFlagOn(db, 'name')`.
    Both live in `src/flags/useFlag.ts`.
 
