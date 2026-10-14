@@ -177,6 +177,7 @@ function EnvelopeScreen() {
           <View
             style={{
               height: 8,
+              // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
               borderRadius: 4,
               overflow: 'hidden',
               backgroundColor: envelope.overspent ? t.color.warnSoft : t.color.accentSoft,

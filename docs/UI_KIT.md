@@ -62,21 +62,19 @@ is the debt ledger, and it should only shrink.
 
 `src/ui/theme.ts` (`useTheme()`) is the only source:
 
-| Kit V2                                                                                                                                                                       | Token                                                          |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| bg #F5F5F3, surface #FFF, surfaceAlt #EFEFEC, ink #14151A, grey #6B6F76, hairline #E3E3DF, accent #4C5BD4, accentSoft #E7E9FB, income, transfer, warn, danger (+ soft tints) | `t.color.*` (light and dark)                                   |
-| Spacing 4 / 8 / 12 / 16 / 20 / 24 / 32                                                                                                                                       | `t.space.xs … xxxl`                                            |
-| Radius 14 group, 22 sheet top, 999 chip                                                                                                                                      | `t.radius.md`, `t.radius.lg`, `t.radius.pill`                  |
-| Row min height 52                                                                                                                                                            | `ROW_HEIGHT`                                                   |
-| Touch target 44                                                                                                                                                              | `hitSize`                                                      |
-| Type: 40/44 hero, 24/30 title, 17 heading, 15 body, 13 label/sub, 11/14 caps section header                                                                                  | `t.type.display/title/heading/body/label/caption`              |
-| Large title 34/41 (tab and PUSH page titles on every V4 board)                                                                                                               | **missing**: add `t.type.largeTitle` (MKL-81), never inline 34 |
+| Kit V2                                                                                                                                                                                       | Token                                                                           |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| bg #F5F5F3, surface #FFF, surfaceAlt #EFEFEC, ink #14151A, grey #6B6F76, hairline #E3E3DF, accent #4C5BD4, accentSoft #E7E9FB, purple #7C5BD4, income, transfer, warn, danger (+ soft tints) | `t.color.*` (light and dark)                                                    |
+| Spacing 4 / 8 / 12 / 16 / 20 / 24 / 32                                                                                                                                                       | `t.space.xs … xxxl`                                                             |
+| Radius 8 tile, 12 button/option, 14 group, 22 sheet top, 999 chip                                                                                                                            | `t.radius.xs`, `t.radius.button`, `t.radius.md`, `t.radius.lg`, `t.radius.pill` |
+| Row min height 52                                                                                                                                                                            | `ROW_HEIGHT`                                                                    |
+| Touch target 44                                                                                                                                                                              | `hitSize`                                                                       |
+| Type: 40/44 hero, 34/41 large title, 28/34 amount, 24/30 title, 17 heading, 15 body, 13 label/sub, 11/14 caps section header                                                                 | `t.type.display/largeTitle/amount/title/heading/body/label/caption`             |
 
 - **Colours:** ESLint rejects a hex/rgb/hsl literal in any `.tsx`. Missing a colour? Add a token to
   both palettes in `theme.ts`. A light-only colour breaks dark mode.
 - **Spacing, radii, font sizes:** use the token. A number that matches no token is either a missing
-  token (add it) or drift from the board (fix it). The lint check for this lands with MKL-81 (the "Kit
-  foundation" project). Until then, reviewers enforce it on touched code.
+  token (add it) or drift from the board (fix it). ESLint enforces this on `app/**/*.tsx` (MKL-81).
 - One font (system), `tabular-nums` on money (`<Money>`, `t.type.money`). No shadows except the FAB
   and the capture dock.
 
@@ -86,7 +84,7 @@ The kit lives in family files under `src/ui/kit/` (each ≤ 400 lines of code) a
 
 - `layout.tsx`: `Screen`, `SCREEN_TOP_PADDING`, `Card` (Group), `SectionHeader`, `GroupFooter`
 - `rows.tsx`: `ListRow`, `SwitchRow`, `Tile`, `ROW_HEIGHT`, `PRESSED_OPACITY` (deprecated `Row`)
-- `headers.tsx`: `PushHeader`, `ModalHeader`, `MoreButton` (deprecated `AppBar`, `BarRow`, `BarIconButton`, `CloseButton`)
+- `headers.tsx`: `PushHeader`, `ModalHeader`, `TabHeader`, `MoreButton` (deprecated `AppBar`, `BarRow`, `BarIconButton`, `CloseButton`)
 - `actions.tsx`: `Button`, `Segmented`, `Chip`, `Fab`, `StickyFooter`
 - `sheet.tsx`: `Sheet`, `useKeyboardHeight`
 - `feedback.tsx`: `Toast`, `EmptyState`, `Dot`, `Pulse`, `StatusPill`, `Money` (deprecated `Banner`)

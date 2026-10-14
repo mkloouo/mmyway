@@ -496,9 +496,10 @@ export default function ActivityScreen() {
               <Pressable
                 onPress={clearSelection}
                 hitSlop={8}
+                // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
                 style={{ paddingHorizontal: 12, height: 44, justifyContent: 'center' }}
               >
-                <Text style={[t.type.body, { color: t.color.accent, fontSize: 17 }]}>
+                <Text style={[t.type.heading, { color: t.color.accent }]}>
                   {tr('common.cancel')}
                 </Text>
               </Pressable>
@@ -525,7 +526,7 @@ export default function ActivityScreen() {
             title={tr('activity.title')}
             subtitle={
               isFiltered ? (
-                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 8 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: t.space.sm }}>
                   <Text style={[t.type.label, { color: t.color.textMuted }]} numberOfLines={1}>
                     {activeFilterSubtitle}
                   </Text>
@@ -599,6 +600,7 @@ export default function ActivityScreen() {
             onRefresh={pull.onRefresh}
             onEndReached={handleEndReached}
             onEndReachedThreshold={0.4}
+            // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
             contentContainerStyle={{ paddingBottom: 140 }}
             ListHeaderComponent={listHeader}
             renderSectionHeader={renderSectionHeader}
@@ -655,7 +657,9 @@ export default function ActivityScreen() {
               borderTopWidth: 1,
               borderTopColor: t.color.border,
               paddingHorizontal: t.space.lg,
+              // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
               paddingTop: 12,
+              // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
               paddingBottom: 34,
               backgroundColor: t.color.surface,
             }}
@@ -669,6 +673,7 @@ export default function ActivityScreen() {
               variant="danger"
               disabled={selectedIds.size === 0}
               onPress={deleteSelected}
+              // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
               style={{ height: 52, borderRadius: 14 }}
             />
           </View>
@@ -685,6 +690,7 @@ export default function ActivityScreen() {
         <SectionHeader
           title={tr('activity.filterType')}
           first
+          // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
           style={{ paddingHorizontal: 4, paddingBottom: 8 }}
         />
         <Segmented<ActivityTypeFilter>
@@ -695,6 +701,7 @@ export default function ActivityScreen() {
 
         <SectionHeader
           title={tr('activity.filterAccounts')}
+          // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
           style={{ paddingHorizontal: 4, paddingTop: 20, paddingBottom: 8 }}
         />
         <Card flush>
@@ -715,6 +722,7 @@ export default function ActivityScreen() {
           ))}
         </Card>
         <Text
+          // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
           style={[t.type.label, { color: t.color.textMuted, paddingHorizontal: 4, paddingTop: 6 }]}
         >
           {tr('activity.pendingDotHint')}
@@ -725,9 +733,12 @@ export default function ActivityScreen() {
             borderTopWidth: 1,
             borderTopColor: t.color.border,
             marginTop: t.space.md,
+            // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
             paddingTop: 12,
+            // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
             paddingBottom: 8,
             flexDirection: 'row',
+            // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
             gap: 10,
             alignItems: 'center',
           }}
@@ -746,6 +757,7 @@ export default function ActivityScreen() {
               count: displaySections.reduce((s, sec) => s + sec.data.length, 0),
             })}
             onPress={() => setFilterOpen(false)}
+            // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
             style={{ flex: 1, height: 52, borderRadius: 14 }}
           />
         </View>

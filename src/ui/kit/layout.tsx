@@ -203,14 +203,15 @@ export function GroupFooter({ children }: { children: ReactNode }) {
   const t = useTheme();
   return (
     <Text
-      style={{
-        marginHorizontal: t.space.lg,
-        paddingHorizontal: t.space.xs,
-        paddingTop: 6,
-        fontSize: 13,
-        lineHeight: 17,
-        color: t.color.textMuted,
-      }}
+      style={[
+        t.type.label,
+        {
+          marginHorizontal: t.space.lg,
+          paddingHorizontal: t.space.xs,
+          paddingTop: 6,
+          color: t.color.textMuted,
+        },
+      ]}
     >
       {children}
     </Text>

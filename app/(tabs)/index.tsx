@@ -446,6 +446,7 @@ export default function InboxScreen() {
           keyExtractor={(row) => row.id}
           refreshing={pull.refreshing}
           onRefresh={pull.onRefresh}
+          // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
           contentContainerStyle={{ paddingBottom: 140, paddingTop: SCREEN_TOP_PADDING }}
           ListEmptyComponent={
             <>

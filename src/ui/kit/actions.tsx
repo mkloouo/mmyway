@@ -133,7 +133,7 @@ export function Button({
           minHeight: size === 'lg' ? 52 : size === 'bar' ? 40 : hitSize,
           height: size === 'lg' ? 52 : undefined,
           paddingHorizontal: size === 'bar' ? t.space.lg : t.space.xl,
-          borderRadius: t.radius.md,
+          borderRadius: t.radius.button,
           flexDirection: 'row',
           alignItems: 'center',
           justifyContent: 'center',

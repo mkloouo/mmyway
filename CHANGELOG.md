@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Standardized typography and layout tokens with large titles, hero amounts, button radii, tile tints, and enforced style token usage across screens (MKL-81).
+
 ### Fixed
 
 - Fixed bottom sheet item selection requiring multiple taps right after opening.

@@ -97,8 +97,10 @@ function Pill({
       style={({ pressed }) => ({
         flexDirection: 'row',
         alignItems: 'center',
+        // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
         gap: 4,
         height: 30,
+        // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
         paddingHorizontal: 10,
         borderRadius: t.radius.pill,
         backgroundColor: t.color.surfaceAlt,
@@ -139,6 +141,7 @@ function SuggestChip({
         alignItems: 'center',
         gap: t.space.xs,
         height: 30,
+        // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
         paddingHorizontal: 10,
         borderRadius: t.radius.pill,
         borderWidth: 1,
@@ -153,6 +156,7 @@ function SuggestChip({
         style={[
           t.type.label,
           {
+            // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
             fontSize: 12.5,
             color: selected ? t.color.onAccent : t.color.text,
             fontWeight: selected ? '700' : '500',
@@ -292,6 +296,7 @@ function AccountFieldRow({
 }
 
 // ponytail: the tag composer duplicates src/ui/TagsField; MKL-112 removes it.
+// eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
 const TAG_TEXT = { fontSize: 13, fontWeight: '700' } as const;
 
 function labelKeyForType(t: Draft['type']): string {
@@ -819,6 +824,7 @@ export default function CaptureScreen() {
                     borderWidth: 0,
                     paddingHorizontal: 0,
                     backgroundColor: 'transparent',
+                    // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
                     fontSize: 17,
                     fontWeight: '600',
                     textAlign: 'right',
@@ -860,6 +866,7 @@ export default function CaptureScreen() {
                   borderWidth: 0,
                   paddingHorizontal: 0,
                   backgroundColor: 'transparent',
+                  // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
                   fontSize: 15,
                 }}
               />
@@ -969,16 +976,19 @@ export default function CaptureScreen() {
                 >
                   <Text
                     numberOfLines={1}
+                    // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
                     style={[t.type.caption, { color: t.color.textFaint, marginBottom: 2 }]}
                   >
                     {tr('fields.category')}
                   </Text>
+                  {/* eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81) */}
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     {categoryName && (
                       <View
                         style={{
                           width: 8,
                           height: 8,
+                          // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
                           borderRadius: 4,
                           backgroundColor: categoryColor(categoryName, t.dark),
                         }}
@@ -988,7 +998,7 @@ export default function CaptureScreen() {
                       numberOfLines={1}
                       style={[
                         t.type.body,
-                        { fontSize: 15, color: categoryName ? t.color.text : t.color.textMuted },
+                        { color: categoryName ? t.color.text : t.color.textMuted },
                       ]}
                     >
                       {categoryName ?? tr('common.none')}
@@ -1012,20 +1022,21 @@ export default function CaptureScreen() {
                 >
                   <Text
                     numberOfLines={1}
+                    // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
                     style={[t.type.caption, { color: t.color.textFaint, marginBottom: 2 }]}
                   >
                     {tr('fields.budget')}
                   </Text>
-                  <Text numberOfLines={1} style={[t.type.body, { fontSize: 15 }]}>
+                  <Text numberOfLines={1} style={t.type.body}>
                     <Text style={{ color: budget ? t.color.text : t.color.textMuted }}>
                       {budget?.name ?? tr('common.none')}
                     </Text>
                     {!!budget && envelopesOn && envelopeLeft !== null && (
                       <Text
-                        style={{
-                          fontSize: 13,
-                          color: isNegative(envelopeLeft) ? t.color.warn : t.color.textMuted,
-                        }}
+                        style={[
+                          t.type.label,
+                          { color: isNegative(envelopeLeft) ? t.color.warn : t.color.textMuted },
+                        ]}
                       >
                         {' · '}
                         {formatMoney(envelopeLeft.replace(/^[-−]/, ''), currency)}{' '}
@@ -1044,6 +1055,7 @@ export default function CaptureScreen() {
         <View style={{ flex: 1 }} />
 
         <Keypad
+          // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
           style={{ paddingHorizontal: 13 }}
           keyHeight={keyHeight}
           onDigit={(key: KeypadKey) => pressKey(key, currency.decimalPlaces)}
@@ -1051,21 +1063,24 @@ export default function CaptureScreen() {
         <View
           style={{
             flexDirection: 'row',
+            // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
             paddingHorizontal: 13,
             paddingTop: t.space.xs,
             paddingBottom: t.space.lg,
           }}
         >
+          {/* eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81) */}
           <View style={{ flex: 1, marginHorizontal: 3 }}>
             <Button
               title={tr('capture.toInbox')}
               variant="secondary"
               size="lg"
-              textStyle={{ fontSize: 15 }}
+              textStyle={t.type.body}
               disabled={saving || foreignAmountInvalid || fxMissing}
               onPress={() => handleSave(false)}
             />
           </View>
+          {/* eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81) */}
           <View style={{ flex: 2, marginHorizontal: 3 }}>
             <Button
               title={tr('capture.saveAndConfirm')}
@@ -1230,6 +1245,7 @@ export default function CaptureScreen() {
                 borderWidth: 0,
                 paddingHorizontal: 0,
                 backgroundColor: 'transparent',
+                // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
                 fontSize: 15,
               }}
             />
@@ -1237,13 +1253,16 @@ export default function CaptureScreen() {
           <View
             style={{
               paddingHorizontal: t.space.lg,
+              // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
               paddingVertical: 12,
               borderTopWidth: 1,
               borderTopColor: t.color.border,
+              // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
               gap: 8,
             }}
           >
             <Text style={[t.type.body, { color: t.color.text }]}>{tr('fields.tags')}</Text>
+            {/* eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81) */}
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
               {draftTags.map((tag) => (
                 <View
@@ -1253,8 +1272,11 @@ export default function CaptureScreen() {
                     alignItems: 'center',
                     backgroundColor: t.color.accentSoft,
                     borderRadius: t.radius.pill,
+                    // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
                     paddingHorizontal: 10,
+                    // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
                     paddingVertical: 5,
+                    // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
                     gap: 4,
                   }}
                 >
@@ -1286,11 +1308,13 @@ export default function CaptureScreen() {
                       borderStyle: 'dashed',
                       borderColor: t.color.borderStrong,
                       borderRadius: t.radius.pill,
+                      // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
                       paddingHorizontal: 10,
+                      // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
                       paddingVertical: 5,
                     }}
                   >
-                    <Text style={{ color: t.color.textMuted, fontSize: 13, fontWeight: '600' }}>
+                    <Text style={[t.type.label, { color: t.color.textMuted, fontWeight: '600' }]}>
                       {`+ ${suggestion}`}
                     </Text>
                   </Pressable>
@@ -1303,7 +1327,9 @@ export default function CaptureScreen() {
                     borderWidth: 1,
                     borderColor: t.color.border,
                     borderRadius: t.radius.pill,
+                    // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
                     paddingHorizontal: 8,
+                    // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
                     paddingVertical: 2,
                   }}
                 >
@@ -1337,6 +1363,7 @@ export default function CaptureScreen() {
                     style={{
                       minWidth: 60,
                       height: 26,
+                      // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
                       fontSize: 13,
                       paddingHorizontal: 0,
                       paddingVertical: 0,
@@ -1357,11 +1384,13 @@ export default function CaptureScreen() {
                     borderStyle: 'dashed',
                     borderColor: t.color.borderStrong,
                     borderRadius: t.radius.pill,
+                    // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
                     paddingHorizontal: 10,
+                    // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
                     paddingVertical: 5,
                   }}
                 >
-                  <Text style={{ color: t.color.textMuted, fontSize: 13, fontWeight: '600' }}>
+                  <Text style={[t.type.label, { color: t.color.textMuted, fontWeight: '600' }]}>
                     {`+ ${tr('fields.addTag', { tag: '' }).trim()}`}
                   </Text>
                 </Pressable>

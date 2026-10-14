@@ -408,6 +408,7 @@ export default function NewPlannedScreen() {
             <SectionHeader title={tr('planned.repTypeLabel')} />
             <View
               accessibilityRole="radiogroup"
+              // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
               style={{ flexDirection: 'row', gap: 6, marginHorizontal: t.space.lg }}
             >
               {(
@@ -496,6 +497,7 @@ export default function NewPlannedScreen() {
                 backgroundColor: t.color.accentSoft,
                 borderRadius: t.radius.md,
                 padding: t.space.md,
+                // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
                 gap: 4,
               }}
             >
@@ -520,6 +522,7 @@ export default function NewPlannedScreen() {
                 backgroundColor: t.color.accentSoft,
                 borderRadius: t.radius.md,
                 padding: t.space.md,
+                // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
                 gap: 4,
               }}
             >
@@ -568,7 +571,12 @@ export default function NewPlannedScreen() {
 
             <SectionHeader title={tr('planned.new.sectionSaved')} />
             <Card style={{ marginHorizontal: t.space.lg }}>
-              <View style={{ gap: 2, padding: t.space.md }}>
+              <View
+                style={{
+                  gap: 2 /* eslint-disable-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81) */,
+                  padding: t.space.md,
+                }}
+              >
                 <Text style={[t.type.body, { color: t.color.text }]}>
                   {tr('planned.new.savedAs')}
                 </Text>

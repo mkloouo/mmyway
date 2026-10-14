@@ -148,6 +148,29 @@ module.exports = defineConfig([
     },
   },
   {
+    // Sizes and spacing come from the theme (src/ui/theme.ts), never a literal (docs/UI_KIT.md, MKL-81).
+    files: ['app/**/*.tsx'],
+    ignores: TESTS,
+    rules: {
+      // Restates JSON_COLUMNS and color selector: a later block's no-restricted-syntax replaces earlier ones.
+      'no-restricted-syntax': [
+        'error',
+        ...JSON_COLUMNS,
+        {
+          selector: 'Literal[value=/^(#[0-9a-fA-F]{3,8}|rgba?\\(|hsla?\\()/]',
+          message:
+            'Use a colour token from useTheme().color; add one to src/ui/theme.ts if missing.',
+        },
+        {
+          selector:
+            'Property[key.name=/^(fontSize|lineHeight|padding.*|margin.*|gap|borderRadius)$/] > Literal[value>1]',
+          message:
+            'Use a size token from useTheme() (t.space, t.radius, t.type), not a bare numeric literal.',
+        },
+      ],
+    },
+  },
+  {
     // No user-visible string hardcoded in a screen or component (docs/LOCALIZATION.md).
     files: ['app/**/*.tsx', 'src/ui/**/*.tsx'],
     ignores: TESTS,

@@ -220,7 +220,12 @@ export default function PlannedScreen() {
               >
                 <Card>
                   <View style={{ flexDirection: 'row' }}>
-                    <View style={{ flex: 1, gap: 2 }}>
+                    <View
+                      style={{
+                        flex: 1,
+                        gap: 2 /* eslint-disable-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81) */,
+                      }}
+                    >
                       <Text style={[t.type.label, { color: t.color.textMuted }]}>
                         {tr('planned.summary.out')}
                       </Text>
@@ -231,6 +236,7 @@ export default function PlannedScreen() {
                     <View
                       style={{
                         flex: 1,
+                        // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
                         gap: 2,
                         borderLeftWidth: StyleSheet.hairlineWidth,
                         borderLeftColor: t.color.border,

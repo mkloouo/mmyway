@@ -188,6 +188,7 @@ export default function ReceiptScreen() {
         <Text
           style={[
             t.type.label,
+            // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
             { color: t.color.textMuted, paddingHorizontal: 4, marginBottom: t.space.xs },
           ]}
         >
@@ -210,6 +211,7 @@ export default function ReceiptScreen() {
                 borderWidth: 0,
                 paddingHorizontal: 0,
                 backgroundColor: 'transparent',
+                // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
                 fontSize: 15,
               }}
               autoFocus

@@ -186,6 +186,7 @@ function BudgetScreen() {
                   <View
                     style={{
                       height: 6,
+                      // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
                       borderRadius: 3,
                       overflow: 'hidden',
                       backgroundColor: envelope.overspent ? t.color.warnSoft : t.color.accentSoft,

@@ -47,6 +47,12 @@ interface Palette {
   photoControl: string;
   /** Destructive text/icon on a photo. */
   onPhotoDanger: string;
+  /** Tile tint: purple (Rules, Subscriptions). */
+  purple: string;
+  purpleSoft: string;
+  /** Tile tint: ink (Lock the app). */
+  ink: string;
+  inkSoft: string;
 }
 
 const light: Palette = {
@@ -80,6 +86,10 @@ const light: Palette = {
   onPhoto: '#FFFFFF',
   photoControl: 'rgba(255, 255, 255, 0.12)',
   onPhotoDanger: '#FF8A80',
+  purple: '#7C5BD4',
+  purpleSoft: '#EDE8FA',
+  ink: '#14151A',
+  inkSoft: '#EFEFEC',
 };
 
 const dark: Palette = {
@@ -113,10 +123,14 @@ const dark: Palette = {
   onPhoto: '#FFFFFF',
   photoControl: 'rgba(255, 255, 255, 0.12)',
   onPhotoDanger: '#FF8A80',
+  purple: '#A78BFA',
+  purpleSoft: '#2E2248',
+  ink: '#F2F3F5',
+  inkSoft: '#23262B',
 };
 
 const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, xxxl: 32 } as const;
-const radius = { sm: 10, md: 14, lg: 22, pill: 999 } as const;
+const radius = { xs: 8, sm: 10, button: 12, md: 14, lg: 22, pill: 999 } as const;
 /** Smallest comfortable touch target (design §3.3). */
 export const hitSize = 44;
 
@@ -125,6 +139,8 @@ const tabular = { fontVariant: ['tabular-nums' as const] };
 
 const type = {
   display: { fontSize: 40, lineHeight: 44, fontWeight: '700' as const, ...tabular },
+  largeTitle: { fontSize: 34, lineHeight: 41, fontWeight: '700' as const },
+  amount: { fontSize: 28, lineHeight: 34, fontWeight: '700' as const, ...tabular },
   title: { fontSize: 24, lineHeight: 30, fontWeight: '700' as const },
   heading: { fontSize: 17, lineHeight: 22, fontWeight: '600' as const },
   body: { fontSize: 15, lineHeight: 20, fontWeight: '400' as const },

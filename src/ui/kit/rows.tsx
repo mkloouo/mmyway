@@ -26,7 +26,8 @@ export function pressedStyle(pressed: boolean, style?: ViewStyle): ViewStyle {
   return { ...style, opacity: pressed ? PRESSED_OPACITY : 1 };
 }
 
-export type TileTone = 'accent' | 'warn' | 'income' | 'danger' | 'muted';
+export type TileTone =
+  'accent' | 'warn' | 'income' | 'danger' | 'muted' | 'transfer' | 'purple' | 'ink';
 
 /** A rounded square holding an icon: the leading mark of a row or a PUSH header. */
 export function Tile({
@@ -48,7 +49,7 @@ export function Tile({
         width: size,
         height: size,
         // 8 at 28, 14 at 52: one ratio, so the corner scales with the tile.
-        borderRadius: Math.round(size * 0.27),
+        borderRadius: size === 28 ? t.radius.xs : Math.round(size * 0.27),
         alignItems: 'center',
         justifyContent: 'center',
         backgroundColor: bg,
@@ -71,6 +72,12 @@ function tileColors(t: ReturnType<typeof useTheme>, tone: TileTone): { bg: strin
       return { bg: t.color.surfaceAlt, fg: t.color.textMuted };
     case 'accent':
       return { bg: t.color.accentSoft, fg: t.color.accent };
+    case 'transfer':
+      return { bg: t.color.transferSoft, fg: t.color.transfer };
+    case 'purple':
+      return { bg: t.color.purpleSoft, fg: t.color.purple };
+    case 'ink':
+      return { bg: t.color.inkSoft, fg: t.color.ink };
   }
 }
 

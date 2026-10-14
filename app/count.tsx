@@ -389,7 +389,12 @@ export default function CountScreen() {
                       opacity: blocked ? 0.5 : 1,
                     }}
                   >
-                    <View style={{ flex: 1, gap: 2 }}>
+                    <View
+                      style={{
+                        flex: 1,
+                        gap: 2 /* eslint-disable-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81) */,
+                      }}
+                    >
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
                         <Text
                           style={[t.type.body, { color: t.color.text, flexShrink: 1 }]}

@@ -154,7 +154,12 @@ export function PushHeader({
   return (
     <View>
       <View
-        style={{ height: 44, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8 }}
+        style={{
+          height: hitSize,
+          flexDirection: 'row',
+          alignItems: 'center',
+          paddingHorizontal: t.space.sm,
+        }}
       >
         <Pressable
           onPress={onBack}
@@ -165,12 +170,12 @@ export function PushHeader({
             minHeight: hitSize,
             flexDirection: 'row',
             alignItems: 'center',
-            paddingRight: 8,
+            paddingRight: t.space.sm,
             opacity: pressed ? PRESSED_OPACITY : 1,
           })}
         >
           <Ionicons name="chevron-back" size={24} color={t.color.accent} />
-          <Text style={{ fontSize: 17, lineHeight: 22, color: t.color.accent }}>{backLabel}</Text>
+          <Text style={[t.type.heading, { color: t.color.accent }]}>{backLabel}</Text>
         </Pressable>
         <View style={{ flex: 1 }} />
         {right}
@@ -187,7 +192,7 @@ export function PushHeader({
         >
           {leading}
           <View style={{ flex: 1 }}>
-            <Text style={[t.type.title, { fontSize: 28, lineHeight: 34, color: t.color.text }]}>
+            <Text style={[leading ? t.type.amount : t.type.largeTitle, { color: t.color.text }]}>
               {title}
             </Text>
             {!!subtitle && (
@@ -196,6 +201,41 @@ export function PushHeader({
           </View>
         </View>
       )}
+    </View>
+  );
+}
+
+/** TAB tier top bar. Large title (34/41 bold) with optional right-aligned action buttons or subtitle. */
+export function TabHeader({
+  title,
+  subtitle,
+  right,
+}: {
+  title: string;
+  subtitle?: ReactNode;
+  right?: ReactNode;
+}) {
+  const t = useTheme();
+  return (
+    <View
+      style={{
+        paddingHorizontal: t.space.xl,
+        paddingTop: t.space.xs,
+        paddingBottom: t.space.md,
+      }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+        <Text style={[t.type.largeTitle, { flex: 1, color: t.color.text }]} numberOfLines={1}>
+          {title}
+        </Text>
+        {right}
+      </View>
+      {!!subtitle &&
+        (typeof subtitle === 'string' ? (
+          <Text style={[t.type.body, { color: t.color.textMuted }]}>{subtitle}</Text>
+        ) : (
+          subtitle
+        ))}
     </View>
   );
 }

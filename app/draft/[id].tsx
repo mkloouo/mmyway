@@ -656,7 +656,13 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
 
           {splitMode ? (
             <>
-              <View style={{ alignItems: 'center', gap: 2, paddingHorizontal: t.space.xl }}>
+              <View
+                style={{
+                  alignItems: 'center',
+                  gap: 2 /* eslint-disable-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81) */,
+                  paddingHorizontal: t.space.xl,
+                }}
+              >
                 <Text style={[t.type.caption, { color: t.color.textMuted }]}>
                   {tr('splits.total')}
                 </Text>
@@ -685,6 +691,7 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
               </View>
 
               <View
+                // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
                 style={{ flexDirection: 'row', gap: 6, paddingHorizontal: t.space.lg }}
                 role="tablist"
                 aria-label={tr('splits.partSelector', { defaultValue: 'Parts' })}
@@ -700,6 +707,7 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
                       style={{
                         flex: 1,
                         height: 44,
+                        // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
                         borderRadius: 12,
                         borderWidth: isSelected ? 2 : 1,
                         borderColor: isSelected ? t.color.accent : t.color.border,
@@ -710,6 +718,7 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
                     >
                       <Text
                         style={{
+                          // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
                           fontSize: 12,
                           fontWeight: '600',
                           color: isSelected ? t.color.accent : t.color.textMuted,
@@ -719,6 +728,7 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
                       </Text>
                       <Text
                         style={{
+                          // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
                           fontSize: 13,
                           fontWeight: '500',
                           color: isSelected ? t.color.accent : t.color.text,
