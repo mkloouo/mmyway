@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-10-14
+
 ### Changed
 
 - Standardized typography and layout tokens with large titles, hero amounts, button radii, tile tints, and enforced style token usage across screens (MKL-81).
