@@ -14,13 +14,19 @@ import { getReminderOverrides } from '../settings/appSettings';
 import { defaultRepetition } from '../planned/repetition';
 import { localDay } from '../utils/day';
 import type { SavePlannedPayload } from '../planned/replay';
+import type { MerchantHistory } from '../lookup/merchantLookup';
 import NewPlannedScreen from '../../app/planned/new';
 
 jest.setTimeout(15_000);
 
 let mockDb: ReturnType<typeof createTestDb>;
+let mockHistories: MerchantHistory[] = [];
 
 jest.mock('../providers/DbProvider', () => ({ useDb: () => mockDb }));
+
+jest.mock('../lookup/useMerchantHistories', () => ({
+  useMerchantHistories: () => mockHistories,
+}));
 
 jest.mock('../db/useLiveQuery', () => ({
   sameRows: () => false,
@@ -40,6 +46,7 @@ const SYNCED = '2026-10-11T08:00:00Z';
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockHistories = [];
   mockDb = createTestDb();
   mockDb
     .insert(referenceCurrencies)
@@ -179,5 +186,36 @@ describe('New planned payment', () => {
     expect(Alert.alert).toHaveBeenCalledTimes(1);
     expect(router.back).toHaveBeenCalledTimes(1);
     expect(await queuedSaves()).toHaveLength(0);
+  });
+
+  it('keeps the user-chosen account when picking a payee with a different usual account', async () => {
+    mockHistories = [
+      {
+        merchantKey: 'landlord',
+        displayName: 'Landlord',
+        topAccountName: 'Checking',
+        topCategory: 'Housing',
+        topBudgetName: null,
+        occurrences: 5,
+        lastUsed: '2026-10-10',
+      },
+    ];
+
+    await renderScreen();
+    await waitFor(() => expect(screen.getByText('PLN')).toBeTruthy());
+
+    // User explicitly picks Savings for From
+    await fireEvent.press(screen.getByText(i18n.t('fields.from')));
+    await fireEvent.press(screen.getByText('Savings'));
+    expect(screen.getByText('Savings')).toBeTruthy();
+
+    // User picks Landlord (whose topAccountName is Checking)
+    await fireEvent.press(screen.getByText(i18n.t('fields.to')));
+    await fireEvent.press(screen.getAllByText('Landlord')[0]!);
+
+    // The chosen account stays Savings, not reverted to Checking
+    expect(screen.getByText('Savings')).toBeTruthy();
+    expect(screen.getAllByText('Landlord').length).toBeGreaterThan(0);
+    expect(screen.getByText('Housing')).toBeTruthy();
   });
 });

@@ -10,6 +10,7 @@
 
 ### Fixed
 
+- When adding a planned payment, choosing the payee no longer replaces the account you'd already picked (MKL-98).
 - Fixed bottom sheet item selection requiring multiple taps right after opening.
 - Scaled down Android toggles to match design proportions and aligned card row padding and inset hairlines across Account and Reminders screens.
 

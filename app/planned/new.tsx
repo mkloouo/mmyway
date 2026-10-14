@@ -53,7 +53,6 @@ import { TX_TYPES } from '../../src/transactions/txTypes';
 type Step = 1 | 2 | 3;
 type OpenSheet = 'amount' | 'currency' | 'own' | 'ownTo' | 'payee' | 'category' | 'remind' | null;
 
-/** The reminder timings a payment can be given, as the item page lists them. 'default' is no choice (null). */
 const REMIND_CHOICES: readonly (ReminderWhen | 'off')[] = [
   'day',
   'dayBefore',
@@ -114,6 +113,10 @@ export default function NewPlannedScreen() {
   );
   // null is Default: no override is stored for the payment.
   const [remindChoice, setRemindChoice] = useState<ReminderWhen | 'off' | null>(null);
+  const [chosen, setChosen] = useState<{ category: boolean; account: boolean }>({
+    category: false,
+    account: false,
+  });
 
   useEffect(() => {
     void (async () => {
@@ -154,12 +157,11 @@ export default function NewPlannedScreen() {
   // Which end is the user's own account and which the payee/payer.
   const ownFrom = fields.type !== 'deposit';
   const ownTo = fields.type !== 'withdrawal';
-  const fromText = ownFrom
-    ? accountName(fields.sourceId, fields.sourceName)
-    : (fields.sourceName ?? '—');
-  const toText = ownTo
-    ? accountName(fields.destinationId, fields.destinationName)
-    : (fields.destinationName ?? '—');
+  const fromText =
+    (ownFrom ? accountName(fields.sourceId, fields.sourceName) : fields.sourceName) ?? '—';
+  const toText =
+    (ownTo ? accountName(fields.destinationId, fields.destinationName) : fields.destinationName) ??
+    '—';
   const amountText = currencyRows ? formatMoney(fields.amount, currency) : '';
 
   /** A payee picked from history also fills what's usually booked with it, where not chosen. */
@@ -168,18 +170,17 @@ export default function NewPlannedScreen() {
       fields.type === 'deposit'
         ? { sourceName: h.displayName, sourceId: null }
         : { destinationName: h.displayName, destinationId: null };
-    if (!fields.categoryName && h.topCategory) patch.categoryName = h.topCategory;
-    const account = h.topAccountName
-      ? assetAccounts.find((a) => a.name === h.topAccountName)
-      : undefined;
+    if (!chosen.category && !fields.categoryName && h.topCategory) {
+      patch.categoryName = h.topCategory;
+    }
+    const account =
+      !chosen.account && h.topAccountName
+        ? assetAccounts.find((a) => a.name === h.topAccountName)
+        : undefined;
     if (account) {
-      if (fields.type === 'deposit') {
-        patch.destinationId = account.id;
-        patch.destinationName = account.name;
-      } else {
-        patch.sourceId = account.id;
-        patch.sourceName = account.name;
-      }
+      const leg = fields.type === 'deposit' ? 'destination' : 'source';
+      patch[`${leg}Id`] = account.id;
+      patch[`${leg}Name`] = account.name;
     }
     set(patch);
   }
@@ -683,9 +684,7 @@ export default function NewPlannedScreen() {
           label: c.code,
         }))}
         selected={fields.currencyCode}
-        onSelect={(code) => {
-          if (code) set({ currencyCode: code });
-        }}
+        onSelect={(code) => code && set({ currencyCode: code })}
       />
       <AccountPickerSheet
         visible={sheet === 'own' || sheet === 'ownTo'}
@@ -694,6 +693,7 @@ export default function NewPlannedScreen() {
         accounts={assetAccounts}
         currencies={currencies}
         onSelect={(a) => {
+          setChosen((c) => ({ ...c, account: true }));
           set(
             sheet === 'ownTo'
               ? { destinationId: a.id, destinationName: a.name }
@@ -721,7 +721,10 @@ export default function NewPlannedScreen() {
         title={tr('fields.category')}
         options={categories.map((c) => ({ key: c.name, label: c.name }))}
         selected={fields.categoryName}
-        onSelect={(categoryName) => set({ categoryName })}
+        onSelect={(categoryName) => {
+          setChosen((c) => ({ ...c, category: true }));
+          set({ categoryName });
+        }}
         noneLabel={tr('common.none')}
       />
       {!!globalRemind && (
