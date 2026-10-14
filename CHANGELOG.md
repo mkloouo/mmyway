@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [2.2.0] - 2026-10-14
+
 ### Changed
 
 - Split the UI kit into focused family modules under src/ui/kit/ and retired legacy duplicate components (MKL-80).
