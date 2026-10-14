@@ -174,8 +174,9 @@ export function ErrorBoundary({ error, retry }: { error: Error; retry: () => voi
 }
 
 export default function RootLayout() {
+  const t = useTheme();
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: t.color.bg }}>
       {/* expo-router's own SafeAreaProvider (via ExpoRoot) only seeds initialMetrics on web, so
           on Android every screen still measures insets on the first frame and jumps once real
           values land. This inner provider seeds it synchronously so nothing needs to remeasure. */}
@@ -195,7 +196,13 @@ export default function RootLayout() {
             {/* A push fades rather than sliding in from the side: these screens are a drill-down
                 into what the tab already showed, and the slide read as a different place. The
                 modals keep rising from the bottom — that is what tells them apart from a push. */}
-            <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                animation: 'fade',
+                contentStyle: { backgroundColor: t.color.bg },
+              }}
+            >
               <Stack.Screen name="(tabs)" />
               <Stack.Screen name="capture" options={MODAL} />
               <Stack.Screen name="receipt" options={MODAL} />

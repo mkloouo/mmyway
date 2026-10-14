@@ -21,6 +21,7 @@ export default function TabsLayout() {
         // the most-used move in the app. A cross-fade, the same as a push (app/_layout.tsx), so
         // every move in the app reads the same way.
         animation: 'fade',
+        sceneStyle: { backgroundColor: t.color.bg },
         tabBarActiveTintColor: t.color.accent,
         tabBarInactiveTintColor: t.color.textFaint,
         tabBarStyle: {
