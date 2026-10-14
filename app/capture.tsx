@@ -220,28 +220,31 @@ function FieldRow({
           alignItems: 'center',
           gap: t.space.sm,
           paddingLeft: t.space.sm,
-          paddingRight: t.space.sm,
+          paddingRight: t.space.md,
         }}
       >
+        <Pressable
+          onPress={onSearch}
+          accessibilityRole="button"
+          accessibilityLabel={searchLabel}
+          hitSlop={{ top: 6, bottom: 6 }}
+          style={({ pressed }) => ({
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            height: 30,
+            paddingHorizontal: t.space.sm,
+            borderRadius: t.radius.pill,
+            borderWidth: 1,
+            borderColor: t.color.border,
+            backgroundColor: t.color.surface,
+            opacity: pressed ? PRESSED_OPACITY : 1,
+          })}
+        >
+          <Ionicons name="search" size={15} color={t.color.accent} />
+        </Pressable>
         {children}
       </ScrollView>
-      <Pressable
-        onPress={onSearch}
-        accessibilityRole="button"
-        accessibilityLabel={searchLabel}
-        hitSlop={4}
-        style={({ pressed }) => ({
-          width: 44,
-          height: 48,
-          alignItems: 'center',
-          justifyContent: 'center',
-          borderLeftWidth: 1,
-          borderLeftColor: t.color.border,
-          opacity: pressed ? PRESSED_OPACITY : 1,
-        })}
-      >
-        <Ionicons name="search" size={18} color={t.color.accent} />
-      </Pressable>
     </View>
   );
 }
