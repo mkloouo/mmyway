@@ -106,6 +106,7 @@ export function ListRow({
       onLongPress={onLongPress}
       disabled={!interactive}
       accessibilityRole={interactive ? 'button' : undefined}
+      pressRetentionOffset={interactive ? { top: 60, bottom: 60, left: 30, right: 30 } : undefined}
       style={({ pressed }) => ({
         minHeight: ROW_HEIGHT,
         flexDirection: 'row',

@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Animated,
+  Easing,
   Keyboard,
   Modal,
   Platform,
@@ -81,16 +82,15 @@ export function Sheet({
   // the keyboard (adjustResize no longer applies), so a text field low in a sheet sat under it.
   // The panel lifts itself by the keyboard's reported height instead — on both platforms, so
   // there is no KeyboardAvoidingView to double it up.
-  const [slideAnim] = useState(() => new Animated.Value(0));
+  const [slideAnim] = useState(() => new Animated.Value(visible ? 0 : 120));
 
   useEffect(() => {
     if (visible) {
-      slideAnim.setValue(220);
-      Animated.spring(slideAnim, {
+      slideAnim.setValue(120);
+      Animated.timing(slideAnim, {
         toValue: 0,
-        damping: 24,
-        stiffness: 260,
-        mass: 0.8,
+        duration: 160,
+        easing: Easing.out(Easing.cubic),
         useNativeDriver: true,
       }).start();
     }

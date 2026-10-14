@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed bottom sheet item selection requiring multiple taps right after opening.
+
 ## [2.2.0] - 2026-10-14
 
 ### Changed

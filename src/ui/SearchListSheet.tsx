@@ -271,6 +271,7 @@ export function ChooseRow({
       }}
       unstable_pressDelay={0}
       hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+      pressRetentionOffset={{ top: 60, bottom: 60, left: 30, right: 30 }}
       accessibilityRole="button"
       accessibilityState={{ selected }}
       style={({ pressed }) => ({
