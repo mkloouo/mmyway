@@ -26,7 +26,7 @@ import {
   type AllocationMode,
   type AllocationResult,
 } from '../../src/ui/AllocationSheet';
-import { currencyOf } from '../../src/ui/money';
+import { currencyOf, currencySymbol, formatMoney } from '../../src/ui/money';
 import { pickableCurrencies } from '../../src/ui/currencies';
 import { PickerSheet } from '../../src/ui/PickerSheet';
 import { haptics } from '../../src/ui/haptics';
@@ -631,7 +631,14 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
               <Row
                 first
                 label={chargedLabel}
-                value={`${draft.foreignAmount || '—'} ${accountCurrencyCode}`}
+                value={
+                  draft.foreignAmount
+                    ? formatMoney(
+                        draft.foreignAmount,
+                        currencyOf(currencies, accountCurrencyCode ?? ''),
+                      )
+                    : '—'
+                }
                 tone={draft.foreignAmount ? 'default' : 'warn'}
                 check={!draft.foreignAmount}
                 chevron={!readOnly}
@@ -640,14 +647,16 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
               {!draft.foreignAmount && !readOnly && (
                 <View style={{ paddingHorizontal: t.space.lg, paddingBottom: t.space.sm }}>
                   <Text style={[t.type.label, { color: t.color.warn }]}>
-                    {tr('capture.enterAccountPaid', { currency: accountCurrencyCode })}
+                    {tr('capture.enterAccountPaid', {
+                      currency: currencySymbol(accountCurrencyCode, currencies),
+                    })}
                   </Text>
                 </View>
               )}
               {!!draft.foreignAmount && !!impliedRate && impliedRate !== '0' && (
                 <View style={{ paddingHorizontal: t.space.lg, paddingBottom: t.space.sm }}>
                   <Text style={[t.type.caption, { color: t.color.textMuted }]}>
-                    {`1 ${draft.currencyCode} ≈ ${impliedRate} ${accountCurrencyCode}`}
+                    {`1 ${currencySymbol(draft.currencyCode, currencies)} ≈ ${impliedRate} ${currencySymbol(accountCurrencyCode, currencies)}`}
                   </Text>
                 </View>
               )}

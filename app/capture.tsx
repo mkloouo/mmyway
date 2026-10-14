@@ -28,7 +28,7 @@ import { Button, Card, CloseButton, Dot, ListRow, PRESSED_OPACITY, Row, Screen, 
 import { Keypad } from '../src/ui/Keypad';
 import { PayeeSheet } from '../src/ui/PayeeSheet';
 import { AccountPickerSheet, type AccountPickerAccount } from '../src/ui/AccountPickerSheet';
-import { currencyOf, formatAmountInput, formatMoney } from '../src/ui/money';
+import { currencyOf, currencySymbol, formatAmountInput, formatMoney } from '../src/ui/money';
 import { categoryColor } from '../src/ui/categoryColor';
 import { haptics } from '../src/ui/haptics';
 
@@ -820,7 +820,7 @@ export default function CaptureScreen() {
                   value={foreignAmount}
                   onChangeText={(foreignAmount) => set({ foreignAmount })}
                   keyboardType="decimal-pad"
-                  placeholder={`___ ${accountCurrencyCode}`}
+                  placeholder={`___ ${currencySymbol(accountCurrencyCode, currencies)}`}
                   style={{
                     flex: 1,
                     minWidth: 0,
@@ -836,7 +836,8 @@ export default function CaptureScreen() {
                 />
                 {!!impliedRate && !isNegative(impliedRate) && (
                   <Text numberOfLines={1} style={[t.type.label, { color: t.color.textFaint }]}>
-                    1 {accountCurrencyCode} ≈ {impliedRate} {effectiveCurrencyCode}
+                    1 {currencySymbol(accountCurrencyCode, currencies)} ≈ {impliedRate}{' '}
+                    {currencySymbol(effectiveCurrencyCode, currencies)}
                   </Text>
                 )}
               </View>
@@ -1098,7 +1099,9 @@ export default function CaptureScreen() {
                         : readiness.missing,
                     )
                   : fxMissing
-                    ? tr('capture.enterAccountPaid', { currency: accountCurrencyCode })
+                    ? tr('capture.enterAccountPaid', {
+                        currency: currencySymbol(accountCurrencyCode, currencies),
+                      })
                     : foreignAmountInvalid
                       ? tr('common.invalidAmount')
                       : undefined

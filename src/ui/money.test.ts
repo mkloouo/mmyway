@@ -3,6 +3,7 @@ import {
   formatAmountInput,
   signFor,
   currencyOf,
+  currencySymbol,
   type NumberSeparators,
 } from './money';
 
@@ -60,6 +61,25 @@ describe('signFor', () => {
   });
 });
 
+describe('currencySymbol', () => {
+  it('resolves standard symbols via Intl narrowSymbol', () => {
+    expect(currencySymbol('PLN')).toBe('zł');
+    expect(currencySymbol('EUR')).toBe('€');
+    expect(currencySymbol('USD')).toBe('$');
+  });
+
+  it('uses FF3 currency symbol from reference data when present', () => {
+    const ff3 = [{ code: 'CUSTOM', symbol: '§' }];
+    expect(currencySymbol('CUSTOM', ff3)).toBe('§');
+  });
+
+  it('falls back to code for unknown or crypto currencies', () => {
+    expect(currencySymbol('XAU')).toBe('XAU');
+    expect(currencySymbol('BTC')).toBe('BTC');
+    expect(currencySymbol('XYZ')).toBe('XYZ');
+  });
+});
+
 describe('currencyOf', () => {
   const currencies = [
     { code: 'PLN', symbol: 'zł', decimalPlaces: 2 },
@@ -70,8 +90,9 @@ describe('currencyOf', () => {
     expect(currencyOf(currencies, 'JPY')).toEqual({ symbol: '¥', decimalPlaces: 0 });
   });
 
-  it('falls back to the code itself with 2 decimal places when unsynced', () => {
-    expect(currencyOf(currencies, 'USD')).toEqual({ symbol: 'USD', decimalPlaces: 2 });
+  it('resolves symbol even when unsynced, falling back to 2 decimal places', () => {
+    expect(currencyOf(currencies, 'USD')).toEqual({ symbol: '$', decimalPlaces: 2 });
+    expect(currencyOf(currencies, 'XAU')).toEqual({ symbol: 'XAU', decimalPlaces: 2 });
   });
 });
 

@@ -8,7 +8,7 @@ import { AccountPickerSheet } from './AccountPickerSheet';
 import { Button, Sheet } from './kit';
 import { TextField } from './TextField';
 import { useTheme } from './theme';
-import { currencyOf, formatMoney } from './money';
+import { currencyOf, currencySymbol, formatMoney } from './money';
 import { useAction } from './useAction';
 import { useDb } from '../providers/DbProvider';
 import { parseDecimalInput, trimDecimal } from '../api/ff3/decimal';
@@ -144,7 +144,7 @@ export function ReviewEditSheet({
               </Text>
             )}
             <TextField
-              placeholder={`${tr('fields.amount')}, ${currencyCode}`}
+              placeholder={`${tr('fields.amount')}, ${currencySymbol(currencyCode, currencies)}`}
               value={edit.amount}
               keyboardType="decimal-pad"
               autoFocus={!!foreign}

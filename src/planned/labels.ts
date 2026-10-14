@@ -1,5 +1,6 @@
 // Display text for the Planned tab, in the app's language.
 import i18n, { appLocale } from '../i18n';
+import { currencySymbol } from '../ui/money';
 import type { PlannedFields, PlannedGroup } from './model';
 import type { PlannedObject } from './objects';
 import {
@@ -113,7 +114,7 @@ export function objectSummary(object: PlannedObject): string {
     const a = object.attributes;
     const amount = a.amount_min === a.amount_max ? a.amount_max : `${a.amount_min}–${a.amount_max}`;
     return [
-      `${amount ?? ''} ${a.currency_code ?? ''}`.trim(),
+      `${amount ?? ''} ${currencySymbol(a.currency_code ?? '')}`.trim(),
       a.repeat_freq
         ? i18n.t(BILL_FREQUENCY_KEYS[a.repeat_freq] ?? 'planned.everyMonth', {
             count: (a.skip ?? 0) + 1,
@@ -139,7 +140,7 @@ export function objectSummary(object: PlannedObject): string {
   const tx = a.transactions?.[0];
   const next = a.repetitions?.[0]?.occurrences?.[0];
   return [
-    tx ? `${tx.amount ?? ''} ${tx.currency_code ?? ''}`.trim() : null,
+    tx ? `${tx.amount ?? ''} ${currencySymbol(tx.currency_code ?? '')}`.trim() : null,
     // FF3's own description, for every repetition it holds — not just the first.
     (a.repetitions ?? [])
       .map((r) => (typeof r.description === 'string' ? r.description : ''))

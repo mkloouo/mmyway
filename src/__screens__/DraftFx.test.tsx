@@ -102,8 +102,7 @@ describe('DraftScreen FX conversion (#105)', () => {
     await wrap(<DraftEditor row={item} />);
 
     expect(screen.getByText('Account charged')).toBeTruthy();
-    expect(screen.getByText('— PLN')).toBeTruthy();
-    expect(screen.getByText('Enter what the PLN account paid')).toBeTruthy();
+    expect(screen.getByText('Enter what the zł account paid')).toBeTruthy();
   });
 
   it('disappears when currencies match', async () => {
@@ -145,8 +144,8 @@ describe('DraftScreen FX conversion (#105)', () => {
     });
     await wrap(<DraftEditor row={item} />);
 
-    expect(screen.getByText('90.00 PLN')).toBeTruthy();
-    expect(screen.getByText(/1 EUR ≈ 4\.50 PLN/)).toBeTruthy();
+    expect(screen.getByText(/90[.,]00.*zł/)).toBeTruthy();
+    expect(screen.getByText(/1 € ≈ 4\.50 zł/)).toBeTruthy();
   });
 
   it('changing the account clears the conversion entered for the old pair', async () => {

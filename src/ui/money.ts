@@ -2,6 +2,7 @@
 // `number`, not even for grouping (AGENTS.md: FF3 amounts are strings). The separators are the
 // phone's own number format (Android's region settings), not a hardcoded Polish "1 234,50".
 import { getLocales } from 'expo-localization';
+import { appLocale } from '../i18n';
 
 const NARROW_NBSP = '\u202F';
 const MINUS = '−'; // typographic minus, wider than a hyphen
@@ -28,6 +29,61 @@ function deviceSeparators(): NumberSeparators {
 export interface DisplayCurrency {
   symbol: string;
   decimalPlaces: number;
+}
+
+const knownCurrencySymbols = new Map<string, string>();
+
+/**
+ * Registers custom currency symbols from Firefly III's synced reference data.
+ */
+export function registerCurrencySymbols(
+  currencies: { code: string; symbol?: string | null }[],
+): void {
+  for (const c of currencies) {
+    if (c.code && c.symbol) {
+      knownCurrencySymbols.set(c.code.toUpperCase(), c.symbol);
+    }
+  }
+}
+
+/**
+ * Returns the currency symbol for a currency code (e.g. "PLN" -> "zł", "EUR" -> "€", "USD" -> "$").
+ * If the currency is known in FF3's synced referenceCurrencies with a symbol, that is used.
+ * Otherwise uses `Intl.NumberFormat(appLocale(), { style: 'currency', currency: code, currencyDisplay: 'narrowSymbol' })`.
+ * If that returns the code itself or is unknown/crypto, falls back to the ISO code.
+ */
+export function currencySymbol(
+  code: string | null | undefined,
+  currencies?: { code: string; symbol?: string | null }[],
+): string {
+  if (!code) return '';
+  const trimmed = code.trim();
+  if (!trimmed) return '';
+
+  if (currencies && currencies.length > 0) {
+    registerCurrencySymbols(currencies);
+    const found = currencies.find(
+      (c) => c.code === trimmed || c.code.toUpperCase() === trimmed.toUpperCase(),
+    );
+    if (found?.symbol) return found.symbol;
+  }
+
+  const cached = knownCurrencySymbols.get(trimmed.toUpperCase());
+  if (cached) return cached;
+
+  try {
+    const parts = new Intl.NumberFormat(appLocale(), {
+      style: 'currency',
+      currency: trimmed.toUpperCase(),
+      currencyDisplay: 'narrowSymbol',
+    }).formatToParts(1);
+    const symbol = parts.find((p) => p.type === 'currency')?.value;
+    if (symbol) return symbol;
+  } catch {
+    // RangeError if currency code is not a valid ISO 4217 code
+  }
+
+  return trimmed;
 }
 
 function group(whole: string, separator: string): string {
@@ -64,7 +120,8 @@ export function formatMoney(
     ? `${group(whole, separators.group)}${separators.decimal}${scaled}`
     : group(whole, separators.group);
 
-  return `${negative ? MINUS : ''}${body}${currency.symbol ? ` ${currency.symbol}` : ''}`;
+  const sym = currencySymbol(currency.symbol);
+  return `${negative ? MINUS : ''}${body}${sym ? ` ${sym}` : ''}`;
 }
 
 /**
@@ -83,7 +140,8 @@ export function formatAmountInput(
     rawFraction === undefined
       ? whole
       : `${whole}${separators.decimal}${rawFraction.replace(/\D/g, '')}`;
-  return `${body}${currency.symbol ? ` ${currency.symbol}` : ''}`;
+  const sym = currencySymbol(currency.symbol);
+  return `${body}${sym ? ` ${sym}` : ''}`;
 }
 
 /** The sign a transaction type reads as in a list: spending is neutral, income is `+`. */
@@ -94,16 +152,20 @@ export function signFor(type: 'withdrawal' | 'deposit' | 'transfer'): string {
 }
 
 /**
- * Looks up a currency's display shape from the synced `reference_currencies` cache. A code not
- * yet synced (a draft mid-entry, before the next pull) falls back to 2 decimal places with the
- * code itself as the symbol, rather than failing to render.
+ * Looks up a currency's display shape from the synced `reference_currencies` cache.
+ * Falls back to `currencySymbol` and 2 decimal places when unsynced, ensuring currency
+ * symbols (zł, €, $) render consistently everywhere.
  */
 export function currencyOf(
   currencies: { code: string; symbol: string; decimalPlaces: number }[],
   code: string,
 ): DisplayCurrency {
+  if (currencies.length > 0) {
+    registerCurrencySymbols(currencies);
+  }
   const found = currencies.find((c) => c.code === code);
-  return found
-    ? { symbol: found.symbol, decimalPlaces: found.decimalPlaces }
-    : { symbol: code, decimalPlaces: 2 };
+  return {
+    symbol: found?.symbol || currencySymbol(code, currencies),
+    decimalPlaces: found?.decimalPlaces ?? 2,
+  };
 }

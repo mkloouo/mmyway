@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Amounts show the currency symbol (zł, €) everywhere (MKL-134).
+
 ### Fixed
 
 - When adding a planned payment, choosing the payee no longer replaces the account you'd already picked (MKL-98).
