@@ -21,7 +21,7 @@ import {
   type Currencies,
   type DisplaySection,
 } from '../transactions/activityRows';
-import { dayDate, isBalanceStale, localDay } from '../utils/day';
+import { dayDate, localDay } from '../utils/day';
 
 const PENDING_LABEL_KEYS: Record<PendingEditStatus, string> = {
   queued: 'draft.queued',
@@ -317,7 +317,6 @@ const BalanceCell = memo(function BalanceCell({
 }) {
   const t = useTheme();
   const { t: tr } = useTranslation();
-  const stale = isBalanceStale(a.currentBalanceDate);
   const currency = currencyOf(currencies, a.currencyCode);
 
   return (
@@ -338,7 +337,7 @@ const BalanceCell = memo(function BalanceCell({
         backgroundColor: selected ? t.color.accentSoft : 'transparent',
         borderBottomWidth: selected ? 3 : 0,
         borderBottomColor: t.color.accent,
-        opacity: stale ? 0.5 : pressed ? PRESSED_OPACITY : 1,
+        opacity: pressed ? PRESSED_OPACITY : 1,
       })}
     >
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
