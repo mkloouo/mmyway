@@ -11,7 +11,7 @@ import { useDb } from '../../src/providers/DbProvider';
 import { useCurrencies } from '../../src/db/useReferenceData';
 import { useTheme } from '../../src/ui/theme';
 // prettier-ignore
-import { Button, Card, ModalHeader, PRESSED_OPACITY, ROW_HEIGHT, Row, Screen, SectionHeader, StickyFooter, SwitchRow, Toast } from '../../src/ui/kit';
+import { Button, Card, ListRow, ModalHeader, Screen, SectionHeader, StickyFooter, SwitchRow, Toast } from '../../src/ui/kit';
 import { TextField } from '../../src/ui/TextField';
 import { PickerSheet } from '../../src/ui/PickerSheet';
 import { primaryCurrencyCode } from '../../src/ui/currencies';
@@ -30,12 +30,20 @@ import { parseDecimalInput, parseSignedDecimalInput } from '../../src/api/ff3/de
 import {
   AmountField,
   CurrencySheet,
+  InlineField,
   RoleSheet,
   ROLE_LABEL_KEYS,
   dayLabel,
   KindCard,
   pickDay,
 } from '../../src/accounts/AccountFormParts';
+
+function TrailingMuted({ text, warn }: { text: string; warn?: boolean }) {
+  const t = useTheme();
+  return (
+    <Text style={[t.type.body, { color: warn ? t.color.warn : t.color.textMuted }]}>{text}</Text>
+  );
+}
 
 const LIABILITY_TYPE_KEYS = {
   loan: 'account.liabilityLoan',
@@ -222,84 +230,59 @@ function NewAccountScreen() {
             </View>
 
             <SectionHeader title={tr('account.sectionDetails')} />
-            <Card style={{ marginHorizontal: t.space.lg }}>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: t.space.md,
-                  minHeight: ROW_HEIGHT,
-                }}
-              >
-                <Text style={[t.type.body, { color: t.color.text }]}>{tr('accounts.name')}</Text>
-                <TextField
-                  value={form.name}
-                  onChangeText={(name) => patch({ name })}
-                  placeholder={tr('accounts.name')}
-                  style={{ flex: 1, borderWidth: 0, paddingHorizontal: 0, textAlign: 'right' }}
-                />
-              </View>
+            <Card flush style={{ marginHorizontal: t.space.lg }}>
+              <InlineField
+                first
+                label={tr('accounts.name')}
+                value={form.name}
+                onChangeText={(name) => patch({ name })}
+                placeholder={tr('accounts.name')}
+              />
               {asset ? (
-                <Row
+                <ListRow
                   label={tr('account.type')}
-                  value={tr(ROLE_LABEL_KEYS[form.accountRole ?? 'defaultAsset'])}
+                  trailing={
+                    <TrailingMuted text={tr(ROLE_LABEL_KEYS[form.accountRole ?? 'defaultAsset'])} />
+                  }
                   chevron
                   onPress={() => setRoleSheetOpen(true)}
                 />
               ) : (
-                <Row
+                <ListRow
                   label={tr('account.liabilityType')}
-                  value={liabilityTypeLabel ?? tr('account.choose')}
-                  tone={liabilityTypeLabel ? 'default' : 'warn'}
+                  trailing={
+                    <TrailingMuted
+                      text={liabilityTypeLabel ?? tr('account.choose')}
+                      warn={!liabilityTypeLabel}
+                    />
+                  }
                   chevron
                   onPress={() => setLiabilityTypeSheetOpen(true)}
                 />
               )}
-              <Row
+              <ListRow
                 label={tr('fields.currency')}
-                value={currencyCode}
+                trailing={<TrailingMuted text={currencyCode} />}
                 chevron
                 onPress={() => setCurrencySheetOpen(true)}
               />
               {asset && form.accountRole === 'ccAsset' && (
-                <Pressable
+                <ListRow
+                  label={tr('account.paidOffOn')}
+                  sub={tr('account.paidOffOnHint')}
+                  trailing={
+                    <TrailingMuted
+                      text={dayLabel(form.monthlyPaymentDate ?? null) ?? tr('account.pickDate')}
+                      warn={!form.monthlyPaymentDate}
+                    />
+                  }
+                  chevron
                   onPress={() =>
                     pickDay(form.monthlyPaymentDate ?? null, (day) =>
                       patch({ monthlyPaymentDate: day }),
                     )
                   }
-                  accessibilityRole="button"
-                  style={({ pressed }) => ({
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    gap: t.space.md,
-                    minHeight: ROW_HEIGHT,
-                    paddingVertical: t.space.sm,
-                    borderTopWidth: 1,
-                    borderTopColor: t.color.border,
-                    opacity: pressed ? PRESSED_OPACITY : 1,
-                  })}
-                >
-                  <View style={{ flex: 1 }}>
-                    <Text style={[t.type.body, { color: t.color.text }]}>
-                      {tr('account.paidOffOn')}
-                    </Text>
-                    <Text style={[t.type.label, { color: t.color.textMuted }]}>
-                      {tr('account.paidOffOnHint')}
-                    </Text>
-                  </View>
-                  <Text
-                    style={[
-                      t.type.body,
-                      {
-                        color: form.monthlyPaymentDate ? t.color.textMuted : t.color.warn,
-                      },
-                    ]}
-                  >
-                    {dayLabel(form.monthlyPaymentDate ?? null) ?? tr('account.pickDate')}
-                  </Text>
-                  <Text style={[t.type.body, { color: t.color.textFaint }]}>›</Text>
-                </Pressable>
+                />
               )}
             </Card>
             {asset && form.accountRole === 'ccAsset' && (
@@ -314,7 +297,7 @@ function NewAccountScreen() {
             )}
 
             <View style={{ height: t.space.md }} />
-            <Card style={{ marginHorizontal: t.space.lg }}>
+            <Card flush style={{ marginHorizontal: t.space.lg }}>
               {asset && (
                 <SwitchRow
                   first
@@ -327,11 +310,23 @@ function NewAccountScreen() {
               <View
                 style={{
                   gap: t.space.xs,
+                  paddingHorizontal: t.space.lg,
                   paddingVertical: t.space.sm,
-                  borderTopWidth: asset ? 1 : 0,
-                  borderTopColor: t.color.border,
+                  position: 'relative',
                 }}
               >
+                {asset && (
+                  <View
+                    style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 16,
+                      right: 0,
+                      height: 1,
+                      backgroundColor: t.color.border,
+                    }}
+                  />
+                )}
                 <Text style={[t.type.body, { color: t.color.text }]}>{tr('fields.note')}</Text>
                 <TextField
                   value={form.notes ?? ''}
@@ -385,11 +380,15 @@ function NewAccountScreen() {
             />
             <Card style={{ marginHorizontal: t.space.lg }}>
               {!asset && (
-                <Row
+                <ListRow
                   first
                   label={tr('account.liabilityDirection')}
-                  value={directionLabel ?? tr('account.choose')}
-                  tone={directionLabel ? 'default' : 'warn'}
+                  trailing={
+                    <TrailingMuted
+                      text={directionLabel ?? tr('account.choose')}
+                      warn={!directionLabel}
+                    />
+                  }
                   chevron
                   onPress={() => setDirectionSheetOpen(true)}
                 />
@@ -402,9 +401,13 @@ function NewAccountScreen() {
                 keyboardType="decimal-pad"
                 spaced={!asset}
               />
-              <Row
+              <ListRow
                 label={tr('account.asOf')}
-                value={dayLabel(form.openingBalanceDate ?? null) ?? tr('account.pickDate')}
+                trailing={
+                  <TrailingMuted
+                    text={dayLabel(form.openingBalanceDate ?? null) ?? tr('account.pickDate')}
+                  />
+                }
                 chevron
                 onPress={() =>
                   pickDay(form.openingBalanceDate ?? null, (day) =>
@@ -425,12 +428,16 @@ function NewAccountScreen() {
                     parsed={rate}
                     keyboardType="decimal-pad"
                   />
-                  <Row
+                  <ListRow
                     label={tr('account.interestPeriod')}
-                    value={
-                      form.interestPeriod
-                        ? tr(PERIOD_KEYS[form.interestPeriod])
-                        : tr('account.choose')
+                    trailing={
+                      <TrailingMuted
+                        text={
+                          form.interestPeriod
+                            ? tr(PERIOD_KEYS[form.interestPeriod])
+                            : tr('account.choose')
+                        }
+                      />
                     }
                     chevron
                     onPress={() => setPeriodSheetOpen(true)}

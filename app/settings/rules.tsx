@@ -3,7 +3,7 @@
 // shows at once: a queued toggle wins over the cached `active` until FF3 has answered it.
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { and, asc, inArray } from 'drizzle-orm';
 import { outboxOperations, plannedObjects } from '../../src/db/schema';
@@ -134,6 +134,7 @@ function RulesPage() {
                   onValueChange={(v) => setGroup(group.id, v)}
                   trackColor={{ false: t.color.border, true: t.color.accent }}
                   thumbColor={t.color.surface}
+                  style={Platform.OS === 'android' ? { transform: [{ scale: 0.82 }] } : undefined}
                 />
               }
             />
@@ -161,6 +162,9 @@ function RulesPage() {
                         onValueChange={(v) => setRule(rule.id, v)}
                         trackColor={{ false: t.color.border, true: t.color.accent }}
                         thumbColor={t.color.surface}
+                        style={
+                          Platform.OS === 'android' ? { transform: [{ scale: 0.82 }] } : undefined
+                        }
                       />
                     </View>
                   }

@@ -61,11 +61,23 @@ export function InlineField({
         alignItems: 'center',
         gap: t.space.md,
         minHeight: ROW_HEIGHT,
+        paddingHorizontal: t.space.lg,
         paddingVertical: t.space.sm,
-        borderTopWidth: first ? 0 : 1,
-        borderTopColor: t.color.border,
+        position: 'relative',
       }}
     >
+      {!first && (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            right: 0,
+            left: 16,
+            height: 1,
+            backgroundColor: t.color.border,
+          }}
+        />
+      )}
       <Text style={[t.type.body, { color: t.color.text, width: 88 }]}>{label}</Text>
       <TextField
         value={value}

@@ -284,15 +284,28 @@ export function ChooseRow({
         borderColor: t.color.border,
         borderLeftWidth: 1,
         borderRightWidth: 1,
-        borderTopWidth: 1,
+        borderTopWidth: first ? 1 : 0,
         borderBottomWidth: last ? 1 : 0,
         borderTopLeftRadius: first ? t.radius.md : 0,
         borderTopRightRadius: first ? t.radius.md : 0,
         borderBottomLeftRadius: last ? t.radius.md : 0,
         borderBottomRightRadius: last ? t.radius.md : 0,
+        position: 'relative',
         opacity: pressed ? PRESSED_OPACITY : 1,
       })}
     >
+      {!first && (
+        <View
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 16,
+            right: 0,
+            height: 1,
+            backgroundColor: t.color.border,
+          }}
+        />
+      )}
       <View style={{ flex: 1, paddingVertical: t.space.sm }}>{children}</View>
       {selected && <Ionicons name="checkmark" size={18} color={t.color.accent} />}
     </Pressable>

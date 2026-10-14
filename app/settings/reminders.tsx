@@ -17,7 +17,6 @@ import {
   GroupFooter,
   ListRow,
   PushHeader,
-  Row,
   SCREEN_TOP_PADDING,
   Screen,
   SectionHeader,
@@ -180,7 +179,7 @@ export default function RemindersScreen() {
           />
         </View>
 
-        <Card style={{ marginHorizontal: t.space.lg }}>
+        <Card flush style={{ marginHorizontal: t.space.lg }}>
           <SwitchRow
             first
             label={tr('reminders.enabled')}
@@ -217,8 +216,16 @@ export default function RemindersScreen() {
               />
             </Card>
 
-            <Card style={{ marginHorizontal: t.space.lg, marginTop: t.space.md }}>
-              <Row first label={tr('reminders.at')} value={data.time} chevron onPress={openTime} />
+            <Card flush style={{ marginHorizontal: t.space.lg, marginTop: t.space.md }}>
+              <ListRow
+                first
+                label={tr('reminders.at')}
+                trailing={
+                  <Text style={[t.type.body, { color: t.color.textMuted }]}>{data.time}</Text>
+                }
+                chevron
+                onPress={openTime}
+              />
               {when !== 'day' && (
                 <SwitchRow
                   label={tr('reminders.nudge')}
@@ -253,7 +260,7 @@ export default function RemindersScreen() {
             </Card>
 
             <SectionHeader title={tr('reminders.less')} />
-            <Card style={{ marginHorizontal: t.space.lg }}>
+            <Card flush style={{ marginHorizontal: t.space.lg }}>
               <SwitchRow
                 first
                 label={tr('reminders.digest')}
@@ -293,11 +300,11 @@ export default function RemindersScreen() {
           />
         }
       >
-        <Card>
-          <Row
+        <Card flush>
+          <ListRow
             first
             label={tr('reminders.at')}
-            value={draftTime}
+            trailing={<Text style={[t.type.body, { color: t.color.textMuted }]}>{draftTime}</Text>}
             chevron
             onPress={() => pickTime(draftTime, setDraftTime)}
           />

@@ -2,6 +2,7 @@ import { type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   Switch,
   Text,
@@ -208,6 +209,11 @@ export function SwitchRow({
           disabled={disabled}
           trackColor={{ false: t.color.border, true: t.color.accent }}
           thumbColor={t.color.surface}
+          style={
+            Platform.OS === 'android'
+              ? { transform: [{ scale: 0.82 }], marginRight: -4 }
+              : undefined
+          }
         />
       </View>
     </Pressable>

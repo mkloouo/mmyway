@@ -5,6 +5,7 @@
 ### Fixed
 
 - Fixed bottom sheet item selection requiring multiple taps right after opening.
+- Scaled down Android toggles to match design proportions and aligned card row padding and inset hairlines across Account and Reminders screens.
 
 ## [2.2.0] - 2026-10-14
 

@@ -4,7 +4,7 @@
 // balance card on Activity (long-press). The current balance is shown in the header's subtitle,
 // not near the opening-balance fields: a balance above fields that edit the opening balance only
 // confused the two.
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -14,7 +14,7 @@ import { useCurrencies } from '../../src/db/useReferenceData';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
 // prettier-ignore
-import { Button, Card, GroupFooter, ListRow, PushHeader, Row, Screen, SectionHeader, Sheet, SwitchRow, Tile, Toast } from '../../src/ui/kit';
+import { Button, Card, GroupFooter, ListRow, PushHeader, Screen, SectionHeader, Sheet, SwitchRow, Tile, Toast } from '../../src/ui/kit';
 import { useAction } from '../../src/ui/useAction';
 import { useConfirmDiscard } from '../../src/ui/useConfirmDiscard';
 import { useToast } from '../../src/ui/useToast';
@@ -49,10 +49,11 @@ import {
 } from '../../src/accounts/AccountFormParts';
 import { SaveBar } from '../../src/ui/SaveBar';
 
-/** A titled group of rows: a padded Card whose rows bring their own hairlines (kit board 1). */
-function Group({ children }: { children: ReactNode }) {
+function TrailingMuted({ text, warn }: { text: string; warn?: boolean }) {
   const t = useTheme();
-  return <Card style={{ marginHorizontal: t.space.lg, paddingVertical: 0 }}>{children}</Card>;
+  return (
+    <Text style={[t.type.body, { color: warn ? t.color.warn : t.color.textMuted }]}>{text}</Text>
+  );
 }
 
 /** An amount as a row shows it: formatted once it parses, the typed text until then, '—' when empty. */
@@ -61,8 +62,7 @@ function amountText(
   parsed: ReturnType<typeof parseSignedDecimalInput> | null,
   currency: ReturnType<typeof currencyOf>,
 ): string {
-  if (!text.trim()) return '—';
-  return parsed?.ok ? formatMoney(parsed.value, currency) : text.trim();
+  return !text.trim() ? '—' : parsed?.ok ? formatMoney(parsed.value, currency) : text.trim();
 }
 
 export default function AccountScreen() {
@@ -258,7 +258,7 @@ export default function AccountScreen() {
           </View>
 
           <SectionHeader first title={tr('account.sectionDetails')} />
-          <Group>
+          <Card flush style={{ marginHorizontal: t.space.lg }}>
             <InlineField
               first
               label={tr('accounts.name')}
@@ -274,37 +274,41 @@ export default function AccountScreen() {
               multiline
             />
             {!liability && (
-              <Row
+              <ListRow
                 label={tr('account.kind')}
-                value={tr(ROLE_LABEL_KEYS[form.accountRole])}
+                trailing={<TrailingMuted text={tr(ROLE_LABEL_KEYS[form.accountRole])} />}
                 chevron
                 onPress={() => setRoleSheetOpen(true)}
               />
             )}
-            <Row
+            <ListRow
               label={tr('fields.currency')}
-              value={form.currencyCode}
+              trailing={<TrailingMuted text={form.currencyCode} />}
               chevron
               onPress={() => setCurrencySheetOpen(true)}
             />
             {!liability && form.accountRole === 'ccAsset' && (
-              <Row
+              <ListRow
                 label={tr('account.monthlyPaymentDate')}
-                value={dayLabel(form.monthlyPaymentDate) ?? tr('account.pickDate')}
-                tone={form.monthlyPaymentDate ? 'default' : 'warn'}
+                trailing={
+                  <TrailingMuted
+                    text={dayLabel(form.monthlyPaymentDate) ?? tr('account.pickDate')}
+                    warn={!form.monthlyPaymentDate}
+                  />
+                }
                 chevron
                 onPress={() =>
                   pickDay(form.monthlyPaymentDate, (day) => patch({ monthlyPaymentDate: day }))
                 }
               />
             )}
-          </Group>
+          </Card>
           {!liability && form.accountRole === 'ccAsset' && (
             <GroupFooter>{tr('account.monthlyPaymentDateHint')}</GroupFooter>
           )}
 
           <SectionHeader title={tr('account.sectionWhere')} />
-          <Group>
+          <Card flush style={{ marginHorizontal: t.space.lg }}>
             <SwitchRow
               first
               value={active}
@@ -328,7 +332,7 @@ export default function AccountScreen() {
                 hint={tr('account.includeNetWorthHint')}
               />
             )}
-          </Group>
+          </Card>
 
           <SectionHeader title={tr('account.sectionStart')} />
           <Card flush style={{ marginHorizontal: t.space.lg }}>
@@ -338,22 +342,14 @@ export default function AccountScreen() {
               sub={
                 openingDay ? tr('account.balanceOn', { date: openingDay }) : tr('account.pickDate')
               }
-              trailing={
-                <Text style={[t.type.body, { color: t.color.textMuted }]}>
-                  {amountText(openingText, opening, currency)}
-                </Text>
-              }
+              trailing={<TrailingMuted text={amountText(openingText, opening, currency)} />}
               chevron
               onPress={() => setBalanceSheet('opening')}
             />
             <ListRow
               label={tr('account.virtualBalance')}
               sub={tr('account.virtualBalanceSub')}
-              trailing={
-                <Text style={[t.type.body, { color: t.color.textMuted }]}>
-                  {amountText(virtualText, virtual, currency)}
-                </Text>
-              }
+              trailing={<TrailingMuted text={amountText(virtualText, virtual, currency)} />}
               chevron
               onPress={() => setBalanceSheet('virtual')}
             />
@@ -404,9 +400,10 @@ export default function AccountScreen() {
                 onChangeText={setOpeningText}
                 parsed={opening}
               />
-              <Row
+              <ListRow
+                first={false}
                 label={tr('account.openingBalanceDate')}
-                value={openingDay ?? tr('account.pickDate')}
+                trailing={<TrailingMuted text={openingDay ?? tr('account.pickDate')} />}
                 chevron
                 onPress={() =>
                   pickDay(form.openingBalanceDate, (day) => patch({ openingBalanceDate: day }))
