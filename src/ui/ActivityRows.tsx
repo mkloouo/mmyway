@@ -1,6 +1,6 @@
 // Activity's rows (design §6.4): one transaction's row, the account cards above the list, and a
 // day's header. All memoized — a filter tap or a sync used to redraw every one of them.
-import { memo } from 'react';
+import { memo, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import i18n, { appLocale } from '../i18n';
 import { Animated, Pressable, ScrollView, Text, View } from 'react-native';
@@ -31,9 +31,10 @@ const PENDING_LABEL_KEYS: Record<PendingEditStatus, string> = {
 
 function dayTitle(key: string): string {
   const now = new Date();
-  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
   if (key === localDay(now)) return i18n.t('capture.today').toUpperCase();
-  if (key === localDay(yesterday)) return i18n.t('capture.yesterday').toUpperCase();
+  if (key === localDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1))) {
+    return i18n.t('capture.yesterday').toUpperCase();
+  }
   // Always with the year: scrolling back past January otherwise gave two identical "14 SEP"s.
   return dayDate(key)
     .toLocaleDateString(appLocale(), { day: 'numeric', month: 'short', year: 'numeric' })
@@ -100,12 +101,12 @@ export const ActivityRow = memo(function ActivityRow({
       style={({ pressed }) => ({
         marginHorizontal: t.space.lg,
         backgroundColor: selected ? t.color.accentSoft : t.color.surface,
-        borderTopLeftRadius: isFirst ? 14 : 0,
-        borderTopRightRadius: isFirst ? 14 : 0,
-        borderBottomLeftRadius: isLast ? 14 : 0,
-        borderBottomRightRadius: isLast ? 14 : 0,
-        borderTopWidth: isFirst ? 1 : 0,
-        borderBottomWidth: isLast ? 1 : 0,
+        ...(isFirst
+          ? { borderTopLeftRadius: 14, borderTopRightRadius: 14, borderTopWidth: 1 }
+          : null),
+        ...(isLast
+          ? { borderBottomLeftRadius: 14, borderBottomRightRadius: 14, borderBottomWidth: 1 }
+          : null),
         borderLeftWidth: 1,
         borderRightWidth: 1,
         borderColor: t.color.border,
@@ -192,14 +193,14 @@ export const ActivityRow = memo(function ActivityRow({
         </Text>
       </View>
 
-      {queued && !item.landing && (
+      {((queued && !item.landing) || !!pendingStatus) && (
         <View
           style={{
             flexShrink: 0,
             paddingHorizontal: 8,
             paddingVertical: 3,
             borderRadius: 999,
-            backgroundColor: t.color.warnSoft,
+            backgroundColor: queued ? t.color.warnSoft : t.color.accentSoft,
           }}
         >
           <Text
@@ -207,32 +208,10 @@ export const ActivityRow = memo(function ActivityRow({
               fontSize: 11,
               fontWeight: '600',
               letterSpacing: 0.4,
-              color: t.color.warnStrong,
+              color: queued ? t.color.warnStrong : t.color.accentStrong,
             }}
           >
-            {tr('draft.queued').toUpperCase()}
-          </Text>
-        </View>
-      )}
-      {!!pendingStatus && (
-        <View
-          style={{
-            flexShrink: 0,
-            paddingHorizontal: 8,
-            paddingVertical: 3,
-            borderRadius: 999,
-            backgroundColor: t.color.accentSoft,
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 11,
-              fontWeight: '600',
-              letterSpacing: 0.4,
-              color: t.color.accentStrong,
-            }}
-          >
-            {tr(PENDING_LABEL_KEYS[pendingStatus]).toUpperCase()}
+            {(queued ? tr('draft.queued') : tr(PENDING_LABEL_KEYS[pendingStatus!])).toUpperCase()}
           </Text>
         </View>
       )}
@@ -256,6 +235,8 @@ export const ActivityRow = memo(function ActivityRow({
   );
 });
 
+let savedBalanceScrollX = 0;
+
 /**
  * The balance cards above the list. Memoized, as is each cell.
  */
@@ -273,12 +254,26 @@ export const BalanceStrip = memo(function BalanceStrip({
   pendingAccounts: Set<string>;
 }) {
   const t = useTheme();
+  const scrollRef = useRef<ScrollView>(null);
+
+  useEffect(() => {
+    if (savedBalanceScrollX > 0) {
+      scrollRef.current?.scrollTo({ x: savedBalanceScrollX, animated: false });
+    }
+  }, []);
+
   return (
     <View style={{ paddingHorizontal: t.space.lg, paddingTop: 10, paddingBottom: t.space.xs }}>
       <Card flush style={{ overflow: 'hidden' }}>
         <ScrollView
+          ref={scrollRef}
           horizontal
           showsHorizontalScrollIndicator={false}
+          contentOffset={{ x: savedBalanceScrollX, y: 0 }}
+          onScroll={(e) => {
+            savedBalanceScrollX = e.nativeEvent.contentOffset.x;
+          }}
+          scrollEventThrottle={16}
           style={{ flexGrow: 0, flexShrink: 0 }}
         >
           {accounts.map((a, index) => (

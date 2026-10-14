@@ -5,6 +5,7 @@
 ### Fixed
 
 - When adding a planned payment, choosing the payee no longer replaces the account you'd already picked (MKL-98).
+- Filtering accounts on the Activity tab now preserves your horizontal scroll position in the accounts strip instead of jumping back to the beginning.
 
 ## [2.3.0] - 2026-10-14
 
