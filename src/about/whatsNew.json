@@ -1,17 +1,17 @@
 {
-  "version": "2.2.0",
+  "version": "2.3.0",
   "sections": [
     {
       "title": "Changed",
       "items": [
-        "Split the UI kit into focused family modules under src/ui/kit/ and retired legacy duplicate components (MKL-80).",
-        "Standardized Firefly III top tile icon size on settings screen to match row proportions."
+        "Standardized typography and layout tokens with large titles, hero amounts, button radii, tile tints, and enforced style token usage across screens (MKL-81)."
       ]
     },
     {
       "title": "Fixed",
       "items": [
-        "Added missing splits.partSelector translation key in English and Ukrainian (MKL-146)."
+        "Fixed bottom sheet item selection requiring multiple taps right after opening.",
+        "Scaled down Android toggles to match design proportions and aligned card row padding and inset hairlines across Account and Reminders screens."
       ]
     }
   ]
