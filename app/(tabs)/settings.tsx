@@ -9,16 +9,7 @@ import { useCurrencies } from '../../src/db/useReferenceData';
 import Constants from 'expo-constants';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
-import {
-  AppBar,
-  Card,
-  ListRow,
-  SCREEN_TOP_PADDING,
-  Screen,
-  SectionHeader,
-  SwitchRow,
-  Tile,
-} from '../../src/ui/kit';
+import { Card, ListRow, Screen, SectionHeader, SwitchRow, TabHeader, Tile } from '../../src/ui/kit';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { loadSettings, SETTINGS_QUERY_KEY } from '../../src/settings/loadSettings';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
@@ -172,10 +163,8 @@ export default function SettingsScreen() {
 
   return (
     <Screen>
-      <AppBar title={tr('settings.title')} />
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: t.space.xxl, paddingTop: SCREEN_TOP_PADDING }}
-      >
+      <TabHeader title={tr('settings.title')} />
+      <ScrollView contentContainerStyle={{ paddingBottom: t.space.xxl }}>
         <Card flush style={{ marginHorizontal: t.space.lg }}>
           <ListRow
             first
