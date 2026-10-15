@@ -61,3 +61,5 @@ builds/
 build-*.tar.gz
 build-*.ipa
 .worktrees/
+credentials.json
+*.keystore

@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Re-initialize with npx expo-release init
+
 ## [2.3.1] - 2026-10-15
 
 ### Changed
