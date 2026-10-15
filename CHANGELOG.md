@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [2.3.2] - 2026-10-15
+
 ### Changed
 
 - Clearer wording: 'Note' instead of 'Description', and plainer schedule options ('When I change it', 'Move to Friday'). (MKL-135)
