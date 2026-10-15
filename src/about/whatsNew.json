@@ -1,17 +1,15 @@
 {
-  "version": "2.3.0",
+  "version": "2.3.1",
   "sections": [
     {
       "title": "Changed",
-      "items": [
-        "Standardized typography and layout tokens with large titles, hero amounts, button radii, tile tints, and enforced style token usage across screens (MKL-81)."
-      ]
+      "items": ["Amounts show the currency symbol (zł, €) everywhere (MKL-134)."]
     },
     {
       "title": "Fixed",
       "items": [
-        "Fixed bottom sheet item selection requiring multiple taps right after opening.",
-        "Scaled down Android toggles to match design proportions and aligned card row padding and inset hairlines across Account and Reminders screens."
+        "When adding a planned payment, choosing the payee no longer replaces the account you'd already picked (MKL-98).",
+        "Filtering accounts on the Activity tab now preserves your horizontal scroll position in the accounts strip instead of jumping back to the beginning."
       ]
     }
   ]
