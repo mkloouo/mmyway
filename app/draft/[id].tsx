@@ -26,7 +26,7 @@ import {
   type AllocationMode,
   type AllocationResult,
 } from '../../src/ui/AllocationSheet';
-import { currencyOf, currencySymbol, formatMoney } from '../../src/ui/money';
+import { currencyOf, currencySymbol, formatMoney, fxCaption } from '../../src/ui/money';
 import { pickableCurrencies } from '../../src/ui/currencies';
 import { PickerSheet } from '../../src/ui/PickerSheet';
 import { haptics } from '../../src/ui/haptics';
@@ -175,8 +175,8 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
   // Against the tracked total, not split 1's amount: a split entry is charged, and converted, as
   // a whole (#129).
   const impliedRate =
-    draft.foreignAmount && draftTotal(draft) !== '0'
-      ? divideDecimal(draft.foreignAmount, draftTotal(draft), 2)
+    draft.foreignAmount && draft.foreignAmount !== '0' && draftTotal(draft) !== '0'
+      ? divideDecimal(draftTotal(draft), draft.foreignAmount, 2)
       : null;
   const accountCurrency = currencyOf(currencies, accountCurrencyCode ?? '');
   const readiness = draftReadiness(draft, accountCurrencyCode);
@@ -655,9 +655,8 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
               )}
               {!!draft.foreignAmount && !!impliedRate && impliedRate !== '0' && (
                 <View style={{ paddingHorizontal: t.space.lg, paddingBottom: t.space.sm }}>
-                  <Text style={[t.type.caption, { color: t.color.textMuted }]}>
-                    {`1 ${currencySymbol(draft.currencyCode, currencies)} ≈ ${impliedRate} ${currencySymbol(accountCurrencyCode, currencies)}`}
-                  </Text>
+                  {/* prettier-ignore */}
+                  <Text style={[t.type.caption, { color: t.color.textMuted }]}>{fxCaption(currencySymbol(accountCurrencyCode, currencies), currencySymbol(draft.currencyCode, currencies), impliedRate)}</Text>
                 </View>
               )}
             </Card>

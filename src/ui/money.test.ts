@@ -4,6 +4,7 @@ import {
   signFor,
   currencyOf,
   currencySymbol,
+  fxCaption,
   type NumberSeparators,
 } from './money';
 
@@ -100,5 +101,13 @@ describe('number format', () => {
   it("follows the phone's separators", () => {
     expect(formatMoney('1234.5', { symbol: 'zł', decimalPlaces: 2 }, US)).toBe('1,234.50 zł');
     expect(formatAmountInput('1234.5', { symbol: '$', decimalPlaces: 2 }, US)).toBe('1,234.5 $');
+  });
+});
+
+describe('fxCaption', () => {
+  it('formats account currency first, then implied rate, then entry currency', () => {
+    expect(fxCaption('€', 'zł', '4.31')).toBe('1 € ≈ 4.31 zł');
+    expect(fxCaption('zł', '€', '0.22')).toBe('1 zł ≈ 0.22 €');
+    expect(fxCaption('EUR', 'USD', '1.08')).toBe('1 EUR ≈ 1.08 USD');
   });
 });

@@ -40,7 +40,7 @@ describe('conflictFields', () => {
     );
     expect(fields).toEqual([
       {
-        label: 'Description',
+        label: 'Note',
         server: 'set in the web UI',
         mine: 'Become noted (1)',
         differs: true,

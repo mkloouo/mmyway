@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Clearer wording: 'Note' instead of 'Description', and plainer schedule options ('When I change it', 'Move to Friday'). (MKL-135)
 - Re-initialize with npx expo-release init
 
 ## [2.3.1] - 2026-10-15

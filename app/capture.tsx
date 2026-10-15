@@ -28,7 +28,8 @@ import { Button, Card, CloseButton, Dot, ListRow, PRESSED_OPACITY, Row, Screen, 
 import { Keypad } from '../src/ui/Keypad';
 import { PayeeSheet } from '../src/ui/PayeeSheet';
 import { AccountPickerSheet, type AccountPickerAccount } from '../src/ui/AccountPickerSheet';
-import { currencyOf, currencySymbol, formatAmountInput, formatMoney } from '../src/ui/money';
+// prettier-ignore
+import { currencyOf, currencySymbol, formatAmountInput, formatMoney, fxCaption } from '../src/ui/money';
 import { categoryColor } from '../src/ui/categoryColor';
 import { haptics } from '../src/ui/haptics';
 
@@ -834,12 +835,9 @@ export default function CaptureScreen() {
                     fontVariant: ['tabular-nums'],
                   }}
                 />
-                {!!impliedRate && !isNegative(impliedRate) && (
-                  <Text numberOfLines={1} style={[t.type.label, { color: t.color.textFaint }]}>
-                    1 {currencySymbol(accountCurrencyCode, currencies)} ≈ {impliedRate}{' '}
-                    {currencySymbol(effectiveCurrencyCode, currencies)}
-                  </Text>
-                )}
+                {!!impliedRate && !isNegative(impliedRate) &&
+                  /* prettier-ignore */
+                  <Text numberOfLines={1} style={[t.type.label, { color: t.color.textFaint }]}>{fxCaption(currencySymbol(accountCurrencyCode, currencies), currencySymbol(effectiveCurrencyCode, currencies), impliedRate)}</Text>}
               </View>
             </Card>
           )}

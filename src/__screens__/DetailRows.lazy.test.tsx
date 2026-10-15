@@ -52,7 +52,7 @@ describe('DetailRows sheets', () => {
   it('hands over the note once, when the sheet closes — not per letter', async () => {
     const onChange = jest.fn();
     await render(rows(onChange));
-    await fireEvent.press(screen.getByText('Description'));
+    await fireEvent.press(screen.getByText('Note'));
     const field = screen.getAllByDisplayValue('')[0]!;
     await fireEvent(field, 'focus');
     await fireEvent.changeText(field, 'Bo');

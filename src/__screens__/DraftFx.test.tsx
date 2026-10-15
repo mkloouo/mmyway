@@ -136,15 +136,15 @@ describe('DraftScreen FX conversion (#105)', () => {
 
   it('shows the implied exchange rate when foreign amount is present', async () => {
     const item = createItem({
-      currencyCode: 'EUR',
-      amount: '20.00',
-      sourceId: 'acc-pln',
-      foreignAmount: '90.00',
-      foreignCurrencyCode: 'PLN',
+      currencyCode: 'PLN',
+      amount: '90.00',
+      sourceId: 'acc-eur',
+      foreignAmount: '20.00',
+      foreignCurrencyCode: 'EUR',
     });
     await wrap(<DraftEditor row={item} />);
 
-    expect(screen.getByText(/90[.,]00.*zł/)).toBeTruthy();
+    expect(screen.getByText(/20[.,]00.*€/)).toBeTruthy();
     expect(screen.getByText(/1 € ≈ 4\.50 zł/)).toBeTruthy();
   });
 

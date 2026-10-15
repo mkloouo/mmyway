@@ -398,7 +398,7 @@
     "value": ""
   },
   "details": {
-    "noteAndSharedWith": "Примітка та спільний доступ",
+    "noteAndSharedWith": "",
     "noteTagsAndSharedWith": "",
     "sharedWithPlaceholder": ""
   },
@@ -458,8 +458,8 @@
     "date": "Дата",
     "description": "Опис",
     "from": "Від",
-    "note": "Примітка",
-    "notes": "Нотатки",
+    "note": "",
+    "notes": "",
     "removeTag": "",
     "sharedWith": "Спільно з",
     "tags": "Теги",

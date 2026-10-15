@@ -382,8 +382,8 @@
     "value": "Demo"
   },
   "details": {
-    "noteAndSharedWith": "Description & shared with",
-    "noteTagsAndSharedWith": "Description, tags & shared with",
+    "noteAndSharedWith": "Note & shared with",
+    "noteTagsAndSharedWith": "Note, tags, shared with",
     "sharedWithPlaceholder": "Names, separated by commas"
   },
   "dock": {
@@ -440,8 +440,8 @@
     "date": "Date",
     "description": "Title",
     "from": "From",
-    "note": "Description",
-    "notes": "Description",
+    "note": "Note",
+    "notes": "Note",
     "removeTag": "Remove tag {{tag}}",
     "sharedWith": "Shared with",
     "tags": "Tags",
@@ -630,9 +630,9 @@
     "emptyHint": "Pull to sync, or add one with +.",
     "emptyTitle": "Nothing planned",
     "end": {
-      "forever": "Until I change it",
-      "times": "A number of times",
-      "until": "Until a date"
+      "forever": "When I change it",
+      "times": "After a number of times",
+      "until": "On a date"
     },
     "endCountLabel": "How many times",
     "endDateLabel": "End date",
@@ -830,10 +830,10 @@
     "unskipTitle": "Book {{date}} after all?",
     "weekdayLabel": "Day of the week",
     "weekend": {
-      "1": "kept on the day",
-      "2": "skipped",
-      "3": "moved to the Friday",
-      "4": "moved to the Monday"
+      "1": "Keep the date",
+      "2": "Skip",
+      "3": "Move to Friday",
+      "4": "Move to Monday"
     },
     "weekendLabel": "On a weekend",
     "yearlyDateLabel": "Date"
