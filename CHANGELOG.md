@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [2.3.1] - 2026-10-15
+
 ### Changed
 
 - Amounts show the currency symbol (zł, €) everywhere (MKL-134).
