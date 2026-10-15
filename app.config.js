@@ -82,6 +82,7 @@ module.exports = {
       },
     },
     android: {
+      versionCode: 51,
       adaptiveIcon: {
         foregroundImage: './assets/android/adaptive-foreground.png',
         monochromeImage: './assets/android/adaptive-foreground.png',
