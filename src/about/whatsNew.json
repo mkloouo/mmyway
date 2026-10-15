@@ -1,15 +1,11 @@
 {
-  "version": "2.3.1",
+  "version": "2.3.2",
   "sections": [
     {
       "title": "Changed",
-      "items": ["Amounts show the currency symbol (zł, €) everywhere (MKL-134)."]
-    },
-    {
-      "title": "Fixed",
       "items": [
-        "When adding a planned payment, choosing the payee no longer replaces the account you'd already picked (MKL-98).",
-        "Filtering accounts on the Activity tab now preserves your horizontal scroll position in the accounts strip instead of jumping back to the beginning."
+        "Clearer wording: 'Note' instead of 'Description', and plainer schedule options ('When I change it', 'Move to Friday'). (MKL-135)",
+        "Re-initialize with npx expo-release init"
       ]
     }
   ]

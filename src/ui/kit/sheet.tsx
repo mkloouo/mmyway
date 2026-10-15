@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTheme, hitSize } from '../theme';
+import { IconButton } from './headers';
 import { PRESSED_OPACITY } from './rows';
 
 /** The on-screen keyboard's height while it is shown, 0 otherwise (always 0 when not `enabled`). */
@@ -158,23 +159,13 @@ export function Sheet({
             <Text style={[t.type.heading, { color: t.color.text, flex: 1, fontWeight: '700' }]}>
               {title}
             </Text>
-            <Pressable
+            <IconButton
+              icon="close"
+              label={tr('common.close')}
               onPress={onClose}
-              accessibilityRole="button"
-              accessibilityLabel={tr('common.close')}
-              hitSlop={6}
-              style={({ pressed }) => ({
-                width: 32,
-                height: 32,
-                borderRadius: 16,
-                backgroundColor: t.color.fill,
-                alignItems: 'center',
-                justifyContent: 'center',
-                opacity: pressed ? PRESSED_OPACITY : 1,
-              })}
-            >
-              <Ionicons name="close" size={16} color={t.color.textMuted} />
-            </Pressable>
+              color={t.color.textMuted}
+              size={20}
+            />
           </View>
           {scroll ? (
             <ScrollView contentContainerStyle={bodyPadding} keyboardShouldPersistTaps="handled">

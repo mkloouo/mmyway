@@ -11,7 +11,7 @@ import { useLiveQuery } from '../../src/db/useLiveQuery';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
 import {
-  BarIconButton,
+  IconButton,
   Card,
   ListRow,
   PushHeader,
@@ -102,11 +102,7 @@ function RulesPage() {
         onBack={() => router.back()}
         title={tr('rules.title')}
         right={
-          <BarIconButton
-            icon="add"
-            label={tr('rules.newRule')}
-            onPress={() => setNewRuleOpen(true)}
-          />
+          <IconButton icon="add" label={tr('rules.newRule')} onPress={() => setNewRuleOpen(true)} />
         }
       />
       <ScrollView

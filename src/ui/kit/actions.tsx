@@ -92,7 +92,7 @@ export function Button({
   hint?: string;
   onPress?: () => void;
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
-  /** `bar`: a text action in a top bar, the same height as a BarIconButton. */
+  /** `bar`: a text action in a top bar, the same height as an IconButton. */
   size?: 'bar' | 'md' | 'lg';
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;

@@ -5,8 +5,8 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import {
-  AppBar,
-  BarIconButton,
+  TabHeader,
+  IconButton,
   Button,
   Card,
   EmptyState,
@@ -93,11 +93,11 @@ function BudgetScreen() {
 
   return (
     <Screen>
-      <AppBar
+      <TabHeader
         title={tr('budget.title')}
         subtitle={monthLabel}
         right={
-          <BarIconButton
+          <IconButton
             icon="add"
             label={tr('budget.createTitle')}
             onPress={() => setCreating(true)}

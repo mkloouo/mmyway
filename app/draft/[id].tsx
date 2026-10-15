@@ -12,7 +12,7 @@ import { pickDateTime } from '../../src/ui/pickDate';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
 // prettier-ignore
-import { AppBar, Banner, BarIconButton, Button, Card, Chip, CloseButton, ModalHeader, Money, Row, Screen, SectionHeader, Segmented, Sheet, StatusPill, StickyFooter, Tile } from '../../src/ui/kit';
+import { Banner, Button, Card, Chip, IconButton, ModalHeader, Money, Row, Screen, SectionHeader, Segmented, Sheet, StatusPill, StickyFooter, Tile } from '../../src/ui/kit';
 import { rewireForType, type TxEnds } from '../../src/transactions/changeType';
 import { DetailRows, type DetailRowsValue } from '../../src/ui/DetailRows';
 import { PayeeSheet } from '../../src/ui/PayeeSheet';
@@ -87,7 +87,7 @@ export default function DraftScreen() {
   if (!row) {
     return (
       <Screen bottom modal>
-        <AppBar title={tr('draft.title')} left={<CloseButton onPress={() => router.back()} />} />
+        <ModalHeader title={tr('draft.title')} onClose={() => router.back()} />
       </Screen>
     );
   }
@@ -101,7 +101,7 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
   const t = useTheme();
   const { t: tr } = useTranslation();
   const act = useAction();
-  const { shake, shakeStyle } = useShake(); // the visual twin of the warn haptic
+  const { shake } = useShake(); // the visual twin of the warn haptic
 
   const accountRows = useAssetAccounts({ includeLiabilities: true });
   const assetAccounts = accountRows ?? [];
@@ -530,7 +530,7 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
           title={tr('draft.title')}
           onClose={() => router.back()}
           right={
-            <BarIconButton
+            <IconButton
               icon="ellipsis-horizontal"
               label={tr('capture.more')}
               onPress={() => setSheet('menu')}

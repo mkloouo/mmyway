@@ -7,16 +7,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useDb } from '../src/providers/DbProvider';
 import { useTheme } from '../src/ui/theme';
-import {
-  Screen,
-  AppBar,
-  Button,
-  Card,
-  CloseButton,
-  PRESSED_OPACITY,
-  Row,
-  Sheet,
-} from '../src/ui/kit';
+import { Screen, ModalHeader, Button, Card, PRESSED_OPACITY, Row, Sheet } from '../src/ui/kit';
 import { captureReceipt, attachReceiptToJournal } from '../src/receipt/ingest';
 import { startPositionRequest } from '../src/capture/position';
 import { pickPhoto, type PhotoSource } from '../src/receipt/pickPhoto';
@@ -127,9 +118,9 @@ export default function ReceiptScreen() {
 
   return (
     <Screen bottom modal>
-      <AppBar
+      <ModalHeader
         title={attachToJournalId ? tr('receipt.attachTitle') : tr('draft.receipt')}
-        left={<CloseButton onPress={() => router.back()} />}
+        onClose={() => router.back()}
       />
       {/* Only while the camera/gallery is opening — the screen closes the moment a photo comes back. */}
       {busy && !showChooser && (

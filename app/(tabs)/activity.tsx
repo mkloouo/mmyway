@@ -10,9 +10,8 @@ import { useDb } from '../../src/providers/DbProvider';
 import { SearchField } from '../../src/ui/SearchField';
 import { useTheme } from '../../src/ui/theme';
 import {
-  AppBar,
-  BarIconButton,
-  BarRow,
+  TabHeader,
+  IconButton,
   Button,
   Card,
   Chip,
@@ -490,7 +489,7 @@ export default function ActivityScreen() {
         {/* Search takes the app bar's place rather than adding a row below it, so opening it
             does not shove the balances and the list down the screen. */}
         {selecting ? (
-          <AppBar
+          <TabHeader
             title={tr('inbox.selected', { count: selectedIds.size })}
             left={
               <Pressable
@@ -506,7 +505,7 @@ export default function ActivityScreen() {
             }
           />
         ) : searchOpen ? (
-          <BarRow>
+          <TabHeader>
             <SearchField
               value={search}
               onChangeText={setSearch}
@@ -520,9 +519,9 @@ export default function ActivityScreen() {
               }}
               style={{ flex: 1 }}
             />
-          </BarRow>
+          </TabHeader>
         ) : (
-          <AppBar
+          <TabHeader
             title={tr('activity.title')}
             subtitle={
               isFiltered ? (
@@ -546,18 +545,18 @@ export default function ActivityScreen() {
             }
             right={
               <>
-                <BarIconButton
+                <IconButton
                   icon="search"
                   label={tr('activity.search')}
                   onPress={() => setSearchOpen(true)}
                 />
-                <BarIconButton
+                <IconButton
                   icon="funnel"
                   label={tr('activity.filter')}
                   active={isFiltered}
                   onPress={() => setFilterOpen(true)}
                 />
-                <BarIconButton
+                <IconButton
                   icon="ellipsis-horizontal"
                   label={tr('capture.more')}
                   onPress={() => setMenuOpen(true)}

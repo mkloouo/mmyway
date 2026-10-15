@@ -13,8 +13,8 @@ import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
 import {
   Screen,
-  AppBar,
-  BarIconButton,
+  TabHeader,
+  IconButton,
   SectionHeader,
   Button,
   StatusPill,
@@ -392,10 +392,10 @@ export default function InboxScreen() {
     <Screen>
       <View style={{ flex: 1 }}>
         {selecting ? (
-          <AppBar
+          <TabHeader
             title={tr('inbox.selected', { count: selectedIds.size })}
             left={
-              <BarIconButton
+              <IconButton
                 icon="close"
                 label={tr('inbox.cancelSelection')}
                 onPress={clearSelection}
@@ -419,7 +419,7 @@ export default function InboxScreen() {
             }
           />
         ) : (
-          <AppBar
+          <TabHeader
             title={dateTitle}
             subtitle={subtitleParts.length > 0 ? subtitleParts.join(' · ') : undefined}
             right={

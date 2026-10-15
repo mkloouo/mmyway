@@ -136,7 +136,7 @@ export function StatusPill({
         paddingVertical: t.space.xs,
         borderRadius: t.radius.pill,
         backgroundColor: t.color.surfaceAlt,
-        // The AppBar title takes flex: 1, so without this the pill gets squeezed and its label
+        // The TabHeader title takes flex: 1, so without this the pill gets squeezed and its label
         // is clipped mid-word — "just now" rendered as "just".
         flexShrink: 0,
       }}

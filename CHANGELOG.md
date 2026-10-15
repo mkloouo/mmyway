@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Screen titles use the large title style across the app (MKL-82).
+
 ## [2.3.2] - 2026-10-15
 
 ### Changed

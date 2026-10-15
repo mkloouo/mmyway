@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { AppBar, BarIconButton, BarRow, ListRow, Money, Tile, type TileTone } from '../ui/kit';
+import { IconButton, ListRow, Money, TabHeader, Tile, type TileTone } from '../ui/kit';
 import { currencyOf } from '../ui/money';
 import { PendingDot } from '../ui/PendingDot';
 import { SearchField } from '../ui/SearchField';
@@ -104,7 +104,7 @@ export function AccountListBar({
   const { t: tr } = useTranslation();
   if (searchOpen) {
     return (
-      <BarRow>
+      <TabHeader>
         <SearchField
           value={search}
           onChangeText={onSearch}
@@ -116,21 +116,21 @@ export function AccountListBar({
           }}
           style={{ flex: 1 }}
         />
-      </BarRow>
+      </TabHeader>
     );
   }
   return (
-    <AppBar
+    <TabHeader
       title={title}
       right={
         <>
-          {onNew && <BarIconButton icon="add" label={newLabel} onPress={onNew} />}
-          <BarIconButton
+          {onNew && <IconButton icon="add" label={newLabel} onPress={onNew} />}
+          <IconButton
             icon="search"
             label={tr('pickers.searchAccounts')}
             onPress={() => onSearchOpen(true)}
           />
-          <BarIconButton
+          <IconButton
             icon={showInactive ? 'eye' : 'eye-off'}
             label={showInactive ? tr('accounts.hideInactive') : tr('accounts.showInactive')}
             onPress={onToggleInactive}

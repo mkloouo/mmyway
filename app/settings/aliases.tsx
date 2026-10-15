@@ -5,12 +5,11 @@ import { router } from 'expo-router';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
 import { useDb } from '../../src/providers/DbProvider';
 import { SearchField } from '../../src/ui/SearchField';
-import { useTheme } from '../../src/ui/theme';
+import { useTheme, hitSize } from '../../src/ui/theme';
 import {
-  BarIconButton,
-  BarRow,
   Button,
   Card,
+  IconButton,
   ListRow,
   PushHeader,
   SCREEN_TOP_PADDING,
@@ -151,7 +150,15 @@ function AliasesPage() {
   return (
     <Screen bottom>
       {searchOpen ? (
-        <BarRow>
+        <View
+          style={{
+            minHeight: hitSize,
+            flexDirection: 'row',
+            alignItems: 'center',
+            paddingHorizontal: t.space.lg,
+            paddingVertical: t.space.xs,
+          }}
+        >
           <SearchField
             value={search}
             onChangeText={setSearch}
@@ -163,7 +170,7 @@ function AliasesPage() {
             }}
             style={{ flex: 1 }}
           />
-        </BarRow>
+        </View>
       ) : (
         <PushHeader
           backLabel={tr('settings.title')}
@@ -171,17 +178,17 @@ function AliasesPage() {
           title={tr('aliases.title')}
           right={
             <>
-              <BarIconButton
+              <IconButton
                 icon="search"
                 label={tr('aliases.search')}
                 onPress={() => setSearchOpen(true)}
               />
-              <BarIconButton
+              <IconButton
                 icon="swap-horizontal"
                 label={tr('aliases.exportOrImport')}
                 onPress={openTransferSheet}
               />
-              <BarIconButton icon="add" label={tr('aliases.add')} onPress={() => openAddSheet()} />
+              <IconButton icon="add" label={tr('aliases.add')} onPress={() => openAddSheet()} />
             </>
           }
         />
@@ -206,7 +213,7 @@ function AliasesPage() {
                 sub={group.aliases.map((a) => a.alias).join(', ')}
                 onPress={() => openAddSheet(group.payeeName)}
                 trailing={
-                  <BarIconButton
+                  <IconButton
                     icon="trash-outline"
                     label={tr('common.delete')}
                     onPress={() => handleDeleteGroup(group)}
@@ -263,7 +270,7 @@ function AliasesPage() {
                 first={i === 0}
                 label={a.alias}
                 trailing={
-                  <BarIconButton
+                  <IconButton
                     icon="trash-outline"
                     label={tr('common.delete')}
                     onPress={() => handleDeleteAlias(a.alias, editing.payeeName)}

@@ -24,7 +24,7 @@ import { useEnvelopeRemaining, useAllEnvelopesRemaining } from '../src/bucket/us
 import { useFlag } from '../src/flags/useFlag';
 import { topChips } from '../src/capture/topChips';
 // prettier-ignore
-import { Button, Card, CloseButton, Dot, ListRow, PRESSED_OPACITY, Row, Screen, SectionHeader, Segmented, Sheet, Tile, Toast } from '../src/ui/kit';
+import { Button, Card, Dot, IconButton, ListRow, PRESSED_OPACITY, Row, Screen, SectionHeader, Segmented, Sheet, Tile, Toast } from '../src/ui/kit';
 import { Keypad } from '../src/ui/Keypad';
 import { PayeeSheet } from '../src/ui/PayeeSheet';
 import { AccountPickerSheet, type AccountPickerAccount } from '../src/ui/AccountPickerSheet';
@@ -723,7 +723,12 @@ export default function CaptureScreen() {
             paddingTop: t.space.sm,
           }}
         >
-          <CloseButton onPress={confirmClose} />
+          <IconButton
+            icon="close"
+            label={tr('common.close')}
+            onPress={confirmClose}
+            color={t.color.text}
+          />
           <View style={{ flex: 1 }}>
             <Segmented
               options={TX_TYPES.map((option) => ({ key: option.type, label: tr(option.labelKey) }))}

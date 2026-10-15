@@ -12,8 +12,8 @@ import { useCaptureDefaults } from '../../src/capture/useCaptureDefaults';
 import { useCurrencies } from '../../src/db/useReferenceData';
 import { useTheme } from '../../src/ui/theme';
 import {
-  AppBar,
-  BarIconButton,
+  TabHeader,
+  IconButton,
   Card,
   EmptyState,
   ListRow,
@@ -185,10 +185,10 @@ export default function PlannedScreen() {
 
   return (
     <Screen>
-      <AppBar
+      <TabHeader
         title={tr('planned.title')}
         right={
-          <BarIconButton
+          <IconButton
             icon="add"
             label={tr('planned.add')}
             onPress={() => navigateOnce('/planned/new')}
