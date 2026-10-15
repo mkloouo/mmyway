@@ -19,24 +19,26 @@
       }
     },
     "production": {
-      "distribution": "internal",
+      "distribution": "store",
       "environment": "production",
-      "android": {
-        "buildType": "apk"
-      },
+      "autoIncrement": true
+    },
+    "production-apk": {
+      "extends": "production",
+      "distribution": "internal",
       "env": {
         "ANDROID_ABI_SPLITS": "1"
       },
-      "autoIncrement": true
+      "android": {
+        "buildType": "apk"
+      }
     },
     "production-aab": {
       "extends": "production",
-      "environment": "production",
       "distribution": "store",
       "android": {
         "buildType": "app-bundle"
-      },
-      "env": {}
+      }
     },
     "e2e": {
       "distribution": "internal",
