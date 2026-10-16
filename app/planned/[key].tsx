@@ -11,7 +11,7 @@ import { useDb } from '../../src/providers/DbProvider';
 import { useCategories, useCurrencyRows } from '../../src/db/useReferenceData';
 import { useTheme } from '../../src/ui/theme';
 // prettier-ignore
-import { Card, MoreButton, PushHeader, Row, SCREEN_TOP_PADDING, Screen, SectionHeader, Segmented } from '../../src/ui/kit';
+import { Card, MoreButton, PushHeader, ListRow, SCREEN_TOP_PADDING, Screen, SectionHeader, Segmented } from '../../src/ui/kit';
 import { TextField } from '../../src/ui/TextField';
 import { TagsField } from '../../src/ui/TagsField';
 import { PickerSheet } from '../../src/ui/PickerSheet';
@@ -368,7 +368,7 @@ function PlannedEditor({ item, skipDay }: { item: PlannedItem | null; skipDay: s
             onChangeText={(name) => set({ name })}
             placeholder={tr('planned.namePlaceholder')}
           />
-          <Row
+          <ListRow
             label={tr('fields.from')}
             value={
               ownFrom ? accountName(fields.sourceId, fields.sourceName) : (fields.sourceName ?? '—')
@@ -376,7 +376,7 @@ function PlannedEditor({ item, skipDay }: { item: PlannedItem | null; skipDay: s
             chevron
             onPress={() => setSheet(ownFrom ? 'own' : 'payee')}
           />
-          <Row
+          <ListRow
             label={tr('fields.to')}
             value={
               ownTo
@@ -386,19 +386,19 @@ function PlannedEditor({ item, skipDay }: { item: PlannedItem | null; skipDay: s
             chevron
             onPress={() => setSheet(ownTo ? 'ownTo' : 'payee')}
           />
-          <Row
+          <ListRow
             label={tr('fields.amount')}
             value={amountText}
             chevron
             onPress={() => setSheet('amount')}
           />
-          <Row
+          <ListRow
             label={tr('fields.currency')}
             value={fields.currencyCode || '—'}
             chevron
             onPress={() => setSheet('currency')}
           />
-          <Row
+          <ListRow
             label={tr('fields.category')}
             value={fields.categoryName ?? '—'}
             chevron
@@ -416,21 +416,21 @@ function PlannedEditor({ item, skipDay }: { item: PlannedItem | null; skipDay: s
 
         <SectionHeader title={tr('planned.sectionWhen')} />
         <Card style={{ marginHorizontal: t.space.lg }}>
-          <Row
+          <ListRow
             first
             label={tr('planned.repeats')}
             value={scheduleText}
             chevron
             onPress={() => setScheduleOpen(true)}
           />
-          <Row
+          <ListRow
             label={tr('planned.time')}
             value={fields.time ?? tr('planned.anyTime')}
             chevron
             onPress={() => pickTime(fields.time, (time) => set({ time }))}
           />
           {!!fields.time && (
-            <Row
+            <ListRow
               label={tr('planned.clearTime')}
               icon="close-circle"
               onPress={() => set({ time: null })}
@@ -460,7 +460,7 @@ function PlannedEditor({ item, skipDay }: { item: PlannedItem | null; skipDay: s
         <SectionHeader title={tr('planned.sectionExtras')} />
         <Card style={{ marginHorizontal: t.space.lg, gap: t.space.sm }}>
           {!!item && (
-            <Row
+            <ListRow
               first
               label={tr('planned.remind.title')}
               value={remindText}

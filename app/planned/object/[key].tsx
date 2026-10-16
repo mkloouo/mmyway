@@ -8,7 +8,7 @@ import { useTheme } from '../../../src/ui/theme';
 import {
   Card,
   PushHeader,
-  Row,
+  ListRow,
   SCREEN_TOP_PADDING,
   Screen,
   SectionHeader,
@@ -52,7 +52,7 @@ function Fields({ value, title }: { value: Record<string, unknown>; title?: stri
       {scalars.length > 0 && (
         <Card style={{ marginHorizontal: t.space.lg }}>
           {scalars.map(([k, v], i) => (
-            <Row key={k} first={i === 0} label={label(k)} value={show(v)} />
+            <ListRow key={k} first={i === 0} label={label(k)} value={show(v)} />
           ))}
         </Card>
       )}

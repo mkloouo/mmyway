@@ -10,7 +10,7 @@ import { useDb } from '../../src/providers/DbProvider';
 import { useCategories, useCurrencyRows } from '../../src/db/useReferenceData';
 import { useTheme } from '../../src/ui/theme';
 // prettier-ignore
-import { Button, Card, ModalHeader, ROW_HEIGHT, Row, Screen, SectionHeader, Segmented, StickyFooter, Toast } from '../../src/ui/kit';
+import { Button, Card, ModalHeader, ROW_HEIGHT, ListRow, Screen, SectionHeader, Segmented, StickyFooter, Toast } from '../../src/ui/kit';
 import { TextField } from '../../src/ui/TextField';
 import { TagsField } from '../../src/ui/TagsField';
 import { PickerSheet } from '../../src/ui/PickerSheet';
@@ -349,31 +349,31 @@ export default function NewPlannedScreen() {
                   style={{ flex: 1, borderWidth: 0, paddingHorizontal: 0, textAlign: 'right' }}
                 />
               </View>
-              <Row
+              <ListRow
                 label={tr('fields.amount')}
                 value={amountText}
                 chevron
                 onPress={() => setSheet('amount')}
               />
-              <Row
+              <ListRow
                 label={tr('fields.currency')}
                 value={fields.currencyCode || '—'}
                 chevron
                 onPress={() => setSheet('currency')}
               />
-              <Row
+              <ListRow
                 label={tr('fields.from')}
                 value={fromText}
                 chevron
                 onPress={() => setSheet(ownFrom ? 'own' : 'payee')}
               />
-              <Row
+              <ListRow
                 label={tr('fields.to')}
                 value={toText}
                 chevron
                 onPress={() => setSheet(ownTo ? 'ownTo' : 'payee')}
               />
-              <Row
+              <ListRow
                 label={tr('fields.category')}
                 value={fields.categoryName ?? '—'}
                 chevron
@@ -452,7 +452,7 @@ export default function NewPlannedScreen() {
 
             <SectionHeader title={tr('planned.new.sectionStarting')} />
             <Card style={{ marginHorizontal: t.space.lg }}>
-              <Row
+              <ListRow
                 first
                 label={tr('planned.new.firstTime')}
                 value={dayLabel(fields.date)}
@@ -461,14 +461,14 @@ export default function NewPlannedScreen() {
                   pickDate(new Date(`${fields.date}T12:00:00`), (d) => moveDate(localDay(d)))
                 }
               />
-              <Row
+              <ListRow
                 label={tr('planned.time')}
                 value={fields.time ?? tr('planned.anyTime')}
                 chevron
                 onPress={() => pickTime(fields.time, (time) => set({ time }))}
               />
               {!!fields.time && (
-                <Row
+                <ListRow
                   label={tr('planned.clearTime')}
                   icon="close-circle"
                   onPress={() => set({ time: null })}
@@ -480,7 +480,7 @@ export default function NewPlannedScreen() {
               <>
                 <SectionHeader title={tr('planned.new.sectionThen')} />
                 <Card style={{ marginHorizontal: t.space.lg }}>
-                  <Row
+                  <ListRow
                     first
                     label={scheduleText}
                     value={tr('planned.new.change')}
@@ -545,7 +545,7 @@ export default function NewPlannedScreen() {
 
             <SectionHeader title={tr('planned.new.sectionExtras')} />
             <Card style={{ marginHorizontal: t.space.lg, gap: t.space.sm }}>
-              <Row
+              <ListRow
                 first
                 label={tr('planned.remind.title')}
                 value={remindText}

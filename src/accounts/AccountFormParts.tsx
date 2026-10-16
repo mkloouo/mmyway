@@ -2,10 +2,10 @@
 // amount field, the scroll, the currency and role sheets, and how a day is labelled and picked.
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, Text, View, type KeyboardTypeOptions } from 'react-native';
+import { Pressable, ScrollView, Text, type KeyboardTypeOptions } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { appLocale } from '../i18n';
-import { PRESSED_OPACITY, ROW_HEIGHT, SCREEN_TOP_PADDING } from '../ui/kit';
+import { FieldRow, PRESSED_OPACITY, SCREEN_TOP_PADDING } from '../ui/kit';
 import { pickableCurrencies } from '../ui/currencies';
 import { pickDate } from '../ui/pickDate';
 import { PickerSheet } from '../ui/PickerSheet';
@@ -53,47 +53,16 @@ export function InlineField({
   /** No hairline above: the first row of its group. */
   first?: boolean;
 }) {
-  const t = useTheme();
   return (
-    <View
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: t.space.md,
-        minHeight: ROW_HEIGHT,
-        paddingHorizontal: t.space.lg,
-        paddingVertical: t.space.sm,
-        position: 'relative',
-      }}
-    >
-      {!first && (
-        <View
-          style={{
-            position: 'absolute',
-            top: 0,
-            right: 0,
-            left: 16,
-            height: 1,
-            backgroundColor: t.color.border,
-          }}
-        />
-      )}
-      <Text style={[t.type.body, { color: t.color.text, width: 88 }]}>{label}</Text>
-      <TextField
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        multiline={multiline}
-        style={{
-          flex: 1,
-          borderWidth: 0,
-          paddingHorizontal: 0,
-          paddingVertical: 0,
-          textAlign: 'right',
-          backgroundColor: 'transparent',
-        }}
-      />
-    </View>
+    <FieldRow
+      label={label}
+      value={value}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      multiline={multiline}
+      first={first}
+      labelWidth={88}
+    />
   );
 }
 

@@ -15,7 +15,7 @@ import { useFlag } from '../../src/flags/useFlag';
 import { ruleParamsFrom } from '../../src/rules/fromTransaction';
 import { useTheme } from '../../src/ui/theme';
 // prettier-ignore
-import { Button, Card, Money, MoreButton, PushHeader, Row, SCREEN_TOP_PADDING, Screen, Sheet } from '../../src/ui/kit';
+import { Button, Card, Money, MoreButton, PushHeader, ListRow, SCREEN_TOP_PADDING, Screen, Sheet } from '../../src/ui/kit';
 import { SaveBar } from '../../src/ui/SaveBar';
 import { useConfirmDiscard } from '../../src/ui/useConfirmDiscard';
 import { DetailRows, type DetailRowsValue } from '../../src/ui/DetailRows';
@@ -881,7 +881,7 @@ function TransactionEditor({ row }: { row: CachedRow }) {
             {/* One list, so only the first row carries the "Receipt" label and the top border. */}
             <View>
               {receiptRows.map((r, i) => (
-                <Row
+                <ListRow
                   key={r.key}
                   first={i === 0}
                   label={i === 0 ? tr('draft.receipt') : ''}
@@ -1025,11 +1025,11 @@ function TransactionEditor({ row }: { row: CachedRow }) {
 
       <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={tr('transaction.title')}>
         <Card flush>
-          <Row first label={tr('transaction.duplicate')} icon="copy" onPress={onDuplicate} />
+          <ListRow first label={tr('transaction.duplicate')} icon="copy" onPress={onDuplicate} />
           {rulesOn && (
-            <Row label={tr('transaction.createRule')} icon="options" onPress={onCreateRule} />
+            <ListRow label={tr('transaction.createRule')} icon="options" onPress={onCreateRule} />
           )}
-          <Row label={tr('common.delete')} icon="trash" tone="danger" onPress={onDelete} />
+          <ListRow label={tr('common.delete')} icon="trash" tone="danger" onPress={onDelete} />
         </Card>
       </Sheet>
       <PhotoViewer

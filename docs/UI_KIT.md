@@ -83,7 +83,7 @@ is the debt ledger, and it should only shrink.
 The kit lives in family files under `src/ui/kit/` (each ≤ 400 lines of code) and re-exports from `src/ui/kit/index.ts`:
 
 - `layout.tsx`: `Screen`, `SCREEN_TOP_PADDING`, `Card` (Group), `SectionHeader`, `GroupFooter`
-- `rows.tsx`: `ListRow`, `SwitchRow`, `Tile`, `ROW_HEIGHT`, `PRESSED_OPACITY` (deprecated `Row`)
+- `rows.tsx`: `ListRow`, `SwitchRow`, `RadioRow`, `FieldRow`, `Tile`, `ROW_HEIGHT`, `PRESSED_OPACITY`
 - `headers.tsx`: `PushHeader`, `ModalHeader`, `TabHeader`, `MoreButton` (deprecated `AppBar`, `BarRow`, `BarIconButton`, `CloseButton`)
 - `actions.tsx`: `Button`, `Segmented`, `Chip`, `Fab`, `StickyFooter`
 - `sheet.tsx`: `Sheet`, `useKeyboardHeight`
@@ -97,12 +97,14 @@ migrates.
 - ✅ `Card` (`flush`) = the **Group**: white, 1 px border, radius 14, no shadow. Three uses: ROWS
   (settings, forms, details), LIST (accounts, envelopes, planned) and HERO (one big number with its
   actions).
-- ✅ `ListRow`: label, optional subtitle, value or chevron, leading `Tile`, tone, check. It draws
-  its own inset hairline (16, or 56 after a tile).
+- ✅ `ListRow`: label, optional subtitle, value or chevron, leading `Tile`, tone, check. Supports `struck` (faint + line-through), `selected` (bold), and `action` (trailing text button replacing value/chevron). It draws its own inset hairline (16, or 56 after a tile).
+- ✅ `SwitchRow`: labelled toggle switch with optional hint and optional leading `Tile`.
+- ✅ `RadioRow`: radio option with radio circle and `accessibilityRole="radio"`.
+- ✅ `FieldRow`: label column (default 96 px) plus inline `TextField` or child input.
 - ✅ `SectionHeader` (above a group, may carry one text action) and `GroupFooter` (footnote under a
   group).
 - ✅ `Tile`: 28 px leading kind mark (envelope, savings, liability), instead of a chip.
-- ⛔ `Row` → `ListRow`. ⛔ a card per row → one Group with rows.
+- ⛔ `Row` (retired and removed; use `ListRow`). ⛔ a card per row → one Group with rows.
 - Rules: one row = one tap target. Labels are ink, values grey. Trailing slot holds an amount _or_ a
   chevron, never both. One helper line, never two. Switches, not checkboxes, for on/off.
 

@@ -7,7 +7,7 @@ import { Alert, View } from 'react-native';
 import { useDb } from '../providers/DbProvider';
 import { useCurrencies } from '../db/useReferenceData';
 import { useTheme } from './theme';
-import { Button, Card, Money, Row, Sheet } from './kit';
+import { Button, Card, Money, ListRow, Sheet } from './kit';
 import { currencyOf } from './money';
 import { useAction } from './useAction';
 import { navigateOnce } from './navigateOnce';
@@ -135,11 +135,11 @@ export function OccurrenceSheet({
         size="display"
       />
       <Card>
-        <Row first label={tr('fields.date')} value={dayLabel(day)} />
-        <Row label={tr('fields.from')} value={f.sourceName ?? '—'} />
-        <Row label={tr('fields.to')} value={f.destinationName ?? '—'} />
-        <Row label={tr('fields.category')} value={f.categoryName ?? '—'} />
-        <Row
+        <ListRow first label={tr('fields.date')} value={dayLabel(day)} />
+        <ListRow label={tr('fields.from')} value={f.sourceName ?? '—'} />
+        <ListRow label={tr('fields.to')} value={f.destinationName ?? '—'} />
+        <ListRow label={tr('fields.category')} value={f.categoryName ?? '—'} />
+        <ListRow
           label={tr('planned.occurrence.status')}
           value={
             skipped

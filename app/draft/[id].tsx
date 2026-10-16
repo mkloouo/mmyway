@@ -12,7 +12,7 @@ import { pickDateTime } from '../../src/ui/pickDate';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
 // prettier-ignore
-import { Banner, Button, Card, Chip, IconButton, ModalHeader, Money, Row, Screen, SectionHeader, Segmented, Sheet, StatusPill, StickyFooter, Tile } from '../../src/ui/kit';
+import { Banner, Button, Card, Chip, IconButton, ListRow, ModalHeader, Money, Screen, SectionHeader, Segmented, Sheet, StatusPill, StickyFooter, Tile } from '../../src/ui/kit';
 import { rewireForType, type TxEnds } from '../../src/transactions/changeType';
 import { DetailRows, type DetailRowsValue } from '../../src/ui/DetailRows';
 import { PayeeSheet } from '../../src/ui/PayeeSheet';
@@ -628,7 +628,7 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
 
           {showFx && (
             <Card flush style={{ marginHorizontal: t.space.lg }}>
-              <Row
+              <ListRow
                 first
                 label={chargedLabel}
                 value={
@@ -786,7 +786,7 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
 
           {row.kind !== 'receipt' && !row.receiptImagePath && row.state !== 'synced' && (
             <Card flush style={{ marginHorizontal: t.space.lg }}>
-              <Row
+              <ListRow
                 first
                 leading={<Tile icon="camera" size={40} />}
                 label={tr('capture.receiptPhoto')}
@@ -805,7 +805,7 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
                   accessibilityRole="button"
                   accessibilityLabel={tr('draft.showPhoto')}
                 >
-                  <Row
+                  <ListRow
                     first
                     leading={
                       row.receiptImagePath ? (
@@ -997,30 +997,14 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
       <Sheet visible={sheet === 'menu'} onClose={closeSheet} title={tr('draft.menuTitle')}>
         <View style={{ gap: t.space.lg, paddingBottom: t.space.lg }}>
           <Card flush>
-            {readOnly && !!row.ff3GroupId && (
-              <Row
-                first
-                label={tr('draft.openInActivity')}
-                chevron
-                onPress={() => {
-                  closeSheet();
-                  navigateOnce(`/transactions/${row.ff3GroupId}`);
-                }}
-              />
-            )}
+            {readOnly && !!row.ff3GroupId &&
+              // prettier-ignore
+              <ListRow first label={tr('draft.openInActivity')} chevron onPress={() => { closeSheet(); navigateOnce(`/transactions/${row.ff3GroupId}`); }} />}
+            {!readOnly &&
+              // prettier-ignore
+              <ListRow first label={tr('splits.splitIntoParts')} chevron onPress={() => { closeSheet(); setAllocation({ kind: 'newSplit' }); }} />}
             {!readOnly && (
-              <Row
-                first
-                label={tr('splits.splitIntoParts')}
-                chevron
-                onPress={() => {
-                  closeSheet();
-                  setAllocation({ kind: 'newSplit' });
-                }}
-              />
-            )}
-            {!readOnly && (
-              <Row
+              <ListRow
                 first={readOnly && !row.ff3GroupId}
                 label={tr('fields.currency')}
                 value={draft.currencyCode || '—'}
@@ -1029,7 +1013,7 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
               />
             )}
             {!readOnly && !!row.receiptImagePath && (
-              <Row
+              <ListRow
                 label={tr('draft.replacePhoto')}
                 chevron
                 onPress={() => {
@@ -1040,7 +1024,8 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
             )}
           </Card>
           <Card flush>
-            <Row first label={tr('draft.deleteDraft')} tone="danger" onPress={handleDeleteDraft} />
+            {/* prettier-ignore */}
+            <ListRow first label={tr('draft.deleteDraft')} tone="danger" onPress={handleDeleteDraft} />
           </Card>
         </View>
       </Sheet>

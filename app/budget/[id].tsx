@@ -15,7 +15,7 @@ import {
   Money,
   MoreButton,
   PushHeader,
-  Row,
+  ListRow,
   SCREEN_TOP_PADDING,
   Screen,
   SectionHeader,
@@ -235,16 +235,16 @@ function EnvelopeScreen() {
 
         <SectionHeader title={tr('budget.thisMonth')} />
         <Card style={{ marginHorizontal: t.space.lg }}>
-          <Row
+          <ListRow
             first
             label={tr('budget.assignedLabel')}
             value={formatMoney(envelope.assigned, currency)}
           />
-          <Row
+          <ListRow
             label={tr('budget.spentLabel')}
             value={formatMoney(envelope.spent.replace(/^[-−]/, ''), currency)}
           />
-          <Row
+          <ListRow
             label={tr('budget.lastMonthLabel')}
             value={lastMonth ? formatMoney(lastMonth.assigned, currency) : '—'}
           />

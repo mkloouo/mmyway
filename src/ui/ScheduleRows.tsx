@@ -12,7 +12,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Button, Card, ListRow, Row, SectionHeader, Sheet } from './kit';
+import { Button, Card, ListRow, SectionHeader, Sheet } from './kit';
 import { pickDate } from './pickDate';
 import { useTheme } from './theme';
 import { expandRepetition, upcomingOccurrences, withWeekendRule } from '../planned/occurrences';
@@ -223,7 +223,7 @@ export function ScheduleSheet({
 
           <SectionHeader title={tr('planned.starts')} />
           <Card>
-            <Row
+            <ListRow
               first
               label={tr('planned.firstDate')}
               value={dayLabel(date)}
@@ -234,7 +234,7 @@ export function ScheduleSheet({
 
           <SectionHeader title={tr('planned.repeats')} />
           <Card>
-            <Row
+            <ListRow
               first
               label={tr('planned.howOften')}
               value={howOptions.find((o) => o.key === how)?.label ?? ''}
@@ -249,7 +249,7 @@ export function ScheduleSheet({
               }
             />
             {repeats && !editing && !!first && (
-              <Row
+              <ListRow
                 label={tr('planned.weekendLabel')}
                 value={weekendName(first.weekend)}
                 chevron
@@ -338,7 +338,7 @@ function ScheduleRows({
       />
       {repetitions.map((rep, i) => (
         <Card key={i} style={{ marginBottom: t.space.sm }}>
-          <Row
+          <ListRow
             first
             label={tr('planned.repTypeLabel')}
             value={repetitionTypeName(rep.type)}
@@ -359,7 +359,7 @@ function ScheduleRows({
             }
           />
           {(rep.type === 'weekly' || rep.type === 'ndom') && (
-            <Row
+            <ListRow
               label={tr('planned.weekdayLabel')}
               value={weekdayName(
                 rep.type === 'ndom' ? parseNdom(rep.moment).weekday : Number(rep.moment) || 1,
@@ -384,7 +384,7 @@ function ScheduleRows({
             />
           )}
           {rep.type === 'monthly' && (
-            <Row
+            <ListRow
               label={tr('planned.dayOfMonthLabel')}
               value={String(Number(rep.moment) || 1)}
               chevron
@@ -399,7 +399,7 @@ function ScheduleRows({
             />
           )}
           {rep.type === 'ndom' && (
-            <Row
+            <ListRow
               label={tr('planned.nthLabel')}
               value={nthName(parseNdom(rep.moment).nth)}
               chevron
@@ -417,7 +417,7 @@ function ScheduleRows({
             />
           )}
           {rep.type === 'yearly' && (
-            <Row
+            <ListRow
               label={tr('planned.yearlyDateLabel')}
               value={dayLabel(rep.moment)}
               chevron
@@ -429,7 +429,7 @@ function ScheduleRows({
             />
           )}
           <EveryRow type={rep.type} skip={rep.skip} onChange={(skip) => patchRow(i, { skip })} />
-          <Row
+          <ListRow
             label={tr('planned.weekendLabel')}
             value={weekendName(rep.weekend)}
             chevron
@@ -442,7 +442,7 @@ function ScheduleRows({
             }
           />
           {repetitions.length > 1 && (
-            <Row
+            <ListRow
               label={tr('planned.repetitionRemove')}
               icon="close-circle"
               tone="danger"
@@ -473,7 +473,7 @@ function EndRows({
   const { t: tr } = useTranslation();
   return (
     <Card style={{ marginBottom: t.space.sm }}>
-      <Row
+      <ListRow
         first
         label={tr('planned.endLabel')}
         value={tr(`planned.end.${end.kind}`)}
@@ -496,7 +496,7 @@ function EndRows({
         }
       />
       {end.kind === 'until' && (
-        <Row
+        <ListRow
           label={tr('planned.endDateLabel')}
           value={dayLabel(end.date)}
           chevron

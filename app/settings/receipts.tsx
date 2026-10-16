@@ -16,7 +16,6 @@ import {
   GroupFooter,
   ListRow,
   PushHeader,
-  Row,
   SCREEN_TOP_PADDING,
   Screen,
   SectionHeader,
@@ -182,14 +181,14 @@ export default function ReceiptsScreen() {
 
         <SectionHeader title={tr('receiptSettings.yourModel')} />
         <Card style={{ marginHorizontal: t.space.lg }}>
-          <Row
+          <ListRow
             first
             label={tr('receiptSettings.modelName')}
             chevron
             value={localModelName || tr('settings.notSet')}
             onPress={() => setSheet('localModel')}
           />
-          <Row
+          <ListRow
             label={tr('settings.addresses')}
             chevron
             value={
@@ -203,7 +202,7 @@ export default function ReceiptsScreen() {
 
         <SectionHeader title={tr('receiptSettings.googleGemini')} />
         <Card style={{ marginHorizontal: t.space.lg }}>
-          <Row
+          <ListRow
             first
             label={tr('settings.geminiKey')}
             chevron

@@ -16,7 +16,7 @@ import {
   Card,
   Chip,
   EmptyState,
-  Row,
+  ListRow,
   SCREEN_TOP_PADDING,
   Screen,
   SectionHeader,
@@ -704,14 +704,14 @@ export default function ActivityScreen() {
           style={{ paddingHorizontal: 4, paddingTop: 20, paddingBottom: 8 }}
         />
         <Card flush>
-          <Row
+          <ListRow
             first
             label={tr('activity.allAccounts')}
             icon={accountFilter === null ? 'checkmark' : undefined}
             onPress={() => setAccountFilter(null)}
           />
           {assetAccounts.map((a) => (
-            <Row
+            <ListRow
               key={a.id}
               label={a.name}
               leading={pendingAccounts.has(a.id) ? <PendingDot visible /> : undefined}
@@ -763,7 +763,7 @@ export default function ActivityScreen() {
       </Sheet>
 
       <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={tr('activity.title')}>
-        <Row
+        <ListRow
           first
           label={tr('count.title')}
           icon="cash"

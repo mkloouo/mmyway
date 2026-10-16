@@ -9,7 +9,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useDb } from '../providers/DbProvider';
 import { useBudgetRows, useCategories } from '../db/useReferenceData';
 import { useTheme } from '../ui/theme';
-import { Button, Card, GroupFooter, ListRow, Row, Sheet } from '../ui/kit';
+import { Button, Card, GroupFooter, ListRow, Sheet } from '../ui/kit';
 import { TextField } from '../ui/TextField';
 import { confirmAction } from '../ui/confirm';
 import { useAction } from '../ui/useAction';
@@ -148,14 +148,14 @@ export function NewRuleSheet({
             <TextField value={match} onChangeText={setMatch} />
           </Card>
           <Card>
-            <Row
+            <ListRow
               first
               label={tr('fields.category')}
               value={category ?? tr('common.none')}
               chevron
               onPress={() => setPick('category')}
             />
-            <Row
+            <ListRow
               label={tr('fields.budget')}
               value={budget ?? tr('common.none')}
               chevron

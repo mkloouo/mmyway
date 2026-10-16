@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
-import { Card, Dot, Row, Button, Sheet } from './kit';
+import { Card, Dot, ListRow, Button, Sheet } from './kit';
 import { useTheme } from './theme';
 import { categoryColor } from './categoryColor';
 import { AccountPickerSheet, type AccountPickerAccount } from './AccountPickerSheet';
@@ -117,7 +117,7 @@ export function DetailRows({
     <>
       <Card style={{ marginHorizontal: t.space.lg }}>
         {typeEditable && (
-          <Row
+          <ListRow
             first
             label={tr('fields.type')}
             value={tr(txTypeLabelKey(value.type) ?? 'fields.type')}
@@ -125,7 +125,7 @@ export function DetailRows({
           />
         )}
         {showPayee && payee && (
-          <Row
+          <ListRow
             first={!typeEditable}
             label={value.type === 'deposit' ? tr('capture.payer') : tr('capture.payee')}
             value={payee.name || '—'}
@@ -134,7 +134,7 @@ export function DetailRows({
           />
         )}
         {value.type !== 'transfer' && (
-          <Row
+          <ListRow
             first={!typeEditable && !showPayee}
             label={tr('fields.category')}
             value={value.categoryName ?? '—'}
@@ -148,7 +148,7 @@ export function DetailRows({
           />
         )}
         {(value.type === 'withdrawal' || value.type === 'transfer') && (
-          <Row
+          <ListRow
             first={!typeEditable && value.type === 'transfer'}
             label={tr('fields.from')}
             value={sourceAccount?.name ?? '—'}
@@ -157,7 +157,7 @@ export function DetailRows({
           />
         )}
         {(value.type === 'deposit' || value.type === 'transfer') && (
-          <Row
+          <ListRow
             label={tr('fields.to')}
             value={destinationAccount?.name ?? '—'}
             loading={loading && !destinationAccount && !!value.destinationAccountId}
@@ -165,30 +165,30 @@ export function DetailRows({
           />
         )}
         {value.type !== 'transfer' && (
-          <Row
+          <ListRow
             label={tr('fields.budget')}
             value={budget?.name ?? '—'}
             loading={loading && !budget && !!value.budgetId}
             {...edit(() => setBudgetSheetOpen(true))}
           />
         )}
-        <Row
+        <ListRow
           label={tr('fields.date')}
           value={value.dateLabel}
           {...check('date')}
           {...edit(onDatePress)}
         />
-        <Row
+        <ListRow
           label={tr('fields.note')}
           value={value.notes || '—'}
           {...edit(() => setTextSheetOpen(true))}
         />
-        <Row
+        <ListRow
           label={tr('fields.tags')}
           value={value.tags?.length ? value.tags.join(', ') : '—'}
           {...edit(() => setTextSheetOpen(true))}
         />
-        <Row
+        <ListRow
           label={tr('fields.sharedWith')}
           value={value.sharedWith || '—'}
           {...edit(() => setTextSheetOpen(true))}

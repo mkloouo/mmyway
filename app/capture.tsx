@@ -24,7 +24,7 @@ import { useEnvelopeRemaining, useAllEnvelopesRemaining } from '../src/bucket/us
 import { useFlag } from '../src/flags/useFlag';
 import { topChips } from '../src/capture/topChips';
 // prettier-ignore
-import { Button, Card, Dot, IconButton, ListRow, PRESSED_OPACITY, Row, Screen, SectionHeader, Segmented, Sheet, Tile, Toast } from '../src/ui/kit';
+import { Button, Card, Dot, IconButton, ListRow, PRESSED_OPACITY, Screen, SectionHeader, Segmented, Sheet, Tile, Toast } from '../src/ui/kit';
 import { Keypad } from '../src/ui/Keypad';
 import { PayeeSheet } from '../src/ui/PayeeSheet';
 import { AccountPickerSheet, type AccountPickerAccount } from '../src/ui/AccountPickerSheet';
@@ -1218,7 +1218,7 @@ export default function CaptureScreen() {
         footer={<Button title={tr('common.done')} onPress={commitDetails} />}
       >
         <Card flush>
-          <Row
+          <ListRow
             first
             label={tr('capture.when')}
             value={draftDateText}
@@ -1406,7 +1406,7 @@ export default function CaptureScreen() {
               )}
             </View>
           </View>
-          <Row
+          <ListRow
             label={tr('fields.sharedWith')}
             value={draftSharedWith || tr('common.nobody')}
             chevron
@@ -1441,7 +1441,7 @@ export default function CaptureScreen() {
         footer={<Button title={tr('common.done')} onPress={() => setSheet('more')} />}
       >
         <Card flush>
-          <Row
+          <ListRow
             first
             label={tr('common.nobody')}
             icon={!draftSharedWith ? 'checkmark' : undefined}
@@ -1455,7 +1455,7 @@ export default function CaptureScreen() {
               (n) => n.toLowerCase() === name.toLowerCase(),
             );
             return (
-              <Row
+              <ListRow
                 key={name}
                 label={name}
                 icon={isSelected ? 'checkmark' : undefined}
