@@ -3,14 +3,19 @@
 // src/api/ff3/proxyHeaders.ts; this screen only edits a list of pairs.
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useTheme } from '../../src/ui/theme';
 import {
   Button,
   Card,
+  FieldRow,
+  GroupFooter,
+  ListRow,
   PushHeader,
+  PRESSED_OPACITY,
+  ROW_HEIGHT,
   SCREEN_TOP_PADDING,
   Screen,
   SectionHeader,
@@ -55,14 +60,13 @@ function ProxyPage() {
   const set = (index: number, patch: Partial<Pair>) =>
     setPairs((list) => list.map((p, i) => (i === index ? { ...p, ...patch } : p)));
 
-  // Shown per row only once something has been typed into it, so a freshly added empty row
-  // isn't already red.
   const problemOf = (p: Pair): ProxyHeaderProblem | null =>
     p.name === '' && p.value === '' ? null : proxyHeaderProblem(p.name.trim(), p.value);
 
   const filled = pairs.filter((p) => p.name !== '' || p.value !== '');
   const problems = filled.map(problemOf);
-  const canSave = loaded && problems.every((problem) => problem === null);
+  const firstProblem = problems.find((p): p is ProxyHeaderProblem => p !== null);
+  const canSave = loaded && !firstProblem;
 
   const save = act(tr('proxy.save'), async () => {
     await writeProxyHeaders(
@@ -79,12 +83,11 @@ function ProxyPage() {
   });
 
   return (
-    <Screen bottom>
+    <Screen bottom avoidKeyboard>
       <PushHeader
         backLabel={tr('settings.connectionBack')}
         onBack={() => router.back()}
         title={tr('proxy.title')}
-        subtitle={tr('proxy.subtitle')}
       />
       <ScrollView
         contentContainerStyle={{ paddingTop: SCREEN_TOP_PADDING, paddingBottom: t.space.lg }}
@@ -93,7 +96,7 @@ function ProxyPage() {
         <Text
           style={[
             t.type.body,
-            { color: t.color.textMuted, paddingHorizontal: t.space.lg, paddingBottom: t.space.md },
+            { color: t.color.textMuted, paddingHorizontal: t.space.xl, paddingBottom: t.space.md },
           ]}
         >
           {tr('proxy.explainer')}
@@ -102,13 +105,17 @@ function ProxyPage() {
         <SectionHeader
           title={tr('proxy.headersSection')}
           action={
-            pairs.length === 0 ? (
-              <Button
-                title={tr('proxy.useCloudflare')}
-                variant="ghost"
-                onPress={() => setPairs(CLOUDFLARE_PAIR.map((p) => ({ ...p })))}
-              />
-            ) : undefined
+            <Pressable
+              onPress={() => setPairs(CLOUDFLARE_PAIR.map((p) => ({ ...p })))}
+              accessibilityRole="button"
+              accessibilityLabel={tr('proxy.useCloudflare')}
+              hitSlop={8}
+              style={({ pressed }) => ({ opacity: pressed ? PRESSED_OPACITY : 1 })}
+            >
+              <Text style={[t.type.label, { color: t.color.accent, fontWeight: '500' }]}>
+                {tr('proxy.useCloudflare')}
+              </Text>
+            </Pressable>
           }
         />
 
@@ -117,16 +124,8 @@ function ProxyPage() {
             {pairs.map((pair, index) => {
               const problem = problemOf(pair);
               return (
-                <View
-                  key={index}
-                  style={{
-                    padding: t.space.md,
-                    gap: t.space.sm,
-                    borderTopWidth: index === 0 ? 0 : 1,
-                    borderTopColor: t.color.border,
-                  }}
-                >
-                  <View style={{ gap: t.space.sm }}>
+                <View key={index}>
+                  <FieldRow first={index === 0} label={tr('proxy.name')} labelWidth={64}>
                     <TextField
                       value={pair.name}
                       onChangeText={(name) => set(index, { name })}
@@ -134,28 +133,37 @@ function ProxyPage() {
                       autoCapitalize="none"
                       autoCorrect={false}
                       invalid={problem === 'name' || problem === 'reserved'}
+                      style={styles.fieldInput}
                     />
-                    <TextField
-                      value={pair.value}
-                      onChangeText={(value) => set(index, { value })}
-                      placeholder={tr('proxy.valuePlaceholder')}
-                      autoCapitalize="none"
-                      autoCorrect={false}
-                      // A proxy secret is a credential; keep it off the screen like the API token.
-                      secureTextEntry
-                      invalid={problem === 'value'}
-                    />
-                    {problem && (
-                      <Text style={[t.type.label, { color: t.color.danger }]}>
-                        {tr(`proxy.problems.${problem}`)}
-                      </Text>
-                    )}
-                    <Button
-                      title={tr('proxy.removeHeader')}
-                      variant="ghost"
-                      onPress={() => setPairs((list) => list.filter((_, i) => i !== index))}
-                    />
-                  </View>
+                  </FieldRow>
+                  <FieldRow label={tr('proxy.value')} labelWidth={64}>
+                    <View style={[styles.valueRow, { gap: t.space.sm }]}>
+                      <TextField
+                        value={pair.value}
+                        onChangeText={(value) => set(index, { value })}
+                        placeholder={tr('proxy.valuePlaceholder')}
+                        autoCapitalize="none"
+                        autoCorrect={false}
+                        secureTextEntry
+                        invalid={problem === 'value'}
+                        style={styles.fieldInput}
+                      />
+                      <Pressable
+                        onPress={() => setPairs((list) => list.filter((_, i) => i !== index))}
+                        hitSlop={8}
+                        accessibilityRole="button"
+                        accessibilityLabel={tr('proxy.removeHeader')}
+                        style={({ pressed }) => [
+                          styles.removeBtn,
+                          { paddingVertical: t.space.xs, opacity: pressed ? PRESSED_OPACITY : 1 },
+                        ]}
+                      >
+                        <Text style={[t.type.label, { color: t.color.danger }]}>
+                          {tr('proxy.removeHeader')}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  </FieldRow>
                 </View>
               );
             })}
@@ -163,36 +171,73 @@ function ProxyPage() {
         )}
 
         <Card flush style={{ marginHorizontal: t.space.lg, marginTop: t.space.md }}>
-          <View style={{ padding: t.space.xs }}>
-            <Button
-              title={tr('proxy.addHeader')}
-              variant="ghost"
-              onPress={() => setPairs((list) => [...list, { name: '', value: '' }])}
-            />
-          </View>
+          <ListRow
+            first
+            label={tr('proxy.addHeader')}
+            tone="accent"
+            onPress={() => setPairs((list) => [...list, { name: '', value: '' }])}
+          />
         </Card>
+        <GroupFooter>{tr('proxy.basicAuthFootnote')}</GroupFooter>
       </ScrollView>
 
       <View
         style={{
           flexDirection: 'row',
-          gap: t.space.sm,
+          alignItems: 'center',
+          gap: t.space.md,
           paddingHorizontal: t.space.lg,
           paddingVertical: t.space.sm,
+          borderTopWidth: 1,
+          borderTopColor: t.color.border,
+          backgroundColor: t.color.bg,
         }}
       >
-        <Button title={tr('proxy.save')} onPress={save} disabled={!canSave} style={{ flex: 1 }} />
-        <Button
-          title={tr('proxy.clearAll')}
-          variant="danger"
+        <Pressable
           onPress={clear}
           disabled={pairs.length === 0}
+          accessibilityRole="button"
+          accessibilityLabel={tr('proxy.clearAll')}
+          style={({ pressed }) => ({
+            height: ROW_HEIGHT,
+            justifyContent: 'center',
+            paddingHorizontal: t.space.sm,
+            opacity: pairs.length === 0 ? 0.4 : pressed ? PRESSED_OPACITY : 1,
+          })}
+        >
+          <Text style={[t.type.body, { color: t.color.danger }]}>{tr('proxy.clearAll')}</Text>
+        </Pressable>
+        <Button
+          title={tr('proxy.save')}
+          size="lg"
+          onPress={save}
+          disabled={!canSave}
+          hint={firstProblem ? tr(`proxy.problems.${firstProblem}`) : undefined}
           style={{ flex: 1 }}
         />
       </View>
     </Screen>
   );
 }
+
+const styles = StyleSheet.create({
+  fieldInput: {
+    flex: 1,
+    borderWidth: 0,
+    paddingHorizontal: 0,
+    paddingVertical: 0,
+    textAlign: 'right',
+    backgroundColor: 'transparent',
+  },
+  valueRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  removeBtn: {
+    justifyContent: 'center',
+  },
+});
 
 export default function ProxyRoute() {
   return (

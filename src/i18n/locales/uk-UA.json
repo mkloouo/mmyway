@@ -893,12 +893,14 @@
   },
   "proxy": {
     "addHeader": "",
+    "basicAuthFootnote": "",
     "clearAll": "",
     "clearAllTitle": "",
     "explainer": "",
     "headerCount_one": "",
     "headerCount_other": "",
     "headersSection": "",
+    "name": "",
     "namePlaceholder": "",
     "problems": {
       "name": "",
@@ -910,6 +912,7 @@
     "subtitle": "",
     "title": "",
     "useCloudflare": "",
+    "value": "",
     "valuePlaceholder": "",
     "headerCount_few": "",
     "headerCount_many": ""

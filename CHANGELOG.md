@@ -7,6 +7,10 @@
 - Screen titles use the large title style across the app (MKL-82).
 - Unified list rows with new struck, selected, switch leading tile, radio, and inline field variants, retiring legacy Row (MKL-83).
 
+### Settings
+
+- Aligned Reverse proxy settings with unified design board 30 using inline FieldRows, always-available Cloudflare Access action, and bottom bar actions (MKL-93).
+
 ## [2.3.2] - 2026-10-15
 
 ### Changed

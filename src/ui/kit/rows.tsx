@@ -70,25 +70,13 @@ function RowHairline({ first, leading }: { first?: boolean; leading?: boolean })
   );
 }
 
+// prettier-ignore
 export interface ListRowProps {
-  label: string;
-  sub?: string;
-  subtitle?: string;
-  value?: string;
-  leading?: ReactNode;
-  trailing?: ReactNode;
-  chevron?: boolean;
-  onPress?: () => void;
-  onLongPress?: () => void;
-  first?: boolean;
-  tone?: 'default' | 'warn' | 'danger';
-  check?: boolean;
-  struck?: boolean;
-  selected?: boolean;
+  label: string; sub?: string; subtitle?: string; value?: string; leading?: ReactNode; trailing?: ReactNode;
+  chevron?: boolean; onPress?: () => void; onLongPress?: () => void; first?: boolean;
+  tone?: 'default' | 'warn' | 'danger' | 'accent'; check?: boolean; struck?: boolean; selected?: boolean;
   action?: { label: string; onPress: () => void; tone?: 'accent' | 'muted' | 'danger' };
-  loading?: boolean;
-  icon?: IconName;
-  style?: StyleProp<ViewStyle>;
+  loading?: boolean; icon?: IconName; style?: StyleProp<ViewStyle>;
 }
 
 export function ListRow({
@@ -117,7 +105,13 @@ export function ListRow({
   const subText = sub ?? subtitle;
   const valCol =
     tone === 'warn' ? t.color.warn : tone === 'danger' ? t.color.danger : t.color.textMuted;
-  const lblCol = struck ? t.color.textFaint : tone === 'danger' ? t.color.danger : t.color.text;
+  const lblCol = struck
+    ? t.color.textFaint
+    : tone === 'danger'
+      ? t.color.danger
+      : tone === 'accent'
+        ? t.color.accent
+        : t.color.text;
   const actCol =
     action?.tone === 'danger'
       ? t.color.danger
