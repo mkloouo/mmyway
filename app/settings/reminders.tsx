@@ -6,7 +6,6 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useDb } from '../../src/providers/DbProvider';
 import { useCurrencies } from '../../src/db/useReferenceData';
@@ -17,6 +16,7 @@ import {
   GroupFooter,
   ListRow,
   PushHeader,
+  RadioRow,
   SCREEN_TOP_PADDING,
   Screen,
   SectionHeader,
@@ -140,9 +140,6 @@ export default function RemindersScreen() {
   const currencyCode = data?.currency ?? currencies.find((c) => c.isDefault)?.code ?? null;
   const symbol = currencyCode ? currencyOf(currencies, currencyCode).symbol : '';
 
-  const check = (on: boolean) =>
-    on ? <Ionicons name="checkmark" size={20} color={t.color.accent} /> : undefined;
-
   const when = data?.when ?? 'dayBefore';
   const filter = data?.filter ?? 'all';
 
@@ -154,8 +151,8 @@ export default function RemindersScreen() {
       >
         <Text
           style={[
-            t.type.title,
-            { color: t.color.text, paddingHorizontal: t.space.xl, paddingBottom: t.space.sm },
+            t.type.largeTitle,
+            { color: t.color.text, paddingHorizontal: t.space.xl, paddingBottom: t.space.xs },
           ]}
         >
           {tr('reminders.title')}
@@ -163,7 +160,7 @@ export default function RemindersScreen() {
         <Text
           style={[
             t.type.body,
-            { color: t.color.textMuted, paddingHorizontal: t.space.lg, paddingBottom: t.space.md },
+            { color: t.color.textMuted, paddingHorizontal: t.space.xl, paddingBottom: t.space.md },
           ]}
         >
           {tr('reminders.intro')}
@@ -182,6 +179,7 @@ export default function RemindersScreen() {
         <Card flush style={{ marginHorizontal: t.space.lg }}>
           <SwitchRow
             first
+            bold
             label={tr('reminders.enabled')}
             value={data?.enabled ?? false}
             onValueChange={toggleEnabled}
@@ -192,26 +190,26 @@ export default function RemindersScreen() {
           <>
             <SectionHeader title={tr('reminders.when')} />
             <Card flush style={{ marginHorizontal: t.space.lg }}>
-              <ListRow
+              <RadioRow
                 first
                 label={tr('reminders.whenDay')}
-                trailing={check(when === 'day')}
+                selected={when === 'day'}
                 onPress={() => pickWhen('day')}
               />
-              <ListRow
+              <RadioRow
                 label={tr('reminders.whenDayBefore')}
-                trailing={check(when === 'dayBefore')}
+                selected={when === 'dayBefore'}
                 onPress={() => pickWhen('dayBefore')}
               />
-              <ListRow
+              <RadioRow
                 label={tr('reminders.whenFewDays')}
                 sub={tr('reminders.whenFewDaysSub')}
-                trailing={check(when === 'fewDays')}
+                selected={when === 'fewDays'}
                 onPress={() => pickWhen('fewDays')}
               />
-              <ListRow
+              <RadioRow
                 label={tr('reminders.whenWeek')}
-                trailing={check(when === 'week')}
+                selected={when === 'week'}
                 onPress={() => pickWhen('week')}
               />
             </Card>
@@ -240,21 +238,21 @@ export default function RemindersScreen() {
 
             <SectionHeader title={tr('reminders.which')} />
             <Card flush style={{ marginHorizontal: t.space.lg }}>
-              <ListRow
+              <RadioRow
                 first
                 label={tr('reminders.whichAll')}
-                trailing={check(filter === 'all')}
+                selected={filter === 'all'}
                 onPress={() => pickFilter('all')}
               />
-              <ListRow
+              <RadioRow
                 label={tr('reminders.whichBigger')}
                 sub={tr('reminders.whichBiggerSub', { amount: data.minAmount, symbol })}
-                trailing={check(filter === 'bigger')}
+                selected={filter === 'bigger'}
                 onPress={() => (filter === 'bigger' ? openMinAmount() : pickFilter('bigger'))}
               />
-              <ListRow
+              <RadioRow
                 label={tr('reminders.whichOutgoing')}
-                trailing={check(filter === 'outgoing')}
+                selected={filter === 'outgoing'}
                 onPress={() => pickFilter('outgoing')}
               />
             </Card>

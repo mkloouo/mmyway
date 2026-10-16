@@ -11,6 +11,10 @@
 
 - Aligned Reverse proxy settings with unified design board 30 using inline FieldRows, always-available Cloudflare Access action, and bottom bar actions (MKL-93).
 
+### Planned
+
+- Aligned Reminders settings with unified design board 32 using large title, radio selection rows, bold switch, and split notification preview (MKL-95).
+
 ## [2.3.2] - 2026-10-15
 
 ### Changed

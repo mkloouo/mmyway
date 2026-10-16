@@ -10,10 +10,15 @@ import i18n from '../i18n';
 import { createTestDb } from '../db/testDb';
 import {
   getPlannedNotificationsEnabled,
+  getReminderFilter,
   getReminderPromptShown,
   getReminderWhen,
 } from '../settings/appSettings';
-import { ReminderPromptSheet, shouldShowReminderPrompt } from '../planned/ReminderPromptSheet';
+import {
+  ReminderPreview,
+  ReminderPromptSheet,
+  shouldShowReminderPrompt,
+} from '../planned/ReminderPromptSheet';
 import RemindersScreen from '../../app/settings/reminders';
 
 // `mock`-prefixed so Jest's hoisting lets the factories below close over it.
@@ -112,6 +117,40 @@ describe('Settings → Reminders', () => {
     await fireEvent.press(screen.getByText(i18n.t('reminders.whenWeek')));
 
     await waitFor(async () => expect(await getReminderWhen(mockDb)).toBe('week'));
+  });
+
+  it('renders When and Which options with radio role and updates filter', async () => {
+    await renderPage();
+    await fireEvent.press(screen.getByLabelText(i18n.t('reminders.enabled')));
+    await waitFor(() => expect(screen.getByText(i18n.t('reminders.whichOutgoing'))).toBeTruthy());
+
+    const allRadio = screen.getByRole('radio', { name: i18n.t('reminders.whichAll') });
+    expect(allRadio).toBeTruthy();
+
+    const outgoingRadio = screen.getByRole('radio', { name: i18n.t('reminders.whichOutgoing') });
+    expect(outgoingRadio).toBeTruthy();
+
+    await fireEvent.press(outgoingRadio);
+    await waitFor(async () => expect(await getReminderFilter(mockDb)).toBe('outgoing'));
+  });
+
+  it('ReminderPreview splits title and time on one line', async () => {
+    await render(
+      wrapSheet(
+        <ReminderPreview
+          when="dayBefore"
+          time="09:00"
+          name="Rent"
+          account="Checking"
+          caption="This is how it will look"
+        />,
+      ),
+    );
+
+    expect(screen.getByText('Rent goes out tomorrow')).toBeTruthy();
+    expect(screen.getByText('09:00')).toBeTruthy();
+    expect(screen.getByText("2.400,00 zł from Checking. There's enough in it.")).toBeTruthy();
+    expect(screen.getByText('This is how it will look')).toBeTruthy();
   });
 });
 

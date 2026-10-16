@@ -230,7 +230,7 @@ export function ListRow({
 // prettier-ignore
 export interface SwitchRowProps {
   label: string; hint?: string; value: boolean; onValueChange: (v: boolean) => void;
-  leading?: ReactNode; first?: boolean; disabled?: boolean;
+  leading?: ReactNode; first?: boolean; disabled?: boolean; bold?: boolean;
 }
 
 export function SwitchRow({
@@ -241,6 +241,7 @@ export function SwitchRow({
   leading,
   first,
   disabled,
+  bold,
 }: SwitchRowProps) {
   const t = useTheme();
   return (
@@ -263,7 +264,9 @@ export function SwitchRow({
       <RowHairline first={first} leading={!!leading} />
       {leading}
       <View style={styles.flex}>
-        <Text style={[t.type.body, { color: t.color.text }]}>{label}</Text>
+        <Text style={[t.type.body, { color: t.color.text, fontWeight: bold ? '600' : undefined }]}>
+          {label}
+        </Text>
         {!!hint && <Text style={[t.type.label, { color: t.color.textMuted }]}>{hint}</Text>}
       </View>
       <View pointerEvents="none">

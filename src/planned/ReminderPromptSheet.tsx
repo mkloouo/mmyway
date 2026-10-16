@@ -84,9 +84,18 @@ export function ReminderPreview({
           <Ionicons name="checkmark" size={18} color={t.color.onAccent} />
         </View>
         <View style={{ flex: 1, minWidth: 0, gap: 1 }}>
-          <Text style={[t.type.label, { color: t.color.text }]}>
-            {tr(PREVIEW_TITLE[when], { name, time })}
-          </Text>
+          <View
+            style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
+            <Text style={[t.type.label, { fontWeight: '600', color: t.color.text }]}>
+              {tr(PREVIEW_TITLE[when], { name })}
+            </Text>
+            <Text style={[t.type.label, { color: t.color.textMuted }]}>{time}</Text>
+          </View>
           <Text style={[t.type.label, { color: t.color.textMuted }]}>
             {tr('reminders.previewBody', { account })}
           </Text>
