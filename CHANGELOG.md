@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [2.3.4] - 2026-10-17
+
 ### Fixed
 
 - Leftover differences on split transactions are shared proportionally rather than greedily draining splits down to 1 cent (MKL-150).
