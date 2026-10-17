@@ -2,6 +2,7 @@
   "name": "mmyway",
   "version": "2.3.3",
   "main": "expo-router/entry",
+  "packageManager": "pnpm@12.14.0",
   "scripts": {
     "start": "expo start",
     "android": "APP_VARIANT=development expo run:android",

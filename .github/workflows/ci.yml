@@ -12,18 +12,19 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-          cache: npm
-      - run: npm ci
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       # expo-router writes its route types (.expo/types, expo-env.d.ts) when the dev server
       # starts; there is no standalone command, so start it briefly. Without them typed routes
       # silently fall back to plain strings.
       - name: Generate typed routes
-        run: CI=1 timeout 90 npx expo start --offline || true
+        run: CI=1 timeout 90 pnpm exec expo start --offline || true
       - run: test -f .expo/types/router.d.ts
-      - run: npx prettier --check .
-      - run: npm run typecheck
-      - run: npm run lint
-      - run: npm run test:coverage
+      - run: pnpm exec prettier --check .
+      - run: pnpm run typecheck
+      - run: pnpm run lint
+      - run: pnpm run test:coverage

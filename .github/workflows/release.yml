@@ -46,19 +46,20 @@ jobs:
         with:
           # Tags and origin/main, for the script's preflight.
           fetch-depth: 0
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-          cache: npm
+          cache: pnpm
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 17
-      - run: npm ci
+      - run: pnpm install --frozen-lockfile
 
       # Same as ci.yml: the release's type-check needs expo-router's generated route types.
       - name: Generate typed routes
-        run: CI=1 timeout 90 npx expo start --offline || true
+        run: CI=1 timeout 90 pnpm exec expo start --offline || true
 
       # The same identity as a release made on the laptop; only the owner can start this run.
       - name: Commit as the owner
@@ -68,14 +69,14 @@ jobs:
 
       - name: Build
         if: inputs.mode == 'build'
-        run: npm run release -- build
+        run: pnpm run release -- build
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
       - name: Release
         if: inputs.mode == 'release'
         # Through env, not interpolated into the script: the script validates it as X.Y.Z.
-        run: npm run release -- "$VERSION"
+        run: pnpm run release -- "$VERSION"
         env:
           VERSION: ${{ inputs.version }}
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}

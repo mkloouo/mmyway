@@ -18,21 +18,22 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # gitleaks scans the history
+      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-          cache: npm
-      - run: npm ci
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - name: Import cycles that exist at runtime
-        run: npm run analyze:cycles
+        run: pnpm run analyze:cycles
       - name: Copy-paste over 1%
-        run: npm run analyze:dupes
+        run: pnpm run analyze:dupes
       - name: High or critical advisories in the app's dependencies
-        run: npm run analyze:deps
+        run: pnpm run analyze:deps
       - name: Unused files, exports and dependencies
-        run: npm run analyze:dead
+        run: pnpm run analyze:dead
       - name: Expo config and SDK package versions
-        run: npm run analyze:doctor
+        run: pnpm run analyze:doctor
       - name: Secrets in the history (gitleaks, warns only)
         uses: gitleaks/gitleaks-action@v3
         env:
