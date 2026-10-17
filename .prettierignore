@@ -9,6 +9,7 @@ src/api/ff3/types.ts
 src/i18n/locales
 package-lock.json
 yarn.lock
+pnpm-lock.yaml
 *.apk
 docs/private
 scratch

@@ -1,11 +1,23 @@
 {
-  "version": "2.3.2",
+  "version": "2.3.3",
   "sections": [
     {
       "title": "Changed",
       "items": [
-        "Clearer wording: 'Note' instead of 'Description', and plainer schedule options ('When I change it', 'Move to Friday'). (MKL-135)",
-        "Re-initialize with npx expo-release init"
+        "Screen titles use the large title style across the app (MKL-82).",
+        "Unified list rows with new struck, selected, switch leading tile, radio, and inline field variants, retiring legacy Row (MKL-83)."
+      ]
+    },
+    {
+      "title": "Settings",
+      "items": [
+        "Aligned Reverse proxy settings with unified design board 30 using inline FieldRows, always-available Cloudflare Access action, and bottom bar actions (MKL-93)."
+      ]
+    },
+    {
+      "title": "Planned",
+      "items": [
+        "Aligned Reminders settings with unified design board 32 using large title, radio selection rows, bold switch, and split notification preview (MKL-95)."
       ]
     }
   ]
