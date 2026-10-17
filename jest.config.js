@@ -13,7 +13,7 @@ module.exports = {
   transformIgnorePatterns: [
     'node_modules/(?!(\\.pnpm/.*node_modules/)?((jest-)?react-native|@react-native(-community)?|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@unimodules/.*|unimodules|sentry-expo|native-base|react-native-svg))',
   ],
-  testPathIgnorePatterns: ['/node_modules/', '/.expo/'],
+  testPathIgnorePatterns: ['/node_modules/', '/.expo/', '/.worktrees/'],
   setupFilesAfterEnv: ['<rootDir>/src/testSetup.ts'],
   // `npm run test:coverage` (CI): the code that moves money must not lose its tests. The floors sit
   // a little under what the suite covers today; raise them when the number does.
