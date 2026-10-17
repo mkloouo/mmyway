@@ -108,7 +108,7 @@
       "mkloouo"
     ],
     "targets": [
-      "gitlab"
+      "github"
     ],
     "branch": "main",
     "android": {
