@@ -6,6 +6,7 @@ import {
   defaultShares,
   fromMinor,
   leftover,
+  leftoverShares,
   positionToMinor,
   proportionalShares,
   sumMinor,
@@ -39,6 +40,32 @@ describe('defaultShares', () => {
 
   it('is null when the caps cannot hold the target', () => {
     expect(defaultShares(2000n, [1000n, 500n])).toBeNull();
+  });
+});
+
+describe('leftoverShares', () => {
+  it('shares leftover proportionally across eligible slots', () => {
+    expect(leftoverShares(500n, [1000n, 1000n])).toEqual([250n, 250n]);
+    expect(leftoverShares(3000n, [10_000n, 1000n, 1000n])).toEqual([2500n, 250n, 250n]);
+  });
+
+  it('regression: does not drain 4 equal splits down to 1 minor unit when taking back', () => {
+    // 4 splits of 200.00 taking back 600.00
+    const caps = [19_999n, 19_999n, 19_999n, 19_999n];
+    const shares = leftoverShares(60_000n, caps);
+    expect(shares).toEqual([15_000n, 15_000n, 15_000n, 15_000n]);
+    // Each split retains 50.00, none is wiped out to 0.01 (1n)
+    const remaining = caps.map((c, i) => c + 1n - shares![i]!);
+    expect(remaining).toEqual([5000n, 5000n, 5000n, 5000n]);
+  });
+
+  it('gives zero share to excluded slot with zero cap', () => {
+    const caps = [0n, 1000n, 1000n];
+    expect(leftoverShares(400n, caps)).toEqual([0n, 200n, 200n]);
+  });
+
+  it('is null when total caps cannot hold the target', () => {
+    expect(leftoverShares(5000n, [1000n, 2000n])).toBeNull();
   });
 });
 

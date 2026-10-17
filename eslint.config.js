@@ -62,7 +62,6 @@ module.exports = defineConfig([
       parser: tseslint.parser,
       parserOptions: { projectService: true, tsconfigRootDir: __dirname },
     },
-    plugins: { '@typescript-eslint': tseslint.plugin },
     rules: {
       '@typescript-eslint/no-floating-promises': ['error', { ignoreVoid: true }],
       '@typescript-eslint/no-misused-promises': [

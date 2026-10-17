@@ -51,6 +51,18 @@ export function defaultShares(target: bigint, caps: readonly bigint[]): bigint[]
 }
 
 /**
+ * Shares for spreading leftover difference across slots. Unlike `defaultShares` (which greedily
+ * exhausts slot 1 first for a new split), leftover difference is shared proportionally across
+ * all eligible slots based on their capacity (caps), so existing splits are not greedily wiped
+ * out down to 1 minor unit. Returns null when the caps together can't hold the target.
+ */
+export function leftoverShares(target: bigint, caps: readonly bigint[]): bigint[] | null {
+  const totalCap = caps.reduce((acc, c) => acc + c, 0n);
+  if (totalCap < target) return null;
+  return proportionalShares(target, caps);
+}
+
+/**
  * A slider moved: slot `index` asks for `wanted`. The other slots give way (in order, first
  * split first) so the shares still sum to `target`; when they can't give enough, the moved one
  * is held back to what fits. Every share stays within 0..cap.

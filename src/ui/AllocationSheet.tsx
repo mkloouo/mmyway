@@ -17,6 +17,7 @@ import {
   capsFor,
   defaultShares,
   fromMinor,
+  leftoverShares,
   minorToPosition,
   positionToMinor,
   toMinor,
@@ -62,8 +63,10 @@ export function AllocationSheet({
   const caps = capsFor(amounts, delta, dp, mode.kind === 'leftover' ? mode.exclude : undefined);
   const sign: 1 | -1 = delta > 0n ? 1 : -1;
   // Computed once: the sliders' starting position, whether the amount fits at all, and what Done
-  // applies all read the same shares.
-  const initialShares = defaultShares(target, caps);
+  // applies all read the same shares. A new split draws from split 1 first; a leftover difference
+  // spreads proportionally across the available room so existing splits aren't decimated to 0.01.
+  const initialShares =
+    mode.kind === 'newSplit' ? defaultShares(target, caps) : leftoverShares(target, caps);
   const fits = initialShares !== null;
 
   // Mounted fresh for each use (the screens render it only while open), so the starting state
