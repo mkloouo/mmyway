@@ -52,7 +52,7 @@ function makeRepo() {
   fs.chmodSync(path.join(repo, 'scripts', 'wt.sh'), 0o755);
   fs.writeFileSync(
     path.join(bin, 'bun'),
-    '#!/bin/sh\necho "bun $*" >> "$WT_TEST_BUN_LOG"\nexit "${WT_TEST_BUN_EXIT:-0}"\n',
+    '#!/bin/sh\necho "pnpm $*" >> "$WT_TEST_BUN_LOG"\nexit "${WT_TEST_BUN_EXIT:-0}"\n',
   );
   fs.chmodSync(path.join(bin, 'bun'), 0o755);
   gitIn(repo, ['init', '-q', '-b', 'main']);
@@ -301,13 +301,13 @@ describe('scripts/wt.sh', () => {
     expect(r.code).toBe(65);
   });
 
-  it.concurrent('check inside a worktree runs bun run check then bun run lint', async () => {
+  it.concurrent('check inside a worktree runs pnpm run check then pnpm run lint', async () => {
     const t = makeRepo();
     const wt = await startClaim(t, 'MKL-1');
     const r = await t.run(['check'], wt, { WT_SKIP_CHECK: '' });
     expect(r.code).toBe(0);
     expect(r.out).toContain('CHECK OK');
-    expect(fs.readFileSync(t.bunLog, 'utf8')).toBe('bun run check\nbun run lint\n');
+    expect(fs.readFileSync(t.bunLog, 'utf8')).toBe('pnpm run check\npnpm run lint\n');
   });
 
   it.concurrent(

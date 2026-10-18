@@ -11,9 +11,9 @@ usage() {
 Usage: scripts/wt.sh <command> [args]
 
   start <ID>        Claim <ID>: branch <ID> + worktree .worktrees/<ID> from main,
-                    then bun install --frozen-lockfile (WT_SKIP_INSTALL=1 skips it).
+                    then pnpm install --frozen-lockfile (WT_SKIP_INSTALL=1 skips it).
                     Exit 2 if <ID> is already claimed.
-  check             In your worktree: bun run check + bun run lint
+  check             In your worktree: pnpm run check + pnpm run lint
                     (WT_SKIP_CHECK=1 skips it). Prints CHECK OK.
   finish <ID>       Run from inside .worktrees/<ID>: refuse if dirty, no commits, or no
                     CHANGELOG bullet ending with <ID> (exit 8). Then rebase on main, check,
@@ -61,8 +61,8 @@ run_check() {
     echo "CHECK SKIPPED (WT_SKIP_CHECK=1)"
     return 0
   fi
-  bun run check || return 1
-  bun run lint || return 1
+  pnpm run check || return 1
+  pnpm run lint || return 1
 }
 
 cmd_start() {
@@ -84,8 +84,8 @@ cmd_start() {
     ln -s ../../release "$MAIN/.worktrees/release"
   fi
   if [[ "${WT_SKIP_INSTALL:-}" != 1 ]]; then
-    if ! (cd "$wt" && bun install --frozen-lockfile); then
-      die 1 "INSTALL FAILED in $wt. Worktree kept. Fix the cause, then rerun: (cd $wt && bun install --frozen-lockfile)"
+    if ! (cd "$wt" && pnpm install --frozen-lockfile); then
+      die 1 "INSTALL FAILED in $wt. Worktree kept. Fix the cause, then rerun: (cd $wt && pnpm install --frozen-lockfile)"
     fi
   fi
   echo "WORKTREE: $wt"
