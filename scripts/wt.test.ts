@@ -51,10 +51,10 @@ function makeRepo() {
   fs.copyFileSync(SCRIPT, path.join(repo, 'scripts', 'wt.sh'));
   fs.chmodSync(path.join(repo, 'scripts', 'wt.sh'), 0o755);
   fs.writeFileSync(
-    path.join(bin, 'bun'),
+    path.join(bin, 'pnpm'),
     '#!/bin/sh\necho "pnpm $*" >> "$WT_TEST_BUN_LOG"\nexit "${WT_TEST_BUN_EXIT:-0}"\n',
   );
-  fs.chmodSync(path.join(bin, 'bun'), 0o755);
+  fs.chmodSync(path.join(bin, 'pnpm'), 0o755);
   gitIn(repo, ['init', '-q', '-b', 'main']);
   gitIn(repo, ['add', '-A']);
   gitIn(repo, ['commit', '-q', '-m', 'init']);
