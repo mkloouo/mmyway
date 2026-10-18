@@ -1,23 +1,16 @@
 {
-  "version": "2.3.3",
+  "version": "2.3.4",
   "sections": [
+    {
+      "title": "Fixed",
+      "items": [
+        "Leftover differences on split transactions are shared proportionally rather than greedily draining splits down to 1 cent (MKL-150)."
+      ]
+    },
     {
       "title": "Changed",
       "items": [
-        "Screen titles use the large title style across the app (MKL-82).",
-        "Unified list rows with new struck, selected, switch leading tile, radio, and inline field variants, retiring legacy Row (MKL-83)."
-      ]
-    },
-    {
-      "title": "Settings",
-      "items": [
-        "Aligned Reverse proxy settings with unified design board 30 using inline FieldRows, always-available Cloudflare Access action, and bottom bar actions (MKL-93)."
-      ]
-    },
-    {
-      "title": "Planned",
-      "items": [
-        "Aligned Reminders settings with unified design board 32 using large title, radio selection rows, bold switch, and split notification preview (MKL-95)."
+        "Migrated GitHub Actions CI, static analysis, and release workflows to pnpm (MKL-151)."
       ]
     }
   ]
