@@ -51,6 +51,7 @@ export function useKeyboardHeight(enabled = true): number {
 export function Sheet({
   visible,
   title,
+  subtitle,
   onClose,
   onBack,
   children,
@@ -59,6 +60,8 @@ export function Sheet({
 }: {
   visible: boolean;
   title: string;
+  /** Subtitle line directly under the title (e.g. date info, item count). */
+  subtitle?: string;
   onClose: () => void;
   /** Shows a back chevron in the header, left of the title. */
   onBack?: () => void;
@@ -156,9 +159,19 @@ export function Sheet({
                 <Ionicons name="chevron-back" size={24} color={t.color.text} />
               </Pressable>
             )}
-            <Text style={[t.type.heading, { color: t.color.text, flex: 1, fontWeight: '700' }]}>
-              {title}
-            </Text>
+            <View style={{ flex: 1, minWidth: 0, justifyContent: 'center' }}>
+              <Text
+                style={[t.type.heading, { color: t.color.text, fontWeight: '700' }]}
+                numberOfLines={1}
+              >
+                {title}
+              </Text>
+              {!!subtitle && (
+                <Text style={[t.type.label, { color: t.color.textMuted }]} numberOfLines={1}>
+                  {subtitle}
+                </Text>
+              )}
+            </View>
             <IconButton
               icon="close"
               label={tr('common.close')}

@@ -15,6 +15,7 @@ import {
   TabHeader,
   IconButton,
   Card,
+  DateTile,
   EmptyState,
   ListRow,
   Money,
@@ -55,19 +56,6 @@ function occurrencesOf(item: PlannedItem, today: string, until: string): Occurre
     ? upcomingOccurrences(f.repetitions, from, { count: HORIZON_DAYS + 1, until })
     : [f.date].filter((d) => d >= today && d <= until);
   return days.map((day) => ({ item, day, skipped: f.skipDays.includes(day) }));
-}
-
-function DateBlock({ day }: { day: string }) {
-  const t = useTheme();
-  const date = dayDate(day);
-  return (
-    <View style={{ width: 40, alignItems: 'center' }}>
-      <Text style={[t.type.label, { color: t.color.textMuted }]}>
-        {date.toLocaleDateString(appLocale(), { weekday: 'short' }).toUpperCase()}
-      </Text>
-      <Text style={[t.type.heading, { color: t.color.text }]}>{date.getDate()}</Text>
-    </View>
-  );
 }
 
 export default function PlannedScreen() {
@@ -273,7 +261,7 @@ export default function PlannedScreen() {
                         <ListRow
                           key={`${o.item.key}:${o.day}`}
                           first={j === 0}
-                          leading={<DateBlock day={o.day} />}
+                          leading={<DateTile date={o.day} />}
                           label={f.name}
                           sub={
                             o.skipped

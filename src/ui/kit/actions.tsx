@@ -318,3 +318,76 @@ export function StickyFooter({ children }: { children: ReactNode }) {
     </View>
   );
 }
+
+/**
+ * An action tile (e.g. Assign / Move in / Cover on envelope detail): equal bordered tiles with
+ * a 36 px circle icon and a 13/600 label. Supports a warn tone for overspent/cover actions.
+ */
+export function ActionTile({
+  icon,
+  label,
+  onPress,
+  tone = 'default',
+  disabled,
+  style,
+  testID,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  onPress?: () => void;
+  tone?: 'default' | 'warn';
+  disabled?: boolean;
+  style?: StyleProp<ViewStyle>;
+  testID?: string;
+}) {
+  const t = useTheme();
+  const warn = tone === 'warn';
+  const iconBg = warn ? t.color.warnSoft : t.color.accentSoft;
+  const iconColor = warn ? t.color.warn : t.color.accent;
+  const textColor = warn ? t.color.warn : t.color.text;
+
+  return (
+    <Pressable
+      testID={testID}
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: !!disabled }}
+      style={({ pressed }) => [
+        {
+          flex: 1,
+          alignItems: 'center',
+          gap: t.space.xs,
+          backgroundColor: t.color.surface,
+          borderRadius: t.radius.md,
+          borderWidth: 1,
+          borderColor: t.color.border,
+          paddingVertical: t.space.md,
+          paddingHorizontal: t.space.xs,
+          opacity: disabled ? 0.4 : pressed ? PRESSED_OPACITY : 1,
+        },
+        style,
+      ]}
+    >
+      <View
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 18,
+          backgroundColor: iconBg,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        <Ionicons name={icon} size={20} color={iconColor} />
+      </View>
+      <Text
+        style={[t.type.label, { color: textColor, fontWeight: '600', textAlign: 'center' }]}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+}

@@ -82,12 +82,13 @@ is the debt ledger, and it should only shrink.
 
 The kit lives in family files under `src/ui/kit/` (each ≤ 400 lines of code) and re-exports from `src/ui/kit/index.ts`:
 
-- `layout.tsx`: `Screen`, `SCREEN_TOP_PADDING`, `Card` (Group), `SectionHeader`, `GroupFooter`
+- `layout.tsx`: `Screen`, `SCREEN_TOP_PADDING`, `Card` (Group), `Hero`, `SectionHeader`, `GroupFooter`, `SummaryCallout`
 - `rows.tsx`: `ListRow`, `SwitchRow`, `RadioRow`, `FieldRow`, `Tile`, `ROW_HEIGHT`, `PRESSED_OPACITY`
 - `headers.tsx`: `PushHeader`, `ModalHeader`, `TabHeader`, `MoreButton` (deprecated `AppBar`, `BarRow`, `BarIconButton`, `CloseButton`)
-- `actions.tsx`: `Button`, `Segmented`, `Chip`, `Fab`, `StickyFooter`
-- `sheet.tsx`: `Sheet`, `useKeyboardHeight`
-- `feedback.tsx`: `Toast`, `EmptyState`, `Dot`, `Pulse`, `StatusPill`, `Money` (deprecated `Banner`)
+- `actions.tsx`: `Button`, `Segmented`, `Chip`, `Fab`, `StickyFooter`, `ActionTile`
+- `inputs.tsx`: `ChoiceCard`, `OptionTiles`, `Stepper`, `StepperRow`, `DateTile`
+- `sheet.tsx`: `Sheet` (with `subtitle`), `useKeyboardHeight`
+- `feedback.tsx`: `Toast`, `EmptyState`, `Dot`, `Pulse`, `StatusPill`, `Pill`, `Money`, `ProgressBar`, `NoticeBlock` (deprecated `Banner`)
 
 ✅ = Kit V2, use it. ⛔ = legacy: don't use in new or touched code; it goes away once its last use
 migrates.
@@ -97,6 +98,8 @@ migrates.
 - ✅ `Card` (`flush`) = the **Group**: white, 1 px border, radius 14, no shadow. Three uses: ROWS
   (settings, forms, details), LIST (accounts, envelopes, planned) and HERO (one big number with its
   actions).
+- ✅ `Hero`: one big number + its actions (caption, optional info button, display 40/44, optional stats row, up to 2 action buttons).
+- ✅ `SummaryCallout`: `accentSoft` callout block with title 15/600 and lines 13/17 for summaries (schedule, planned payments).
 - ✅ `ListRow`: label, optional subtitle, value or chevron, leading `Tile`, tone, check. Supports `struck` (faint + line-through), `selected` (bold), and `action` (trailing text button replacing value/chevron). It draws its own inset hairline (16, or 56 after a tile).
 - ✅ `SwitchRow`: labelled toggle switch with optional hint and optional leading `Tile`.
 - ✅ `RadioRow`: radio option with radio circle and `accessibilityRole="radio"`.
@@ -104,6 +107,7 @@ migrates.
 - ✅ `SectionHeader` (above a group, may carry one text action) and `GroupFooter` (footnote under a
   group).
 - ✅ `Tile`: 28 px leading kind mark (envelope, savings, liability), instead of a chip.
+- ✅ `DateTile`: 40 px column date tile with uppercase weekday/month (11/600) and day of month (17/700).
 - ⛔ `Row` (retired and removed; use `ListRow`). ⛔ a card per row → one Group with rows.
 - Rules: one row = one tap target. Labels are ink, values grey. Trailing slot holds an amount _or_ a
   chevron, never both. One helper line, never two. Switches, not checkboxes, for on/off.
@@ -118,8 +122,7 @@ migrates.
   New planned in 3). ✅ `ModalHeader` (✕ top-left, step bars) and ✅ `StickyFooter` (one full-width
   primary). Long tasks become steps, not one long form. Register the route with `MODAL` options in
   `app/_layout.tsx`.
-- **SHEET**: one decision. ✅ `Sheet` frame: handle, 56 px header with the title on the left and a
-  round ✕ on the right, page colour behind Groups, optional sticky footer.
+- **SHEET**: one decision. ✅ `Sheet` frame: handle, 56 px header with the title on the left, optional `subtitle`, round ✕ on the right, page colour behind Groups, optional sticky footer.
   - **A · Choose** (✅ `PickerSheet`, `SearchListSheet`): search above 8 options, focused above 30,
     "Suggested" first, then A–Z with an index rail, "+ Create "…"" when typing a new name. A single
     choice closes on tap; a multi-choice footer reads "Done · 3".
@@ -138,11 +141,18 @@ migrates.
 
 - ✅ `Button`: the primary in a footer. When it's blocked it shows a `hint` line saying what's
   missing; it never moves or hides.
+- ✅ `ActionTile`: 3 equal bordered tiles with circle icon and label; warn tone for cover action.
+- ✅ `ChoiceCard`: radio card with icon, title, subtitle, selected 2 px accent border on `accentSoft`.
+- ✅ `OptionTiles`: 44 px high option tiles for 2–4 mutual exclusive choices in a radiogroup.
+- ✅ `Stepper` / `StepperRow`: 36×32 −/+ controls with 18 px glyphs and tabular value; `StepperRow` includes label and unit.
 - ✅ `Segmented`: transaction type and other 2–4 way switches.
 - ✅ `Chip`: **only** in Activity filters and Capture's single row of ranked suggestions (which ends
   in a search button). Never a wrapping wall of chips for picking a value. That is a Choose sheet.
 - ✅ `Snackbar` (with Undo) and `Toast` (short confirmation). ✅ `EmptyState`. ✅ `Dot`/`PendingDot`
   (status, queued change).
+- ✅ `ProgressBar`: 6 px horizontal progress bar with radius 3; supports accent, warn, income tones.
+- ✅ `Pill`: compact semantic badge with warn, income, accent, or muted tones.
+- ✅ `NoticeBlock`: inline content block (replaces Banner) with icon, title 15/600, body 13/17, and optional action button.
 - ⛔ `Banner`: **no banners, no jumps.** What's missing goes in the primary button's hint. A field
   the reader wasn't sure about gets the warn inset edge and a "CHECK" tag. A stale or error state
   becomes a status row (Review pattern) or the empty state.

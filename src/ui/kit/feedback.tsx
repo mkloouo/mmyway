@@ -1,7 +1,16 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Animated, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Animated,
+  Pressable,
+  Text,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTheme } from '../theme';
 import { formatMoney, signFor, type DisplayCurrency } from '../money';
 
@@ -227,6 +236,200 @@ export function Banner({
         children
       )}
       {action}
+    </View>
+  );
+}
+
+/**
+ * A horizontal progress bar for envelopes and funds: 6 px height, radius 3.
+ * Supports accent, warn, or income tones; automatically switches to warn if progress > 1.
+ */
+export function ProgressBar({
+  progress,
+  tone = 'accent',
+  height = 6,
+  style,
+}: {
+  /** Value from 0 to 1 (or > 1 for overspent). */
+  progress: number;
+  tone?: 'accent' | 'warn' | 'income';
+  height?: number;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const t = useTheme();
+  const clamped = Math.max(0, Math.min(1, progress));
+  const isWarn = tone === 'warn' || progress > 1;
+  const trackColor = isWarn ? t.color.warnSoft : t.color.surfaceAlt;
+  const fillColor = isWarn ? t.color.warn : tone === 'income' ? t.color.income : t.color.accent;
+
+  return (
+    <View
+      accessible={true}
+      accessibilityRole="progressbar"
+      accessibilityValue={{ min: 0, max: 100, now: Math.round(clamped * 100) }}
+      style={[
+        {
+          height,
+          borderRadius: height / 2,
+          backgroundColor: trackColor,
+          overflow: 'hidden',
+          width: '100%',
+        },
+        style,
+      ]}
+    >
+      <View
+        style={{
+          width: `${Math.round(clamped * 100)}%`,
+          height: '100%',
+          borderRadius: height / 2,
+          backgroundColor: fillColor,
+        }}
+      />
+    </View>
+  );
+}
+
+/**
+ * A compact badge/pill with semantic tones: warn, income, accent, or muted.
+ * Used for status (e.g. "-17,00 short", "Booked", "in use").
+ */
+export function Pill({
+  label,
+  tone = 'muted',
+  size = 'md',
+  dotColor,
+  style,
+  testID,
+}: {
+  label: string;
+  tone?: 'warn' | 'income' | 'accent' | 'muted';
+  size?: 'sm' | 'md';
+  dotColor?: string;
+  style?: StyleProp<ViewStyle>;
+  testID?: string;
+}) {
+  const t = useTheme();
+  const bg =
+    tone === 'warn'
+      ? t.color.warnSoft
+      : tone === 'income'
+        ? t.color.incomeSoft
+        : tone === 'accent'
+          ? t.color.accentSoft
+          : t.color.surfaceAlt;
+  const text =
+    tone === 'warn'
+      ? t.color.warnStrong
+      : tone === 'income'
+        ? t.color.income
+        : tone === 'accent'
+          ? t.color.accentStrong
+          : t.color.textMuted;
+
+  const isSm = size === 'sm';
+  return (
+    <View
+      testID={testID}
+      style={[
+        {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: t.space.xs,
+          paddingHorizontal: isSm ? t.space.sm : 10,
+          paddingVertical: isSm ? 2 : 5,
+          borderRadius: t.radius.pill,
+          backgroundColor: bg,
+          alignSelf: 'flex-start',
+        },
+        style,
+      ]}
+    >
+      {!!dotColor && <Dot color={dotColor} size={isSm ? 6 : 8} />}
+      <Text
+        style={[isSm ? t.type.caption : t.type.label, { color: text, fontWeight: '600' }]}
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * Inline notice block in the content (replaces Banner): icon, title 15/600,
+ * body 13/17, optional action button.
+ */
+export function NoticeBlock({
+  title,
+  body,
+  icon,
+  action,
+  tone = 'warn',
+  style,
+  testID,
+}: {
+  title: string;
+  body?: string | ReactNode;
+  icon?: keyof typeof Ionicons.glyphMap;
+  action?: { label: string; onPress: () => void; disabled?: boolean } | ReactNode;
+  tone?: 'warn' | 'accent' | 'neutral';
+  style?: StyleProp<ViewStyle>;
+  testID?: string;
+}) {
+  const t = useTheme();
+  const warn = tone === 'warn';
+  const bg = warn ? t.color.warnSoft : tone === 'accent' ? t.color.accentSoft : t.color.surfaceAlt;
+  const col = warn ? t.color.warnStrong : tone === 'accent' ? t.color.accentStrong : t.color.text;
+  const ic =
+    icon ??
+    (warn
+      ? 'warning-outline'
+      : tone === 'accent'
+        ? 'information-circle-outline'
+        : 'help-circle-outline');
+  const act =
+    action && typeof action === 'object' && 'label' in action ? (
+      <Pressable
+        onPress={action.onPress}
+        disabled={action.disabled}
+        accessibilityRole="button"
+        accessibilityLabel={action.label}
+        style={({ pressed }) => ({
+          height: 36,
+          paddingHorizontal: 14,
+          borderRadius: 10,
+          backgroundColor: t.color.accent,
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: action.disabled ? 0.4 : pressed ? 0.8 : 1,
+        })}
+      >
+        <Text style={{ color: t.color.onAccent, fontWeight: '600', fontSize: 14 }}>
+          {action.label}
+        </Text>
+      </Pressable>
+    ) : (
+      (action as ReactNode)
+    );
+
+  return (
+    <View
+      testID={testID}
+      style={[{ backgroundColor: bg, borderRadius: t.radius.md, padding: 14, gap: 10 }, style]}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 10 }}>
+        <Ionicons name={ic} size={20} color={col} />
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={[t.type.body, { color: col, fontWeight: '700' }]}>{title}</Text>
+          {typeof body === 'string' ? (
+            <Text style={[t.type.label, { color: col }]}>{body}</Text>
+          ) : (
+            body
+          )}
+        </View>
+      </View>
+      {!!act && <View style={{ alignItems: 'flex-end' }}>{act}</View>}
     </View>
   );
 }

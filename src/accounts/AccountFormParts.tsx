@@ -2,10 +2,9 @@
 // amount field, the scroll, the currency and role sheets, and how a day is labelled and picked.
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, Text, type KeyboardTypeOptions } from 'react-native';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import { ScrollView, Text, type KeyboardTypeOptions } from 'react-native';
 import { appLocale } from '../i18n';
-import { FieldRow, PRESSED_OPACITY, SCREEN_TOP_PADDING } from '../ui/kit';
+import { ChoiceCard, FieldRow, SCREEN_TOP_PADDING } from '../ui/kit';
 import { pickableCurrencies } from '../ui/currencies';
 import { pickDate } from '../ui/pickDate';
 import { PickerSheet } from '../ui/PickerSheet';
@@ -186,30 +185,14 @@ export function KindCard({
   selected: boolean;
   onPress: () => void;
 }) {
-  const t = useTheme();
   return (
-    <Pressable
+    <ChoiceCard
       testID={testID}
+      icon={icon}
+      label={label}
+      sub={sub}
+      selected={selected}
       onPress={onPress}
-      accessibilityRole="radio"
-      accessibilityLabel={label}
-      accessibilityState={{ checked: selected }}
-      style={({ pressed }) => ({
-        flex: 1,
-        gap: t.space.sm,
-        padding: selected ? t.space.md - 1 : t.space.md,
-        borderRadius: t.radius.md,
-        borderWidth: selected ? 2 : 1,
-        borderColor: selected ? t.color.accent : t.color.border,
-        backgroundColor: selected ? t.color.accentSoft : t.color.surface,
-        opacity: pressed ? PRESSED_OPACITY : 1,
-      })}
-    >
-      <Ionicons name={icon} size={22} color={selected ? t.color.accent : t.color.textMuted} />
-      <Text style={[t.type.body, { color: t.color.text, fontWeight: '600' }]}>{label}</Text>
-      <Text style={[t.type.label, { color: selected ? t.color.accent : t.color.textMuted }]}>
-        {sub}
-      </Text>
-    </Pressable>
+    />
   );
 }

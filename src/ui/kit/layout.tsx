@@ -9,10 +9,11 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTheme } from '../theme';
 import { usePop } from '../feedback';
 import { haptics } from '../haptics';
-import { pressedStyle } from './rows';
+import { PRESSED_OPACITY, pressedStyle } from './rows';
 import { useKeyboardHeight } from './sheet';
 
 /**
@@ -133,6 +134,7 @@ export function Card({
   selected,
   accessibilityHint,
   flush,
+  testID,
 }: {
   children: ReactNode;
   style?: StyleProp<ViewStyle>;
@@ -148,6 +150,7 @@ export function Card({
   selected?: boolean;
   accessibilityHint?: string;
   flush?: boolean;
+  testID?: string;
 }) {
   const t = useTheme();
   const popOnHold = !!longPressPop && !!onLongPress;
@@ -155,6 +158,7 @@ export function Card({
 
   const body = (
     <View
+      testID={onPress || onLongPress ? undefined : testID}
       style={[
         {
           backgroundColor: t.color.surface,
@@ -175,6 +179,7 @@ export function Card({
   );
   return onPress || onLongPress ? (
     <Pressable
+      testID={testID}
       onPress={onPress}
       onLongPress={
         onLongPress &&
@@ -215,5 +220,212 @@ export function GroupFooter({ children }: { children: ReactNode }) {
     >
       {children}
     </Text>
+  );
+}
+
+/**
+ * Hero component (Group HERO use): one big number + its actions.
+ * Caption 11/14 caps plus optional info button, display 40/44 amount,
+ * optional stats row divided by a hairline, and up to 2 action buttons.
+ */
+export function Hero({
+  caption,
+  onInfoPress,
+  infoAccessibilityLabel,
+  amount,
+  tone = 'default',
+  subtitle,
+  children,
+  stats,
+  primaryAction,
+  secondaryAction,
+  actions,
+  style,
+  testID,
+}: {
+  caption: string;
+  onInfoPress?: () => void;
+  infoAccessibilityLabel?: string;
+  amount: ReactNode;
+  tone?: 'default' | 'warn' | 'income';
+  subtitle?: ReactNode;
+  children?: ReactNode;
+  stats?: { label: string; value: ReactNode }[];
+  primaryAction?: { label: string; onPress: () => void; disabled?: boolean };
+  secondaryAction?: { label: string; onPress: () => void; disabled?: boolean };
+  actions?: ReactNode;
+  style?: StyleProp<ViewStyle>;
+  testID?: string;
+}) {
+  const t = useTheme();
+  const amountColor =
+    tone === 'warn' ? t.color.warn : tone === 'income' ? t.color.income : t.color.text;
+
+  return (
+    <Card
+      testID={testID}
+      style={[
+        {
+          paddingHorizontal: t.space.lg,
+          paddingTop: t.space.lg,
+          paddingBottom: t.space.md,
+          gap: 10,
+        },
+        style,
+      ]}
+    >
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Text style={[t.type.caption, { color: t.color.textMuted, textTransform: 'uppercase' }]}>
+          {caption}
+        </Text>
+        {!!onInfoPress && (
+          <Pressable
+            onPress={onInfoPress}
+            accessibilityRole="button"
+            accessibilityLabel={infoAccessibilityLabel ?? 'How this is worked out'}
+            hitSlop={8}
+            style={({ pressed }) => ({
+              width: 28,
+              height: 28,
+              borderRadius: 14,
+              borderWidth: 1,
+              borderColor: t.color.border,
+              backgroundColor: t.color.surface,
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: pressed ? PRESSED_OPACITY : 1,
+            })}
+          >
+            <Ionicons name="information-outline" size={16} color={t.color.textMuted} />
+          </Pressable>
+        )}
+      </View>
+
+      {typeof amount === 'string' ? (
+        <Text style={[t.type.display, { color: amountColor, letterSpacing: -0.5 }]}>{amount}</Text>
+      ) : (
+        amount
+      )}
+
+      {typeof subtitle === 'string' ? (
+        <Text style={[t.type.label, { color: t.color.textMuted }]}>{subtitle}</Text>
+      ) : (
+        subtitle
+      )}
+
+      {children}
+
+      {!!stats && stats.length > 0 && (
+        <View
+          style={{
+            flexDirection: 'row',
+            borderTopWidth: 1,
+            borderTopColor: t.color.border,
+            paddingTop: 10,
+            marginTop: t.space.xs,
+          }}
+        >
+          {stats.map((stat, i) => (
+            <View key={stat.label + i} style={{ flex: 1 }}>
+              <Text style={[t.type.label, { color: t.color.textMuted }]}>{stat.label}</Text>
+              <Text style={[t.type.body, { color: t.color.text, fontWeight: '600' }]}>
+                {stat.value}
+              </Text>
+            </View>
+          ))}
+        </View>
+      )}
+
+      {actions ? (
+        actions
+      ) : primaryAction || secondaryAction ? (
+        <View style={{ flexDirection: 'row', gap: t.space.sm, paddingTop: 6 }}>
+          {primaryAction && (
+            <Pressable
+              onPress={primaryAction.onPress}
+              disabled={primaryAction.disabled}
+              accessibilityRole="button"
+              accessibilityLabel={primaryAction.label}
+              style={({ pressed }) => ({
+                flex: 1,
+                height: 44,
+                borderRadius: t.radius.button,
+                backgroundColor: primaryAction.disabled ? t.color.accentDisabled : t.color.accent,
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: pressed ? PRESSED_OPACITY : 1,
+              })}
+            >
+              <Text style={[t.type.body, { color: t.color.onAccent, fontWeight: '600' }]}>
+                {primaryAction.label}
+              </Text>
+            </Pressable>
+          )}
+          {secondaryAction && (
+            <Pressable
+              onPress={secondaryAction.onPress}
+              disabled={secondaryAction.disabled}
+              accessibilityRole="button"
+              accessibilityLabel={secondaryAction.label}
+              style={({ pressed }) => ({
+                flex: 1,
+                height: 44,
+                borderRadius: t.radius.button,
+                backgroundColor: t.color.surfaceAlt,
+                alignItems: 'center',
+                justifyContent: 'center',
+                opacity: pressed ? PRESSED_OPACITY : 1,
+              })}
+            >
+              <Text style={[t.type.body, { color: t.color.text, fontWeight: '600' }]}>
+                {secondaryAction.label}
+              </Text>
+            </Pressable>
+          )}
+        </View>
+      ) : null}
+    </Card>
+  );
+}
+
+/**
+ * SummaryCallout: accentSoft block with title 15/600 and lines 13/17.
+ * Used for schedule summary and planned payment summaries.
+ */
+export function SummaryCallout({
+  title,
+  subtitle,
+  children,
+  style,
+  testID,
+}: {
+  title: string;
+  subtitle?: ReactNode;
+  children?: ReactNode;
+  style?: StyleProp<ViewStyle>;
+  testID?: string;
+}) {
+  const t = useTheme();
+  return (
+    <View
+      testID={testID}
+      style={[
+        {
+          backgroundColor: t.color.accentSoft,
+          borderRadius: t.radius.md,
+          padding: t.space.md,
+          gap: t.space.xs,
+        },
+        style,
+      ]}
+    >
+      <Text style={[t.type.body, { color: t.color.text, fontWeight: '600' }]}>{title}</Text>
+      {typeof subtitle === 'string' ? (
+        <Text style={[t.type.label, { color: t.color.accentStrong }]}>{subtitle}</Text>
+      ) : (
+        subtitle
+      )}
+      {children}
+    </View>
   );
 }
