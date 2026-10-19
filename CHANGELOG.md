@@ -16,6 +16,7 @@
 
 - Settings is regrouped with clearer names (Accounts, Loans and debts, Payee nicknames, Subscriptions and recurring, Lock the app) and shows how many of each you have (MKL-89).
 - Receipt reading settings updated to board 27 with masked API key, "Where it runs" live reachability status, and a "Test both now" reader check (MKL-90).
+- Your Firefly III updated to board 29 with an in-card connection status and actions, inline addresses with live reachability and "Test all", a masked access token, and a persistent sign-out row (MKL-92).
 
 ### Count cash
 
