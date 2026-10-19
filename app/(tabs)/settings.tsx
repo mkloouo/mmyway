@@ -15,6 +15,7 @@ import { loadSettings, SETTINGS_QUERY_KEY } from '../../src/settings/loadSetting
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { hasEnvelopeMarker } from '../../src/accounts/envelopeMarker';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
+// eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
 import { payeeAliases } from '../../src/db/schema';
 import {
   setDefaultSourceAccountId,

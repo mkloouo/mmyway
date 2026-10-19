@@ -4,8 +4,10 @@
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { appLocale } from '../../src/i18n';
+// eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
+// eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
 import { eq, ne } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
 import { useBudgetRows, useCategories, useCurrencyRows } from '../../src/db/useReferenceData';
@@ -33,6 +35,7 @@ import {
 import { currencyOf } from '../../src/ui/money';
 import { relativeTime } from '../../src/ui/relativeTime';
 import { applyDigit, applyFirstKey, type KeypadKey } from '../../src/capture/amountInput';
+// eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
 import { cachedTransactions, inboxItems, outboxOperations } from '../../src/db/schema';
 import { useSharedPeople } from '../../src/lookup/sharedPeople';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';

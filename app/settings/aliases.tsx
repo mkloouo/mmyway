@@ -17,6 +17,7 @@ import {
   Sheet,
   Toast,
 } from '../../src/ui/kit';
+// eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
 import { payeeAliases } from '../../src/db/schema';
 import { rememberPayeeAlias, removePayeeAlias, removePayeeGroup } from '../../src/lookup/aliases';
 import { exportAliasesJson, importAliasesJson } from '../../src/lookup/aliasTransfer';

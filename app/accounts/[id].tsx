@@ -8,6 +8,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+// eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
 import { eq } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
 import { useCurrencies } from '../../src/db/useReferenceData';
@@ -19,6 +20,7 @@ import { useAction } from '../../src/ui/useAction';
 import { useConfirmDiscard } from '../../src/ui/useConfirmDiscard';
 import { useToast } from '../../src/ui/useToast';
 import { currencyOf, formatMoney } from '../../src/ui/money';
+// eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
 import { referenceAccounts } from '../../src/db/schema';
 import { hasEnvelopeMarker, setEnvelopeMarker } from '../../src/accounts/envelopeMarker';
 import {

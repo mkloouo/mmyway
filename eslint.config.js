@@ -185,4 +185,44 @@ module.exports = defineConfig([
       ],
     },
   },
+  {
+    // Kit V2: screens do not use raw input/pressable primitives or query drizzle directly (MKL-87).
+    files: ['app/**/*.{ts,tsx}'],
+    ignores: TESTS,
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'react-native',
+              importNames: [
+                'Pressable',
+                'TouchableOpacity',
+                'TouchableHighlight',
+                'TextInput',
+                'Modal',
+              ],
+              message: 'Use the kit (docs/UI_KIT.md §3)',
+            },
+            {
+              name: 'drizzle-orm',
+              message: 'Read through a useXxx() hook in src/<domain>/ (docs/UI_KIT.md §4)',
+            },
+          ],
+          patterns: [
+            {
+              group: ['**/testDb', '**/db/testDb'],
+              message:
+                'testDb pulls node:crypto/node:fs into the Android bundle (AGENTS.md). Only tests import it.',
+            },
+            {
+              group: ['drizzle-orm/**', '**/db/schema*'],
+              message: 'Read through a useXxx() hook in src/<domain>/ (docs/UI_KIT.md §4)',
+            },
+          ],
+        },
+      ],
+    },
+  },
 ]);

@@ -6,6 +6,7 @@ import { appLocale } from '../src/i18n';
 import {
   Animated,
   LayoutAnimation,
+  // eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
   Pressable,
   ScrollView,
   Text,

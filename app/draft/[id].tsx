@@ -2,9 +2,11 @@
 // entry (Split, or a duplicated split transaction) shows its tracked total and one page per split.
 import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+// eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
 import { Image, Pressable, ScrollView, Text, View } from 'react-native';
 import { useShake } from '../../src/ui/feedback';
 import { useLocalSearchParams, router } from 'expo-router';
+// eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
 import { eq } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
 import { useBudgetRows, useCategories, useCurrencyRows } from '../../src/db/useReferenceData';
@@ -30,6 +32,7 @@ import { currencyOf, currencySymbol, formatMoney, fxCaption } from '../../src/ui
 import { pickableCurrencies } from '../../src/ui/currencies';
 import { PickerSheet } from '../../src/ui/PickerSheet';
 import { haptics } from '../../src/ui/haptics';
+// eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
 import { inboxItems, outboxOperations } from '../../src/db/schema';
 import { useSharedPeople } from '../../src/lookup/sharedPeople';
 import { useRecentTags } from '../../src/lookup/recentTags';

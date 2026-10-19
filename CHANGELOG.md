@@ -10,6 +10,7 @@
 ### Changed
 
 - Retired Banner across Draft review, SplitPager, and Cash count, showing sync errors as a status row in Details and stale counts via NoticeBlock (MKL-84).
+- Enforced architectural lint rules preventing raw touch/input primitives and direct database queries in screen components (MKL-87).
 
 ## [2.3.4] - 2026-10-17
 

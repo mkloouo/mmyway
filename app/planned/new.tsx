@@ -4,6 +4,7 @@
 // until Create.
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+// eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
 import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useDb } from '../../src/providers/DbProvider';
@@ -30,6 +31,7 @@ import { pickableCurrencies, primaryCurrencyCode } from '../../src/ui/currencies
 import { useAction } from '../../src/ui/useAction';
 import { useToast } from '../../src/ui/useToast';
 import { useConfirmDiscard } from '../../src/ui/useConfirmDiscard';
+// eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
 import { referenceCurrencies } from '../../src/db/schema';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import type { MerchantHistory } from '../../src/lookup/merchantLookup';

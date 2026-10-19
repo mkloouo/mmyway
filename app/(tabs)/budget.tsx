@@ -3,6 +3,7 @@
 // Assigning to a single envelope happens on its own page (app/budget/[id].tsx).
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+// eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
 import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import {
   TabHeader,

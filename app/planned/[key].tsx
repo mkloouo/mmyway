@@ -23,6 +23,7 @@ import { currencyOf, formatMoney } from '../../src/ui/money';
 import { pickableCurrencies, primaryCurrencyCode } from '../../src/ui/currencies';
 import { useAction } from '../../src/ui/useAction';
 import { useConfirmDiscard } from '../../src/ui/useConfirmDiscard';
+// eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
 import { referenceCurrencies } from '../../src/db/schema';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import type { MerchantHistory } from '../../src/lookup/merchantLookup';

@@ -1,6 +1,7 @@
 // Activity (design §6.4) — balances, grouped-by-day history with totals, paging, search.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+// eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
 import { Pressable, SectionList, Text, View } from 'react-native';
 import { Collapsible, leaveThen } from '../../src/ui/Collapsible';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
@@ -30,6 +31,7 @@ import {
   type ActivityTypeFilter,
 } from '../../src/transactions/useTransactionPage';
 import { useLoadOlderHistory, usePullToRefresh } from '../../src/sync/useSync';
+// eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
 import { outboxOperations, cachedTransactions, inboxItems } from '../../src/db/schema';
 import { useAssetAccounts, type ReferenceAccountRow } from '../../src/accounts/useAssetAccounts';
 import type { CreateTransactionPayload } from '../../src/sync/outbox';
@@ -37,6 +39,7 @@ import { navigateOnce } from '../../src/ui/navigateOnce';
 import { confirmDestructive } from '../../src/ui/confirm';
 import { cacheRemoteResult } from '../../src/transactions/remoteSearch';
 import { deleteCachedTransactions } from '../../src/sync/outbox';
+// eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
 import { and, desc, eq, inArray, isNotNull, max, ne } from 'drizzle-orm';
 import { haptics } from '../../src/ui/haptics';
 import { pendingEdits, applyPendingEdit } from '../../src/transactions/pendingEdits';

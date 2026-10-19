@@ -1,11 +1,13 @@
 // Inbox (design §6.1) — the approval queue. Only ever holds unfinished work; confirmed/synced
 // items leave every section (see src/inbox/useInboxSections.ts).
 import { useCallback, useEffect, useRef, useState } from 'react';
+// eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
 import { Animated, Pressable, SectionList, Text, View } from 'react-native';
 import { usePopOnChange } from '../../src/ui/feedback';
 import { Collapsible, leaveThen } from '../../src/ui/Collapsible';
 import { useTranslation } from 'react-i18next';
 import { useIsFocused } from 'expo-router';
+// eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
 import { inArray } from 'drizzle-orm';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
 import { useCurrencies } from '../../src/db/useReferenceData';
@@ -48,6 +50,7 @@ import { alertDiscardOutcome } from '../../src/inbox/discardAlert';
 import { requestSync } from '../../src/sync/syncTrigger';
 import { reportErrors } from '../../src/ui/reportError';
 import { useSync, useSignedIn, usePullToRefresh } from '../../src/sync/useSync';
+// eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
 import { outboxOperations } from '../../src/db/schema';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { generateId } from '../../src/utils/id';

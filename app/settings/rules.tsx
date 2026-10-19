@@ -3,9 +3,12 @@
 // shows at once: a queued toggle wins over the cached `active` until FF3 has answered it.
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+// eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
 import { Platform, Pressable, ScrollView, Switch, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+// eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
 import { and, asc, inArray } from 'drizzle-orm';
+// eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
 import { outboxOperations, plannedObjects } from '../../src/db/schema';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
 import { useDb } from '../../src/providers/DbProvider';

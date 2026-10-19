@@ -7,6 +7,7 @@ import { router } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCategories, useCurrencies } from '../../src/db/useReferenceData';
 import { useLiveQuery } from '../../src/db/useLiveQuery';
+// eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
 import { referenceAccounts } from '../../src/db/schema';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
