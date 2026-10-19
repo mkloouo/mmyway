@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
+import { Text } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import '../i18n';
 import {
@@ -6,6 +7,7 @@ import {
   ChoiceCard,
   DateTile,
   Hero,
+  ModalWizard,
   NoticeBlock,
   OptionTiles,
   Pill,
@@ -312,6 +314,83 @@ describe('Kit V2 new components', () => {
 
       expect(screen.getByText('Every month on the 15th')).toBeTruthy();
       expect(screen.getByText('Oct 15 · Nov 13 (moved to Fri) · Dec 15 · Jan 15')).toBeTruthy();
+    });
+  });
+
+  describe('ModalWizard', () => {
+    it('renders single primary on step 1 and handles press', async () => {
+      const onClose = jest.fn();
+      const onContinue = jest.fn();
+
+      await render(
+        wrap(
+          <ModalWizard
+            title="New Account"
+            step={1}
+            total={2}
+            onClose={onClose}
+            primary={{
+              label: 'Continue',
+              onPress: onContinue,
+              testID: 'wizard-continue',
+            }}
+          >
+            <Text>Step 1 Content</Text>
+          </ModalWizard>,
+        ),
+      );
+
+      expect(screen.getByText('New Account')).toBeTruthy();
+      expect(screen.getByText('Step 1 of 2')).toBeTruthy();
+      expect(screen.getByText('Step 1 Content')).toBeTruthy();
+      expect(screen.queryByText('Back')).toBeNull();
+
+      await fireEvent.press(screen.getByText('Continue'));
+      expect(onContinue).toHaveBeenCalledTimes(1);
+
+      await fireEvent.press(screen.getByRole('button', { name: 'Cancel' }));
+      expect(onClose).toHaveBeenCalledTimes(1);
+    });
+
+    it('renders Back and Primary on multi-step and displays problem text and afterFooter', async () => {
+      const onBack = jest.fn();
+      const onCreate = jest.fn();
+
+      await render(
+        wrap(
+          <ModalWizard
+            title="New Planned Payment"
+            step={2}
+            total={3}
+            onClose={jest.fn()}
+            onBack={onBack}
+            problem="Please enter an amount"
+            primary={{
+              label: 'Create',
+              onPress: onCreate,
+              disabled: false,
+              testID: 'wizard-create',
+            }}
+            afterFooter={<Text>Sheet Dialog</Text>}
+          >
+            <Text>Step 2 Form</Text>
+          </ModalWizard>,
+        ),
+      );
+
+      expect(screen.getByText('New Planned Payment')).toBeTruthy();
+      expect(screen.getByText('Step 2 of 3')).toBeTruthy();
+      expect(screen.getByText('Step 2 Form')).toBeTruthy();
+      expect(screen.getByText('Please enter an amount')).toBeTruthy();
+      expect(screen.getByText('Back')).toBeTruthy();
+      expect(screen.getByText('Create')).toBeTruthy();
+      expect(screen.getByText('Sheet Dialog')).toBeTruthy();
+
+      await fireEvent.press(screen.getByText('Back'));
+      expect(onBack).toHaveBeenCalledTimes(1);
+
+      await fireEvent.press(screen.getByText('Create'));
+      expect(onCreate).toHaveBeenCalledTimes(1);
     });
   });
 });

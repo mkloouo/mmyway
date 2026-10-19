@@ -119,9 +119,10 @@ migrates.
   changed, with Undo), ✅ `MoreButton` (••• for delete and other rare actions). Leaving with changes
   asks once (`useConfirmDiscard`).
 - **MODAL**: a task that makes something (Capture, Receipt, Count cash, New account in 2 steps,
-  New planned in 3). ✅ `ModalHeader` (✕ top-left, step bars) and ✅ `StickyFooter` (one full-width
-  primary). Long tasks become steps, not one long form. Register the route with `MODAL` options in
-  `app/_layout.tsx`.
+  New planned in 3). ✅ `ModalHeader` (✕ top-left, step bars), ✅ `StickyFooter` (one full-width
+  primary), and ✅ `ModalWizard` (multi-step frame composing header, scrolling content, problem text,
+  and pinned footer with optional Back). Long tasks become steps, not one long form. Register the
+  route with `MODAL` options in `app/_layout.tsx`.
 - **SHEET**: one decision. ✅ `Sheet` frame: handle, 56 px header with the title on the left, optional `subtitle`, round ✕ on the right, page colour behind Groups, optional sticky footer.
   - **A · Choose** (✅ `PickerSheet`, `SearchListSheet`): search above 8 options, focused above 30,
     "Suggested" first, then A–Z with an index rail, "+ Create "…"" when typing a new name. A single

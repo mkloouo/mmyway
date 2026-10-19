@@ -4,13 +4,20 @@
 // until Create.
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useDb } from '../../src/providers/DbProvider';
 import { useCategories, useCurrencyRows } from '../../src/db/useReferenceData';
 import { useTheme } from '../../src/ui/theme';
-// prettier-ignore
-import { Button, Card, ModalHeader, ROW_HEIGHT, ListRow, Screen, SectionHeader, Segmented, StickyFooter, Toast } from '../../src/ui/kit';
+import {
+  Card,
+  ROW_HEIGHT,
+  ListRow,
+  ModalWizard,
+  SectionHeader,
+  Segmented,
+  Toast,
+} from '../../src/ui/kit';
 import { TextField } from '../../src/ui/TextField';
 import { TagsField } from '../../src/ui/TagsField';
 import { PickerSheet } from '../../src/ui/PickerSheet';
@@ -301,461 +308,417 @@ export default function NewPlannedScreen() {
       : null;
 
   return (
-    <Screen modal bottom avoidKeyboard>
-      <ModalHeader
-        title={tr('planned.new.title')}
-        onClose={close}
-        step={step}
-        steps={3}
-        stepLabel={tr('account.stepOf', { step, total: 3 })}
-      />
-
-      <ScrollView
-        contentContainerStyle={{ paddingBottom: t.space.xl, paddingTop: t.space.sm }}
-        keyboardShouldPersistTaps="handled"
-      >
-        {step === 1 && (
-          <>
-            <Text
-              style={[
-                t.type.body,
-                { color: t.color.textMuted, paddingHorizontal: t.space.xl, paddingTop: t.space.md },
-              ]}
-            >
-              {tr('planned.new.question')}
-            </Text>
-            <View style={{ marginHorizontal: t.space.lg, marginTop: t.space.sm }}>
-              <Segmented
-                options={TX_TYPES.map((x) => ({ key: x.type, label: tr(x.labelKey) }))}
-                value={fields.type}
-                onChange={changeType}
-                accessibilityLabel={tr('fields.type')}
-              />
-            </View>
-            <Card style={{ marginHorizontal: t.space.lg, marginTop: t.space.md }}>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: t.space.md,
-                  minHeight: ROW_HEIGHT,
-                }}
-              >
-                <Text style={[t.type.body, { color: t.color.text }]}>{tr('planned.new.name')}</Text>
-                <TextField
-                  value={fields.name}
-                  onChangeText={(name) => set({ name })}
-                  placeholder={tr('planned.namePlaceholder')}
-                  style={{ flex: 1, borderWidth: 0, paddingHorizontal: 0, textAlign: 'right' }}
-                />
-              </View>
-              <ListRow
-                label={tr('fields.amount')}
-                value={amountText}
-                chevron
-                onPress={() => setSheet('amount')}
-              />
-              <ListRow
-                label={tr('fields.currency')}
-                value={fields.currencyCode || '—'}
-                chevron
-                onPress={() => setSheet('currency')}
-              />
-              <ListRow
-                label={tr('fields.from')}
-                value={fromText}
-                chevron
-                onPress={() => setSheet(ownFrom ? 'own' : 'payee')}
-              />
-              <ListRow
-                label={tr('fields.to')}
-                value={toText}
-                chevron
-                onPress={() => setSheet(ownTo ? 'ownTo' : 'payee')}
-              />
-              <ListRow
-                label={tr('fields.category')}
-                value={fields.categoryName ?? '—'}
-                chevron
-                onPress={() => setSheet('category')}
-              />
-            </Card>
-            <Text
-              style={[
-                t.type.label,
-                {
-                  color: t.color.textMuted,
-                  marginHorizontal: t.space.lg,
-                  marginTop: t.space.sm,
-                  paddingHorizontal: t.space.xs,
+    <ModalWizard
+      title={tr('planned.new.title')}
+      step={step}
+      total={3}
+      onClose={close}
+      problem={step === 3 ? problemText : undefined}
+      onBack={step > 1 ? () => setStep((s) => (s - 1) as Step) : undefined}
+      primary={
+        step === 1
+          ? {
+              label: tr('account.continue'),
+              disabled: !step1Ok,
+              onPress: () => setStep(2),
+            }
+          : step === 2
+            ? {
+                label: tr('account.continue'),
+                disabled: problems.length > 0,
+                onPress: () => setStep(3),
+              }
+            : {
+                label: tr('planned.new.create'),
+                disabled: problems.length > 0 || saving,
+                onPress: () => {
+                  void create();
                 },
+              }
+      }
+      afterFooter={
+        <>
+          <Toast message={toast} />
+
+          <ScheduleSheet
+            visible={scheduleOpen}
+            onClose={() => setScheduleOpen(false)}
+            group={null}
+            repeats={fields.repeats}
+            repetitions={fields.repetitions}
+            end={fields.end}
+            date={fields.date}
+            onChange={set}
+          />
+          <AmountSheet
+            visible={sheet === 'amount'}
+            title={tr('fields.amount')}
+            initial={fields.amount}
+            currency={currency}
+            type={fields.type}
+            onDone={(typed) => {
+              if (typed !== null) set({ amount: typed });
+              setSheet(null);
+            }}
+          />
+          <PickerSheet
+            visible={sheet === 'currency'}
+            onClose={() => setSheet(null)}
+            title={tr('fields.currency')}
+            options={pickableCurrencies(currencies, fields.currencyCode).map((c) => ({
+              key: c.code,
+              label: c.code,
+            }))}
+            selected={fields.currencyCode}
+            onSelect={(code) => code && set({ currencyCode: code })}
+          />
+          <AccountPickerSheet
+            visible={sheet === 'own' || sheet === 'ownTo'}
+            onClose={() => setSheet(null)}
+            title={sheet === 'ownTo' ? tr('fields.to') : tr('fields.from')}
+            accounts={assetAccounts}
+            currencies={currencies}
+            onSelect={(a) => {
+              setChosen((c) => ({ ...c, account: true }));
+              set(
+                sheet === 'ownTo'
+                  ? { destinationId: a.id, destinationName: a.name }
+                  : { sourceId: a.id, sourceName: a.name },
+              );
+            }}
+          />
+          <PayeeSheet
+            visible={sheet === 'payee'}
+            onClose={() => setSheet(null)}
+            histories={histories}
+            payeeLabel={fields.type === 'deposit' ? 'payer' : 'payee'}
+            onSelect={choosePayee}
+            onCreateNew={(text) =>
+              set(
+                fields.type === 'deposit'
+                  ? { sourceName: text, sourceId: null }
+                  : { destinationName: text, destinationId: null },
+              )
+            }
+          />
+          <PickerSheet
+            visible={sheet === 'category'}
+            onClose={() => setSheet(null)}
+            title={tr('fields.category')}
+            options={categories.map((c) => ({ key: c.name, label: c.name }))}
+            selected={fields.categoryName}
+            onSelect={(categoryName) => {
+              setChosen((c) => ({ ...c, category: true }));
+              set({ categoryName });
+            }}
+            noneLabel={tr('common.none')}
+          />
+          {!!globalRemind && (
+            <PickerSheet
+              visible={sheet === 'remind'}
+              onClose={() => setSheet(null)}
+              title={tr('planned.remind.title')}
+              options={[
+                {
+                  key: 'default',
+                  label: tr('planned.remind.default', {
+                    when: tr(`planned.remind.${globalRemind.when}`),
+                  }),
+                },
+                ...REMIND_CHOICES.map((k) => ({ key: k, label: tr(`planned.remind.${k}`) })),
               ]}
-            >
-              {tr('planned.new.amountHint')}
-            </Text>
-          </>
-        )}
-
-        {step === 2 && (
-          <>
-            <Text
-              style={[
-                t.type.body,
-                { color: t.color.textMuted, paddingHorizontal: t.space.xl, paddingTop: t.space.md },
-              ]}
-            >
-              {tr('planned.new.whenQuestion', { name: fields.name.trim() })}
-            </Text>
-            <SectionHeader title={tr('planned.repTypeLabel')} />
-            <View
-              accessibilityRole="radiogroup"
-              // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
-              style={{ flexDirection: 'row', gap: 6, marginHorizontal: t.space.lg }}
-            >
-              {(
-                [
-                  { key: 'once', label: tr('planned.new.once') },
-                  { key: 'weekly', label: tr('planned.repType.weekly') },
-                  { key: 'monthly', label: tr('planned.repType.monthly') },
-                  { key: 'more', label: tr('planned.new.more') },
-                ] as const
-              ).map((o) => {
-                const on = o.key === how;
-                return (
-                  <Pressable
-                    key={o.key}
-                    onPress={() => (o.key === 'more' ? setScheduleOpen(true) : chooseHow(o.key))}
-                    accessibilityRole="radio"
-                    accessibilityLabel={o.label}
-                    accessibilityState={{ checked: on }}
-                    style={{
-                      flex: 1,
-                      height: 44,
-                      borderRadius: t.radius.md,
-                      borderWidth: on ? 2 : 1,
-                      borderColor: on ? t.color.accent : t.color.border,
-                      backgroundColor: on ? t.color.accentSoft : t.color.surface,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Text
-                      numberOfLines={1}
-                      style={[t.type.body, { color: t.color.text, fontWeight: '600' }]}
-                    >
-                      {o.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            <SectionHeader title={tr('planned.new.sectionStarting')} />
-            <Card style={{ marginHorizontal: t.space.lg }}>
-              <ListRow
-                first
-                label={tr('planned.new.firstTime')}
-                value={dayLabel(fields.date)}
-                chevron
-                onPress={() =>
-                  pickDate(new Date(`${fields.date}T12:00:00`), (d) => moveDate(localDay(d)))
-                }
-              />
-              <ListRow
-                label={tr('planned.time')}
-                value={fields.time ?? tr('planned.anyTime')}
-                chevron
-                onPress={() => pickTime(fields.time, (time) => set({ time }))}
-              />
-              {!!fields.time && (
-                <ListRow
-                  label={tr('planned.clearTime')}
-                  icon="close-circle"
-                  onPress={() => set({ time: null })}
-                />
-              )}
-            </Card>
-
-            {fields.repeats && (
-              <>
-                <SectionHeader title={tr('planned.new.sectionThen')} />
-                <Card style={{ marginHorizontal: t.space.lg }}>
-                  <ListRow
-                    first
-                    label={scheduleText}
-                    value={tr('planned.new.change')}
-                    chevron
-                    onPress={() => setScheduleOpen(true)}
-                  />
-                </Card>
-              </>
-            )}
-
-            <View
-              style={{
-                marginTop: t.space.lg,
-                marginHorizontal: t.space.lg,
-                backgroundColor: t.color.accentSoft,
-                borderRadius: t.radius.md,
-                padding: t.space.md,
-                // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
-                gap: 4,
+              selected={remindChoice ?? 'default'}
+              onSelect={(key) => {
+                if (!key) return;
+                setEdited(true);
+                // 'default' is no choice in REMIND_CHOICES, so it leaves the override unset.
+                setRemindChoice(REMIND_CHOICES.find((x) => x === key) ?? null);
               }}
-            >
-              <Text style={[t.type.body, { color: t.color.text, fontWeight: '600' }]}>
-                {scheduleText || tr('planned.once')}
-              </Text>
-              {nextDays.length > 0 && (
-                <Text style={[t.type.label, { color: t.color.accent }]}>
-                  {nextDays.map((d) => occurrenceLabel(d)).join(' · ')}
-                </Text>
-              )}
-            </View>
-          </>
-        )}
-
-        {step === 3 && (
-          <>
-            <View
-              style={{
-                marginTop: t.space.md,
-                marginHorizontal: t.space.lg,
-                backgroundColor: t.color.accentSoft,
-                borderRadius: t.radius.md,
-                padding: t.space.md,
-                // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
-                gap: 4,
-              }}
-            >
-              <Text style={[t.type.body, { color: t.color.text, fontWeight: '600' }]}>
-                {tr('planned.new.summaryTitle', {
-                  name: next.name,
-                  amount: `${signFor(fields.type)}${amountText}`,
-                })}
-              </Text>
-              <Text style={[t.type.body, { color: t.color.text }]}>
-                {tr('planned.new.summaryRoute', {
-                  schedule: scheduleText || tr('planned.once'),
-                  from: fromText,
-                  to: toText,
-                })}
-              </Text>
-              <Text style={[t.type.label, { color: t.color.accent }]}>{firstLine}</Text>
-            </View>
-
-            <SectionHeader title={tr('planned.new.sectionExtras')} />
-            <Card style={{ marginHorizontal: t.space.lg, gap: t.space.sm }}>
-              <ListRow
-                first
-                label={tr('planned.remind.title')}
-                value={remindText}
-                chevron
-                onPress={() => setSheet('remind')}
-              />
-              <Text style={[t.type.label, { color: t.color.textMuted }]}>
-                {tr('planned.new.note')}
-              </Text>
-              <TextField
-                value={fields.notes ?? ''}
-                onChangeText={(notes) => set({ notes: notes || null })}
-                placeholder={tr('planned.new.notePlaceholder')}
-                multiline
-                style={{ minHeight: 60 }}
-              />
-              <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('fields.tags')}</Text>
-              <TagsField
-                tags={fields.tags}
-                onChange={(tags) => set({ tags })}
-                suggestions={recentTags}
-              />
-            </Card>
-
-            <SectionHeader title={tr('planned.new.sectionSaved')} />
-            <Card style={{ marginHorizontal: t.space.lg }}>
-              <View
-                style={{
-                  gap: 2 /* eslint-disable-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81) */,
-                  padding: t.space.md,
-                }}
-              >
-                <Text style={[t.type.body, { color: t.color.text }]}>
-                  {tr('planned.new.savedAs')}
-                </Text>
-                <Text style={[t.type.label, { color: t.color.textMuted }]}>
-                  {tr('planned.new.savedAsHint', { name: next.name })}
-                </Text>
-              </View>
-            </Card>
-          </>
-        )}
-      </ScrollView>
-
-      {step === 3 && !!problemText && (
-        <Text
-          style={[
-            t.type.label,
-            { color: t.color.danger, marginHorizontal: t.space.lg, marginTop: t.space.sm },
-          ]}
-        >
-          {problemText}
-        </Text>
-      )}
+            />
+          )}
+          <ReminderPromptSheet
+            visible={!!prompt}
+            plannedName={prompt?.name ?? ''}
+            accountName={prompt?.account}
+            onDone={() => router.back()}
+          />
+        </>
+      }
+    >
       {step === 1 && (
-        <StickyFooter>
-          <View style={{ flex: 1 }}>
-            <Button
-              title={tr('account.continue')}
-              size="lg"
-              disabled={!step1Ok}
-              onPress={() => setStep(2)}
+        <>
+          <Text
+            style={[
+              t.type.body,
+              { color: t.color.textMuted, paddingHorizontal: t.space.xl, paddingTop: t.space.md },
+            ]}
+          >
+            {tr('planned.new.question')}
+          </Text>
+          <View style={{ marginHorizontal: t.space.lg, marginTop: t.space.sm }}>
+            <Segmented
+              options={TX_TYPES.map((x) => ({ key: x.type, label: tr(x.labelKey) }))}
+              value={fields.type}
+              onChange={changeType}
+              accessibilityLabel={tr('fields.type')}
             />
           </View>
-        </StickyFooter>
+          <Card style={{ marginHorizontal: t.space.lg, marginTop: t.space.md }}>
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: t.space.md,
+                minHeight: ROW_HEIGHT,
+              }}
+            >
+              <Text style={[t.type.body, { color: t.color.text }]}>{tr('planned.new.name')}</Text>
+              <TextField
+                value={fields.name}
+                onChangeText={(name) => set({ name })}
+                placeholder={tr('planned.namePlaceholder')}
+                style={{ flex: 1, borderWidth: 0, paddingHorizontal: 0, textAlign: 'right' }}
+              />
+            </View>
+            <ListRow
+              label={tr('fields.amount')}
+              value={amountText}
+              chevron
+              onPress={() => setSheet('amount')}
+            />
+            <ListRow
+              label={tr('fields.currency')}
+              value={fields.currencyCode || '—'}
+              chevron
+              onPress={() => setSheet('currency')}
+            />
+            <ListRow
+              label={tr('fields.from')}
+              value={fromText}
+              chevron
+              onPress={() => setSheet(ownFrom ? 'own' : 'payee')}
+            />
+            <ListRow
+              label={tr('fields.to')}
+              value={toText}
+              chevron
+              onPress={() => setSheet(ownTo ? 'ownTo' : 'payee')}
+            />
+            <ListRow
+              label={tr('fields.category')}
+              value={fields.categoryName ?? '—'}
+              chevron
+              onPress={() => setSheet('category')}
+            />
+          </Card>
+          <Text
+            style={[
+              t.type.label,
+              {
+                color: t.color.textMuted,
+                marginHorizontal: t.space.lg,
+                marginTop: t.space.sm,
+                paddingHorizontal: t.space.xs,
+              },
+            ]}
+          >
+            {tr('planned.new.amountHint')}
+          </Text>
+        </>
       )}
-      {step === 2 && (
-        <StickyFooter>
-          <View style={{ flex: 1 }}>
-            <Button
-              title={tr('account.back')}
-              size="lg"
-              variant="secondary"
-              onPress={() => setStep(1)}
-            />
-          </View>
-          <View style={{ flex: 2 }}>
-            <Button
-              title={tr('account.continue')}
-              size="lg"
-              disabled={problems.length > 0}
-              onPress={() => setStep(3)}
-            />
-          </View>
-        </StickyFooter>
-      )}
-      {step === 3 && (
-        <StickyFooter>
-          <View style={{ flex: 1 }}>
-            <Button
-              title={tr('account.back')}
-              size="lg"
-              variant="secondary"
-              onPress={() => setStep(2)}
-            />
-          </View>
-          <View style={{ flex: 2 }}>
-            <Button
-              title={tr('planned.new.create')}
-              size="lg"
-              disabled={problems.length > 0 || saving}
-              onPress={create}
-            />
-          </View>
-        </StickyFooter>
-      )}
-      <Toast message={toast} />
 
-      <ScheduleSheet
-        visible={scheduleOpen}
-        onClose={() => setScheduleOpen(false)}
-        group={null}
-        repeats={fields.repeats}
-        repetitions={fields.repetitions}
-        end={fields.end}
-        date={fields.date}
-        onChange={set}
-      />
-      <AmountSheet
-        visible={sheet === 'amount'}
-        title={tr('fields.amount')}
-        initial={fields.amount}
-        currency={currency}
-        type={fields.type}
-        onDone={(typed) => {
-          if (typed !== null) set({ amount: typed });
-          setSheet(null);
-        }}
-      />
-      <PickerSheet
-        visible={sheet === 'currency'}
-        onClose={() => setSheet(null)}
-        title={tr('fields.currency')}
-        options={pickableCurrencies(currencies, fields.currencyCode).map((c) => ({
-          key: c.code,
-          label: c.code,
-        }))}
-        selected={fields.currencyCode}
-        onSelect={(code) => code && set({ currencyCode: code })}
-      />
-      <AccountPickerSheet
-        visible={sheet === 'own' || sheet === 'ownTo'}
-        onClose={() => setSheet(null)}
-        title={sheet === 'ownTo' ? tr('fields.to') : tr('fields.from')}
-        accounts={assetAccounts}
-        currencies={currencies}
-        onSelect={(a) => {
-          setChosen((c) => ({ ...c, account: true }));
-          set(
-            sheet === 'ownTo'
-              ? { destinationId: a.id, destinationName: a.name }
-              : { sourceId: a.id, sourceName: a.name },
-          );
-        }}
-      />
-      <PayeeSheet
-        visible={sheet === 'payee'}
-        onClose={() => setSheet(null)}
-        histories={histories}
-        payeeLabel={fields.type === 'deposit' ? 'payer' : 'payee'}
-        onSelect={choosePayee}
-        onCreateNew={(text) =>
-          set(
-            fields.type === 'deposit'
-              ? { sourceName: text, sourceId: null }
-              : { destinationName: text, destinationId: null },
-          )
-        }
-      />
-      <PickerSheet
-        visible={sheet === 'category'}
-        onClose={() => setSheet(null)}
-        title={tr('fields.category')}
-        options={categories.map((c) => ({ key: c.name, label: c.name }))}
-        selected={fields.categoryName}
-        onSelect={(categoryName) => {
-          setChosen((c) => ({ ...c, category: true }));
-          set({ categoryName });
-        }}
-        noneLabel={tr('common.none')}
-      />
-      {!!globalRemind && (
-        <PickerSheet
-          visible={sheet === 'remind'}
-          onClose={() => setSheet(null)}
-          title={tr('planned.remind.title')}
-          options={[
-            {
-              key: 'default',
-              label: tr('planned.remind.default', {
-                when: tr(`planned.remind.${globalRemind.when}`),
-              }),
-            },
-            ...REMIND_CHOICES.map((k) => ({ key: k, label: tr(`planned.remind.${k}`) })),
-          ]}
-          selected={remindChoice ?? 'default'}
-          onSelect={(key) => {
-            if (!key) return;
-            setEdited(true);
-            // 'default' is no choice in REMIND_CHOICES, so it leaves the override unset.
-            setRemindChoice(REMIND_CHOICES.find((x) => x === key) ?? null);
-          }}
-        />
+      {step === 2 && (
+        <>
+          <Text
+            style={[
+              t.type.body,
+              { color: t.color.textMuted, paddingHorizontal: t.space.xl, paddingTop: t.space.md },
+            ]}
+          >
+            {tr('planned.new.whenQuestion', { name: fields.name.trim() })}
+          </Text>
+          <SectionHeader title={tr('planned.repTypeLabel')} />
+          <View
+            accessibilityRole="radiogroup"
+            // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
+            style={{ flexDirection: 'row', gap: 6, marginHorizontal: t.space.lg }}
+          >
+            {(
+              [
+                { key: 'once', label: tr('planned.new.once') },
+                { key: 'weekly', label: tr('planned.repType.weekly') },
+                { key: 'monthly', label: tr('planned.repType.monthly') },
+                { key: 'more', label: tr('planned.new.more') },
+              ] as const
+            ).map((o) => {
+              const on = o.key === how;
+              return (
+                <Pressable
+                  key={o.key}
+                  onPress={() => (o.key === 'more' ? setScheduleOpen(true) : chooseHow(o.key))}
+                  accessibilityRole="radio"
+                  accessibilityLabel={o.label}
+                  accessibilityState={{ checked: on }}
+                  style={{
+                    flex: 1,
+                    height: 44,
+                    borderRadius: t.radius.md,
+                    borderWidth: on ? 2 : 1,
+                    borderColor: on ? t.color.accent : t.color.border,
+                    backgroundColor: on ? t.color.accentSoft : t.color.surface,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Text
+                    numberOfLines={1}
+                    style={[t.type.body, { color: t.color.text, fontWeight: '600' }]}
+                  >
+                    {o.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <SectionHeader title={tr('planned.new.sectionStarting')} />
+          <Card style={{ marginHorizontal: t.space.lg }}>
+            <ListRow
+              first
+              label={tr('planned.new.firstTime')}
+              value={dayLabel(fields.date)}
+              chevron
+              onPress={() =>
+                pickDate(new Date(`${fields.date}T12:00:00`), (d) => moveDate(localDay(d)))
+              }
+            />
+            <ListRow
+              label={tr('planned.time')}
+              value={fields.time ?? tr('planned.anyTime')}
+              chevron
+              onPress={() => pickTime(fields.time, (time) => set({ time }))}
+            />
+            {!!fields.time && (
+              <ListRow
+                label={tr('planned.clearTime')}
+                icon="close-circle"
+                onPress={() => set({ time: null })}
+              />
+            )}
+          </Card>
+
+          {fields.repeats && (
+            <>
+              <SectionHeader title={tr('planned.new.sectionThen')} />
+              <Card style={{ marginHorizontal: t.space.lg }}>
+                <ListRow
+                  first
+                  label={scheduleText}
+                  value={tr('planned.new.change')}
+                  chevron
+                  onPress={() => setScheduleOpen(true)}
+                />
+              </Card>
+            </>
+          )}
+
+          <View
+            style={{
+              marginTop: t.space.lg,
+              marginHorizontal: t.space.lg,
+              backgroundColor: t.color.accentSoft,
+              borderRadius: t.radius.md,
+              padding: t.space.md,
+              // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
+              gap: 4,
+            }}
+          >
+            <Text style={[t.type.body, { color: t.color.text, fontWeight: '600' }]}>
+              {scheduleText || tr('planned.once')}
+            </Text>
+            {nextDays.length > 0 && (
+              <Text style={[t.type.label, { color: t.color.accent }]}>
+                {nextDays.map((d) => occurrenceLabel(d)).join(' · ')}
+              </Text>
+            )}
+          </View>
+        </>
       )}
-      <ReminderPromptSheet
-        visible={!!prompt}
-        plannedName={prompt?.name ?? ''}
-        accountName={prompt?.account}
-        onDone={() => router.back()}
-      />
-    </Screen>
+
+      {step === 3 && (
+        <>
+          <View
+            style={{
+              marginTop: t.space.md,
+              marginHorizontal: t.space.lg,
+              backgroundColor: t.color.accentSoft,
+              borderRadius: t.radius.md,
+              padding: t.space.md,
+              // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
+              gap: 4,
+            }}
+          >
+            <Text style={[t.type.body, { color: t.color.text, fontWeight: '600' }]}>
+              {tr('planned.new.summaryTitle', {
+                name: next.name,
+                amount: `${signFor(fields.type)}${amountText}`,
+              })}
+            </Text>
+            <Text style={[t.type.body, { color: t.color.text }]}>
+              {tr('planned.new.summaryRoute', {
+                schedule: scheduleText || tr('planned.once'),
+                from: fromText,
+                to: toText,
+              })}
+            </Text>
+            <Text style={[t.type.label, { color: t.color.accent }]}>{firstLine}</Text>
+          </View>
+
+          <SectionHeader title={tr('planned.new.sectionExtras')} />
+          <Card style={{ marginHorizontal: t.space.lg, gap: t.space.sm }}>
+            <ListRow
+              first
+              label={tr('planned.remind.title')}
+              value={remindText}
+              chevron
+              onPress={() => setSheet('remind')}
+            />
+            <Text style={[t.type.label, { color: t.color.textMuted }]}>
+              {tr('planned.new.note')}
+            </Text>
+            <TextField
+              value={fields.notes ?? ''}
+              onChangeText={(notes) => set({ notes: notes || null })}
+              placeholder={tr('planned.new.notePlaceholder')}
+              multiline
+              style={{ minHeight: 60 }}
+            />
+            <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('fields.tags')}</Text>
+            <TagsField
+              tags={fields.tags}
+              onChange={(tags) => set({ tags })}
+              suggestions={recentTags}
+            />
+          </Card>
+
+          <SectionHeader title={tr('planned.new.sectionSaved')} />
+          <Card style={{ marginHorizontal: t.space.lg }}>
+            <View
+              style={{
+                gap: 2 /* eslint-disable-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81) */,
+                padding: t.space.md,
+              }}
+            >
+              <Text style={[t.type.body, { color: t.color.text }]}>
+                {tr('planned.new.savedAs')}
+              </Text>
+              <Text style={[t.type.label, { color: t.color.textMuted }]}>
+                {tr('planned.new.savedAsHint', { name: next.name })}
+              </Text>
+            </View>
+          </Card>
+        </>
+      )}
+    </ModalWizard>
   );
 }

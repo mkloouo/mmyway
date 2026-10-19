@@ -5,6 +5,7 @@
 ### Added
 
 - Unified Kit V2 components for upcoming screen redesigns: Hero, ProgressBar, ActionTile, ChoiceCard, OptionTiles, Stepper, StepperRow, NoticeBlock, Pill tones, DateTile, Sheet subtitle, and SummaryCallout (MKL-86).
+- Unified multi-step modal wizard frame (ModalWizard) shared by New Account and New Planned Payment (MKL-85).
 
 ## [2.3.4] - 2026-10-17
 

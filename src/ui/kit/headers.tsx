@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, ScrollView, type ScrollViewProps, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTheme, hitSize } from '../theme';
 import { PRESSED_OPACITY } from './rows';
+import { Screen } from './layout';
+import { Button, StickyFooter } from './actions';
 
 /**
  * The unified icon action button (accent, 44×44 touch area).
@@ -281,5 +283,106 @@ export function ModalHeader({
         </View>
       )}
     </View>
+  );
+}
+
+export interface ModalWizardPrimaryAction {
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+  hint?: string;
+  testID?: string;
+}
+
+export interface ModalWizardProps {
+  title: string;
+  step: number;
+  total: number;
+  onClose: () => void;
+  stepLabel?: string;
+  problem?: string | null;
+  onBack?: () => void;
+  backLabel?: string;
+  primary: ModalWizardPrimaryAction;
+  children?: ReactNode;
+  afterFooter?: ReactNode;
+  scrollProps?: Partial<ScrollViewProps>;
+}
+
+/**
+ * MODAL tier multi-step frame (kit board 3, MKL-85).
+ * Composes ModalHeader, a scrolling content area with keyboard avoidance,
+ * an optional problem text above the pinned StickyFooter, and primary/back actions.
+ */
+export function ModalWizard({
+  title,
+  step,
+  total,
+  onClose,
+  stepLabel,
+  problem,
+  onBack,
+  backLabel,
+  primary,
+  children,
+  afterFooter,
+  scrollProps,
+}: ModalWizardProps) {
+  const t = useTheme();
+  const { t: tr } = useTranslation();
+
+  return (
+    <Screen modal bottom avoidKeyboard>
+      <ModalHeader
+        title={title}
+        onClose={onClose}
+        step={step}
+        steps={total}
+        stepLabel={stepLabel ?? tr('account.stepOf', { step, total })}
+      />
+
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: t.space.xl, paddingTop: t.space.sm }}
+        keyboardShouldPersistTaps="handled"
+        {...scrollProps}
+      >
+        {children}
+      </ScrollView>
+
+      {!!problem && (
+        <Text
+          style={[
+            t.type.label,
+            { color: t.color.danger, marginHorizontal: t.space.lg, marginTop: t.space.sm },
+          ]}
+        >
+          {problem}
+        </Text>
+      )}
+
+      <StickyFooter>
+        {!!onBack && (
+          <View style={{ flex: 1 }}>
+            <Button
+              title={backLabel ?? tr('account.back')}
+              size="lg"
+              variant="secondary"
+              onPress={onBack}
+            />
+          </View>
+        )}
+        <View style={{ flex: onBack ? 2 : 1 }} testID={primary.testID}>
+          <Button
+            title={primary.label}
+            size="lg"
+            disabled={primary.disabled}
+            hint={primary.hint}
+            onPress={primary.onPress}
+          />
+        </View>
+      </StickyFooter>
+
+      {afterFooter}
+    </Screen>
   );
 }
