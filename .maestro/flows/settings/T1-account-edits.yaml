@@ -7,7 +7,7 @@ tags:
 # Two syncs later nothing flipped back, and Firefly III matches. Then the seed is put back.
 - runFlow: ../../subflows/ready.yaml
 - tapOn: 'Settings, tab, 5 of 5'
-- tapOn: 'Asset accounts'
+- tapOn: 'Accounts'
 - tapOn: 'Savings EUR'
 - tapOn:
     text: 'Savings EUR'
@@ -22,7 +22,7 @@ tags:
 - runFlow: ../../subflows/sync.yaml
 - runFlow: ../../subflows/sync.yaml
 - tapOn: 'Settings, tab, 5 of 5'
-- tapOn: 'Asset accounts'
+- tapOn: 'Accounts'
 - tapOn: 'Show inactive accounts'
 - assertVisible: 'Savings EUR ${RUN_ID}'
 - tapOn: 'Reorder accounts'

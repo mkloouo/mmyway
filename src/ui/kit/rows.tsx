@@ -72,32 +72,17 @@ function RowHairline({ first, leading }: { first?: boolean; leading?: boolean })
 
 // prettier-ignore
 export interface ListRowProps {
-  label: string; sub?: string; subtitle?: string; value?: string; leading?: ReactNode; trailing?: ReactNode;
+  label: string; sub?: ReactNode; subtitle?: ReactNode; value?: string; leading?: ReactNode; trailing?: ReactNode;
   chevron?: boolean; onPress?: () => void; onLongPress?: () => void; first?: boolean;
   tone?: 'default' | 'warn' | 'danger' | 'accent'; check?: boolean; struck?: boolean; selected?: boolean;
   action?: { label: string; onPress: () => void; tone?: 'accent' | 'muted' | 'danger' };
-  loading?: boolean; icon?: IconName; style?: StyleProp<ViewStyle>;
+  loading?: boolean; icon?: IconName; style?: StyleProp<ViewStyle>; hero?: boolean;
 }
 
+// prettier-ignore
 export function ListRow({
-  label,
-  sub,
-  subtitle,
-  value,
-  leading,
-  trailing,
-  chevron,
-  onPress,
-  onLongPress,
-  first,
-  tone,
-  check,
-  struck,
-  selected,
-  action,
-  loading,
-  icon,
-  style,
+  label, sub, subtitle, value, leading, trailing, chevron, onPress, onLongPress, first,
+  tone, check, struck, selected, action, loading, icon, style, hero,
 }: ListRowProps) {
   const t = useTheme();
   const { t: tr } = useTranslation();
@@ -131,34 +116,38 @@ export function ListRow({
         {
           gap: t.space.md,
           paddingHorizontal: t.space.lg,
-          paddingVertical: t.space.sm,
+          paddingVertical: hero ? t.space.md : t.space.sm,
+          minHeight: hero ? 76 : ROW_HEIGHT,
           opacity: pressed ? PRESSED_OPACITY : 1,
         },
         style,
       ]}
     >
       {check && <View style={[styles.checkBar, { backgroundColor: t.color.warn }]} />}
-      <RowHairline first={first} leading={!!leading} />
+      <RowHairline first={first || hero} leading={!!leading} />
       {leading}
       <View style={styles.flexShrink}>
         <Text
           style={[
-            t.type.body,
+            hero ? t.type.heading : t.type.body,
             {
               color: lblCol,
               textDecorationLine: struck ? 'line-through' : undefined,
-              fontWeight: selected ? '700' : '400',
+              fontWeight: selected ? '700' : hero ? '600' : '400',
             },
           ]}
           numberOfLines={1}
         >
           {label}
         </Text>
-        {!!subText && (
-          <Text style={[t.type.label, { color: t.color.textMuted }]} numberOfLines={1}>
-            {subText}
-          </Text>
-        )}
+        {!!subText &&
+          (typeof subText === 'string' ? (
+            <Text style={[t.type.label, { color: t.color.textMuted }]} numberOfLines={1}>
+              {subText}
+            </Text>
+          ) : (
+            subText
+          ))}
       </View>
       {action ? (
         <Pressable

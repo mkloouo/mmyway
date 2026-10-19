@@ -3,12 +3,12 @@ name: 'T6 · Create and archive a loan account'
 tags:
   - release
 ---
-# Creates a liability in Settings → Asset accounts → New account: a loan, "I owe this", 4,5 % a
+# Creates a liability in Settings → Accounts → New account: a loan, "I owe this", 4,5 % a
 # month. Two syncs later Firefly III has the account with those fields.
-# Then it is archived from Settings → Liabilities, and Firefly III has it inactive.
+# Then it is archived from Settings → Loans and debts, and Firefly III has it inactive.
 - runFlow: ../../subflows/ready.yaml
 - tapOn: 'Settings, tab, 5 of 5'
-- tapOn: 'Asset accounts'
+- tapOn: 'Accounts'
 - tapOn: 'New account'
 # The name field is not labelled; its placeholder is "Name", the same word as the label above it.
 - tapOn:
@@ -50,7 +50,7 @@ tags:
         TIMEOUT_MS: '90000',
       }
 - tapOn: 'Settings, tab, 5 of 5'
-- tapOn: 'Liabilities'
+- tapOn: 'Loans and debts'
 - tapOn: 'E2E Loan'
 - tapOn: 'In pickers and lists'
 - tapOn: 'Save'

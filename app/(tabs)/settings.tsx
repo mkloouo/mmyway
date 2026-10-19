@@ -3,20 +3,28 @@
 // (defaults, language) or flips a switch. No nested FlatLists.
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, ScrollView, Text } from 'react-native';
+import { Alert, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useCurrencies } from '../../src/db/useReferenceData';
 import Constants from 'expo-constants';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
-import { Card, ListRow, Screen, SectionHeader, SwitchRow, TabHeader, Tile } from '../../src/ui/kit';
+import {
+  Card,
+  Dot,
+  ListRow,
+  Screen,
+  SectionHeader,
+  SwitchRow,
+  TabHeader,
+  Tile,
+} from '../../src/ui/kit';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { loadSettings, SETTINGS_QUERY_KEY } from '../../src/settings/loadSettings';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { hasEnvelopeMarker } from '../../src/accounts/envelopeMarker';
-import { useLiveQuery } from '../../src/db/useLiveQuery';
-// eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
-import { payeeAliases } from '../../src/db/schema';
+import { useSettingsCounts } from '../../src/settings/useSettingsCounts';
+import { relativeTime } from '../../src/ui/relativeTime';
 import {
   setDefaultSourceAccountId,
   setDefaultCurrencyCode,
@@ -25,8 +33,10 @@ import {
   setRecordLocation,
   setAppLockEnabled,
   getDemoMode,
+  reminderWhenFromLead,
+  type ReminderWhen,
 } from '../../src/settings/appSettings';
-import i18n, { type AppLocale } from '../../src/i18n';
+import type { AppLocale } from '../../src/i18n';
 import { authenticate, canUseAppLock } from '../../src/lock/appLock';
 import { PickerSheet } from '../../src/ui/PickerSheet';
 import { AccountPickerSheet } from '../../src/ui/AccountPickerSheet';
@@ -41,20 +51,12 @@ const LANGUAGE_OPTIONS: { value: AppLocale; labelKey: string }[] = [
   { value: 'uk-UA', labelKey: 'settings.languageUkrainian' },
 ];
 
-function shortLabel(url: string): string {
-  try {
-    return new URL(url).hostname;
-  } catch {
-    return url;
-  }
-}
-
-/** "2 days before, and on the day" — or "Only on the day" for no lead at all. */
-function reminderLeadName(days: number): string {
-  return days === 0
-    ? i18n.t('planned.reminderLeadNone')
-    : i18n.t('planned.reminderLead', { count: days });
-}
+const WHEN_LABELS: Record<ReminderWhen, string> = {
+  day: 'reminders.whenDay',
+  dayBefore: 'reminders.whenDayBefore',
+  fewDays: 'reminders.whenFewDays',
+  week: 'reminders.whenWeek',
+};
 
 export default function SettingsScreen() {
   const db = useDb();
@@ -66,8 +68,7 @@ export default function SettingsScreen() {
   const allAssetAccounts = useAssetAccounts({ includeInactive: true }) ?? [];
   const assetAccounts = useAssetAccounts() ?? [];
   const currencies = useCurrencies();
-  const { data: aliasRows } = useLiveQuery(db.select().from(payeeAliases));
-  const aliasesCount = aliasRows?.length ?? 0;
+  const { liabilitiesCount, aliasesCount, rulesCount, subscriptionsCount } = useSettingsCounts();
 
   const { data: settings } = useQuery({
     queryKey: SETTINGS_QUERY_KEY,
@@ -86,8 +87,6 @@ export default function SettingsScreen() {
   });
   const demo = demoMode.data ?? false;
   const signedIn = settings?.signedIn ?? false;
-  const ff3Hosts = settings?.ff3Hosts ?? [];
-  const ff3ActiveHost = settings?.ff3ActiveHost ?? null;
   const localModelName = settings?.localModelName ?? '';
   const localModelUrls = settings?.localModelUrls ?? [];
   const hasGeminiKey = settings?.hasGeminiKey ?? false;
@@ -146,17 +145,22 @@ export default function SettingsScreen() {
     ...(hasGeminiKey ? [tr('sync.providerGemini')] : []),
   ];
   const receiptSummary = receiptNames.length > 0 ? receiptNames.join(' · ') : tr('settings.off');
+  const reminderTimeStr = (settings?.plannedReminderTime ?? '09:00').replace(/^0(\d:)/, '$1');
   const remindersSummary = plannedNotifications
-    ? reminderLeadName(plannedReminderLead)
+    ? `${tr(WHEN_LABELS[reminderWhenFromLead(plannedReminderLead)])}, ${tr('reminders.promptAt', { time: reminderTimeStr })}`
     : tr('settings.off');
-  const activeHost = ff3ActiveHost ?? ff3Hosts[0] ?? null;
-  const connectionSub = demo
-    ? tr('demo.value')
-    : !signedIn
-      ? tr('settings.notConnected')
-      : activeHost
-        ? shortLabel(activeHost)
-        : tr('settings.connectedValue');
+  const heroSub = demo ? (
+    tr('demo.value')
+  ) : !signedIn ? (
+    tr('settings.notConnected')
+  ) : (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.xs }}>
+      <Dot color={t.color.income} />
+      <Text style={[t.type.label, { color: t.color.textMuted }]}>
+        {tr('settings.connectedSynced', { time: relativeTime(settings?.lastSyncedAt) })}
+      </Text>
+    </View>
+  );
 
   const valueText = (text: string) => (
     <Text style={[t.type.body, { color: t.color.textMuted }]}>{text}</Text>
@@ -168,10 +172,11 @@ export default function SettingsScreen() {
       <ScrollView contentContainerStyle={{ paddingBottom: t.space.xxl }}>
         <Card flush style={{ marginHorizontal: t.space.lg }}>
           <ListRow
+            hero
             first
-            leading={<Tile icon="server-outline" />}
-            label="Firefly III"
-            sub={connectionSub}
+            leading={<Tile icon="server-outline" size={48} />}
+            label={tr('settings.connectionTitle')}
+            sub={heroSub}
             chevron
             onPress={() => router.push('/settings/connection')}
           />
@@ -207,6 +212,7 @@ export default function SettingsScreen() {
           />
           {flags.record_location && (
             <SwitchRow
+              leading={<Tile icon="location-outline" tone="transfer" />}
               value={recordLocation}
               onValueChange={() => void toggleLocation()}
               label={tr('settings.recordLocation')}
@@ -221,8 +227,21 @@ export default function SettingsScreen() {
             first
             leading={<Tile icon="receipt-outline" tone="muted" />}
             label={tr('settings.receiptReading')}
-            sub={receiptSummary}
-            chevron
+            sub={
+              receiptNames.length === 0 ? (
+                <Text style={[t.type.label, { color: t.color.warnStrong }]}>
+                  {tr('settings.receiptReadingOffSub')}
+                </Text>
+              ) : (
+                receiptSummary
+              )
+            }
+            action={
+              receiptNames.length === 0
+                ? { label: tr('common.setUp'), onPress: () => router.push('/settings/receipts') }
+                : undefined
+            }
+            chevron={receiptNames.length > 0}
             onPress={() => router.push('/settings/receipts')}
           />
         </Card>
@@ -242,6 +261,7 @@ export default function SettingsScreen() {
           <ListRow
             leading={<Tile icon="trending-down-outline" tone="danger" />}
             label={tr('settings.liabilities')}
+            trailing={valueText(String(liabilitiesCount))}
             chevron
             onPress={() => router.push('/settings/liabilities')}
           />
@@ -256,7 +276,8 @@ export default function SettingsScreen() {
             <ListRow
               leading={<Tile icon="pricetag-outline" tone="income" />}
               label={tr('settings.aliases')}
-              trailing={valueText(tr('settings.aliasesCount', { count: aliasesCount }))}
+              sub={tr('settings.aliasesExample')}
+              trailing={valueText(String(aliasesCount))}
               chevron
               onPress={() => router.push('/settings/aliases')}
             />
@@ -268,17 +289,20 @@ export default function SettingsScreen() {
           {flags.ff3_rules && (
             <ListRow
               first
-              leading={<Tile icon="flash-outline" />}
+              leading={<Tile icon="flash-outline" tone="purple" />}
               label={tr('rules.title')}
+              sub={tr('settings.rulesHint')}
+              trailing={valueText(String(rulesCount))}
               chevron
               onPress={() => router.push('/settings/rules')}
             />
           )}
           <ListRow
             first={!flags.ff3_rules}
-            leading={<Tile icon="repeat-outline" />}
+            leading={<Tile icon="repeat-outline" tone="purple" />}
             label={tr('settings.plannedRaw')}
             sub={tr('settings.plannedRawHint')}
+            trailing={valueText(String(subscriptionsCount))}
             chevron
             onPress={() => router.push('/settings/planned-raw')}
           />
@@ -289,6 +313,7 @@ export default function SettingsScreen() {
           {flags.app_lock && (
             <SwitchRow
               first
+              leading={<Tile icon="lock-closed-outline" tone="ink" />}
               value={appLock}
               onValueChange={() => void toggleAppLock()}
               label={tr('settings.appLock')}
@@ -309,7 +334,7 @@ export default function SettingsScreen() {
         <Card flush style={{ marginHorizontal: t.space.lg }}>
           <ListRow
             first
-            leading={<Tile icon="language-outline" />}
+            leading={<Tile icon="language-outline" tone="transfer" />}
             label={tr('settings.language')}
             trailing={valueText(tr(LANGUAGE_OPTIONS.find((o) => o.value === locale)!.labelKey))}
             chevron

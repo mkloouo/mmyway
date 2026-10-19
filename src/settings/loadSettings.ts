@@ -20,6 +20,7 @@ import {
   getAppLockEnabled,
   getPlannedNotificationsEnabled,
   getPlannedReminderLead,
+  getReminderTime,
   getRecordLocation,
 } from './appSettings';
 
@@ -39,6 +40,7 @@ interface AppSettingsSnapshot {
   recordLocation: boolean;
   plannedNotifications: boolean;
   plannedReminderLead: number;
+  plannedReminderTime: string;
   /** How many reverse-proxy headers are stored (src/api/ff3/proxyHeaders.ts); the values are secrets. */
   proxyHeaderCount: number;
   appLock: boolean;
@@ -63,6 +65,7 @@ export async function loadSettings(db: OutboxDb): Promise<AppSettingsSnapshot> {
     recordLocation,
     plannedNotifications,
     plannedReminderLead,
+    plannedReminderTime,
     proxyHeaders,
     appLock,
   ] = await Promise.all([
@@ -81,6 +84,7 @@ export async function loadSettings(db: OutboxDb): Promise<AppSettingsSnapshot> {
     getRecordLocation(db),
     getPlannedNotificationsEnabled(db),
     getPlannedReminderLead(db),
+    getReminderTime(db),
     loadProxyHeaders(),
     getAppLockEnabled(db),
   ]);
@@ -100,6 +104,7 @@ export async function loadSettings(db: OutboxDb): Promise<AppSettingsSnapshot> {
     recordLocation,
     plannedNotifications,
     plannedReminderLead,
+    plannedReminderTime,
     proxyHeaderCount: Object.keys(proxyHeaders).length,
     appLock,
   };

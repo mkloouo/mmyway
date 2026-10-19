@@ -258,7 +258,7 @@ export const REMINDER_WHEN_LEAD: Record<ReminderWhen, number> = {
   fewDays: 2,
   week: 7,
 };
-function reminderWhenFromLead(lead: number): ReminderWhen {
+export function reminderWhenFromLead(lead: number): ReminderWhen {
   if (lead === 0) return 'day';
   if (lead === 1) return 'dayBefore';
   if (lead <= 3) return 'fewDays';
