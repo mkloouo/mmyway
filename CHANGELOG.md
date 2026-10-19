@@ -17,6 +17,10 @@
 - Settings is regrouped with clearer names (Accounts, Loans and debts, Payee nicknames, Subscriptions and recurring, Lock the app) and shows how many of each you have (MKL-89).
 - Receipt reading settings updated to board 27 with masked API key, "Where it runs" live reachability status, and a "Test both now" reader check (MKL-90).
 
+### Count cash
+
+- Cash sweep shortfall and surplus pickers updated to board 28 Choose sheet with "Used this year" filter and deduplicated across Count cash and Settings (MKL-91).
+
 ## [2.3.4] - 2026-10-17
 
 ### Fixed

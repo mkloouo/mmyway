@@ -6,9 +6,6 @@ import { ScrollView, Text } from 'react-native';
 import { router } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCategories, useCurrencies } from '../../src/db/useReferenceData';
-import { useLiveQuery } from '../../src/db/useLiveQuery';
-// eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
-import { referenceAccounts } from '../../src/db/schema';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
 import {
@@ -20,7 +17,9 @@ import {
   SectionHeader,
 } from '../../src/ui/kit';
 import { PickerSheet } from '../../src/ui/PickerSheet';
-import { AccountPickerSheet, type AccountPickerAccount } from '../../src/ui/AccountPickerSheet';
+import { CashSweepPickers } from '../../src/reconcile/CashSweepPickers';
+import { useCashSweepAccounts } from '../../src/reconcile/useCashSweepAccounts';
+import type { AccountPickerAccount } from '../../src/ui/AccountPickerSheet';
 import { useAction } from '../../src/ui/useAction';
 import { SETTINGS_QUERY_KEY } from '../../src/settings/loadSettings';
 import {
@@ -43,10 +42,14 @@ export default function CashSettingsScreen() {
   const categories = useCategories();
   const currencies = useCurrencies();
 
-  const { data: accountRows } = useLiveQuery(db.select().from(referenceAccounts));
-  const allAccounts = accountRows ?? [];
-  const expenseAccounts = allAccounts.filter((a) => a.type === 'expense');
-  const revenueAccounts = allAccounts.filter((a) => a.type === 'revenue');
+  const {
+    expenseAccounts,
+    usedExpenseAccounts,
+    revenueAccounts,
+    usedRevenueAccounts,
+    matchingShortfall,
+    matchingSurplus,
+  } = useCashSweepAccounts();
 
   const { data: saved } = useQuery({
     queryKey: [...SETTINGS_QUERY_KEY, 'cashCount'],
@@ -62,13 +65,6 @@ export default function CashSettingsScreen() {
 
   const [picker, setPicker] = useState<PickerKind | null>(null);
 
-  // An unset payee falls back to the account named like the default, as the count does.
-  const matchingShortfall = expenseAccounts.find(
-    (a) => /^cash shortfall$/i.test(a.name) || /shortfall|reconcil/i.test(a.name),
-  );
-  const matchingSurplus = revenueAccounts.find(
-    (a) => /^cash surplus$/i.test(a.name) || /surplus|reconcil/i.test(a.name),
-  );
   const selectedShortfall = expenseAccounts.find((a) => a.id === saved?.shortfallId);
   const effectiveShortfall = selectedShortfall ?? matchingShortfall ?? null;
   const selectedSurplus = revenueAccounts.find((a) => a.id === saved?.surplusId);
@@ -126,34 +122,20 @@ export default function CashSettingsScreen() {
         </Card>
       </ScrollView>
 
-      <AccountPickerSheet
-        visible={picker === 'shortfall'}
+      <CashSweepPickers
+        picker={picker === 'shortfall' || picker === 'surplus' ? picker : null}
         onClose={() => setPicker(null)}
-        title={tr('count.shortfallPayee')}
-        accounts={expenseAccounts}
+        expenseAccounts={expenseAccounts}
+        usedExpenseAccounts={usedExpenseAccounts}
+        revenueAccounts={revenueAccounts}
+        usedRevenueAccounts={usedRevenueAccounts}
         currencies={currencies}
-        suggested={
-          expenseAccounts.some((a) => /^cash shortfall$/i.test(a.name))
-            ? undefined
-            : [{ id: '', name: tr('count.defaultShortfallPayee'), currencyCode: '' }]
-        }
-        selectedId={selectedShortfall?.id ?? effectiveShortfall?.id ?? ''}
-        onSelect={(a) => void pickShortfall(a)}
+        selectedShortfallId={selectedShortfall?.id ?? effectiveShortfall?.id}
+        selectedSurplusId={selectedSurplus?.id ?? effectiveSurplus?.id}
+        onSelectShortfall={(a) => void pickShortfall(a)}
+        onSelectSurplus={(a) => void pickSurplus(a)}
       />
-      <AccountPickerSheet
-        visible={picker === 'surplus'}
-        onClose={() => setPicker(null)}
-        title={tr('count.surplusPayee')}
-        accounts={revenueAccounts}
-        currencies={currencies}
-        suggested={
-          revenueAccounts.some((a) => /^cash surplus$/i.test(a.name))
-            ? undefined
-            : [{ id: '', name: tr('count.defaultSurplusPayee'), currencyCode: '' }]
-        }
-        selectedId={selectedSurplus?.id ?? effectiveSurplus?.id ?? ''}
-        onSelect={(a) => void pickSurplus(a)}
-      />
+
       <PickerSheet
         visible={picker === 'category'}
         onClose={() => setPicker(null)}

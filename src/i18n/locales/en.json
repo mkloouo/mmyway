@@ -325,6 +325,11 @@
     "yours": "YOURS"
   },
   "count": {
+    "accountCountExpense_one": "One of {{count, number}} expense account",
+    "accountCountExpense_other": "One of {{count, number}} expense accounts",
+    "accountCountRevenue_one": "One of {{count, number}} revenue account",
+    "accountCountRevenue_other": "One of {{count, number}} revenue accounts",
+    "allCount": "All · {{count, number}}",
     "allMatch": "Everything matches ✓",
     "asOf": "as of {{time}}",
     "blockerQueued_one": "1 change hasn't reached Firefly III yet, so the expected balances don't include it. Sync before counting.",
@@ -346,13 +351,17 @@
     "emptyHint": "Pick the accounts that hold real cash — a wallet, a jar at home — and count them here in one go.",
     "emptyTitle": "No accounts are marked as cash envelopes",
     "envelopes": "Cash envelopes",
+    "expenseAccountSub": "Expense account",
     "expected": "expected {{amount}}",
+    "extraCashTitle": "Extra cash comes from",
     "fixInvalid": "Fix the invalid amount above",
     "goToAccounts": "Go to accounts",
     "increase": "More {{denomination}}",
     "invalid": "Invalid",
+    "missingCashTitle": "Missing cash goes to",
     "outOfDateTitle": "Balances are out of date",
     "payeesLabel": "Payees",
+    "revenueAccountSub": "Revenue account",
     "reviewCount_one": "Review {{count, number}} adjustment",
     "reviewCount_other": "Review {{count, number}} adjustments",
     "reviewTitle": "Review adjustments",
@@ -367,7 +376,9 @@
     "syncFirst": "Sync before counting",
     "title": "Count cash",
     "useAmount": "Use {{amount}}",
+    "usedThisYear": "Used this year · {{count, number}}",
     "useTotal": "Use this total",
+    "whichAccounts": "Which accounts",
     "yourAccounts": "Your accounts"
   },
   "demo": {
@@ -598,11 +609,13 @@
   },
   "pickers": {
     "allAZ": "All · A–Z",
+    "chosen": "Chosen",
     "clearSearch": "Clear search",
     "letterIndex": "Jump to letter {{letter}}",
     "noMatches": "No matches",
     "search": "Search",
     "searchAccounts": "Search accounts",
+    "searchByName": "Search by name",
     "suggested": "Suggested",
     "useNew": "Use \"{{name}}\" (will be created)"
   },

@@ -24,6 +24,7 @@ interface Section<T> {
   key: string;
   title?: string;
   letter?: string;
+  count?: number;
   data: Row<T>[];
 }
 
@@ -31,10 +32,12 @@ export function SearchListSheet<T>({
   visible,
   onClose,
   title,
+  subtitle,
   placeholder,
   items,
   keyOf,
   labelOf,
+  chosen,
   suggested,
   selectedKey,
   header,
@@ -46,13 +49,16 @@ export function SearchListSheet<T>({
   visible: boolean;
   onClose: () => void;
   title: string;
+  subtitle?: string;
   placeholder: string;
   /** Already filtered and ranked by the caller, which owns what "matching" means for its rows. */
   items: (query: string) => T[];
   keyOf: (item: T) => string;
   /** Enables A–Z order (and letter sections above 30 rows) while the query is empty. */
   labelOf?: (item: T) => string;
-  /** Shown first under "Suggested" while the query is empty. */
+  /** Currently chosen item, shown first under "Chosen" while browsing. */
+  chosen?: T;
+  /** Shown under "Suggested" while the query is empty. */
   suggested?: T[];
   /** The row to mark with a checkmark. */
   selectedKey?: string | null;
@@ -91,15 +97,29 @@ export function SearchListSheet<T>({
 
   const sections: Section<T>[] = [];
   if (browsing) {
-    if (suggested?.length) {
+    const excludeKey = chosen != null ? keyOf(chosen) : null;
+    if (chosen != null) {
+      sections.push({
+        key: 'chosen',
+        title: tr('pickers.chosen'),
+        data: rowsOf([chosen], keyOf, 'chosen'),
+      });
+    }
+    const browseSuggested = excludeKey
+      ? suggested?.filter((item) => keyOf(item) !== excludeKey)
+      : suggested;
+    if (browseSuggested?.length) {
       sections.push({
         key: 'suggested',
         title: tr('pickers.suggested'),
-        data: rowsOf(suggested, keyOf, 'suggested'),
+        data: rowsOf(browseSuggested, keyOf, 'suggested'),
       });
     }
+    const browseResults = excludeKey
+      ? results.filter((item) => keyOf(item) !== excludeKey)
+      : results;
     if (labelOf) {
-      const sorted = [...results].sort((a, b) =>
+      const sorted = [...browseResults].sort((a, b) =>
         labelOf(a).localeCompare(labelOf(b), undefined, { sensitivity: 'base' }),
       );
       if (sorted.length > SPLIT_BY_LETTER_THRESHOLD) {
@@ -115,6 +135,7 @@ export function SearchListSheet<T>({
             key: `letter:${letter}`,
             title: letter,
             letter,
+            count: group.length,
             data: rowsOf(group, keyOf, `letter:${letter}`),
           });
         }
@@ -125,8 +146,8 @@ export function SearchListSheet<T>({
           data: rowsOf(sorted, keyOf, 'all'),
         });
       }
-    } else if (results.length) {
-      sections.push({ key: 'all', data: rowsOf(results, keyOf, 'all') });
+    } else if (browseResults.length) {
+      sections.push({ key: 'all', data: rowsOf(browseResults, keyOf, 'all') });
     }
   } else if (results.length) {
     sections.push({ key: 'results', data: rowsOf(results, keyOf, 'results') });
@@ -141,6 +162,7 @@ export function SearchListSheet<T>({
       visible={visible}
       onClose={close}
       title={title}
+      subtitle={subtitle}
       scroll={false}
       footer={footer?.(trimmed, close)}
     >
@@ -166,19 +188,42 @@ export function SearchListSheet<T>({
           contentContainerStyle={{ paddingRight: t.space.md, paddingBottom: t.space.sm }}
           renderSectionHeader={({ section }) =>
             section.title ? (
-              <Text
-                style={[
-                  t.type.caption,
-                  {
-                    color: t.color.textMuted,
-                    paddingHorizontal: 4,
-                    paddingTop: t.space.lg,
-                    paddingBottom: t.space.sm,
-                  },
-                ]}
+              <View
+                style={{
+                  flexDirection: 'row',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  paddingHorizontal: 4,
+                  paddingTop: t.space.lg,
+                  paddingBottom: t.space.sm,
+                }}
               >
-                {section.title.toLocaleUpperCase()}
-              </Text>
+                <Text
+                  style={[
+                    t.type.caption,
+                    {
+                      color: t.color.textMuted,
+                      textTransform: 'uppercase',
+                      fontWeight: '600',
+                    },
+                  ]}
+                >
+                  {section.title}
+                </Text>
+                {section.count != null && (
+                  <Text
+                    style={[
+                      t.type.caption,
+                      {
+                        color: t.color.textMuted,
+                        letterSpacing: 0,
+                      },
+                    ]}
+                  >
+                    {section.count}
+                  </Text>
+                )}
+              </View>
             ) : null
           }
           renderItem={({ item: row, index, section }) => (

@@ -17,13 +17,15 @@ import { useTheme } from '../src/ui/theme';
 // prettier-ignore
 import { Button, Card, Dot, GroupFooter, ListRow, ModalHeader, Money, NoticeBlock, SCREEN_TOP_PADDING, Screen, SectionHeader, Sheet, StickyFooter, SwitchRow, useKeyboardHeight } from '../src/ui/kit';
 import { PickerSheet } from '../src/ui/PickerSheet';
-import { AccountPickerSheet, type AccountPickerAccount } from '../src/ui/AccountPickerSheet';
+import { CashSweepPickers } from '../src/reconcile/CashSweepPickers';
+import { useCashSweepAccounts } from '../src/reconcile/useCashSweepAccounts';
+import type { AccountPickerAccount } from '../src/ui/AccountPickerSheet';
 import { currencyOf, formatMoney } from '../src/ui/money';
 import { parseDecimalInput } from '../src/api/ff3/decimal';
 import { relativeTime } from '../src/ui/relativeTime';
 import { haptics } from '../src/ui/haptics';
 // eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
-import { referenceAccounts, outboxOperations, appSettings } from '../src/db/schema';
+import { outboxOperations, appSettings } from '../src/db/schema';
 import { hasEnvelopeMarker } from '../src/accounts/envelopeMarker';
 import { setAccountEnvelope } from '../src/accounts/accountActions';
 import { useAssetAccounts } from '../src/accounts/useAssetAccounts';
@@ -63,14 +65,18 @@ export default function CountScreen() {
   // Edge to edge, the window isn't resized for the keyboard; the lower envelopes need the room.
   const keyboardHeight = useKeyboardHeight();
 
-  const { data: accountRows } = useLiveQuery(db.select().from(referenceAccounts));
   const categories = useCategories();
   const currencies = useCurrencies();
-  const allAccounts = accountRows ?? [];
   const assetAccounts = useAssetAccounts() ?? [];
   const envelopeAccounts = assetAccounts.filter((a) => hasEnvelopeMarker(a.notes));
-  const expenseAccounts = allAccounts.filter((a) => a.type === 'expense');
-  const revenueAccounts = allAccounts.filter((a) => a.type === 'revenue');
+  const {
+    expenseAccounts,
+    usedExpenseAccounts,
+    revenueAccounts,
+    usedRevenueAccounts,
+    matchingShortfall,
+    matchingSurplus,
+  } = useCashSweepAccounts();
 
   // The expected balances are only right once every queued write has reached FF3 and the
   // balances were read after that (src/reconcile/countReadiness.ts). Unknown until both load.
@@ -155,13 +161,6 @@ export default function CountScreen() {
       .filter((d): d is string => !!d)
       .sort()[0] ?? null;
   const stale = isBalanceStale(oldestBalanceDate);
-
-  const matchingShortfall = expenseAccounts.find(
-    (a) => /^cash shortfall$/i.test(a.name) || /shortfall|reconcil/i.test(a.name),
-  );
-  const matchingSurplus = revenueAccounts.find(
-    (a) => /^cash surplus$/i.test(a.name) || /surplus|reconcil/i.test(a.name),
-  );
 
   const selectedShortfall = expenseAccounts.find((a) => a.id === shortfallAccountId);
   const effectiveShortfall = selectedShortfall ?? matchingShortfall ?? null;
@@ -618,7 +617,8 @@ export default function CountScreen() {
         <Card flush>
           <ListRow
             first
-            label={tr('count.shortfallPayee')}
+            label={tr('count.missingCashTitle')}
+            sub={tr('count.expenseAccountSub')}
             trailing={valueText(effectiveShortfall?.name ?? tr('count.defaultPayeeShortfall'))}
             chevron
             onPress={() => {
@@ -627,7 +627,8 @@ export default function CountScreen() {
             }}
           />
           <ListRow
-            label={tr('count.surplusPayee')}
+            label={tr('count.extraCashTitle')}
+            sub={tr('count.revenueAccountSub')}
             trailing={valueText(effectiveSurplus?.name ?? tr('count.defaultPayeeSurplus'))}
             chevron
             onPress={() => {
@@ -675,33 +676,18 @@ export default function CountScreen() {
         </Card>
       </Sheet>
 
-      <AccountPickerSheet
-        visible={picker === 'shortfall'}
+      <CashSweepPickers
+        picker={picker === 'shortfall' || picker === 'surplus' ? picker : null}
         onClose={closePicker}
-        title={tr('count.shortfallPayee')}
-        accounts={expenseAccounts}
+        expenseAccounts={expenseAccounts}
+        usedExpenseAccounts={usedExpenseAccounts}
+        revenueAccounts={revenueAccounts}
+        usedRevenueAccounts={usedRevenueAccounts}
         currencies={currencies}
-        suggested={
-          expenseAccounts.some((a) => /^cash shortfall$/i.test(a.name))
-            ? undefined
-            : [{ id: '', name: tr('count.defaultShortfallPayee'), currencyCode: '' }]
-        }
-        selectedId={selectedShortfall?.id ?? effectiveShortfallId ?? ''}
-        onSelect={(a) => void pickShortfall(a)}
-      />
-      <AccountPickerSheet
-        visible={picker === 'surplus'}
-        onClose={closePicker}
-        title={tr('count.surplusPayee')}
-        accounts={revenueAccounts}
-        currencies={currencies}
-        suggested={
-          revenueAccounts.some((a) => /^cash surplus$/i.test(a.name))
-            ? undefined
-            : [{ id: '', name: tr('count.defaultSurplusPayee'), currencyCode: '' }]
-        }
-        selectedId={selectedSurplus?.id ?? effectiveSurplusId ?? ''}
-        onSelect={(a) => void pickSurplus(a)}
+        selectedShortfallId={selectedShortfall?.id ?? effectiveShortfallId}
+        selectedSurplusId={selectedSurplus?.id ?? effectiveSurplusId}
+        onSelectShortfall={(a) => void pickShortfall(a)}
+        onSelectSurplus={(a) => void pickSurplus(a)}
       />
       <PickerSheet
         visible={picker === 'category'}

@@ -160,4 +160,30 @@ describe('SearchListSheet', () => {
     const rendered = screen.getAllByTestId('row').map((r) => String(r.props.children));
     expect(rendered[0]).toBe(last);
   });
+
+  it('renders subtitle and lists chosen option first under Chosen', async () => {
+    await wrap(
+      <SearchListSheet
+        visible
+        onClose={jest.fn()}
+        title="Account"
+        subtitle="One of 10 expense accounts"
+        placeholder="Search"
+        items={() => NAMES}
+        keyOf={(n) => n}
+        labelOf={(n) => n}
+        chosen="Lidl"
+        selectedKey="Lidl"
+        renderRow={(n) => <Text testID="row">{n}</Text>}
+        onSelect={jest.fn()}
+      />,
+    );
+
+    expect(screen.getByText('One of 10 expense accounts')).toBeTruthy();
+    expect(screen.getByText('Chosen')).toBeTruthy();
+    const rows = screen.getAllByTestId('row').map((r) => String(r.props.children));
+    expect(rows[0]).toBe('Lidl');
+    // Lidl is not duplicated in the A-Z list below
+    expect(rows.filter((r) => r === 'Lidl')).toHaveLength(1);
+  });
 });
