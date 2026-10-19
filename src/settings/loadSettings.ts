@@ -32,6 +32,7 @@ interface AppSettingsSnapshot {
   localModelActiveUrl: string | null;
   localModelName: string;
   hasGeminiKey: boolean;
+  geminiKeyTail: string | null;
   defaultAccountId: string | null;
   defaultCurrency: string | null;
   cashAccountId: string | null;
@@ -96,6 +97,7 @@ export async function loadSettings(db: OutboxDb): Promise<AppSettingsSnapshot> {
     localModelActiveUrl,
     localModelName: localModelName ?? '',
     hasGeminiKey: !!geminiKey,
+    geminiKeyTail: geminiKey ? (geminiKey.length >= 4 ? geminiKey.slice(-4) : geminiKey) : null,
     defaultAccountId,
     defaultCurrency,
     cashAccountId,

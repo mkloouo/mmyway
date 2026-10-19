@@ -10,7 +10,7 @@ appId: ${APP_ID}
     when:
       true: ${GEMINI_KEY != ''}
     commands:
-      - tapOn: 'Gemini key'
+      - tapOn: 'API key'
       - tapOn: 'API key'
       - inputText: ${GEMINI_KEY}
       - tapOn: 'Save'
@@ -22,7 +22,7 @@ appId: ${APP_ID}
       - tapOn: 'e.g. qwen3-vl-8b'
       - inputText: ${LOCAL_MODEL_NAME}
       - tapOn: 'Save'
-      - tapOn: 'Addresses'
+      - tapOn: 'Where it runs'
       - tapOn: 'https://…'
       - inputText: ${LOCAL_MODEL_URL}
       - tapOn: "\\+ Add address"

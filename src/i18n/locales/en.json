@@ -893,6 +893,11 @@
     "saveFailed": "Couldn’t save the receipt"
   },
   "receiptSettings": {
+    "addressAnswers": "{{host}} answers",
+    "addressAnswersMore_one": "{{host}} answers · {{count, number}} more address",
+    "addressAnswersMore_other": "{{host}} answers · {{count, number}} more addresses",
+    "apiKey": "API key",
+    "fix": "Fix",
     "getKey": "Get a free key at aistudio.google.com. A photo goes to Google only after your model has failed on it.",
     "googleGemini": "Google Gemini",
     "intro": "Snap a receipt and the amount, shop and date are filled in for you. Choose who reads the photo.",
@@ -912,7 +917,15 @@
     "statusLocalOnly": "Only your model reads receipts. Google Gemini isn't used.",
     "statusNone": "Nothing reads receipts yet. Photos are attached, and you type the details.",
     "statusOff": "Nobody reads receipts. Photos are attached, and you type the details.",
+    "testBothNow": "Test both now",
+    "testGeminiAnswered": "Gemini answered in {{seconds}} s",
+    "testKeyRejected": "Key rejected",
+    "testModelAnswered": "Your model answered in {{seconds}} s",
+    "testNotConfigured": "Not configured",
+    "testTitle": "Receipt reading test",
+    "testUnreachable": "Unreachable",
     "title": "Receipt reading",
+    "whereItRuns": "Where it runs",
     "whoReads": "Who reads your photos",
     "yourModel": "Your model"
   },

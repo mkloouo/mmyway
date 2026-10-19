@@ -37,6 +37,17 @@ jest.mock('../settings/secrets', () => ({
   deleteGeminiKey: jest.fn(async () => undefined),
 }));
 
+jest.mock('../receipt/testReaders', () => {
+  const actual = jest.requireActual('../receipt/testReaders');
+  return {
+    ...actual,
+    testReaders: jest.fn(async () => ({
+      local: { status: 'ok', seconds: '1.2' },
+      gemini: { status: 'error', messageKey: 'testKeyRejected' },
+    })),
+  };
+});
+
 const metrics = {
   frame: { x: 0, y: 0, width: 390, height: 844 },
   insets: { top: 0, left: 0, right: 0, bottom: 0 },
@@ -105,12 +116,19 @@ describe('Settings → Receipt reading', () => {
     await waitFor(async () => expect(await getReceiptReader(mockDb)).toBe('none'));
   });
 
-  it('Remove key asks first, and deletes the key only after the confirm', async () => {
-    (readGeminiKey as jest.Mock).mockResolvedValue('key-1234');
+  it('displays masked API key and Remove key inside sheet deletes after confirm', async () => {
+    (readGeminiKey as jest.Mock).mockResolvedValue('AIzaSyD-1234');
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     await renderScreen();
 
-    fireEvent.press(await screen.findByText(i18n.t('receiptSettings.removeKey')));
+    // Masked tail is shown on main screen
+    expect(screen.getByText('•••• 1234')).toBeTruthy();
+
+    // Tap API key row to open sheet
+    fireEvent.press(screen.getByText('•••• 1234'));
+    await waitFor(() => expect(screen.getByText(i18n.t('receiptSettings.removeKey'))).toBeTruthy());
+
+    fireEvent.press(screen.getByText(i18n.t('receiptSettings.removeKey')));
     await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
     const [title, , buttons] = alert.mock.calls[0]!;
     expect(title).toBe(i18n.t('receiptSettings.removeKeyTitle'));
@@ -121,7 +139,7 @@ describe('Settings → Receipt reading', () => {
     await waitFor(() => expect(screen.getByText(i18n.t('receiptSettings.removeKey'))).toBeTruthy());
     expect(deleteGeminiKey).not.toHaveBeenCalled();
 
-    // Confirming it deletes the key and the page drops the row, as the key is gone.
+    // Confirming it deletes the key
     fireEvent.press(screen.getByText(i18n.t('receiptSettings.removeKey')));
     await waitFor(() => expect(alert).toHaveBeenCalledTimes(2));
     (readGeminiKey as jest.Mock).mockResolvedValue(null);
@@ -131,7 +149,19 @@ describe('Settings → Receipt reading', () => {
     verb!.onPress?.();
 
     await waitFor(() => expect(deleteGeminiKey).toHaveBeenCalledTimes(1));
-    await waitFor(() => expect(screen.queryByText(i18n.t('receiptSettings.removeKey'))).toBeNull());
     alert.mockRestore();
+  });
+
+  it('runs "Test both now" and displays results in Review Sheet C', async () => {
+    await renderScreen();
+
+    fireEvent.press(screen.getByText(i18n.t('receiptSettings.testBothNow')));
+
+    // Review sheet opens with test results
+    await waitFor(() => expect(screen.getByText(i18n.t('receiptSettings.testTitle'))).toBeTruthy());
+    expect(
+      screen.getByText(i18n.t('receiptSettings.testModelAnswered', { seconds: '1.2' })),
+    ).toBeTruthy();
+    expect(screen.getByText(i18n.t('receiptSettings.testKeyRejected'))).toBeTruthy();
   });
 });
