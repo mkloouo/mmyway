@@ -4,12 +4,15 @@ import type { ReactElement } from 'react';
 import '../i18n';
 import { DraftEditor } from '../../app/draft/[id]';
 import { writeDraft } from '../inbox/draftJson';
-import { updateDraft } from '../inbox/updateDraft';
+import { retryErroredItem, updateDraft } from '../inbox/updateDraft';
+import { requestSync } from '../sync/syncTrigger';
 import type { InboxItemRow } from '../inbox/useInboxSections';
 
 jest.setTimeout(15_000);
 
 const mockUpdateDraft = updateDraft as jest.MockedFunction<typeof updateDraft>;
+const mockRetryErroredItem = retryErroredItem as jest.MockedFunction<typeof retryErroredItem>;
+const mockRequestSync = requestSync as jest.MockedFunction<typeof requestSync>;
 
 jest.mock('../../src/providers/DbProvider', () => ({
   useDb: () => ({
@@ -47,10 +50,15 @@ jest.mock('../../src/lookup/useMerchantHistories', () => ({
   useMerchantHistories: () => [],
 }));
 
+jest.mock('../../src/sync/syncTrigger', () => ({
+  requestSync: jest.fn(),
+}));
+
 jest.mock('../../src/inbox/updateDraft', () => ({
   updateDraft: jest.fn().mockResolvedValue(undefined),
   deleteInboxItem: jest.fn(),
   attachReceiptImage: jest.fn(),
+  retryErroredItem: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('expo-router', () => ({
@@ -140,5 +148,19 @@ describe('DraftEditor Unified Kit redesign', () => {
 
     expect(screen.getByText('Confirm')).toBeTruthy();
     expect(screen.getByText(/Missing/i)).toBeTruthy();
+  });
+
+  it('renders failed sync error as a status row with Retry action and triggers retry', async () => {
+    const item = createItem();
+    item.errorMessage = 'Network connection failed';
+    await wrap(<DraftEditor row={item} />);
+
+    expect(screen.getByText('Network connection failed')).toBeTruthy();
+    const retryBtn = screen.getByText('Retry');
+    expect(retryBtn).toBeTruthy();
+
+    await fireEvent.press(retryBtn);
+    expect(mockRetryErroredItem).toHaveBeenCalledWith(expect.anything(), 'item-1');
+    expect(mockRequestSync).toHaveBeenCalled();
   });
 });

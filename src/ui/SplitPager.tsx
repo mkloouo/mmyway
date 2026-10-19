@@ -14,10 +14,9 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from 'react-native';
-import { Banner, Button, Dot, Money } from './kit';
+import { Dot, Money } from './kit';
 import { useTheme } from './theme';
-import { formatMoney, type DisplayCurrency } from './money';
-import { fromMinor } from '../splits/allocate';
+import type { DisplayCurrency } from './money';
 
 export function SplitPager({
   total,
@@ -26,9 +25,9 @@ export function SplitPager({
   onIndexChange,
   currency,
   type,
-  leftover,
+  leftover: _leftover,
   onTotalPress,
-  onReassign,
+  onReassign: _onReassign,
   readOnly,
   renderPage,
 }: {
@@ -38,10 +37,10 @@ export function SplitPager({
   onIndexChange: (index: number) => void;
   currency: DisplayCurrency;
   type: 'withdrawal' | 'deposit' | 'transfer';
-  /** Total minus the splits' sum, in minor units. */
-  leftover: bigint;
+  /** Total minus the splits' sum, in minor units. Left for backwards-compatibility. */
+  leftover?: bigint;
   onTotalPress: () => void;
-  onReassign: () => void;
+  onReassign?: () => void;
   readOnly?: boolean;
   renderPage: (index: number) => ReactNode;
 }) {
@@ -76,24 +75,6 @@ export function SplitPager({
           <Money amount={total} currency={currency} type={type} size="title" />
         </Pressable>
       </View>
-      {leftover !== 0n && (
-        <Banner
-          inset
-          action={
-            readOnly ? undefined : (
-              <Button title={tr('splits.reassign')} variant="secondary" onPress={onReassign} />
-            )
-          }
-        >
-          {leftover > 0n
-            ? tr('splits.leftoverUnassigned', {
-                amount: formatMoney(fromMinor(leftover, currency.decimalPlaces), currency),
-              })
-            : tr('splits.leftoverOver', {
-                amount: formatMoney(fromMinor(-leftover, currency.decimalPlaces), currency),
-              })}
-        </Banner>
-      )}
       <View
         style={{
           flexDirection: 'row',

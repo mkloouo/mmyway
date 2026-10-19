@@ -12,7 +12,7 @@ import { pickDateTime } from '../../src/ui/pickDate';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
 // prettier-ignore
-import { Banner, Button, Card, Chip, IconButton, ListRow, ModalHeader, Money, Screen, SectionHeader, Segmented, Sheet, StatusPill, StickyFooter, Tile } from '../../src/ui/kit';
+import { Button, Card, Chip, IconButton, ListRow, ModalHeader, Money, Screen, SectionHeader, Segmented, Sheet, StatusPill, StickyFooter, Tile } from '../../src/ui/kit';
 import { rewireForType, type TxEnds } from '../../src/transactions/changeType';
 import { DetailRows, type DetailRowsValue } from '../../src/ui/DetailRows';
 import { PayeeSheet } from '../../src/ui/PayeeSheet';
@@ -36,6 +36,7 @@ import { useRecentTags } from '../../src/lookup/recentTags';
 import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
 import { confirmInboxItem } from '../../src/inbox/createManualEntry';
 import { discardOperation } from '../../src/sync/outbox';
+import { requestSync } from '../../src/sync/syncTrigger';
 import { getClient } from '../../src/api/ff3/session';
 import { alertDiscardOutcome } from '../../src/inbox/discardAlert';
 import { askPhotoSource, pickPhoto } from '../../src/receipt/pickPhoto';
@@ -44,6 +45,7 @@ import {
   deleteInboxItem,
   attachReceiptImage,
   removeReceiptImage,
+  retryErroredItem,
 } from '../../src/inbox/updateDraft';
 import { draftReadiness } from '../../src/inbox/readiness';
 import { draftAccountCurrency, needsForeignAmount } from '../../src/inbox/fx';
@@ -340,6 +342,11 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
   });
   const confirming = act.pending(tr('inbox.confirm'));
 
+  const retryError = act(tr('inbox.retry'), async () => {
+    await retryErroredItem(db, id);
+    requestSync();
+  });
+
   const handleDeleteDraft = act(tr('common.delete'), async () => {
     closeSheet();
     if (
@@ -440,6 +447,16 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
       onChange={handleDetailChange}
       onDatePress={openDatePicker}
       payee={withPayee ? { name: payeeName, onPress: () => setSheet('payee') } : undefined}
+      statusRow={
+        row.errorMessage && !readOnly
+          ? {
+              message: row.errorMessage,
+              onRetry: () => {
+                void retryError();
+              },
+            }
+          : undefined
+      }
       unsure={unsureRows}
       readOnly={readOnly}
       accounts={assetAccounts}
@@ -614,7 +631,6 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
             paddingBottom: t.space.lg,
           }}
         >
-          {!!row.errorMessage && !readOnly && <Banner inset>{row.errorMessage}</Banner>}
           {/* A receipt the model couldn't read a currency from can't be confirmed without one. */}
           {!readOnly && !draft.currencyCode && (
             <View style={{ alignItems: 'center' }}>

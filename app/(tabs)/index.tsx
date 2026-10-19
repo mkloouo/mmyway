@@ -436,6 +436,7 @@ export default function InboxScreen() {
           />
         )}
         {!!showOfflineBanner && (
+          // kit-exception: Inbox has no board yet (MKL-70)
           <Banner>{`⚑ ${tr('inbox.offlineBanner', { count: pendingOutboxCount })}`}</Banner>
         )}
 

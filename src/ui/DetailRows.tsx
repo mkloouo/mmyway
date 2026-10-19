@@ -58,6 +58,8 @@ interface DetailRowsProps {
   tagsSuggestions?: string[];
   /** The accounts and budgets are still loading: their rows show a spinner, not "—". */
   loading?: boolean;
+  /** Status or failed sync error row displayed at the top of the group. */
+  statusRow?: { message: string; onRetry?: () => void; retryLabel?: string };
 }
 
 /**
@@ -87,6 +89,7 @@ export function DetailRows({
   sharedPeople,
   tagsSuggestions,
   typeEditable,
+  statusRow,
 }: DetailRowsProps) {
   const t = useTheme();
   const { t: tr } = useTranslation();
@@ -112,13 +115,29 @@ export function DetailRows({
   const showPayee = !!payee && value.type !== 'transfer';
   const check = (row: UnsureRow) =>
     unsure?.has(row) ? { check: true, tone: 'warn' as const } : {};
+  const isFirst = !statusRow;
 
   return (
     <>
       <Card style={{ marginHorizontal: t.space.lg }}>
-        {typeEditable && (
+        {statusRow && (
           <ListRow
             first
+            leading={<Dot color={t.color.danger} />}
+            label={statusRow.message}
+            action={
+              statusRow.onRetry
+                ? {
+                    label: statusRow.retryLabel ?? tr('inbox.retry'),
+                    onPress: statusRow.onRetry,
+                  }
+                : undefined
+            }
+          />
+        )}
+        {typeEditable && (
+          <ListRow
+            first={isFirst}
             label={tr('fields.type')}
             value={tr(txTypeLabelKey(value.type) ?? 'fields.type')}
             {...edit(() => setTypeSheetOpen(true))}
@@ -126,7 +145,7 @@ export function DetailRows({
         )}
         {showPayee && payee && (
           <ListRow
-            first={!typeEditable}
+            first={isFirst && !typeEditable}
             label={value.type === 'deposit' ? tr('capture.payer') : tr('capture.payee')}
             value={payee.name || '—'}
             {...check('payee')}
@@ -135,7 +154,7 @@ export function DetailRows({
         )}
         {value.type !== 'transfer' && (
           <ListRow
-            first={!typeEditable && !showPayee}
+            first={isFirst && !typeEditable && !showPayee}
             label={tr('fields.category')}
             value={value.categoryName ?? '—'}
             leading={
@@ -149,7 +168,7 @@ export function DetailRows({
         )}
         {(value.type === 'withdrawal' || value.type === 'transfer') && (
           <ListRow
-            first={!typeEditable && value.type === 'transfer'}
+            first={isFirst && !typeEditable && value.type === 'transfer'}
             label={tr('fields.from')}
             value={sourceAccount?.name ?? '—'}
             loading={loading && !sourceAccount && !!value.sourceAccountId}

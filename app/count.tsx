@@ -13,7 +13,7 @@ import { useCategories, useCurrencies } from '../src/db/useReferenceData';
 import { useDb } from '../src/providers/DbProvider';
 import { useTheme } from '../src/ui/theme';
 // prettier-ignore
-import { Banner, Button, Card, Dot, GroupFooter, ListRow, ModalHeader, Money, SCREEN_TOP_PADDING, Screen, SectionHeader, Sheet, StickyFooter, SwitchRow, useKeyboardHeight } from '../src/ui/kit';
+import { Button, Card, Dot, GroupFooter, ListRow, ModalHeader, Money, NoticeBlock, SCREEN_TOP_PADDING, Screen, SectionHeader, Sheet, StickyFooter, SwitchRow, useKeyboardHeight } from '../src/ui/kit';
 import { PickerSheet } from '../src/ui/PickerSheet';
 import { AccountPickerSheet, type AccountPickerAccount } from '../src/ui/AccountPickerSheet';
 import { currencyOf, formatMoney } from '../src/ui/money';
@@ -283,26 +283,26 @@ export default function CountScreen() {
           }
           onClose={() => router.back()}
         />
-        {stale && envelopeAccounts.length > 0 && <Banner>{tr('count.staleBanner')}</Banner>}
+        {stale && envelopeAccounts.length > 0 && !blocker && (
+          <View style={{ marginHorizontal: t.space.lg, marginBottom: t.space.sm }}>
+            <NoticeBlock title={tr('count.staleBanner')} tone="warn" />
+          </View>
+        )}
         {!!blocker && envelopeAccounts.length > 0 && (
-          <Banner
-            inset
-            action={
-              <Button
-                title={syncing ? tr('sync.syncing') : tr('sync.syncNow')}
-                variant="ghost"
-                onPress={() => syncNow()}
-                disabled={syncing}
-              />
-            }
-          >
-            <Text style={[t.type.heading, { color: t.color.text }]}>
-              {tr('count.outOfDateTitle')}
-            </Text>
-            <Text style={[t.type.label, { color: t.color.text }]}>
-              {describeCountBlocker(blocker)}
-            </Text>
-          </Banner>
+          <View style={{ marginHorizontal: t.space.lg, marginBottom: t.space.sm }}>
+            <NoticeBlock
+              title={tr('count.outOfDateTitle')}
+              body={describeCountBlocker(blocker)}
+              action={{
+                label: syncing ? tr('sync.syncing') : tr('sync.syncNow'),
+                onPress: () => {
+                  void syncNow();
+                },
+                disabled: syncing,
+              }}
+              tone="warn"
+            />
+          </View>
         )}
 
         {envelopeAccounts.length === 0 ? (
