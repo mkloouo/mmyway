@@ -275,9 +275,19 @@ export function SwitchRow({
 // prettier-ignore
 export interface RadioRowProps {
   label: string; sub?: string; selected: boolean; onPress?: () => void; first?: boolean; disabled?: boolean;
+  chevron?: boolean; trailing?: ReactNode;
 }
 
-export function RadioRow({ label, sub, selected, onPress, first, disabled }: RadioRowProps) {
+export function RadioRow({
+  label,
+  sub,
+  selected,
+  onPress,
+  first,
+  disabled,
+  chevron,
+  trailing,
+}: RadioRowProps) {
   const t = useTheme();
   return (
     <Pressable
@@ -320,6 +330,8 @@ export function RadioRow({ label, sub, selected, onPress, first, disabled }: Rad
           </Text>
         )}
       </View>
+      {trailing}
+      {chevron && <Ionicons name="chevron-forward" size={16} color={t.color.textFaint} />}
     </Pressable>
   );
 }

@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { ScheduleSheet } from '../ui/ScheduleRows';
+import { ScheduleSheet } from '../ui/ScheduleSheet';
 import { AmountSheet } from '../ui/AmountSheet';
 import { PickerSheet } from '../ui/PickerSheet';
 import { AccountPickerSheet } from '../ui/AccountPickerSheet';

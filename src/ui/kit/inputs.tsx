@@ -257,6 +257,8 @@ export function StepperRow({
   disabled,
   style,
   testID,
+  increaseAccessibilityLabel,
+  decreaseAccessibilityLabel,
 }: {
   label: string;
   value: number;
@@ -270,6 +272,8 @@ export function StepperRow({
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
   testID?: string;
+  increaseAccessibilityLabel?: string;
+  decreaseAccessibilityLabel?: string;
 }) {
   const t = useTheme();
   const displayValue = format ? format(value) : unit ? `${value} ${unit}` : '';
@@ -305,6 +309,8 @@ export function StepperRow({
         max={max}
         step={step}
         disabled={disabled}
+        increaseAccessibilityLabel={increaseAccessibilityLabel ?? `Increase ${label}`}
+        decreaseAccessibilityLabel={decreaseAccessibilityLabel ?? `Decrease ${label}`}
       />
     </View>
   );

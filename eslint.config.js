@@ -40,7 +40,6 @@ const OVERSIZED = {
   'app/(tabs)/activity.tsx': 680,
   'app/(tabs)/index.tsx': 571,
   'app/accounts/new.tsx': 499,
-  'src/ui/ScheduleRows.tsx': 549,
   'src/planned/notifications.ts': 469,
   'src/ui/InboxCards.tsx': 459,
   'app/planned/new.tsx': 465,

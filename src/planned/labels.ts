@@ -68,11 +68,16 @@ function repetitionLabel(rep: Repetition): string {
   return rep.weekend === 1 ? text : `${text}, ${weekendName(rep.weekend)}`;
 }
 
-/** How it stops; empty for "until I change it", which needs no saying. */
-export function endLabel(end: EndCondition, repeats = true): string {
+/** How it stops; empty for "until I change it", unless explicitForever is true. */
+export function endLabel(
+  end: EndCondition,
+  repeats = true,
+  opts?: { explicitForever?: boolean },
+): string {
   if (!repeats) return '';
   if (end.kind === 'times') return i18n.t('planned.endTimes', { count: Math.max(2, end.count) });
   if (end.kind === 'until') return i18n.t('planned.endUntil', { date: dayLabel(end.date) });
+  if (opts?.explicitForever) return i18n.t('planned.endUntilChanged');
   return '';
 }
 
