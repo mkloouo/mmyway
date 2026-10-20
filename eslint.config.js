@@ -40,7 +40,6 @@ const OVERSIZED = {
   'app/capture.tsx': 1344,
   'app/draft/[[]id].tsx': 983,
   'app/transactions/[[]groupId].tsx': 942,
-  'src/sync/outbox.ts': 930,
   'app/count.tsx': 682,
   'app/(tabs)/activity.tsx': 680,
   'app/(tabs)/index.tsx': 571,

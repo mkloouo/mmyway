@@ -1,7 +1,8 @@
 // What a queued operation touches, so the replay can hold back only the operations that depend on
 // one that failed (#41). Two operations depend on each other when they share a subject: the same
 // transaction group or journal, Inbox entry, account, or planned transaction. Pure, no db.
-import type { OutboxKind } from './outbox';
+import { OUTBOX_KINDS } from './outboxKinds';
+import type { OutboxKind } from './outboxTypes';
 import { readPayload } from './payloadJson';
 
 /** Subject keys of one operation; null when its payload can't be read, which blocks everything after it. */
@@ -10,95 +11,23 @@ export function subjectsOf(op: {
   payloadJson: string;
   inboxItemId: string | null;
 }): string[] | null {
-  let p: Record<string, unknown>;
+  let p: unknown;
   try {
     p = readPayload(op.kind, op.payloadJson);
   } catch {
     return null;
   }
+  const spec = (OUTBOX_KINDS as Record<string, (typeof OUTBOX_KINDS)[keyof typeof OUTBOX_KINDS]>)[
+    op.kind
+  ];
+  if (!spec) return null;
   const keys: string[] = [];
   const add = (prefix: string, value: unknown) => {
     if (typeof value === 'string' && value) keys.push(`${prefix}:${value}`);
     else if (typeof value === 'number') keys.push(`${prefix}:${value}`);
   };
-  // A transaction also depends on the accounts it books to: an account edit queued before it
-  // (making it active again, say) has to land first.
-  const addAccounts = (splits: unknown) => {
-    for (const s of (Array.isArray(splits) ? splits : []) as Record<string, unknown>[]) {
-      add('account', s.source_id);
-      add('account', s.destination_id);
-    }
-  };
   add('inbox', op.inboxItemId);
-  switch (op.kind) {
-    case 'create_transaction':
-      addAccounts(p.splits);
-      break;
-    case 'update_transaction':
-    case 'recurring_review':
-      add('group', p.groupId);
-      add('journal', p.transactionJournalId);
-      addAccounts([p.changes, ...(Array.isArray(p.splits) ? p.splits : [])]);
-      break;
-    case 'delete_transaction':
-      add('group', p.groupId);
-      break;
-    case 'attach_receipt':
-    case 'delete_attachment':
-      add('journal', p.transactionJournalId);
-      break;
-    case 'update_account':
-      add('account', p.accountId);
-      break;
-    case 'reorder_accounts':
-      for (const id of p.orderedIds as string[]) add('account', id);
-      break;
-    case 'save_planned':
-    case 'delete_planned':
-    case 'trigger_planned':
-      add('planned', p.key);
-      add('bill', p.billId);
-      add('rule', p.ruleId);
-      add('recurrence', p.recurrenceId);
-      break;
-    case 'set_piggy_amount':
-      // The fund, and the account its money sits in: an account edit queued before it lands first.
-      add('piggy', p.piggyId);
-      add('account', p.accountId);
-      break;
-    case 'set_budget_limits':
-      // Every budget in the operation, so a second assignment to the same envelope queues behind
-      // this one instead of racing it — both are absolute amounts, and the later one must win.
-      for (const entry of (p.entries ?? []) as { budgetId?: unknown }[])
-        add('budget', entry.budgetId);
-      break;
-    case 'create_budget':
-      add('budget', p.clientId); // until serverId is recorded
-      break;
-    case 'update_budget':
-      add('budget', p.budgetId);
-      break;
-    case 'delete_budget':
-      add('budget', p.budgetId);
-      break;
-    case 'create_account':
-      // Both ids: an edit queued on the account waits behind this create whichever one it carries.
-      add('account', p.clientId);
-      add('account', p.serverId);
-      break;
-    case 'toggle_rule':
-    case 'trigger_rule':
-      add('rule', p.ruleId);
-      break;
-    case 'toggle_rule_group':
-      add('rule_group', p.ruleGroupId);
-      break;
-    case 'create_rule':
-      // Both ids, as for create_account: a switch queued on the new rule waits behind this create.
-      add('rule', p.clientId);
-      add('rule', p.serverId);
-      break;
-  }
+  spec.subjects(p, add);
   return keys;
 }
 

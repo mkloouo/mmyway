@@ -1,32 +1,42 @@
 {
-  "version": "2.3.5",
+  "version": "2.5.6",
   "sections": [
     {
-      "title": "Added",
+      "title": "Receipts",
       "items": [
-        "Unified Kit V2 components for upcoming screen redesigns: Hero, ProgressBar, ActionTile, ChoiceCard, OptionTiles, Stepper, StepperRow, NoticeBlock, Pill tones, DateTile, Sheet subtitle, and SummaryCallout (MKL-86).",
-        "Unified multi-step modal wizard frame (ModalWizard) shared by New Account and New Planned Payment (MKL-85)."
+        "Receipt photo viewer updated to board 18 with \"Receipt\" title, kit close button, and photo-danger remove photo button (MKL-115)."
+      ]
+    },
+    {
+      "title": "Budget",
+      "items": [
+        "New envelope sheet updated to board 03 with \"Assign now\" amount, ready-to-assign subtitle, and circular add buttons for category suggestions (MKL-107)."
       ]
     },
     {
       "title": "Changed",
       "items": [
-        "Retired Banner across Draft review, SplitPager, and Cash count, showing sync errors as a status row in Details and stale counts via NoticeBlock (MKL-84).",
-        "Enforced architectural lint rules preventing raw touch/input primitives and direct database queries in screen components (MKL-87)."
+        "Resolved static analysis and test cleanups including i18n attribute linting, unexported dead symbols, Jest worker unref handling, and expanded coverage scope (MKL-124).",
+        "Reduced oversized modules (referenceData, toDraft, planned/model, and SyncSheet), splitting them by responsibility below the 400-line ceiling (MKL-123).",
+        "Validated stored JSON strings and LLM receipt responses with Zod schemas and added lint rule preventing unsafe JSON.parse casts (MKL-122).",
+        "Decoupled domain code from the UI layer, moving money formatting and currencies to domain packages with lint enforcement (MKL-120)."
+      ]
+    },
+    {
+      "title": "Planned",
+      "items": [
+        "New planned payment wizard updated to boards 23–25 with inline amount input and trailing currency, OptionTiles for frequency, \"Then\" schedule rows, and single-line note with tags sheet (MKL-104).",
+        "Planned schedule sheet updated to board 22 with summary callout showing next occurrences, inline frequency segmented control, interval stepper, day-of-month and nth-weekday radios, and until-date or times conditions (MKL-103).",
+        "Planned tab updated to board 19 with large title, segmented \"All plans · N\", amount-styled summary figures, route and category subtitles, Booked pill, and struck skipped rows (MKL-100).",
+        "Unified planned form hook and sheets between New Planned Payment wizard and Planned Item editor, removing duplicate code across the two screens (MKL-99).",
+        "Planned occurrence sheet updated to board 21 with relative day subtitle, From/To/Category rows, and an \"Edit the plan\" row (MKL-102).",
+        "First-time reminders intro sheet updated to board 33 with a body title, option tiles, and a text \"Not now\" action (MKL-96)."
       ]
     },
     {
       "title": "Settings",
       "items": [
-        "Settings is regrouped with clearer names (Accounts, Loans and debts, Payee nicknames, Subscriptions and recurring, Lock the app) and shows how many of each you have (MKL-89).",
-        "Receipt reading settings updated to board 27 with masked API key, \"Where it runs\" live reachability status, and a \"Test both now\" reader check (MKL-90).",
-        "Your Firefly III updated to board 29 with an in-card connection status and actions, inline addresses with live reachability and \"Test all\", a masked access token, and a persistent sign-out row (MKL-92)."
-      ]
-    },
-    {
-      "title": "Count cash",
-      "items": [
-        "Cash sweep shortfall and surplus pickers updated to board 28 Choose sheet with \"Used this year\" filter and deduplicated across Count cash and Settings (MKL-91)."
+        "About and help updated to board 31 with version and build number, Activity log share and clear actions, and Firefly III browser link and server version (MKL-94)."
       ]
     }
   ]

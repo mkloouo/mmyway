@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Extracted outbox operation kinds into an open-closed registry (outboxKinds) and split outbox.ts into focused modules below the 400-line ceiling (MKL-119).
+
 ## [2.5.6] - 2026-10-20
 
 ### Receipts
