@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [2.5.6] - 2026-10-20
+
 ### Receipts
 
 - Receipt photo viewer updated to board 18 with "Receipt" title, kit close button, and photo-danger remove photo button (MKL-115).
