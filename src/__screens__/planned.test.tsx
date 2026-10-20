@@ -16,7 +16,7 @@ import i18n from '../i18n';
 import { createTestDb } from '../db/testDb';
 import { outboxOperations } from '../db/schema';
 import { storePlanned } from '../planned/objects';
-import { dayLabel } from '../planned/labels';
+import { occurrenceLabel, relativeDayLabel } from '../planned/labels';
 import { formatMoney } from '../ui/money';
 import { localDay, dayDate } from '../utils/day';
 import PlannedScreen from '../../app/(tabs)/planned';
@@ -182,7 +182,8 @@ describe('Planned → Coming up', () => {
 
     await fireEvent.press(screen.getAllByText('Rent')[0]!);
 
-    expect(screen.getByText(dayLabel(day))).toBeTruthy();
+    expect(screen.getByText(`${occurrenceLabel(day)} · ${relativeDayLabel(day)}`)).toBeTruthy();
+    expect(screen.getByText('Edit the plan')).toBeTruthy();
     expect(screen.getByText('Skip this one')).toBeTruthy();
     expect(screen.getByText('Book it now')).toBeTruthy();
   });

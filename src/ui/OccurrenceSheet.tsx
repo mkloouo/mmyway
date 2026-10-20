@@ -13,7 +13,7 @@ import { useAction } from './useAction';
 import { navigateOnce } from './navigateOnce';
 import { savePlanned, triggerPlanned } from '../planned/actions';
 import type { PlannedItem } from '../planned/items';
-import { dayLabel } from '../planned/labels';
+import { dayLabel, occurrenceLabel, relativeDayLabel, scheduleLabel } from '../planned/labels';
 import { toggleSkipDay } from '../planned/notes';
 import { localDay } from '../utils/day';
 
@@ -104,6 +104,7 @@ export function OccurrenceSheet({
     <Sheet
       visible={visible}
       title={name}
+      subtitle={`${occurrenceLabel(day)} · ${relativeDayLabel(day)}`}
       onClose={onClose}
       footer={
         <View style={{ flexDirection: 'row', gap: t.space.sm }}>
@@ -135,29 +136,22 @@ export function OccurrenceSheet({
         size="display"
       />
       <Card>
-        <ListRow first label={tr('fields.date')} value={dayLabel(day)} />
-        <ListRow label={tr('fields.from')} value={f.sourceName ?? '—'} />
+        <ListRow first label={tr('fields.from')} value={f.sourceName ?? '—'} />
         <ListRow label={tr('fields.to')} value={f.destinationName ?? '—'} />
         <ListRow label={tr('fields.category')} value={f.categoryName ?? '—'} />
+      </Card>
+      <Card>
         <ListRow
-          label={tr('planned.occurrence.status')}
-          value={
-            skipped
-              ? tr('planned.occurrence.skipped')
-              : booked
-                ? tr('planned.occurrence.booked')
-                : tr('planned.occurrence.scheduled')
-          }
+          first
+          label={tr('planned.occurrence.edit')}
+          sub={scheduleLabel(f, item.group)}
+          chevron
+          onPress={() => {
+            onClose();
+            navigateOnce(`/planned/${encodeURIComponent(item.key)}`);
+          }}
         />
       </Card>
-      <Button
-        variant="ghost"
-        title={tr('planned.occurrence.edit')}
-        onPress={() => {
-          onClose();
-          navigateOnce(`/planned/${encodeURIComponent(item.key)}`);
-        }}
-      />
     </Sheet>
   );
 }

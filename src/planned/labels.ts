@@ -1,6 +1,7 @@
 // Display text for the Planned tab, in the app's language.
 import i18n, { appLocale } from '../i18n';
 import { currencySymbol } from '../ui/money';
+import { dayDate, localDay } from '../utils/day';
 import type { PlannedFields, PlannedGroup } from './model';
 import type { PlannedObject } from './objects';
 import {
@@ -106,6 +107,26 @@ export function occurrenceLabel(date: string): string {
   return Number.isNaN(d.getTime())
     ? date
     : d.toLocaleDateString(appLocale(), { weekday: 'short', day: 'numeric', month: 'short' });
+}
+
+/**
+ * Relative days for an occurrence: "today", "tomorrow", "in 3 days", "in 2 months".
+ * Used by the occurrence sheet and planned item list (boards 20 and 21).
+ */
+export function relativeDayLabel(day: string, today: string = localDay()): string {
+  const target = dayDate(day);
+  const base = dayDate(today);
+  if (Number.isNaN(target.getTime()) || Number.isNaN(base.getTime())) return '';
+  const diffDays = Math.round((target.getTime() - base.getTime()) / 86_400_000);
+  if (diffDays === 0) return i18n.t('time.today');
+  if (diffDays === 1) return i18n.t('time.tomorrow');
+  if (diffDays === -1) return i18n.t('time.yesterday');
+  if (diffDays < -1) return i18n.t('time.daysAgoShort', { count: Math.abs(diffDays) });
+  if (diffDays >= 30) {
+    const months = Math.round(diffDays / 30);
+    return i18n.t('time.inMonths', { count: Math.max(1, months) });
+  }
+  return i18n.t('time.inDays', { count: diffDays });
 }
 
 /** One line under an object's name in the detailed view. */
