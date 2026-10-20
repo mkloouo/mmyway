@@ -12,6 +12,7 @@ import {
   getDefaultCurrencyCode,
   getDefaultSourceAccountId,
   getFf3ActiveHost,
+  getFf3Version,
   getLastSyncedAt,
   getLocalModelActiveUrl,
   getLocalModelBaseUrls,
@@ -28,6 +29,7 @@ interface AppSettingsSnapshot {
   signedIn: boolean;
   ff3Hosts: string[];
   ff3ActiveHost: string | null;
+  ff3Version: string | null;
   localModelUrls: string[];
   localModelActiveUrl: string | null;
   localModelName: string;
@@ -54,6 +56,7 @@ export async function loadSettings(db: OutboxDb): Promise<AppSettingsSnapshot> {
     creds,
     ff3Hosts,
     ff3ActiveHost,
+    ff3Version,
     localModelUrls,
     localModelActiveUrl,
     localModelName,
@@ -73,6 +76,7 @@ export async function loadSettings(db: OutboxDb): Promise<AppSettingsSnapshot> {
     readStoredCredentials(),
     readHosts(),
     getFf3ActiveHost(db),
+    getFf3Version(db),
     getLocalModelBaseUrls(db),
     getLocalModelActiveUrl(db),
     getLocalModelName(db),
@@ -93,6 +97,7 @@ export async function loadSettings(db: OutboxDb): Promise<AppSettingsSnapshot> {
     signedIn: !!creds,
     ff3Hosts,
     ff3ActiveHost,
+    ff3Version,
     localModelUrls,
     localModelActiveUrl,
     localModelName: localModelName ?? '',

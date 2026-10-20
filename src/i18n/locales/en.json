@@ -577,13 +577,15 @@
   },
   "logs": {
     "clear": "Clear",
+    "clearLog": "Clear the log",
     "clearTitle": "Clear the log?",
     "emptyHint": "Warnings and errors show up here.",
     "emptyTitle": "Nothing logged",
     "share": "Share",
-    "subtitle_one": "{{count, number}} line, newest first",
-    "subtitle_other": "{{count, number}} lines, newest first",
-    "title": "Diagnostics"
+    "shareLog": "Share the log",
+    "subtitle_one": "{{count, number}} line · newest first",
+    "subtitle_other": "{{count, number}} lines · newest first",
+    "title": "Activity log"
   },
   "migrationFailed": {
     "body": "The app stopped here so it doesn’t work on a broken database. Share the diagnostics log so the problem can be fixed; reinstalling the app starts over from Firefly III (drafts on this phone are lost).",
@@ -1056,6 +1058,7 @@
     "envelopeCount_one": "{{count, number}} envelope",
     "envelopeCount_other": "{{count, number}} envelopes",
     "ff3Addresses": "Firefly III addresses",
+    "ff3Version": "Firefly III version",
     "geminiApiKey": "Gemini API key",
     "geminiKey": "Gemini key",
     "geminiPrivacy": "With a Gemini key, receipt photos go to Google whenever your local model isn’t set up or can’t read them. Without one, they never leave your network.",
@@ -1066,6 +1069,7 @@
     "languageSystem": "Like my phone",
     "languageUkrainian": "Українська",
     "lastSync": "Last sync",
+    "lastSynced": "Last synced",
     "liabilities": "Loans and debts",
     "localModelAddresses": "Local model addresses",
     "localModelPlaceholder": "e.g. qwen3-vl-8b",
@@ -1077,6 +1081,7 @@
     "notSet": "not set",
     "notificationsPermissionDenied": "Notifications permission is disabled. Please enable it in system settings.",
     "off": "Off",
+    "openFireflyInBrowser": "Open Firefly III in the browser",
     "openInBrowser": "Open in browser",
     "payFrom": "Pay from",
     "payFromHint": "Picked first for card payments",
@@ -1102,6 +1107,7 @@
     "sectionConnection": "Connection",
     "sectionData": "Data",
     "sectionDefaults": "Defaults",
+    "sectionFireflyIii": "Firefly III",
     "sectionLanguage": "Language",
     "sectionNotifications": "Notifications",
     "sectionPrivacyReminders": "Privacy and reminders",
@@ -1128,6 +1134,7 @@
     "title": "Settings",
     "tokenPlaceholder": "Personal access token",
     "version": "Version",
+    "whatsNew": "What's new",
     "whatsNewIn": "What's new in {{version}}"
   },
   "splits": {

@@ -13,7 +13,7 @@ tags:
       text: 'About and help'
     direction: DOWN
 - tapOn: 'About and help'
-- tapOn: 'Diagnostics'
+- tapOn: 'Activity log'
 - runFlow:
     when:
       visible: 'Share'

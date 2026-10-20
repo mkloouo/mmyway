@@ -89,6 +89,25 @@ export function clearLog(): void {
   persist();
 }
 
+export async function shareLog(source: string[] = readLog()): Promise<void> {
+  if (source.length === 0) return;
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { Share } = require('react-native');
+  await Share.share({ message: shareableLog(source) });
+}
+
+export async function confirmAndClearLog(): Promise<boolean> {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { confirmDestructive } = require('../ui/confirm');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const i18n = require('../i18n').default;
+  if (!(await confirmDestructive(i18n.t('logs.clearTitle'), i18n.t('logs.clear')))) {
+    return false;
+  }
+  clearLog();
+  return true;
+}
+
 function describe(args: unknown[]): string {
   return args
     .map((a) =>

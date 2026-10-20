@@ -3,23 +3,24 @@ import type { FF3Client } from '../api/ff3/client';
 import { fetchAllPages } from '../api/ff3/paginate';
 import type {
   AccountRead,
-  CategoryRead,
   BudgetRead,
+  CategoryRead,
   CurrencyRead,
+  SystemInfo,
   TransactionRead,
 } from '../api/ff3/types';
 import {
-  referenceAccounts,
-  referenceCategories,
-  referenceBudgets,
-  referenceCurrencies,
   cachedTransactions,
   outboxOperations,
+  referenceAccounts,
+  referenceBudgets,
+  referenceCategories,
+  referenceCurrencies,
 } from '../db/schema';
 import type { OutboxDb } from './outbox';
 import { payloadGroupId } from './payloadJson';
 import { logLine } from '../utils/log';
-import { setAccountOrder } from '../settings/appSettings';
+import { setAccountOrder, setFf3Version } from '../settings/appSettings';
 import { groupHeadline } from '../transactions/activityRows';
 import { normkey } from '../lookup/normkey';
 import { splitsFromGroup, writeSplits } from '../transactions/splitsJson';
@@ -77,7 +78,7 @@ function accountTypeOf(type: string): string {
 export async function pullReferenceData(db: OutboxDb, client: FF3Client): Promise<void> {
   const now = new Date().toISOString();
 
-  const [accountsByType, categories, budgets, currencies] = await Promise.all([
+  const [accountsByType, categories, budgets, currencies, about] = await Promise.all([
     Promise.all(
       ['asset', 'cash', 'expense', 'revenue', 'liabilities'].map((type) =>
         fetchAll<AccountRead>(client, `/v1/accounts?type=${type}`),
@@ -86,7 +87,9 @@ export async function pullReferenceData(db: OutboxDb, client: FF3Client): Promis
     fetchAll<CategoryRead>(client, '/v1/categories'),
     fetchAll<BudgetRead>(client, '/v1/budgets'),
     fetchAll<CurrencyRead>(client, '/v1/currencies'),
+    client.request<SystemInfo>('/v1/about').catch(() => null),
   ]);
+  if (about?.data?.version) await setFf3Version(db, about.data.version);
 
   // Only new or changed rows are written: rewriting every account, category and budget on every
   // sync fired the change listener once per row for nothing. The rows FF3 returned unchanged get
@@ -192,26 +195,23 @@ export async function pullReferenceData(db: OutboxDb, client: FF3Client): Promis
         .onConflictDoUpdate({ target: referenceCurrencies.code, set: row })
         .run();
     }
-    for (const ids of chunks(unchanged.accounts))
-      tx.update(referenceAccounts)
-        .set({ syncedAt: now })
-        .where(inArray(referenceAccounts.id, ids))
-        .run();
-    for (const ids of chunks(unchanged.categories))
-      tx.update(referenceCategories)
-        .set({ syncedAt: now })
-        .where(inArray(referenceCategories.id, ids))
-        .run();
-    for (const ids of chunks(unchanged.budgets))
-      tx.update(referenceBudgets)
-        .set({ syncedAt: now })
-        .where(inArray(referenceBudgets.id, ids))
-        .run();
-    for (const codes of chunks(unchanged.currencies))
-      tx.update(referenceCurrencies)
-        .set({ syncedAt: now })
-        .where(inArray(referenceCurrencies.code, codes))
-        .run();
+    const touch = (
+      table:
+        | typeof referenceAccounts
+        | typeof referenceCategories
+        | typeof referenceBudgets
+        | typeof referenceCurrencies,
+      col: any,
+      list: string[],
+    ) => {
+      for (const ids of chunks(list)) {
+        tx.update(table).set({ syncedAt: now }).where(inArray(col, ids)).run();
+      }
+    };
+    touch(referenceAccounts, referenceAccounts.id, unchanged.accounts);
+    touch(referenceCategories, referenceCategories.id, unchanged.categories);
+    touch(referenceBudgets, referenceBudgets.id, unchanged.budgets);
+    touch(referenceCurrencies, referenceCurrencies.code, unchanged.currencies);
   });
 
   const order: Record<string, number> = {};

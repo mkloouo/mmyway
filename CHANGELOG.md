@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Settings
+
+- About and help updated to board 31 with version and build number, Activity log share and clear actions, and Firefly III browser link and server version (MKL-94).
+
 ## [2.3.5] - 2026-10-20
 
 ### Added

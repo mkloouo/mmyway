@@ -1,16 +1,32 @@
 {
-  "version": "2.3.4",
+  "version": "2.3.5",
   "sections": [
     {
-      "title": "Fixed",
+      "title": "Added",
       "items": [
-        "Leftover differences on split transactions are shared proportionally rather than greedily draining splits down to 1 cent (MKL-150)."
+        "Unified Kit V2 components for upcoming screen redesigns: Hero, ProgressBar, ActionTile, ChoiceCard, OptionTiles, Stepper, StepperRow, NoticeBlock, Pill tones, DateTile, Sheet subtitle, and SummaryCallout (MKL-86).",
+        "Unified multi-step modal wizard frame (ModalWizard) shared by New Account and New Planned Payment (MKL-85)."
       ]
     },
     {
       "title": "Changed",
       "items": [
-        "Migrated GitHub Actions CI, static analysis, and release workflows to pnpm (MKL-151)."
+        "Retired Banner across Draft review, SplitPager, and Cash count, showing sync errors as a status row in Details and stale counts via NoticeBlock (MKL-84).",
+        "Enforced architectural lint rules preventing raw touch/input primitives and direct database queries in screen components (MKL-87)."
+      ]
+    },
+    {
+      "title": "Settings",
+      "items": [
+        "Settings is regrouped with clearer names (Accounts, Loans and debts, Payee nicknames, Subscriptions and recurring, Lock the app) and shows how many of each you have (MKL-89).",
+        "Receipt reading settings updated to board 27 with masked API key, \"Where it runs\" live reachability status, and a \"Test both now\" reader check (MKL-90).",
+        "Your Firefly III updated to board 29 with an in-card connection status and actions, inline addresses with live reachability and \"Test all\", a masked access token, and a persistent sign-out row (MKL-92)."
+      ]
+    },
+    {
+      "title": "Count cash",
+      "items": [
+        "Cash sweep shortfall and surplus pickers updated to board 28 Choose sheet with \"Used this year\" filter and deduplicated across Count cash and Settings (MKL-91)."
       ]
     }
   ]

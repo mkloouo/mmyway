@@ -21,6 +21,7 @@ const KEYS = {
   localModelName: 'local_model_name',
   receiptReader: 'receipt_reader',
   ff3ActiveHost: 'ff3_active_host',
+  ff3Version: 'ff3_version',
   lastSyncedAt: 'last_synced_at',
   useServerTime: 'use_server_time',
   accountOrder: 'account_order',
@@ -61,6 +62,7 @@ async function setSetting(db: OutboxDb, key: string, value: string): Promise<voi
  */
 export const INSTANCE_SETTING_KEYS: readonly string[] = [
   KEYS.ff3ActiveHost,
+  KEYS.ff3Version,
   KEYS.lastSyncedAt,
   KEYS.accountOrder,
   KEYS.balancesStale,
@@ -153,6 +155,10 @@ export const setLocalModelActiveUrl = (db: OutboxDb, value: string) =>
 export const getFf3ActiveHost = (db: OutboxDb) => getSetting(db, KEYS.ff3ActiveHost);
 export const setFf3ActiveHost = (db: OutboxDb, value: string) =>
   setSetting(db, KEYS.ff3ActiveHost, value);
+
+export const getFf3Version = (db: OutboxDb) => getSetting(db, KEYS.ff3Version);
+export const setFf3Version = (db: OutboxDb, value: string) =>
+  setSetting(db, KEYS.ff3Version, value);
 
 export const getLastSyncedAt = (db: OutboxDb) => getSetting(db, KEYS.lastSyncedAt);
 export const setLastSyncedAt = (db: OutboxDb, value: string) =>

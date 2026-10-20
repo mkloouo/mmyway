@@ -1,13 +1,12 @@
-// Diagnostics: a production build leaves nothing behind when it fails on a
+// Activity log: a production build leaves nothing behind when it fails on a
 // real device, so the last few hundred warn/error lines are kept and can be shared out.
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, Share, Text, View } from 'react-native';
+import { FlatList, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useTheme } from '../../src/ui/theme';
 import { Button, EmptyState, PushHeader, SCREEN_TOP_PADDING, Screen } from '../../src/ui/kit';
-import { confirmDestructive } from '../../src/ui/confirm';
-import { readLog, clearLog, shareableLog } from '../../src/utils/log';
+import { readLog, shareLog, confirmAndClearLog } from '../../src/utils/log';
 import { useAction } from '../../src/ui/useAction';
 
 export default function LogsScreen() {
@@ -16,15 +15,15 @@ export default function LogsScreen() {
   const act = useAction();
   const [lines, setLines] = useState<string[]>(() => [...readLog()].reverse());
 
-  const shareLog = act(tr('logs.share'), async () => {
+  const onShare = act(tr('logs.share'), async () => {
     if (lines.length === 0) return;
-    await Share.share({ message: shareableLog([...lines].reverse()) });
+    await shareLog([...lines].reverse());
   });
 
   const onClear = act(tr('logs.clear'), async () => {
-    if (!(await confirmDestructive(tr('logs.clearTitle'), tr('logs.clear')))) return;
-    clearLog();
-    setLines([]);
+    if (await confirmAndClearLog()) {
+      setLines([]);
+    }
   });
 
   return (
@@ -66,7 +65,7 @@ export default function LogsScreen() {
       >
         <Button
           title={tr('logs.share')}
-          onPress={shareLog}
+          onPress={onShare}
           disabled={lines.length === 0}
           style={{ flex: 1 }}
         />
