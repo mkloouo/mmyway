@@ -1,6 +1,17 @@
+import { z } from 'zod';
 import { parseDecimalInput } from '../../api/ff3/decimal';
 import type { ReceiptCurrencyExchange, ReceiptExtraction, ReceiptProvider } from '../types';
 import { receiptJsonSchema, receiptPrompt } from '../prompt';
+
+const LocalChoicesSchema = z.object({
+  choices: z.array(
+    z.object({
+      message: z.object({
+        content: z.string(),
+      }),
+    }),
+  ),
+});
 
 /** Whether an OpenAI-compatible server answers at this address (Settings' address test, sync's probe). */
 export async function probeLocalModel(address: string): Promise<boolean> {
@@ -57,8 +68,11 @@ export function createLocalProvider(config: {
         // treats a TypeError as unreachable and would retry the same image forever.
         let parsed: unknown;
         try {
-          const body = await response.json();
-          parsed = JSON.parse(body.choices[0].message.content);
+          const body = LocalChoicesSchema.safeParse(await response.json());
+          if (!body.success || !body.data.choices[0]) {
+            throw new Error('local provider returned an unreadable response');
+          }
+          parsed = JSON.parse(body.data.choices[0].message.content);
         } catch {
           throw new Error('local provider returned an unreadable response');
         }
@@ -105,38 +119,73 @@ function textOf(value: unknown): string | null {
   return typeof value === 'string' && value.trim() !== '' ? value.trim() : null;
 }
 
+const CurrencyExchangeSchema = z.object({
+  from_amount: z.unknown().optional(),
+  fromAmount: z.unknown().optional(),
+  from_currency: z.unknown().optional(),
+  fromCurrency: z.unknown().optional(),
+  to_amount: z.unknown().optional(),
+  toAmount: z.unknown().optional(),
+  to_currency: z.unknown().optional(),
+  toCurrency: z.unknown().optional(),
+  fee_amount: z.unknown().optional(),
+  feeAmount: z.unknown().optional(),
+  fee_currency: z.unknown().optional(),
+  feeCurrency: z.unknown().optional(),
+});
+
+const ReceiptItemSchema = z.object({
+  title: z.string(),
+  price: z.unknown(),
+  count: z.number().optional(),
+});
+
+const RawExtractionSchema = z.object({
+  amount: z.unknown().optional(),
+  currency: z.unknown().optional(),
+  merchant: z.unknown().optional(),
+  date: z.unknown().optional(),
+  time: z.unknown().optional(),
+  category: z.unknown().optional(),
+  confidence: z.unknown().optional(),
+  payment_method: z.unknown().optional(),
+  card_network: z.unknown().optional(),
+  items: z.array(z.unknown()).optional(),
+  currency_exchanges: z.array(z.unknown()).optional(),
+  currencyExchanges: z.array(z.unknown()).optional(),
+});
+
 // Everything a provider returns is untrusted: the local model's json_schema is advisory for some
 // servers, and Gemini is only asked for JSON. Each field is checked for the shape the rest of the
 // app assumes (a decimal-string amount, YYYY-MM-DD, HH:mm) and dropped to null otherwise — a
 // numeric amount used to reach draftReadiness and crash it on `.trim()`.
-function normalizeExtraction(raw: any): ReceiptExtraction {
-  const value = raw && typeof raw === 'object' ? raw : {};
-  const items = Array.isArray(value.items) ? value.items : [];
-  const rawExchanges = Array.isArray(value.currency_exchanges)
-    ? value.currency_exchanges
-    : Array.isArray(value.currencyExchanges)
-      ? value.currencyExchanges
-      : [];
-  const currencyExchanges: ReceiptCurrencyExchange[] = rawExchanges.flatMap((ex: any) => {
-    if (!ex || typeof ex !== 'object') return [];
-    const fromAmount = amountOf(ex.from_amount ?? ex.fromAmount);
+function normalizeExtraction(raw: unknown): ReceiptExtraction {
+  const parsed = RawExtractionSchema.safeParse(raw);
+  const value = parsed.success ? parsed.data : {};
+  const items = value.items ?? [];
+  const rawExchanges = value.currency_exchanges ?? value.currencyExchanges ?? [];
+  const currencyExchanges: ReceiptCurrencyExchange[] = rawExchanges.flatMap((ex: unknown) => {
+    const exchange = CurrencyExchangeSchema.safeParse(ex);
+    if (!exchange.success) return [];
+    const d = exchange.data;
+    const fromAmount = amountOf(d.from_amount ?? d.fromAmount);
     const fromCurrency = matching(
-      typeof (ex.from_currency ?? ex.fromCurrency) === 'string'
-        ? (ex.from_currency ?? ex.fromCurrency).trim().toUpperCase()
+      typeof (d.from_currency ?? d.fromCurrency) === 'string'
+        ? ((d.from_currency ?? d.fromCurrency) as string).trim().toUpperCase()
         : null,
       /^[A-Z]{3}$/,
     );
-    const toAmount = amountOf(ex.to_amount ?? ex.toAmount);
+    const toAmount = amountOf(d.to_amount ?? d.toAmount);
     const toCurrency = matching(
-      typeof (ex.to_currency ?? ex.toCurrency) === 'string'
-        ? (ex.to_currency ?? ex.toCurrency).trim().toUpperCase()
+      typeof (d.to_currency ?? d.toCurrency) === 'string'
+        ? ((d.to_currency ?? d.toCurrency) as string).trim().toUpperCase()
         : null,
       /^[A-Z]{3}$/,
     );
-    const feeAmount = amountOf(ex.fee_amount ?? ex.feeAmount);
+    const feeAmount = amountOf(d.fee_amount ?? d.feeAmount);
     const feeCurrency = matching(
-      typeof (ex.fee_currency ?? ex.feeCurrency) === 'string'
-        ? (ex.fee_currency ?? ex.feeCurrency).trim().toUpperCase()
+      typeof (d.fee_currency ?? d.feeCurrency) === 'string'
+        ? ((d.fee_currency ?? d.feeCurrency) as string).trim().toUpperCase()
         : null,
       /^[A-Z]{3}$/,
     );
@@ -162,11 +211,15 @@ function normalizeExtraction(raw: any): ReceiptExtraction {
     date: matching(value.date, /^\d{4}-\d{2}-\d{2}$/),
     time: matching(value.time, /^\d{2}:\d{2}$/),
     category: textOf(value.category),
-    items: items.flatMap((item: any) => {
-      if (!item || typeof item !== 'object' || typeof item.title !== 'string') return [];
-      const price = amountOf(item.price);
-      const count = typeof item.count === 'number' && Number.isFinite(item.count) ? item.count : 1;
-      return price === null ? [] : [{ title: item.title, count, price }];
+    items: items.flatMap((item: unknown) => {
+      const itemParsed = ReceiptItemSchema.safeParse(item);
+      if (!itemParsed.success) return [];
+      const price = amountOf(itemParsed.data.price);
+      const count =
+        typeof itemParsed.data.count === 'number' && Number.isFinite(itemParsed.data.count)
+          ? itemParsed.data.count
+          : 1;
+      return price === null ? [] : [{ title: itemParsed.data.title, count, price }];
     }),
     currencyExchanges: currencyExchanges.length > 0 ? currencyExchanges : undefined,
     confidence: confidenceOf(value.confidence),

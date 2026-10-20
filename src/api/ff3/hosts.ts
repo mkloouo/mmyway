@@ -2,16 +2,19 @@
 // hostname — the app tries the remembered address first, then the rest in order, first success
 // wins. Storage here; FF3 and the local model both resolve through the same `resolveAddress`.
 import * as SecureStore from 'expo-secure-store';
+import { z } from 'zod';
 
 const HOSTS_KEY = 'ff3_hosts';
 const LEGACY_HOST_KEY = 'ff3_host'; // pre-multi-address installs: one bare string, not JSON
+
+const HostsSchema = z.array(z.string());
 
 export async function readHosts(): Promise<string[]> {
   const raw = await SecureStore.getItemAsync(HOSTS_KEY);
   if (raw !== null) {
     try {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.every((v) => typeof v === 'string')) return parsed;
+      const parsed = HostsSchema.safeParse(JSON.parse(raw));
+      if (parsed.success) return parsed.data;
     } catch {
       // fall through to the legacy key
     }

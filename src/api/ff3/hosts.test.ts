@@ -30,6 +30,18 @@ describe('readHosts', () => {
     expect(await readHosts()).toEqual(['https://legacy.example.com']);
   });
 
+  it('falls back to legacy key on malformed JSON or invalid schema', async () => {
+    getItemAsync
+      .mockResolvedValueOnce('{"not": "an array"}')
+      .mockResolvedValueOnce('https://legacy.example.com');
+    expect(await readHosts()).toEqual(['https://legacy.example.com']);
+
+    getItemAsync
+      .mockResolvedValueOnce('["valid", 123]') // invalid element
+      .mockResolvedValueOnce('https://legacy2.example.com');
+    expect(await readHosts()).toEqual(['https://legacy2.example.com']);
+  });
+
   it('returns an empty list when nothing is stored', async () => {
     getItemAsync.mockResolvedValue(null);
     expect(await readHosts()).toEqual([]);

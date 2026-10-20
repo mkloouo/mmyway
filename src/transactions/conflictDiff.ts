@@ -3,6 +3,7 @@
 // detected the conflict (src/sync/outbox.ts), so it reflects what changed in FF3.
 import type { cachedTransactions } from '../db/schema';
 import i18n, { appLocale } from '../i18n';
+import { parseTags } from './tags';
 
 type CachedRow = typeof cachedTransactions.$inferSelect;
 
@@ -41,11 +42,7 @@ function dateLabel(iso: string | null | undefined): string {
 }
 
 function tagsOf(json: string | null | undefined): string[] {
-  try {
-    return JSON.parse(json ?? '[]');
-  } catch {
-    return [];
-  }
+  return parseTags(json);
 }
 
 export function conflictFields(

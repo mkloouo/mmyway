@@ -1,10 +1,40 @@
+import * as SecureStore from 'expo-secure-store';
 import { createFF3Client } from './client';
 import {
   proxyHeaderProblem,
   sanitizeProxyHeaders,
   setProxyHeadersForTest,
   currentProxyHeaders,
+  loadProxyHeaders,
 } from './proxyHeaders';
+
+jest.mock('expo-secure-store', () => ({
+  getItemAsync: jest.fn(),
+  setItemAsync: jest.fn(),
+  deleteItemAsync: jest.fn(),
+}));
+
+const getItemAsync = SecureStore.getItemAsync as jest.Mock;
+
+describe('loadProxyHeaders', () => {
+  it('loads valid headers from SecureStore', async () => {
+    getItemAsync.mockResolvedValueOnce(JSON.stringify({ 'CF-Access-Client-Id': 'id123' }));
+    const headers = await loadProxyHeaders();
+    expect(headers).toEqual({ 'CF-Access-Client-Id': 'id123' });
+  });
+
+  it('handles malformed JSON and returns empty object', async () => {
+    getItemAsync.mockResolvedValueOnce('{bad json');
+    const headers = await loadProxyHeaders();
+    expect(headers).toEqual({});
+  });
+
+  it('handles non-string map JSON and returns empty object', async () => {
+    getItemAsync.mockResolvedValueOnce(JSON.stringify(['an', 'array']));
+    const headers = await loadProxyHeaders();
+    expect(headers).toEqual({});
+  });
+});
 
 describe('proxyHeaderProblem', () => {
   it('accepts the Cloudflare Access pair this exists for', () => {

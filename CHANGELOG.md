@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Validated stored JSON strings and LLM receipt responses with Zod schemas and added lint rule preventing unsafe JSON.parse casts (MKL-122).
 - Decoupled domain code from the UI layer, moving money formatting and currencies to domain packages with lint enforcement (MKL-120).
 
 ### Planned

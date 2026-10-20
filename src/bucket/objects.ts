@@ -2,8 +2,10 @@
 // back again. The same shape as src/planned/objects.ts — only the attributes this app reads are
 // typed, the rest is kept as FF3 sent it.
 import { eq } from 'drizzle-orm';
+import { z } from 'zod';
 import { bucketObjects } from '../db/schema';
 import type { OutboxDb } from '../sync/outbox';
+import { logLine } from '../utils/log';
 
 export type BucketKind = 'budget_limit' | 'piggy' | 'budget_spent';
 
@@ -59,19 +61,25 @@ export function bucketKey(kind: BucketKind, ff3Id: string, periodStart?: string 
   return periodStart ? `${kind}:${ff3Id}:${periodStart}` : `${kind}:${ff3Id}`;
 }
 
+const BucketAttributesSchema = z.record(z.string(), z.unknown());
+
 /** A cached row back as an object; null when its JSON is unreadable (skipped, not shown broken). */
 export function readBucketRow(row: BucketRow): BucketObject | null {
   try {
-    const attributes = JSON.parse(row.attributesJson) as Record<string, unknown>;
-    if (!attributes || typeof attributes !== 'object') return null;
+    const parsed = BucketAttributesSchema.safeParse(JSON.parse(row.attributesJson));
+    if (!parsed.success) {
+      logLine('warn', `Malformed bucket object JSON for ${row.key}: ${parsed.error.message}`);
+      return null;
+    }
     return {
       key: row.key,
       kind: row.kind,
       ff3Id: row.ff3Id,
       periodStart: row.periodStart,
-      attributes,
+      attributes: parsed.data,
     };
   } catch {
+    logLine('warn', `Unparseable bucket object JSON for ${row.key}`);
     return null;
   }
 }

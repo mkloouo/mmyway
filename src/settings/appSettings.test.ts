@@ -5,6 +5,9 @@ import {
   setDefaultSourceAccountId,
   getLocalModelBaseUrl,
   setLocalModelBaseUrl,
+  getLocalModelBaseUrls,
+  setLocalModelBaseUrls,
+  parseAccountOrder,
   getUseServerTime,
   setUseServerTime,
   getPlannedReminderLead,
@@ -128,5 +131,27 @@ describe('appSettings', () => {
       .values({ key: 'planned_reminder_overrides', value: '{not json' })
       .onConflictDoUpdate({ target: appSettings.key, set: { value: '{not json' } });
     expect(await getReminderOverrides(db)).toEqual({});
+  });
+
+  it('reads well-formed and malformed accountOrder and localModelBaseUrls safely', async () => {
+    const db = createTestDb() as any;
+    expect(parseAccountOrder('{"acc1": 1, "acc2": 2}')).toEqual({ acc1: 1, acc2: 2 });
+    expect(parseAccountOrder('{broken json')).toEqual({});
+    expect(parseAccountOrder(JSON.stringify(['not', 'an', 'object']))).toEqual({});
+
+    await setLocalModelBaseUrls(db, ['https://model1.local', 'https://model2.local']);
+    expect(await getLocalModelBaseUrls(db)).toEqual([
+      'https://model1.local',
+      'https://model2.local',
+    ]);
+
+    await db
+      .insert(appSettings)
+      .values({ key: 'local_model_base_urls', value: '{"not": "an array"}' })
+      .onConflictDoUpdate({
+        target: appSettings.key,
+        set: { value: '{"not": "an array"}' },
+      });
+    expect(await getLocalModelBaseUrls(db)).toEqual([]);
   });
 });

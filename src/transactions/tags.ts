@@ -5,6 +5,7 @@
 // - `mmyway-reviewed` (review marker for recurring transactions, see src/sync/recurringReview.ts)
 // - any other tag prefixed with `mmyway-`
 // User tags are all other tags (e.g. `groceries`, `vacation`, `tax-2026`).
+import { z } from 'zod';
 import { SHARED_TAG_PREFIX } from './sharedWith';
 
 const MMYWAY_TAG_PREFIX = 'mmyway-';
@@ -48,13 +49,15 @@ export function withUserTags(tags: readonly string[], newUserTags: readonly stri
   return [...internal, ...cleanedUserTags];
 }
 
+const TagsArraySchema = z.array(z.unknown());
+
 /** Parses tagsJson from SQLite cached_transactions, safe against corrupt JSON. */
 export function parseTags(tagsJson: string | null | undefined): string[] {
   if (!tagsJson) return [];
   try {
-    const parsed: unknown = JSON.parse(tagsJson);
-    return Array.isArray(parsed)
-      ? parsed.filter((t): t is string => typeof t === 'string' && t.trim().length > 0)
+    const parsed = TagsArraySchema.safeParse(JSON.parse(tagsJson));
+    return parsed.success
+      ? parsed.data.filter((t): t is string => typeof t === 'string' && t.trim().length > 0)
       : [];
   } catch {
     return [];

@@ -27,6 +27,11 @@ const JSON_COLUMNS = [
     message:
       'Write payload_json/draft_json with writePayload()/writeDraft(), which stamp the version.',
   },
+  {
+    selector:
+      "TSAsExpression > CallExpression[callee.object.name='JSON'][callee.property.name='parse']",
+    message: "Validate with zod, don't cast.",
+  },
 ];
 
 const MAX_LINES = 400;

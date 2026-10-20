@@ -12,8 +12,11 @@
 // `Authorization` header, so one would have to lose. Put the credentials in the address instead
 // (`https://user:pass@firefly.example.com`) — the host list already takes an arbitrary URL.
 import * as SecureStore from 'expo-secure-store';
+import { z } from 'zod';
 
 const KEY = 'ff3_proxy_headers';
+
+const ProxyHeadersSchema = z.record(z.string(), z.string());
 
 /**
  * Headers the client sets itself. Overriding one of these breaks authentication or content
@@ -61,7 +64,12 @@ export function currentProxyHeaders(): Record<string, string> {
 export async function loadProxyHeaders(): Promise<Record<string, string>> {
   try {
     const stored = await SecureStore.getItemAsync(KEY);
-    snapshot = sanitizeProxyHeaders(stored ? JSON.parse(stored) : {});
+    if (!stored) {
+      snapshot = {};
+      return snapshot;
+    }
+    const parsed = ProxyHeadersSchema.safeParse(JSON.parse(stored));
+    snapshot = sanitizeProxyHeaders(parsed.success ? parsed.data : {});
   } catch {
     // Unreadable or absent: no extra headers is the safe answer, and the screen can rewrite them.
     snapshot = {};

@@ -49,6 +49,21 @@ async function getSetting(db: OutboxDb, key: string): Promise<string | null> {
   return rows[0]?.value ?? null;
 }
 
+/** Reads and zod-validates a JSON string, returning fallback on null, syntax error, or schema mismatch. */
+export function readJsonSetting<T>(
+  raw: string | null | undefined,
+  schema: z.ZodType<T>,
+  fallback: T,
+): T {
+  if (raw == null) return fallback;
+  try {
+    const parsed = schema.safeParse(JSON.parse(raw));
+    return parsed.success ? parsed.data : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 async function setSetting(db: OutboxDb, key: string, value: string): Promise<void> {
   await db
     .insert(appSettings)
@@ -134,14 +149,8 @@ export const setReceiptReader = (db: OutboxDb, value: ReceiptReader) =>
 // legacy single local_model_base_url key so an installed app keeps working.
 export async function getLocalModelBaseUrls(db: OutboxDb): Promise<string[]> {
   const raw = await getSetting(db, KEYS.localModelBaseUrls);
-  if (raw !== null) {
-    try {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.every((v) => typeof v === 'string')) return parsed;
-    } catch {
-      // fall through to the legacy key
-    }
-  }
+  const parsed = readJsonSetting<string[] | null>(raw, z.array(z.string()), null);
+  if (parsed !== null) return parsed;
   const legacy = await getLocalModelBaseUrl(db);
   return legacy ? [legacy] : [];
 }
@@ -178,13 +187,10 @@ export const ACCOUNT_ORDER_KEY = KEYS.accountOrder;
  * Settings → Accounts → Reorder), cached as { accountId: order }. Kept here rather than as a
  * reference_accounts column so no schema migration is needed.
  */
+const AccountOrderSchema = z.record(z.string(), z.number());
+
 export function parseAccountOrder(raw: string | null | undefined): Record<string, number> {
-  try {
-    const parsed = raw ? JSON.parse(raw) : {};
-    return parsed && typeof parsed === 'object' ? parsed : {};
-  } catch {
-    return {};
-  }
+  return readJsonSetting(raw, AccountOrderSchema, {});
 }
 export async function getAccountOrder(db: OutboxDb): Promise<Record<string, number>> {
   return parseAccountOrder(await getSetting(db, KEYS.accountOrder));
@@ -341,15 +347,7 @@ export async function getReminderOverrides(
   db: OutboxDb,
 ): Promise<Record<string, ReminderWhen | 'off'>> {
   const raw = await getSetting(db, KEYS.plannedReminderOverrides);
-  if (raw == null) return {};
-  let json: unknown;
-  try {
-    json = JSON.parse(raw);
-  } catch {
-    return {};
-  }
-  const parsed = ReminderOverridesSchema.safeParse(json);
-  return parsed.success ? parsed.data : {};
+  return readJsonSetting(raw, ReminderOverridesSchema, {});
 }
 /** `null` removes the override, so the payment goes back to the global setting. */
 export async function setReminderOverride(
@@ -398,17 +396,9 @@ export const setDemoMode = (db: OutboxDb, value: boolean) =>
 const FLAG_MAP = z.record(z.string(), z.boolean());
 
 function parseFlagMap(raw: string | null): FlagValues {
-  if (raw === null) return {};
-  let json: unknown;
-  try {
-    json = JSON.parse(raw);
-  } catch {
-    return {};
-  }
-  const parsed = FLAG_MAP.safeParse(json);
-  if (!parsed.success) return {};
+  const parsed = readJsonSetting(raw, FLAG_MAP, {});
   const values: FlagValues = {};
-  for (const [name, on] of Object.entries(parsed.data)) {
+  for (const [name, on] of Object.entries(parsed)) {
     if (isFlagName(name)) values[name] = on;
   }
   return values;

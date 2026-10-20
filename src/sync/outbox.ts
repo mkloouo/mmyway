@@ -987,7 +987,7 @@ export function describeFF3Error(err: FF3RequestError): string {
   const where = (fields: string[]) =>
     err.request ? ` — ${err.request}${fields.length ? ` (${fields.join(', ')})` : ''}` : '';
   try {
-    const body = JSON.parse(err.body) as { message?: string; errors?: Record<string, string[]> };
+    const body: { message?: string; errors?: Record<string, string[]> } = JSON.parse(err.body);
     const field = body.errors ? Object.values(body.errors).flat()[0] : undefined;
     const text = [body.message, field]
       .filter((part, i, all) => !!part && all.indexOf(part) === i)

@@ -2,11 +2,13 @@
 // in planned_objects for the Planned tab. Only the attributes this app reads are typed; the rest
 // is kept as FF3 sent it, for the detailed view.
 import { eq } from 'drizzle-orm';
+import { z } from 'zod';
 import type { FF3Client } from '../api/ff3/client';
 import type { TransactionRead } from '../api/ff3/types';
 import { fetchAllPages } from '../api/ff3/paginate';
 import { plannedObjects } from '../db/schema';
 import type { OutboxDb } from '../sync/outbox';
+import { logLine } from '../utils/log';
 
 // A rule group is cached alongside the rules (kind 'rule_group') for the Rules screen. It is not a
 // PlannedObject: the Planned tab reads planned_objects through readPlannedRow, which skips it.
@@ -126,12 +128,19 @@ function nameOf(kind: PlannedKind, attributes: Record<string, unknown>): string 
   return typeof value === 'string' ? value : '';
 }
 
+const PlannedAttributesSchema = z.record(z.string(), z.unknown());
+
 /** A row's JSON as an object; null when it is unreadable or not an object. */
 function parseRow(row: PlannedRow): Record<string, unknown> | null {
   try {
-    const attributes = JSON.parse(row.attributesJson) as Record<string, unknown>;
-    return attributes && typeof attributes === 'object' ? attributes : null;
+    const parsed = PlannedAttributesSchema.safeParse(JSON.parse(row.attributesJson));
+    if (!parsed.success) {
+      logLine('warn', `Malformed planned object JSON for ${row.key}: ${parsed.error.message}`);
+      return null;
+    }
+    return parsed.data;
   } catch {
+    logLine('warn', `Unparseable planned object JSON for ${row.key}`);
     return null;
   }
 }

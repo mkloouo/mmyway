@@ -1,14 +1,34 @@
+import { z } from 'zod';
 import type { ReceiptProvider } from '../types';
 import { imageMimeType, normalizeExtraction } from './local';
 import { receiptJsonSchema, receiptPrompt } from '../prompt';
 
+const GeminiPartSchema = z.object({
+  text: z.string().optional(),
+  thought: z.boolean().optional(),
+});
+
+const GeminiCandidateSchema = z.object({
+  content: z
+    .object({
+      parts: z.array(GeminiPartSchema).optional(),
+    })
+    .optional(),
+});
+
+const GeminiResponseSchema = z.object({
+  candidates: z.array(GeminiCandidateSchema).optional(),
+});
+
 // The model's answer is the text of its non-thought parts. Reading parts[0] alone broke on
 // models that put a thought (or a thought signature) first.
-function answerText(body: any): string {
-  const parts: any[] = body?.candidates?.[0]?.content?.parts ?? [];
+function answerText(body: unknown): string {
+  const parsed = GeminiResponseSchema.safeParse(body);
+  if (!parsed.success) return '';
+  const parts = parsed.data.candidates?.[0]?.content?.parts ?? [];
   return parts
-    .filter((p) => typeof p?.text === 'string' && !p.thought)
-    .map((p) => p.text)
+    .filter((p) => typeof p.text === 'string' && !p.thought)
+    .map((p) => p.text!)
     .join('');
 }
 
