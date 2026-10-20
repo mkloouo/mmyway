@@ -112,12 +112,10 @@ describe('New planned payment', () => {
       screen.getByPlaceholderText(i18n.t('planned.namePlaceholder')),
       'Savings top-up',
     );
-    await fireEvent.press(screen.getByText(i18n.t('fields.amount')));
-    for (const key of ['1', '2', '5']) await fireEvent.press(screen.getByLabelText(key));
-    await fireEvent.press(screen.getByLabelText(i18n.t('common.done')));
+    await fireEvent.changeText(screen.getByLabelText(i18n.t('fields.amount')), '125');
 
     // The default currency lands once the reference data has loaded.
-    await waitFor(() => expect(screen.getByText('PLN')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('zł')).toBeTruthy());
 
     await fireEvent.press(screen.getByText(i18n.t('fields.from')));
     await fireEvent.press(screen.getByText('Checking'));
@@ -130,7 +128,7 @@ describe('New planned payment', () => {
     expect(
       screen.getByRole('radio', { name: i18n.t('planned.repType.monthly') }).props
         .accessibilityState,
-    ).toEqual({ checked: true });
+    ).toMatchObject({ checked: true });
 
     // Step 2 → 3. Remind me: Off for this payment, stored under its name's key once created.
     await fireEvent.press(screen.getByText(i18n.t('account.continue')));
@@ -202,7 +200,7 @@ describe('New planned payment', () => {
     ];
 
     await renderScreen();
-    await waitFor(() => expect(screen.getByText('PLN')).toBeTruthy());
+    await waitFor(() => expect(screen.getByText('zł')).toBeTruthy());
 
     // User explicitly picks Savings for From
     await fireEvent.press(screen.getByText(i18n.t('fields.from')));

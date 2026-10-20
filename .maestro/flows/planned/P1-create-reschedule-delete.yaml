@@ -12,12 +12,8 @@ tags:
 - inputText: 'P1 ${RUN_ID}'
 - hideKeyboard
 - tapOn: 'Amount'
-- tapOn:
-    id: 'keypad-4'
-- tapOn:
-    id: 'keypad-9'
-- tapOn:
-    id: 'keypad-save'
+- inputText: '49'
+- hideKeyboard
 - tapOn: 'From'
 - tapOn: 'Checking'
 - tapOn: 'To'

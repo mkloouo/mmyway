@@ -4,6 +4,7 @@
 
 ### Planned
 
+- New planned payment wizard updated to boards 23–25 with inline amount input and trailing currency, OptionTiles for frequency, "Then" schedule rows, and single-line note with tags sheet (MKL-104).
 - Planned schedule sheet updated to board 22 with summary callout showing next occurrences, inline frequency segmented control, interval stepper, day-of-month and nth-weekday radios, and until-date or times conditions (MKL-103).
 - Planned tab updated to board 19 with large title, segmented "All plans · N", amount-styled summary figures, route and category subtitles, Booked pill, and struck skipped rows (MKL-100).
 - Unified planned form hook and sheets between New Planned Payment wizard and Planned Item editor, removing duplicate code across the two screens (MKL-99).

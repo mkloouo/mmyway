@@ -18,14 +18,18 @@ export function remindLabel({
   override,
   when,
   time,
+  concise = false,
 }: {
   override: ReminderWhen | 'off' | null;
   when: ReminderWhen;
   time?: string | null;
+  concise?: boolean;
 }): string {
   if (override === 'off') return i18n.t('planned.remind.off');
   const base = override
     ? i18n.t(`planned.remind.${override}`)
-    : i18n.t('planned.remind.default', { when: i18n.t(`planned.remind.${when}`) });
+    : concise
+      ? i18n.t(`planned.remind.${when}`)
+      : i18n.t('planned.remind.default', { when: i18n.t(`planned.remind.${when}`) });
   return time ? `${base} · ${time}` : base;
 }
