@@ -8,7 +8,6 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useDb } from '../../src/providers/DbProvider';
-import { useCategories, useCurrencyRows } from '../../src/db/useReferenceData';
 import { useTheme } from '../../src/ui/theme';
 import {
   Card,
@@ -21,33 +20,20 @@ import {
 } from '../../src/ui/kit';
 import { TextField } from '../../src/ui/TextField';
 import { TagsField } from '../../src/ui/TagsField';
-import { PickerSheet } from '../../src/ui/PickerSheet';
-import { AccountPickerSheet } from '../../src/ui/AccountPickerSheet';
-import { PayeeSheet } from '../../src/ui/PayeeSheet';
-import { AmountSheet } from '../../src/ui/AmountSheet';
-import { pickDate, pickTime } from '../../src/ui/pickDate';
-import { currencyOf, formatMoney, signFor } from '../../src/ui/money';
-import { pickableCurrencies, primaryCurrencyCode } from '../../src/ui/currencies';
+import { pickDate } from '../../src/ui/pickDate';
+import { formatMoney, signFor } from '../../src/ui/money';
 import { useAction } from '../../src/ui/useAction';
 import { useToast } from '../../src/ui/useToast';
 import { useConfirmDiscard } from '../../src/ui/useConfirmDiscard';
-// eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
-import { referenceCurrencies } from '../../src/db/schema';
-import { useAssetAccounts } from '../../src/accounts/useAssetAccounts';
-import type { MerchantHistory } from '../../src/lookup/merchantLookup';
-import { useMerchantHistories } from '../../src/lookup/useMerchantHistories';
 import { useRecentTags } from '../../src/lookup/recentTags';
 import {
-  getDefaultCurrencyCode,
-  getDefaultSourceAccountId,
   getReminderTime,
   getReminderWhen,
   setReminderOverride,
   type ReminderWhen,
 } from '../../src/settings/appSettings';
 import { normkey } from '../../src/lookup/normkey';
-import { plannedProblems, type PlannedFields } from '../../src/planned/model';
-import { defaultRepetition, momentFor, type RepetitionType } from '../../src/planned/repetition';
+import { momentFor, type RepetitionType } from '../../src/planned/repetition';
 import { dayLabel, endLabel, occurrenceLabel, scheduleLabel } from '../../src/planned/labels';
 import { upcomingOccurrences } from '../../src/planned/occurrences';
 import { savePlanned } from '../../src/planned/actions';
@@ -55,46 +41,17 @@ import {
   ReminderPromptSheet,
   shouldShowReminderPrompt,
 } from '../../src/planned/ReminderPromptSheet';
-import { ScheduleSheet } from '../../src/ui/ScheduleRows';
 import { localDay } from '../../src/utils/day';
 import { TX_TYPES } from '../../src/transactions/txTypes';
+import { usePlannedForm } from '../../src/planned/usePlannedForm';
+import { PlannedFormSheets } from '../../src/planned/PlannedFormSheets';
+import { TimeRows } from '../../src/ui/TimeRows';
+import { REMIND_CHOICES, remindLabel } from '../../src/planned/remind';
 
 type Step = 1 | 2 | 3;
-type OpenSheet = 'amount' | 'currency' | 'own' | 'ownTo' | 'payee' | 'category' | 'remind' | null;
-
-const REMIND_CHOICES: readonly (ReminderWhen | 'off')[] = [
-  'day',
-  'dayBefore',
-  'fewDays',
-  'week',
-  'off',
-];
 
 /** The problems Step 1 owns; a schedule problem is Step 2's to show. */
 const STEP1_PROBLEMS = new Set(['name', 'amount', 'currency', 'source', 'destination']);
-
-/** Same blank form as the item page's new-payment path (app/planned/[key].tsx). */
-function blank(): PlannedFields {
-  return {
-    name: '',
-    type: 'withdrawal',
-    sourceId: null,
-    sourceName: null,
-    destinationId: null,
-    destinationName: null,
-    amount: '0',
-    currencyCode: '',
-    notes: null,
-    repeats: true,
-    repetitions: [defaultRepetition(localDay())],
-    end: { kind: 'forever' },
-    date: localDay(),
-    time: null,
-    skipDays: [],
-    categoryName: null,
-    tags: [],
-  };
-}
 
 export default function NewPlannedScreen() {
   const db = useDb();
@@ -102,19 +59,27 @@ export default function NewPlannedScreen() {
   const { t: tr } = useTranslation();
   const act = useAction();
   const [toast, setToast] = useToast();
-  const assetAccounts = useAssetAccounts({ includeLiabilities: true }) ?? [];
-  const categories = useCategories();
-  // undefined until the reference currencies load: see the item page for why.
-  const currencyRows = useCurrencyRows();
-  const currencies = currencyRows ?? [];
   const recentTags = useRecentTags();
 
+  const form = usePlannedForm(null);
+  const {
+    fields,
+    set,
+    setSheet,
+    setScheduleOpen,
+    changeType,
+    currency,
+    currencyRows,
+    problems,
+    ownFrom,
+    ownTo,
+    fromText,
+    toText,
+    next,
+    edited,
+  } = form;
+
   const [step, setStep] = useState<Step>(1);
-  const [fields, setFields] = useState<PlannedFields>(blank);
-  // Set by the user's own changes: the defaults filled in on load don't count.
-  const [edited, setEdited] = useState(false);
-  const [sheet, setSheet] = useState<OpenSheet>(null);
-  const [scheduleOpen, setScheduleOpen] = useState(false);
   const [prompt, setPrompt] = useState<{ name: string; account?: string } | null>(null);
   // The global reminder timing and time, what 'Default' means on this row.
   const [globalRemind, setGlobalRemind] = useState<{ when: ReminderWhen; time: string } | null>(
@@ -122,10 +87,6 @@ export default function NewPlannedScreen() {
   );
   // null is Default: no override is stored for the payment.
   const [remindChoice, setRemindChoice] = useState<ReminderWhen | 'off' | null>(null);
-  const [chosen, setChosen] = useState<{ category: boolean; account: boolean }>({
-    category: false,
-    account: false,
-  });
 
   useEffect(() => {
     void (async () => {
@@ -134,83 +95,8 @@ export default function NewPlannedScreen() {
     })();
   }, [db]);
 
-  // A new one starts from capture's defaults: the default account and currency.
-  useEffect(() => {
-    void (async () => {
-      const [accountId, currency, currencyRowsNow] = await Promise.all([
-        getDefaultSourceAccountId(db),
-        getDefaultCurrencyCode(db),
-        db.select().from(referenceCurrencies),
-      ]);
-      setFields((f) => ({
-        ...f,
-        sourceId: f.sourceId ?? accountId,
-        currencyCode: f.currencyCode || currency || primaryCurrencyCode(currencyRowsNow) || '',
-      }));
-    })();
-  }, [db]);
-
-  const payeeType = fields.type === 'deposit' ? 'deposit' : 'withdrawal';
-  const histories = useMerchantHistories(payeeType);
-
-  const set = (patch: Partial<PlannedFields>) => {
-    setEdited(true);
-    setFields((f) => ({ ...f, ...patch }));
-  };
-  const currency = currencyOf(currencies, fields.currencyCode);
-  const problems = plannedProblems(fields);
   const step1Ok = !problems.some((p) => STEP1_PROBLEMS.has(p));
-  const accountName = (id: string | null, name: string | null) =>
-    (id ? (assetAccounts.find((a) => a.id === id)?.name ?? name) : name) ?? '—';
-
-  // Which end is the user's own account and which the payee/payer.
-  const ownFrom = fields.type !== 'deposit';
-  const ownTo = fields.type !== 'withdrawal';
-  const fromText =
-    (ownFrom ? accountName(fields.sourceId, fields.sourceName) : fields.sourceName) ?? '—';
-  const toText =
-    (ownTo ? accountName(fields.destinationId, fields.destinationName) : fields.destinationName) ??
-    '—';
   const amountText = currencyRows ? formatMoney(fields.amount, currency) : '';
-
-  /** A payee picked from history also fills what's usually booked with it, where not chosen. */
-  function choosePayee(h: MerchantHistory) {
-    const patch: Partial<PlannedFields> =
-      fields.type === 'deposit'
-        ? { sourceName: h.displayName, sourceId: null }
-        : { destinationName: h.displayName, destinationId: null };
-    if (!chosen.category && !fields.categoryName && h.topCategory) {
-      patch.categoryName = h.topCategory;
-    }
-    const account =
-      !chosen.account && h.topAccountName
-        ? assetAccounts.find((a) => a.name === h.topAccountName)
-        : undefined;
-    if (account) {
-      const leg = fields.type === 'deposit' ? 'destination' : 'source';
-      patch[`${leg}Id`] = account.id;
-      patch[`${leg}Name`] = account.name;
-    }
-    set(patch);
-  }
-
-  /** The own account moves to the end the new type keeps it on; the payee/payer starts empty. */
-  function changeType(type: PlannedFields['type']) {
-    if (type === fields.type) return;
-    const own = ownFrom
-      ? { id: fields.sourceId, name: fields.sourceName }
-      : { id: fields.destinationId, name: fields.destinationName };
-    const none = { id: null, name: null };
-    const source = type === 'deposit' ? none : own;
-    const destination = type === 'withdrawal' ? none : type === 'deposit' ? own : none;
-    set({
-      type,
-      sourceId: source.id,
-      sourceName: source.name,
-      destinationId: destination.id,
-      destinationName: destination.name,
-    });
-  }
 
   // The schedule: "How often" picks the simple patterns directly, as the schedule sheet does.
   const today = localDay();
@@ -237,11 +123,11 @@ export default function NewPlannedScreen() {
   }
 
   /** The simple pattern's day follows the first date, unless it has been set by hand. */
-  function moveDate(next: string) {
+  function moveDate(nextDate: string) {
     set({
-      date: next,
+      date: nextDate,
       ...(simple && first
-        ? { repetitions: [{ ...first, moment: momentFor(first.type, next) }] }
+        ? { repetitions: [{ ...first, moment: momentFor(first.type, nextDate) }] }
         : {}),
     });
   }
@@ -262,11 +148,6 @@ export default function NewPlannedScreen() {
         })
       : tr('planned.new.firstOnly', { date: occurrenceLabel(fields.date) });
 
-  const next: PlannedFields = {
-    ...fields,
-    name: fields.name.trim(),
-    tags: fields.tags,
-  };
   const close = useConfirmDiscard(edited, 'planned.new.discardTitle');
 
   const create = act(
@@ -292,15 +173,11 @@ export default function NewPlannedScreen() {
 
   const remindText = !globalRemind
     ? '—'
-    : remindChoice === 'off'
-      ? tr('planned.remind.off')
-      : [
-          remindChoice
-            ? tr(`planned.remind.${remindChoice}`)
-            : tr('planned.remind.default', { when: tr(`planned.remind.${globalRemind.when}`) }),
-          // A payment's own time wins over the global one, as the reminder itself does.
-          fields.time ?? globalRemind.time,
-        ].join(' · ');
+    : remindLabel({
+        override: remindChoice,
+        when: globalRemind.when,
+        time: fields.time ?? globalRemind.time,
+      });
 
   const problemText =
     problems.length > 0
@@ -341,103 +218,12 @@ export default function NewPlannedScreen() {
       afterFooter={
         <>
           <Toast message={toast} />
-
-          <ScheduleSheet
-            visible={scheduleOpen}
-            onClose={() => setScheduleOpen(false)}
+          <PlannedFormSheets
+            form={form}
             group={null}
-            repeats={fields.repeats}
-            repetitions={fields.repetitions}
-            end={fields.end}
-            date={fields.date}
-            onChange={set}
+            remind={globalRemind ? { override: remindChoice, when: globalRemind.when } : null}
+            onChooseRemind={(key) => setRemindChoice(REMIND_CHOICES.find((x) => x === key) ?? null)}
           />
-          <AmountSheet
-            visible={sheet === 'amount'}
-            title={tr('fields.amount')}
-            initial={fields.amount}
-            currency={currency}
-            type={fields.type}
-            onDone={(typed) => {
-              if (typed !== null) set({ amount: typed });
-              setSheet(null);
-            }}
-          />
-          <PickerSheet
-            visible={sheet === 'currency'}
-            onClose={() => setSheet(null)}
-            title={tr('fields.currency')}
-            options={pickableCurrencies(currencies, fields.currencyCode).map((c) => ({
-              key: c.code,
-              label: c.code,
-            }))}
-            selected={fields.currencyCode}
-            onSelect={(code) => code && set({ currencyCode: code })}
-          />
-          <AccountPickerSheet
-            visible={sheet === 'own' || sheet === 'ownTo'}
-            onClose={() => setSheet(null)}
-            title={sheet === 'ownTo' ? tr('fields.to') : tr('fields.from')}
-            accounts={assetAccounts}
-            currencies={currencies}
-            onSelect={(a) => {
-              setChosen((c) => ({ ...c, account: true }));
-              set(
-                sheet === 'ownTo'
-                  ? { destinationId: a.id, destinationName: a.name }
-                  : { sourceId: a.id, sourceName: a.name },
-              );
-            }}
-          />
-          <PayeeSheet
-            visible={sheet === 'payee'}
-            onClose={() => setSheet(null)}
-            histories={histories}
-            payeeLabel={fields.type === 'deposit' ? 'payer' : 'payee'}
-            onSelect={choosePayee}
-            onCreateNew={(text) =>
-              set(
-                fields.type === 'deposit'
-                  ? { sourceName: text, sourceId: null }
-                  : { destinationName: text, destinationId: null },
-              )
-            }
-          />
-          <PickerSheet
-            visible={sheet === 'category'}
-            onClose={() => setSheet(null)}
-            title={tr('fields.category')}
-            options={categories.map((c) => ({ key: c.name, label: c.name }))}
-            selected={fields.categoryName}
-            onSelect={(categoryName) => {
-              setChosen((c) => ({ ...c, category: true }));
-              set({ categoryName });
-            }}
-            noneLabel={tr('common.none')}
-          />
-          {!!globalRemind && (
-            <PickerSheet
-              visible={sheet === 'remind'}
-              onClose={() => setSheet(null)}
-              title={tr('planned.remind.title')}
-              options={[
-                {
-                  key: 'default',
-                  label: tr('planned.remind.default', {
-                    when: tr(`planned.remind.${globalRemind.when}`),
-                  }),
-                },
-                ...REMIND_CHOICES.map((k) => ({ key: k, label: tr(`planned.remind.${k}`) })),
-              ]}
-              selected={remindChoice ?? 'default'}
-              onSelect={(key) => {
-                if (!key) return;
-                setEdited(true);
-                // 'default' is no choice in REMIND_CHOICES, so it leaves the override unset.
-                setRemindChoice(REMIND_CHOICES.find((x) => x === key) ?? null);
-              }}
-            />
-          )}
           <ReminderPromptSheet
             visible={!!prompt}
             plannedName={prompt?.name ?? ''}
@@ -594,19 +380,7 @@ export default function NewPlannedScreen() {
                 pickDate(new Date(`${fields.date}T12:00:00`), (d) => moveDate(localDay(d)))
               }
             />
-            <ListRow
-              label={tr('planned.time')}
-              value={fields.time ?? tr('planned.anyTime')}
-              chevron
-              onPress={() => pickTime(fields.time, (time) => set({ time }))}
-            />
-            {!!fields.time && (
-              <ListRow
-                label={tr('planned.clearTime')}
-                icon="close-circle"
-                onPress={() => set({ time: null })}
-              />
-            )}
+            <TimeRows time={fields.time} onChange={(time) => set({ time })} />
           </Card>
 
           {fields.repeats && (

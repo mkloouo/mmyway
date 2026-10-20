@@ -2,6 +2,7 @@
 // transaction that share a name, edited together. This file turns the three FF3 objects into one
 // set of fields and back into what FF3 takes for each. Pure, no db.
 import { normkey } from '../lookup/normkey';
+import { localDay } from '../utils/day';
 import { readMarkers, stripMarkers, writeMarkers } from './notes';
 import {
   billSchedule,
@@ -45,6 +46,32 @@ export interface PlannedFields {
   skipDays: string[];
   categoryName: string | null;
   tags: string[];
+}
+
+/**
+ * A blank PlannedFields with defaults (withdrawal, repeat monthly from today, forever).
+ * Shared by New Planned Payment and Planned Item editor.
+ */
+export function blankPlanned(today: string = localDay()): PlannedFields {
+  return {
+    name: '',
+    type: 'withdrawal',
+    sourceId: null,
+    sourceName: null,
+    destinationId: null,
+    destinationName: null,
+    amount: '0',
+    currencyCode: '',
+    notes: null,
+    repeats: true,
+    repetitions: [defaultRepetition(today)],
+    end: { kind: 'forever' },
+    date: today,
+    time: null,
+    skipDays: [],
+    categoryName: null,
+    tags: [],
+  };
 }
 
 export interface PlannedGroup {
