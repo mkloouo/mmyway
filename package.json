@@ -1,6 +1,6 @@
 {
   "name": "mmyway",
-  "version": "2.3.4",
+  "version": "2.3.5",
   "main": "expo-router/entry",
   "packageManager": "pnpm@12.14.0",
   "scripts": {

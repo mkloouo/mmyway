@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [2.3.5] - 2026-10-20
+
 ### Added
 
 - Unified Kit V2 components for upcoming screen redesigns: Hero, ProgressBar, ActionTile, ChoiceCard, OptionTiles, Stepper, StepperRow, NoticeBlock, Pill tones, DateTile, Sheet subtitle, and SummaryCallout (MKL-86).
