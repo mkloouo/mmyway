@@ -10,7 +10,7 @@ import { ChooseRow, SearchListSheet } from './SearchListSheet';
 import { Dot } from './kit';
 import { useTheme } from './theme';
 
-export interface PickerOption {
+interface PickerOption {
   key: string;
   label: string;
   dotColor?: string;

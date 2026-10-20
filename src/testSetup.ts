@@ -1,12 +1,35 @@
-import { Query, Mutation, notifyManager } from '@tanstack/query-core';
+import { Query, Mutation, notifyManager, timeoutManager } from '@tanstack/query-core';
 
-// In Jest, TanStack React Query schedules a 5-minute setTimeout for garbage collection on every query
-// and mutation (Query/Mutation.scheduleGc), and an asynchronous setTimeout(fn, 0) in notifyManager.
-// In the Node test environment these active timers keep the event loop alive, causing Jest worker
-// processes to hang and fail to exit gracefully ("A worker process has failed to exit gracefully...").
-//
-// Disabling background GC timeouts and running notifications synchronously in tests prevents leaks
-// while keeping all React Query functionality and assertions fully working.
+// In Jest, unref timers so background tasks or open handles don't keep Jest worker processes hanging.
+const origSetTimeout = global.setTimeout;
+(global as any).setTimeout = function (cb: any, delay: any, ...args: any[]) {
+  const timer = origSetTimeout(cb, delay, ...args);
+  (timer as unknown as { unref?: () => void })?.unref?.();
+  return timer;
+};
+
+const origSetInterval = global.setInterval;
+(global as any).setInterval = function (cb: any, delay: any, ...args: any[]) {
+  const timer = origSetInterval(cb, delay, ...args);
+  (timer as unknown as { unref?: () => void })?.unref?.();
+  return timer;
+};
+
+timeoutManager.setTimeoutProvider({
+  setTimeout: (cb, delay) => {
+    const timer = origSetTimeout(cb, delay);
+    (timer as unknown as { unref?: () => void })?.unref?.();
+    return timer;
+  },
+  clearTimeout: (id) => clearTimeout(id as any),
+  setInterval: (cb, delay) => {
+    const timer = origSetInterval(cb, delay);
+    (timer as unknown as { unref?: () => void })?.unref?.();
+    return timer;
+  },
+  clearInterval: (id) => clearInterval(id as any),
+});
+
 (Query.prototype as unknown as { scheduleGc: () => void }).scheduleGc = () => {};
 (Mutation.prototype as unknown as { scheduleGc: () => void }).scheduleGc = () => {};
 notifyManager.setScheduler((fn) => fn());

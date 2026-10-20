@@ -158,7 +158,5 @@ export interface DisplaySection {
 
 export type Currencies = (typeof referenceCurrencies.$inferSelect)[];
 
-/** Split lines shown under a split transaction's row before "+N more". */
-export const MAX_SPLIT_LINES = 3;
 /** The section holding what FF3's own search answered with, rather than a day of cached rows. */
 export const REMOTE_SECTION_KEY = 'ff3-search';

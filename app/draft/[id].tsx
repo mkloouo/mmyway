@@ -721,7 +721,7 @@ export function DraftEditor({ row }: { row: InboxItemRow }) {
                 // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
                 style={{ flexDirection: 'row', gap: 6, paddingHorizontal: t.space.lg }}
                 role="tablist"
-                aria-label={tr('splits.partSelector', { defaultValue: 'Parts' })}
+                aria-label={tr('splits.partSelector')}
               >
                 {amounts.map((amt, idx) => {
                   const isSelected = idx === pageIndex;

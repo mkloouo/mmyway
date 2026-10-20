@@ -180,8 +180,11 @@ module.exports = defineConfig([
       'i18next/no-literal-string': [
         'error',
         {
-          mode: 'jsx-text-only',
-          words: { exclude: ["^[\\s0-9\\u00D7\\u2000-\\u2BFF\\uD800-\\uDFFF—–·•{}' ]+$"] },
+          mode: 'jsx-only',
+          'jsx-attributes': {
+            include: ['placeholder', 'title', 'label', 'accessibilityLabel'],
+          },
+          words: { exclude: ["^[\\s0-9+\\-\\u00D7\\u2000-\\u2BFF\\uD800-\\uDFFF—–·•{}' ]+$"] },
         },
       ],
     },

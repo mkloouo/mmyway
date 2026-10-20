@@ -28,9 +28,9 @@ Config: `eslint.config.js` (Expo's rules plus the strict ones), `knip.json`, `.j
 dupes, dead-code (knip), audit and expo-doctor steps fail the build; [gitleaks](https://github.com/gitleaks/gitleaks)
 (a scan of the history) only warns.
 
-**Coverage floors** (`npm run test:coverage`, run by CI): `src/sync/`, `src/inbox/`, `src/splits/`
-and `src/api/ff3/decimal.ts` each have a minimum for lines and branches, set a little under what
-the suite covers. Raise them when the number rises.
+**Coverage floors** (`npm run test:coverage`, run by CI): `src/sync/`, `src/inbox/`, `src/splits/`,
+`src/planned/`, `src/bucket/`, `src/transactions/`, and `src/api/ff3/decimal.ts` each have a minimum
+for lines and branches, set a little under what the suite covers. Raise them when the number rises.
 
 ## Baseline (2026-09-30, `main` at `c59b7a7`)
 

@@ -1,6 +1,9 @@
 import { render, screen } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import '../i18n';
+import { ActivityRow, BalanceStrip, DayHeader } from '../ui/ActivityRows';
+import type { ActivityCachedRow, Currencies } from '../transactions/activityRows';
+import type { ReferenceAccountRow } from '../accounts/useAssetAccounts';
 
 jest.mock('expo-router', () => ({
   router: { push: jest.fn() },
@@ -9,10 +12,6 @@ jest.mock('expo-router', () => ({
 jest.mock('../ui/navigateOnce', () => ({
   navigateOnce: jest.fn(),
 }));
-
-import { ActivityRow, BalanceStrip, DayHeader } from '../ui/ActivityRows';
-import type { ActivityCachedRow, Currencies } from '../transactions/activityRows';
-import type { ReferenceAccountRow } from '../accounts/useAssetAccounts';
 
 const metrics = {
   frame: { x: 0, y: 0, width: 390, height: 844 },

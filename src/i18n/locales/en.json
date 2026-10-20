@@ -151,6 +151,7 @@
     "addAddressTitle": "Add an address",
     "adding": "Adding…",
     "editAddressTitle": "Edit address",
+    "ff3UrlPlaceholder": "https://firefly.example.com",
     "inUse": "in use",
     "makePrimary": "Make {{address}} primary",
     "makePrimaryAction": "Make primary",
@@ -161,7 +162,8 @@
     "removeAddress": "Remove {{address}}",
     "removeTitle": "Remove this address?",
     "testAll": "Test all",
-    "testing": "Testing…"
+    "testing": "Testing…",
+    "urlPlaceholder": "https://…"
   },
   "aliases": {
     "add": "Add alias",
@@ -288,6 +290,7 @@
     "searchBudgets": "Search budgets",
     "searchCategories": "Search categories",
     "searchDestinationAccounts": "Search destination accounts",
+    "tagPlaceholder": "Tag…",
     "searchSourceAccounts": "Search source accounts",
     "sharedWithPlaceholder": "Shared with (names, separated by commas)",
     "toInbox": "To inbox",
@@ -310,6 +313,7 @@
     "done": "Done",
     "edit": "Edit",
     "error": "Something went wrong",
+    "howThisIsWorkedOut": "How this is worked out",
     "invalidAmount": "Invalid amount",
     "loading": "Loading",
     "nobody": "Nobody",
@@ -1078,6 +1082,7 @@
     "envelopeCount_other": "{{count, number}} envelopes",
     "ff3Addresses": "Firefly III addresses",
     "ff3Version": "Firefly III version",
+    "fireflyIii": "Firefly III",
     "geminiApiKey": "Gemini API key",
     "geminiKey": "Gemini key",
     "geminiPrivacy": "With a Gemini key, receipt photos go to Google whenever your local model isn’t set up or can’t read them. Without one, they never leave your network.",

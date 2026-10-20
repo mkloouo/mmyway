@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   Animated,
   Platform,
@@ -258,6 +259,7 @@ export function Hero({
   testID?: string;
 }) {
   const t = useTheme();
+  const { t: tr } = useTranslation();
   const amountColor =
     tone === 'warn' ? t.color.warn : tone === 'income' ? t.color.income : t.color.text;
 
@@ -282,7 +284,7 @@ export function Hero({
           <Pressable
             onPress={onInfoPress}
             accessibilityRole="button"
-            accessibilityLabel={infoAccessibilityLabel ?? 'How this is worked out'}
+            accessibilityLabel={infoAccessibilityLabel ?? tr('common.howThisIsWorkedOut')}
             hitSlop={8}
             style={({ pressed }) => ({
               width: 28,

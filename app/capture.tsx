@@ -1345,7 +1345,7 @@ export default function CaptureScreen() {
                 >
                   <TextField
                     autoFocus
-                    placeholder="Tag..."
+                    placeholder={tr('capture.tagPlaceholder')}
                     value={newTagText}
                     onChangeText={setNewTagText}
                     onSubmitEditing={() => {

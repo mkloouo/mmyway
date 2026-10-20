@@ -157,6 +157,7 @@
     "addAddressTitle": "",
     "adding": "Додавання…",
     "editAddressTitle": "",
+    "ff3UrlPlaceholder": "",
     "inUse": "використовується",
     "makePrimary": "Зробити {{address}} основним",
     "makePrimaryAction": "",
@@ -167,7 +168,8 @@
     "removeAddress": "Видалити {{address}}",
     "removeTitle": "Видалити цю адресу?",
     "testAll": "Перевірте все",
-    "testing": "Тестування…"
+    "testing": "Тестування…",
+    "urlPlaceholder": ""
   },
   "aliases": {
     "add": "Додати псевдонім",
@@ -298,6 +300,7 @@
     "searchBudgets": "",
     "searchCategories": "",
     "searchDestinationAccounts": "Пошук цільових облікових записів",
+    "tagPlaceholder": "",
     "searchSourceAccounts": "Пошук вихідних облікових записів",
     "sharedWithPlaceholder": "",
     "toInbox": "",
@@ -320,6 +323,7 @@
     "done": "Готово",
     "edit": "Редагувати",
     "error": "",
+    "howThisIsWorkedOut": "",
     "invalidAmount": "Недійсна сума",
     "loading": "Завантаження",
     "nobody": "",
@@ -1139,6 +1143,7 @@
     "envelopeCount_other": "Конверти {{count, number}}",
     "ff3Addresses": "Адреси Firefly III",
     "ff3Version": "",
+    "fireflyIii": "",
     "geminiApiKey": "Ключ API Gemini",
     "geminiKey": "Ключ Gemini",
     "geminiPrivacy": "Завдяки ключу Gemini фотографії чеків надсилаються до Google щоразу, коли ваша локальна модель не налаштована або не може їх прочитати. Без нього вони ніколи не залишать вашу мережу.",

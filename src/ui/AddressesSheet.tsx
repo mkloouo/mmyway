@@ -177,7 +177,7 @@ export function AddressEditSheet({
         <TextField
           value={value}
           onChangeText={setValue}
-          placeholder="https://…"
+          placeholder={tr('addresses.urlPlaceholder')}
           autoCapitalize="none"
           autoCorrect={false}
         />
@@ -227,7 +227,7 @@ export function SignInSheet({
     <Sheet
       visible={visible}
       onClose={onClose}
-      title="Firefly III"
+      title={tr('settings.fireflyIii')}
       footer={
         <Button
           title={signingIn ? tr('settings.connecting') : tr('settings.signIn')}
@@ -239,7 +239,7 @@ export function SignInSheet({
       <TextField
         value={host}
         onChangeText={onChangeHost}
-        placeholder="https://firefly.example.com"
+        placeholder={tr('addresses.ff3UrlPlaceholder')}
         autoCapitalize="none"
       />
       <TextField
@@ -363,7 +363,7 @@ export function AddressesSheet({
         <TextField
           value={newAddress}
           onChangeText={setNewAddress}
-          placeholder="https://…"
+          placeholder={tr('addresses.urlPlaceholder')}
           autoCapitalize="none"
           autoCorrect={false}
           style={{ marginTop: t.space.sm }}
