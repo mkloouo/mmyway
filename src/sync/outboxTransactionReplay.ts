@@ -3,6 +3,7 @@ import { FF3RequestError, UPLOAD_TIMEOUT_MS } from '../api/ff3/client';
 import type { FF3Client } from '../api/ff3/client';
 import { sanitizeSplit } from '../api/ff3/sanitize';
 import type { TransactionRead, TransactionSplit } from '../api/ff3/types';
+import type { TransactionType } from '../transactions/fromFf3';
 import { cachedTransactions, outboxOperations } from '../db/schema';
 import * as schema from '../db/schema';
 import { forgetAttachmentFile } from '../receipt/attachmentFiles';
@@ -116,10 +117,7 @@ async function rebaseLaterEdits(
   }
 }
 
-async function cachedTypeOf(
-  db: OutboxDb,
-  groupId: string,
-): Promise<'withdrawal' | 'deposit' | 'transfer' | undefined> {
+async function cachedTypeOf(db: OutboxDb, groupId: string): Promise<TransactionType | undefined> {
   const [row] = await db
     .select({ type: cachedTransactions.type })
     .from(cachedTransactions)

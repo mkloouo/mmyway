@@ -3,7 +3,7 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ScrollView, Text, type KeyboardTypeOptions } from 'react-native';
-import { appLocale } from '../i18n';
+import { fullDay } from '../utils/dates';
 import { ChoiceCard, FieldRow, SCREEN_TOP_PADDING } from '../ui/kit';
 import { pickableCurrencies } from '../money/currencies';
 import { pickDate } from '../ui/pickDate';
@@ -22,13 +22,7 @@ export const ROLE_LABEL_KEYS: Record<AccountRole, string> = {
 };
 
 export function dayLabel(day: string | null): string | null {
-  return day
-    ? dayDate(day).toLocaleDateString(appLocale(), {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      })
-    : null;
+  return day ? fullDay(day) : null;
 }
 
 export function pickDay(value: string | null, onPick: (day: string) => void) {

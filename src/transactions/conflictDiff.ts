@@ -2,7 +2,8 @@
 // current value beside the queued one. The server side is the copy the outbox stored when it
 // detected the conflict (src/sync/outbox.ts), so it reflects what changed in FF3.
 import type { cachedTransactions } from '../db/schema';
-import i18n, { appLocale } from '../i18n';
+import i18n from '../i18n';
+import { dateTime } from '../utils/dates';
 import { parseTags } from './tags';
 
 type CachedRow = typeof cachedTransactions.$inferSelect;
@@ -29,16 +30,7 @@ function text(value: unknown): string {
 
 function dateLabel(iso: string | null | undefined): string {
   if (!iso) return EMPTY;
-  const d = new Date(iso);
-  return Number.isNaN(d.getTime())
-    ? iso
-    : d.toLocaleString(appLocale(), {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
+  return dateTime(iso);
 }
 
 function tagsOf(json: string | null | undefined): string[] {

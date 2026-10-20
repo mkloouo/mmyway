@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Unified FF3 transaction mapping under a shared fromFf3 domain helper, consolidated date formatters in utils/dates, and clarified split allocation precision comments (MKL-121).
 - Extracted outbox operation kinds into an open-closed registry (outboxKinds) and split outbox.ts into focused modules below the 400-line ceiling (MKL-119).
 
 ## [2.5.6] - 2026-10-20

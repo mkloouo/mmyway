@@ -3,10 +3,10 @@
 import { sendableNotes } from '../transactions/editDiff';
 import { sanitizeTags } from '../api/ff3/sanitize';
 import type { TransactionSplit } from '../api/ff3/types';
-import type { CachedSplit } from '../transactions/splitsJson';
 import type { QueuedSplit } from '../transactions/pendingEdits';
+import { editableSplitFromCached, type TransactionType } from '../transactions/fromFf3';
 
-export type TxType = 'withdrawal' | 'deposit' | 'transfer';
+export type TxType = TransactionType;
 
 export interface EditableSplit {
   journalId?: string; // absent for a split not yet in FF3
@@ -24,22 +24,7 @@ export interface EditableSplit {
   internalReference?: string | null;
 }
 
-export function fromCached(split: CachedSplit): EditableSplit {
-  return {
-    journalId: split.journalId,
-    amount: split.amount,
-    description: split.description,
-    sourceId: split.sourceId,
-    sourceName: split.sourceName,
-    destinationId: split.destinationId,
-    destinationName: split.destinationName,
-    categoryName: split.categoryName,
-    budgetId: split.budgetId,
-    notes: split.notes,
-    tags: split.tags,
-    internalReference: split.internalReference ?? null,
-  };
-}
+export const fromCached = editableSplitFromCached;
 
 const text = (value: unknown): string | null =>
   value == null || value === '' ? null : String(value);

@@ -1,6 +1,7 @@
 // Display text for the Planned tab, in the app's language.
-import i18n, { appLocale } from '../i18n';
+import i18n from '../i18n';
 import { currencySymbol } from '../money/format';
+import { fullDay, monthDay, weekdayDay, weekdayName } from '../utils/dates';
 import { dayDate, localDay } from '../utils/day';
 import type { PlannedFields, PlannedGroup } from './model';
 import type { PlannedObject } from './objects';
@@ -12,6 +13,8 @@ import {
   type WeekendRule,
 } from './repetition';
 
+export { weekdayName };
+
 /** The periods an FF3 subscription can repeat on, for the detailed view's one-line summary. */
 const BILL_FREQUENCY_KEYS: Record<string, string> = {
   daily: 'planned.everyDay',
@@ -22,18 +25,9 @@ const BILL_FREQUENCY_KEYS: Record<string, string> = {
   yearly: 'planned.everyYear',
 };
 
-/** Monday is ISO weekday 1, and 2024-01-01 was a Monday — so the names come from Intl, not i18n. */
-export function weekdayName(weekday: number, width: 'long' | 'short' = 'long'): string {
-  const date = new Date(Date.UTC(2024, 0, 1 + ((Math.trunc(weekday) - 1 + 7) % 7)));
-  return date.toLocaleDateString(appLocale(), { weekday: width, timeZone: 'UTC' });
-}
-
 /** "5 March" from a `yearly` repetition's `YYYY-MM-DD` moment. */
 function monthDayLabel(day: string): string {
-  const date = new Date(`${day}T12:00:00`);
-  return Number.isNaN(date.getTime())
-    ? day
-    : date.toLocaleDateString(appLocale(), { day: 'numeric', month: 'long' });
+  return monthDay(day);
 }
 
 export const repetitionTypeName = (type: RepetitionType): string =>
@@ -100,18 +94,12 @@ export function scheduleLabel(
 }
 
 export function dayLabel(date: string): string {
-  const d = new Date(`${date}T12:00:00`);
-  return Number.isNaN(d.getTime())
-    ? date
-    : d.toLocaleDateString(appLocale(), { day: 'numeric', month: 'short', year: 'numeric' });
+  return fullDay(date);
 }
 
 /** A date as "Mon 5 Oct" — the occurrence list, where the weekday is the point. */
 export function occurrenceLabel(date: string): string {
-  const d = new Date(`${date}T12:00:00`);
-  return Number.isNaN(d.getTime())
-    ? date
-    : d.toLocaleDateString(appLocale(), { weekday: 'short', day: 'numeric', month: 'short' });
+  return weekdayDay(date);
 }
 
 /**

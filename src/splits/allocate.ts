@@ -7,7 +7,11 @@
 // ones; a changed total spreads the difference over the splits; a changed split amount spreads the
 // difference over the others. `balance` keeps the sliders summing to the amount at all times.
 
-/** `'12.5'` at 2 decimal places -> `1250n`. Extra fraction digits past the scale are cut. */
+/**
+ * `'12.5'` at 2 decimal places -> `1250n`.
+ * Uses fixed-scale truncation to enforce the active currency's subunit boundary (unlike
+ * dynamic-scale decimal.ts), preventing fractional subunits in split slider allocation.
+ */
 export function toMinor(amount: string, decimalPlaces: number): bigint {
   const trimmed = amount.trim();
   const negative = trimmed.startsWith('-');
@@ -167,6 +171,7 @@ export function positionToMinor(position: number, cap: bigint): bigint {
 
 export function minorToPosition(value: bigint, cap: bigint): number {
   if (cap <= 0n) return 0;
+  // UI-only slider ratio (never stored; stored money arithmetic always uses BigInt or decimal.ts).
   return Number(value) / Number(cap);
 }
 

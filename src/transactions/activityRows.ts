@@ -1,16 +1,18 @@
 // The row shapes Activity lists, and the pure functions that build them: an entry still on its way
 // to FF3, a result FF3 answered a search with, and a cached split transaction's lines. Kept out of
 // the screen so the screen is the list and its state, not the data shapes too.
-import { addDecimal } from '../api/ff3/decimal';
-import type { TransactionRead, TransactionSplit } from '../api/ff3/types';
+import type { TransactionRead } from '../api/ff3/types';
 import { readDraft } from '../inbox/draftJson';
 import { draftTotal } from '../inbox/draftSplits';
 import { readSplits } from './splitsJson';
 import type { CachedTransactionRow } from './useTransactionPage';
 import type { PendingEditStatus } from './pendingEdits';
 import type { referenceCurrencies } from '../db/schema';
+import { groupHeadline, splitLineFromCached, sumAmounts, type TransactionType } from './fromFf3';
 
-export type ActivityRowType = 'withdrawal' | 'deposit' | 'transfer';
+export { groupHeadline, sumAmounts };
+
+export type ActivityRowType = TransactionType;
 
 /** One split under a split transaction's row: basic info only. */
 export interface SplitLine {
@@ -79,24 +81,6 @@ export function mapRemoteResult(group: TransactionRead): RemoteResultRow | null 
   };
 }
 
-/**
- * A split group as one line: the splits' total when they share a currency (otherwise the first
- * split's amount, as there is no single total), under the group's title. Needs at least one split.
- */
-export function groupHeadline(group: TransactionRead): { amount: string; description: string } {
-  const splits = group.attributes.transactions;
-  const journal = splits[0]!;
-  const sameCurrency = splits.every((s) => s.currency_code === journal.currency_code);
-  const amount = splits.length > 1 && sameCurrency ? sumAmounts(splits) : journal.amount;
-  const groupTitle = (group.attributes as { group_title?: string | null }).group_title;
-  const description = splits.length > 1 && groupTitle ? groupTitle : journal.description;
-  return { amount, description };
-}
-
-export function sumAmounts(splits: TransactionSplit[]): string {
-  return splits.map((s) => s.amount).reduce((a, b) => addDecimal(a, b));
-}
-
 /** A sent entry, from its draft, while its synced copy is on its way into the list. */
 export function landingRow(inboxItemId: string, draftJson: string): QueuedRow | null {
   try {
@@ -139,11 +123,7 @@ export function landingRow(inboxItemId: string, draftJson: string): QueuedRow | 
 /** A cached split transaction's splits, for the lines under its row. */
 export function cachedSplitLines(row: CachedTransactionRow): SplitLine[] {
   if (row.splitCount < 2) return [];
-  return (readSplits(row.splitsJson) ?? []).map((s) => ({
-    label: s.categoryName || s.description,
-    amount: s.amount,
-    categoryName: s.categoryName,
-  }));
+  return (readSplits(row.splitsJson) ?? []).map(splitLineFromCached);
 }
 
 /** A cached row, plus the state of any edit to it that is saved here but not yet in FF3. */

@@ -43,7 +43,8 @@ import { upcomingOccurrences } from './occurrences';
 import { localDay } from '../utils/day';
 import { logLine } from '../utils/log';
 import { errorMessage } from '../utils/errorMessage';
-import i18n, { appLocale } from '../i18n';
+import i18n from '../i18n';
+import { shortDay, weekdayOf } from '../utils/dates';
 import { currencyOf, formatMoney } from '../money/format';
 import { addDecimal, compareDecimal, subtractDecimal } from '../api/ff3/decimal';
 
@@ -206,9 +207,7 @@ export function formatPlannedNotificationBody(
       ? i18n.t('planned.notificationToday', { amount })
       : i18n.t('planned.notificationTodayNoAmount');
 
-  const parts = target.dueDate.split('-').map(Number);
-  const due = new Date(parts[0]!, parts[1]! - 1, parts[2]!);
-  const date = due.toLocaleDateString(appLocale(), { month: 'short', day: 'numeric' });
+  const date = shortDay(target.dueDate);
   return amount
     ? i18n.t('planned.notificationAhead', { count: target.leadDays, date, amount })
     : i18n.t('planned.notificationAheadNoAmount', { count: target.leadDays, date });
@@ -257,16 +256,7 @@ function digestReminder(
 }
 
 function shortDate(day: string): string {
-  const [y, m, d] = day.split('-').map(Number);
-  return new Date(y!, m! - 1, d!).toLocaleDateString(appLocale(), {
-    month: 'short',
-    day: 'numeric',
-  });
-}
-
-function weekdayOf(day: string): string {
-  const [y, m, d] = day.split('-').map(Number);
-  return new Date(y!, m! - 1, d!).toLocaleDateString(appLocale(), { weekday: 'long' });
+  return shortDay(day);
 }
 
 /**
