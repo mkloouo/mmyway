@@ -12,6 +12,7 @@
 
 ### Changed
 
+- Reduced oversized modules (referenceData, toDraft, planned/model, and SyncSheet), splitting them by responsibility below the 400-line ceiling (MKL-123).
 - Validated stored JSON strings and LLM receipt responses with Zod schemas and added lint rule preventing unsafe JSON.parse casts (MKL-122).
 - Decoupled domain code from the UI layer, moving money formatting and currencies to domain packages with lint enforcement (MKL-120).
 

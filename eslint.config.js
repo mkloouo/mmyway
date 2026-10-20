@@ -47,7 +47,6 @@ const OVERSIZED = {
   'app/accounts/new.tsx': 499,
   'src/planned/notifications.ts': 469,
   'src/ui/InboxCards.tsx': 459,
-  'src/sync/referenceData.ts': 436,
   'app/accounts/[[]id].tsx': 404,
 };
 

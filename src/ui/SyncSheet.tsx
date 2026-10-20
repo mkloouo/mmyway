@@ -14,6 +14,49 @@ const PROVIDER_LABEL_KEYS: Record<string, string> = {
   gemini: 'sync.providerGemini',
 };
 
+function StatusRow({
+  statusColor,
+  title,
+  subtitle,
+  trailing,
+  first,
+}: {
+  statusColor: string;
+  title: string;
+  subtitle: string;
+  trailing?: React.ReactNode;
+  first?: boolean;
+}) {
+  const t = useTheme();
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        minHeight: 52,
+        paddingHorizontal: 16,
+        borderTopWidth: first ? 0 : 1,
+        borderTopColor: t.color.border,
+      }}
+    >
+      <View
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: 4,
+          backgroundColor: statusColor,
+        }}
+      />
+      <View style={{ flex: 1, paddingVertical: 10 }}>
+        <Text style={[t.type.body, { color: t.color.text }]}>{title}</Text>
+        <Text style={[t.type.label, { color: t.color.textMuted }]}>{subtitle}</Text>
+      </View>
+      {trailing}
+    </View>
+  );
+}
+
 export function SyncSheet({
   visible,
   onClose,
@@ -51,42 +94,27 @@ export function SyncSheet({
     >
       <Card flush>
         {/* Row 1: Firefly III */}
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 12,
-            minHeight: 52,
-            paddingHorizontal: 16,
-            borderTopWidth: 0,
-          }}
-        >
-          <View
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: 4,
-              backgroundColor: signedIn && summary?.ff3.winner ? t.color.income : t.color.warn,
-            }}
-          />
-          <View style={{ flex: 1, paddingVertical: 10 }}>
-            <Text style={[t.type.body, { color: t.color.text }]}>
-              {!signedIn
-                ? tr('sync.notSignedIn')
-                : summary?.ff3.winner
-                  ? tr('sync.ff3Reachable')
-                  : tr('sync.ff3Unreachable')}
-            </Text>
-            <Text style={[t.type.label, { color: t.color.textMuted }]}>
-              {!signedIn
-                ? tr('sync.notSignedInValue')
-                : (summary?.ff3.winner ?? summary?.ff3.results[0]?.address ?? '')}
-            </Text>
-          </View>
-          {!!summary?.ff3.winner && (
-            <Text style={[t.type.label, { color: t.color.accent }]}>{tr('addresses.inUse')}</Text>
-          )}
-        </View>
+        <StatusRow
+          first
+          statusColor={signedIn && summary?.ff3.winner ? t.color.income : t.color.warn}
+          title={
+            !signedIn
+              ? tr('sync.notSignedIn')
+              : summary?.ff3.winner
+                ? tr('sync.ff3Reachable')
+                : tr('sync.ff3Unreachable')
+          }
+          subtitle={
+            !signedIn
+              ? tr('sync.notSignedInValue')
+              : (summary?.ff3.winner ?? summary?.ff3.results[0]?.address ?? '')
+          }
+          trailing={
+            summary?.ff3.winner ? (
+              <Text style={[t.type.label, { color: t.color.accent }]}>{tr('addresses.inUse')}</Text>
+            ) : undefined
+          }
+        />
         {signedIn &&
           !!summary?.ff3.results &&
           summary.ff3.results.length > 1 &&
@@ -115,51 +143,32 @@ export function SyncSheet({
           ))}
 
         {/* Row 2: Receipt Reading */}
-        <View
-          style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 12,
-            minHeight: 52,
-            paddingHorizontal: 16,
-            borderTopWidth: 1,
-            borderTopColor: t.color.border,
-          }}
-        >
-          <View
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: 4,
-              backgroundColor: configured ? t.color.income : t.color.warn,
-            }}
-          />
-          <View style={{ flex: 1, paddingVertical: 10 }}>
-            <Text style={[t.type.body, { color: t.color.text }]}>
-              {configured ? tr('sync.receiptReadingConfigured') : tr('sync.receiptReadingOff')}
-            </Text>
-            <Text style={[t.type.label, { color: t.color.textMuted }]}>
-              {configured
-                ? summary!.configuredProviders
-                    .map((p) => (PROVIDER_LABEL_KEYS[p] ? tr(PROVIDER_LABEL_KEYS[p]) : p))
-                    .join(', ')
-                : tr('sync.receiptReadingNoKeys')}
-            </Text>
-          </View>
-          {!configured && (
-            <Pressable
-              onPress={() => {
-                onClose();
-                router.push('/settings/receipts');
-              }}
-              hitSlop={8}
-            >
-              <Text style={[t.type.body, { color: t.color.accent, fontWeight: '600' }]}>
-                {tr('sync.setUp')}
-              </Text>
-            </Pressable>
-          )}
-        </View>
+        <StatusRow
+          statusColor={configured ? t.color.income : t.color.warn}
+          title={configured ? tr('sync.receiptReadingConfigured') : tr('sync.receiptReadingOff')}
+          subtitle={
+            configured
+              ? summary!.configuredProviders
+                  .map((p) => (PROVIDER_LABEL_KEYS[p] ? tr(PROVIDER_LABEL_KEYS[p]) : p))
+                  .join(', ')
+              : tr('sync.receiptReadingNoKeys')
+          }
+          trailing={
+            !configured ? (
+              <Pressable
+                onPress={() => {
+                  onClose();
+                  router.push('/settings/receipts');
+                }}
+                hitSlop={8}
+              >
+                <Text style={[t.type.body, { color: t.color.accent, fontWeight: '600' }]}>
+                  {tr('sync.setUp')}
+                </Text>
+              </Pressable>
+            ) : undefined
+          }
+        />
 
         {/* Row 3: Outbox Status */}
         <View
