@@ -77,7 +77,7 @@ export function OptionTiles<K extends string>({
   style,
   testID,
 }: {
-  options: { key: K; label: string; disabled?: boolean }[];
+  options: { key: K; label: string; sub?: string; disabled?: boolean }[];
   value: K;
   onChange: (key: K) => void;
   accessibilityLabel?: string;
@@ -102,17 +102,20 @@ export function OptionTiles<K extends string>({
             onPress={() => onChange(opt.key)}
             disabled={optDisabled}
             accessibilityRole="radio"
-            accessibilityLabel={opt.label}
+            accessibilityLabel={opt.sub ? `${opt.label}, ${opt.sub}` : opt.label}
             accessibilityState={{ checked: selected, disabled: !!optDisabled }}
             style={({ pressed }) => ({
               flex: 1,
-              height: 44,
+              minHeight: 44,
+              paddingVertical: opt.sub ? 10 : 0,
+              paddingHorizontal: 8,
               borderRadius: t.radius.button,
               borderWidth: selected ? 2 : 1,
               borderColor: selected ? t.color.accent : t.color.border,
               backgroundColor: selected ? t.color.accentSoft : t.color.surface,
               alignItems: 'center',
               justifyContent: 'center',
+              gap: 2,
               opacity: optDisabled ? 0.4 : pressed ? PRESSED_OPACITY : 1,
             })}
           >
@@ -126,6 +129,17 @@ export function OptionTiles<K extends string>({
             >
               {opt.label}
             </Text>
+            {!!opt.sub && (
+              <Text
+                style={{
+                  fontSize: 12,
+                  color: selected ? t.color.accentStrong : t.color.textMuted,
+                }}
+                numberOfLines={1}
+              >
+                {opt.sub}
+              </Text>
+            )}
           </Pressable>
         );
       })}

@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Planned
+
+- First-time reminders intro sheet updated to board 33 with a body title, option tiles, and a text "Not now" action (MKL-96).
+
 ### Settings
 
 - About and help updated to board 31 with version and build number, Activity log share and clear actions, and Firefly III browser link and server version (MKL-94).

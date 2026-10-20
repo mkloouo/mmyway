@@ -59,7 +59,7 @@ export function Sheet({
   scroll = true,
 }: {
   visible: boolean;
-  title: string;
+  title?: string;
   /** Subtitle line directly under the title (e.g. date info, item count). */
   subtitle?: string;
   onClose: () => void;
@@ -160,12 +160,14 @@ export function Sheet({
               </Pressable>
             )}
             <View style={{ flex: 1, minWidth: 0, justifyContent: 'center' }}>
-              <Text
-                style={[t.type.heading, { color: t.color.text, fontWeight: '700' }]}
-                numberOfLines={1}
-              >
-                {title}
-              </Text>
+              {!!title && (
+                <Text
+                  style={[t.type.heading, { color: t.color.text, fontWeight: '700' }]}
+                  numberOfLines={1}
+                >
+                  {title}
+                </Text>
+              )}
               {!!subtitle && (
                 <Text style={[t.type.label, { color: t.color.textMuted }]} numberOfLines={1}>
                   {subtitle}

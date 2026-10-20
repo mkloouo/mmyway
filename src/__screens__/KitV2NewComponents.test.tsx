@@ -137,7 +137,7 @@ describe('Kit V2 new components', () => {
           <OptionTiles
             accessibilityLabel="How often"
             options={[
-              { key: 'once', label: 'Once' },
+              { key: 'once', label: 'Once', sub: 'no repeat' },
               { key: 'weekly', label: 'Weekly' },
               { key: 'monthly', label: 'Monthly' },
               { key: 'more', label: 'More…' },
@@ -148,6 +148,7 @@ describe('Kit V2 new components', () => {
         ),
       );
 
+      expect(screen.getByText('no repeat')).toBeTruthy();
       const group = screen.getByLabelText('How often');
       expect(group).toBeTruthy();
       expect(group.props.accessibilityRole).toBe('radiogroup');

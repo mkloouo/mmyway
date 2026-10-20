@@ -155,6 +155,36 @@ describe('Settings → Reminders', () => {
 });
 
 describe('ReminderPromptSheet', () => {
+  it('renders body title, preview, and OptionTiles, and turning on saves selection', async () => {
+    (Notifications.getPermissionsAsync as jest.Mock).mockResolvedValue({ status: 'granted' });
+    const onDone = jest.fn();
+    await render(
+      wrapSheet(
+        <ReminderPromptSheet visible plannedName="Rent" accountName="Checking" onDone={onDone} />,
+      ),
+    );
+
+    // Body title and body text
+    expect(screen.getByText(i18n.t('reminders.promptTitle', { name: 'Rent' }))).toBeTruthy();
+    expect(screen.getByText(i18n.t('reminders.promptBody', { account: 'Checking' }))).toBeTruthy();
+
+    // Option tiles with at-time subtitle
+    expect(screen.getByText(i18n.t('reminders.promptDayBefore'))).toBeTruthy();
+    expect(screen.getByText(i18n.t('reminders.promptOnDay'))).toBeTruthy();
+    expect(screen.getByText(i18n.t('reminders.promptWeekBefore'))).toBeTruthy();
+
+    // Select "On the day"
+    await fireEvent.press(screen.getByText(i18n.t('reminders.promptOnDay')));
+
+    // Tap "Turn on reminders"
+    await fireEvent.press(screen.getByText(i18n.t('reminders.turnOn')));
+
+    await waitFor(() => expect(onDone).toHaveBeenCalled());
+    expect(await getReminderPromptShown(mockDb)).toBe(true);
+    expect(await getPlannedNotificationsEnabled(mockDb)).toBe(true);
+    expect(await getReminderWhen(mockDb)).toBe('day');
+  });
+
   it('"Not now" marks the prompt shown and calls onDone', async () => {
     const onDone = jest.fn();
     await render(

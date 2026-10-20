@@ -3,13 +3,13 @@
 // the OS permission request both use. Nothing here is shown anywhere yet except by its caller.
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, Pressable, Text, View } from 'react-native';
+import { Alert, Text, View } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useDb } from '../providers/DbProvider';
 import { useCurrencies } from '../db/useReferenceData';
 import { useTheme } from '../ui/theme';
-import { Button, Sheet } from '../ui/kit';
+import { Button, OptionTiles, Sheet } from '../ui/kit';
 import { useAction } from '../ui/useAction';
 import { syncPlannedNotifications } from './notifications';
 import {
@@ -172,51 +172,78 @@ export function ReminderPromptSheet({
       visible={visible}
       scroll={false}
       onClose={() => void notNow()}
-      title={tr('reminders.promptTitle', { name: plannedName })}
       footer={
-        <View style={{ gap: t.space.sm }}>
-          <Button title={tr('reminders.turnOn')} onPress={() => void turnOn()} />
-          <Button title={tr('reminders.notNow')} variant="ghost" onPress={() => void notNow()} />
+        <View style={{ gap: t.space.xs, paddingTop: t.space.xs }}>
+          <Button title={tr('reminders.turnOn')} size="lg" onPress={() => void turnOn()} />
+          <Button title={tr('reminders.notNow')} variant="text" onPress={() => void notNow()} />
         </View>
       }
     >
-      <Text style={[t.type.body, { color: t.color.textMuted }]}>
-        {accountName
-          ? tr('reminders.promptBody', { account })
-          : tr('reminders.promptBodyNoAccount')}
-      </Text>
+      <View style={{ alignItems: 'center', gap: t.space.sm, paddingHorizontal: t.space.md }}>
+        <View
+          style={{
+            width: 64,
+            height: 64,
+            borderRadius: 32,
+            backgroundColor: t.color.accentSoft,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Ionicons name="notifications" size={30} color={t.color.accent} />
+        </View>
+        <Text
+          style={[
+            t.type.heading,
+            {
+              fontSize: 22,
+              lineHeight: 28,
+              fontWeight: '700',
+              color: t.color.text,
+              textAlign: 'center',
+            },
+          ]}
+        >
+          {tr('reminders.promptTitle', { name: plannedName })}
+        </Text>
+        <Text
+          style={[
+            t.type.body,
+            {
+              color: t.color.textMuted,
+              textAlign: 'center',
+              lineHeight: 21,
+            },
+          ]}
+        >
+          {accountName
+            ? tr('reminders.promptBody', { account })
+            : tr('reminders.promptBodyNoAccount')}
+        </Text>
+      </View>
       <ReminderPreview when={choice} time={time} name={plannedName} account={account} />
-      <Text style={[t.type.label, { color: t.color.textMuted }]}>
-        {tr('reminders.promptRemindMe')}
-      </Text>
-      <View accessibilityRole="radiogroup" style={{ flexDirection: 'row', gap: t.space.sm }}>
-        {CHOICES.map((c) => {
-          const on = c === choice;
-          return (
-            <Pressable
-              key={c}
-              onPress={() => setChoice(c)}
-              accessibilityRole="radio"
-              accessibilityState={{ checked: on }}
-              style={{
-                flex: 1,
-                borderRadius: t.radius.md,
-                borderWidth: on ? 2 : 1,
-                borderColor: on ? t.color.accent : t.color.border,
-                backgroundColor: on ? t.color.accentSoft : t.color.surface,
-                padding: 12,
-                gap: 2,
-              }}
-            >
-              <Text style={[t.type.body, { color: t.color.text, fontWeight: '600' }]}>
-                {tr(CHOICE_LABEL[c])}
-              </Text>
-              <Text style={[t.type.label, { color: t.color.textMuted }]}>
-                {tr('reminders.promptAt', { time })}
-              </Text>
-            </Pressable>
-          );
-        })}
+      <View style={{ gap: t.space.sm }}>
+        <Text
+          style={[
+            t.type.label,
+            {
+              fontWeight: '600',
+              color: t.color.textMuted,
+              paddingHorizontal: t.space.xs,
+            },
+          ]}
+        >
+          {tr('reminders.promptRemindMe')}
+        </Text>
+        <OptionTiles
+          value={choice}
+          onChange={setChoice}
+          options={CHOICES.map((c) => ({
+            key: c,
+            label: tr(CHOICE_LABEL[c]),
+            sub: tr('reminders.promptAt', { time }),
+          }))}
+        />
       </View>
     </Sheet>
   );
