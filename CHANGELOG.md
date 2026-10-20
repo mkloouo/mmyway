@@ -4,6 +4,7 @@
 
 ### Planned
 
+- Planned tab updated to board 19 with large title, segmented "All plans · N", amount-styled summary figures, route and category subtitles, Booked pill, and struck skipped rows (MKL-100).
 - Unified planned form hook and sheets between New Planned Payment wizard and Planned Item editor, removing duplicate code across the two screens (MKL-99).
 - Planned occurrence sheet updated to board 21 with relative day subtitle, From/To/Category rows, and an "Edit the plan" row (MKL-102).
 - First-time reminders intro sheet updated to board 33 with a body title, option tiles, and a text "Not now" action (MKL-96).

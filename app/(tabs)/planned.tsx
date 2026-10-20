@@ -19,6 +19,7 @@ import {
   EmptyState,
   ListRow,
   Money,
+  Pill,
   SCREEN_TOP_PADDING,
   Screen,
   SectionHeader,
@@ -191,7 +192,7 @@ export default function PlannedScreen() {
           <Segmented
             options={[
               { key: 'coming', label: tr('planned.comingUp') },
-              { key: 'all', label: tr('planned.allPlans') },
+              { key: 'all', label: tr('planned.allPlans', { count: items.length }) },
             ]}
             value={view}
             onChange={setView}
@@ -208,24 +209,18 @@ export default function PlannedScreen() {
               >
                 <Card>
                   <View style={{ flexDirection: 'row' }}>
-                    <View
-                      style={{
-                        flex: 1,
-                        gap: 2 /* eslint-disable-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81) */,
-                      }}
-                    >
+                    <View style={{ flex: 1, gap: t.space.xs }}>
                       <Text style={[t.type.label, { color: t.color.textMuted }]}>
                         {tr('planned.summary.out')}
                       </Text>
-                      <Text style={[t.type.title, { color: t.color.text }]}>
+                      <Text style={[t.type.amount, { color: t.color.text }]}>
                         {formatMoney(main.out, currencyOf(currencies, mainCode))}
                       </Text>
                     </View>
                     <View
                       style={{
                         flex: 1,
-                        // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
-                        gap: 2,
+                        gap: t.space.xs,
                         borderLeftWidth: StyleSheet.hairlineWidth,
                         borderLeftColor: t.color.border,
                         paddingLeft: t.space.lg,
@@ -234,7 +229,7 @@ export default function PlannedScreen() {
                       <Text style={[t.type.label, { color: t.color.textMuted }]}>
                         {tr('planned.summary.in')}
                       </Text>
-                      <Text style={[t.type.title, { color: t.color.income }]}>
+                      <Text style={[t.type.amount, { color: t.color.income }]}>
                         {`+${formatMoney(main.in, currencyOf(currencies, mainCode))}`}
                       </Text>
                     </View>
@@ -263,21 +258,27 @@ export default function PlannedScreen() {
                           first={j === 0}
                           leading={<DateTile date={o.day} />}
                           label={f.name}
-                          sub={
-                            o.skipped
-                              ? tr('planned.coming.skipped')
-                              : isBooked(o)
-                                ? tr('planned.coming.booked')
-                                : [route, scheduleLabel(f, o.item.group)]
-                                    .filter(Boolean)
-                                    .join(' · ')
-                          }
+                          struck={o.skipped}
+                          sub={[route, f.categoryName].filter(Boolean).join(' · ') || undefined}
                           trailing={
-                            <Money
-                              amount={f.amount}
-                              currency={currencyOf(currencies, f.currencyCode)}
-                              type={f.type}
-                            />
+                            isBooked(o) ? (
+                              <View style={{ alignItems: 'flex-end', gap: t.space.xs }}>
+                                <Money
+                                  amount={f.amount}
+                                  currency={currencyOf(currencies, f.currencyCode)}
+                                  type={f.type}
+                                  struck={o.skipped}
+                                />
+                                <Pill tone="income" size="sm" label={tr('planned.coming.booked')} />
+                              </View>
+                            ) : (
+                              <Money
+                                amount={f.amount}
+                                currency={currencyOf(currencies, f.currencyCode)}
+                                type={f.type}
+                                struck={o.skipped}
+                              />
+                            )
                           }
                           onPress={() => pick(o)}
                         />

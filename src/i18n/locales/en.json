@@ -631,7 +631,7 @@
     "actionCount_one": "{{count, number}} action",
     "actionCount_other": "{{count, number}} actions",
     "add": "Add a planned transaction",
-    "allPlans": "All plans",
+    "allPlans": "All plans · {{count}}",
     "amountHint": "The exact amount and currency. When the recurring transaction arrives in the Inbox, correct it to what the account really paid.",
     "anyTime": "Any time",
     "changesSummary": "Unsaved changes",

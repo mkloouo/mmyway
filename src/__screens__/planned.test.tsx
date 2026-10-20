@@ -282,9 +282,19 @@ describe('Planned → Coming up: summary, booking a later occurrence, Booked', (
     await render(wrap(<PlannedScreen />));
 
     expect(await screen.findByText(i18n.t('planned.coming.booked'))).toBeTruthy();
+    // Subtitle keeps the route and category even when booked
+    expect(screen.getAllByText('Checking → Landlord · Housing').length).toBeGreaterThan(0);
 
     await fireEvent.press(screen.getAllByText('Rent')[0]!);
     expect(screen.getAllByText(i18n.t('planned.occurrence.booked')).length).toBeGreaterThan(0);
     expect(screen.queryByText('Book it now')).toBeNull();
+  });
+
+  it('shows All plans with item count and renders route with category', async () => {
+    await seedRent(plusDays(3));
+    await render(wrap(<PlannedScreen />));
+
+    expect(screen.getByText('All plans · 1')).toBeTruthy();
+    expect(screen.getAllByText('Checking → Landlord · Housing').length).toBeGreaterThan(0);
   });
 });

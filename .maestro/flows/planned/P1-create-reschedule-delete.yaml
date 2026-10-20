@@ -53,7 +53,7 @@ tags:
       }
 - runFlow: ../../subflows/home.yaml
 - tapOn: 'Planned, tab, 3 of 5'
-- tapOn: 'All plans'
+- tapOn: 'All plans.*'
 - tapOn: 'P1 ${RUN_ID}'
 # The schedule opens as a sheet from the "Repeats" row; "How often" is its first row.
 - tapOn: 'Repeats'
@@ -74,7 +74,7 @@ tags:
       }
 - runFlow: ../../subflows/home.yaml
 - tapOn: 'Planned, tab, 3 of 5'
-- tapOn: 'All plans'
+- tapOn: 'All plans.*'
 - tapOn: 'P1 ${RUN_ID}'
 # Delete is behind the ••• now; its menu's Delete asks the same question again.
 - tapOn: 'More'

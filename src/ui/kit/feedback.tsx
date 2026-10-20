@@ -171,6 +171,7 @@ export function Money({
   size = 'body',
   tone,
   loading,
+  struck,
 }: {
   amount: string;
   currency: DisplayCurrency;
@@ -179,12 +180,15 @@ export function Money({
   tone?: 'default' | 'warn';
   /** The currencies are still loading: without them the code would stand in for the symbol. */
   loading?: boolean;
+  /** Struck through amount, e.g. for skipped planned occurrences. */
+  struck?: boolean;
 }) {
   const t = useTheme();
   const { t: tr } = useTranslation();
   const signed = amount.trim().startsWith('-') || amount.trim().startsWith('\u2212');
-  const color =
-    tone === 'warn'
+  const color = struck
+    ? t.color.textFaint
+    : tone === 'warn'
       ? t.color.warn
       : type === 'deposit'
         ? t.color.income
@@ -198,7 +202,14 @@ export function Money({
       </View>
     );
   return (
-    <Text style={[t.type[size], t.type.money, { color }]} numberOfLines={1}>
+    <Text
+      style={[
+        t.type[size],
+        t.type.money,
+        { color, textDecorationLine: struck ? 'line-through' : undefined },
+      ]}
+      numberOfLines={1}
+    >
       {(type && !signed ? signFor(type) : '') + formatMoney(amount, currency)}
     </Text>
   );
