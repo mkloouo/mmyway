@@ -304,7 +304,14 @@ function BudgetScreen() {
         />
       )}
 
-      <NewEnvelopeSheet visible={creating} onClose={() => setCreating(false)} />
+      <NewEnvelopeSheet
+        visible={creating}
+        onClose={() => setCreating(false)}
+        currency={currency}
+        currencyCode={bucket.currencyCode}
+        readyToAssign={rta.readyToAssign}
+        period={period}
+      />
     </Screen>
   );
 }

@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Budget
+
+- New envelope sheet updated to board 03 with "Assign now" amount, ready-to-assign subtitle, and circular add buttons for category suggestions (MKL-107).
+
 ### Changed
 
 - Validated stored JSON strings and LLM receipt responses with Zod schemas and added lint rule preventing unsafe JSON.parse casts (MKL-122).

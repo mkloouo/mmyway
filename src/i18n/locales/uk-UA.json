@@ -206,6 +206,8 @@
   },
   "budget": {
     "assign": "",
+    "assignNow": "",
+    "assignNowPlaceholder": "",
     "assignTitle": "",
     "assignedLabel": "",
     "autofill": "",
@@ -256,12 +258,14 @@
     "nothingToGive": "",
     "overspentBy": "",
     "readyToAssign": "",
+    "readyToAssignSubtitle": "",
     "renameAction": "",
     "renameTitle": "",
     "spentLabel": "",
     "suggestedHeader": "",
     "thisMonth": "",
-    "title": ""
+    "title": "",
+    "useCategory": ""
   },
   "capture": {
     "accountPaid": "",

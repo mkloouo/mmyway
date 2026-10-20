@@ -169,4 +169,38 @@ describe('Budget tab → New envelope sheet', () => {
         .map((b) => b.name),
     ).toContain('Holiday');
   });
+
+  it('renders ready to assign line and assigns initial amount when specified', async () => {
+    await renderTab();
+    await openSheet();
+
+    // Ready to assign line
+    expect(screen.getAllByText(/ready to assign/i).length).toBe(2);
+
+    // Header matches board 03
+    expect(screen.getByText('Your categories without an envelope')).toBeTruthy();
+
+    // Trailing circle "+" button on suggestion works
+    const useBtn = screen.getByLabelText('Use Salary');
+    expect(useBtn).toBeTruthy();
+    fireEvent.press(useBtn);
+    expect(await screen.findByDisplayValue('Salary')).toBeTruthy();
+
+    // Type in Assign now
+    const assignPlaceholder = screen.getByPlaceholderText(/optional/i);
+    fireEvent.changeText(assignPlaceholder, '250.00');
+    await screen.findByDisplayValue('250.00');
+
+    fireEvent.press(screen.getByText(i18n.t('budget.createEnvelope')));
+
+    await waitFor(() =>
+      expect(
+        mockDb
+          .select()
+          .from(outboxOperations)
+          .all()
+          .map((o) => o.kind),
+      ).toEqual(['create_budget', 'set_budget_limits']),
+    );
+  });
 });

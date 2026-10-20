@@ -17,6 +17,7 @@ export function IconButton({
   accessibilityLabel,
   onPress,
   active,
+  variant = 'standard',
   color,
   size = 24,
   disabled,
@@ -26,6 +27,7 @@ export function IconButton({
   accessibilityLabel?: string;
   onPress: () => void;
   active?: boolean;
+  variant?: 'standard' | 'tinted';
   color?: string;
   size?: number;
   disabled?: boolean;
@@ -33,24 +35,27 @@ export function IconButton({
   const t = useTheme();
   const accLabel = accessibilityLabel ?? label ?? '';
   const iconColor = color ?? t.color.accent;
+  const isTinted = variant === 'tinted' || active;
+  const dimension = variant === 'tinted' ? 28 : hitSize;
+  const iconSize = variant === 'tinted' && size === 24 ? 18 : size;
   return (
     <Pressable
       onPress={onPress}
       disabled={disabled}
       accessibilityRole="button"
       accessibilityLabel={accLabel}
-      hitSlop={4}
+      hitSlop={variant === 'tinted' ? 8 : 4}
       style={({ pressed }) => ({
-        width: hitSize,
-        height: hitSize,
+        width: dimension,
+        height: dimension,
         borderRadius: t.radius.pill,
         alignItems: 'center',
         justifyContent: 'center',
         opacity: disabled ? 0.4 : pressed ? PRESSED_OPACITY : 1,
-        backgroundColor: active ? t.color.accentSoft : undefined,
+        backgroundColor: isTinted ? t.color.accentSoft : undefined,
       })}
     >
-      <Ionicons name={icon} size={size} color={iconColor} />
+      <Ionicons name={icon} size={iconSize} color={iconColor} />
     </Pressable>
   );
 }

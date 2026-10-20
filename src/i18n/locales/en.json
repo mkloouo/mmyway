@@ -196,6 +196,8 @@
   },
   "budget": {
     "assign": "Set the amount",
+    "assignNow": "Assign now",
+    "assignNowPlaceholder": "{{zero}} · optional",
     "assignTitle": "How much for {{name}}?",
     "assignedLabel": "Available in it",
     "autofill": "Auto-fill",
@@ -246,12 +248,14 @@
     "nothingToGive": "No other envelope has anything left to give.",
     "overspentBy": "{{amount}} over budget",
     "readyToAssign": "Ready to assign",
+    "readyToAssignSubtitle": "{{amount}} ready to assign",
     "renameAction": "Rename",
     "renameTitle": "Rename to \"{{name}}\"?",
     "spentLabel": "Spent",
-    "suggestedHeader": "Suggested from your categories",
+    "suggestedHeader": "Your categories without an envelope",
     "thisMonth": "This month",
-    "title": "Budget"
+    "title": "Budget",
+    "useCategory": "Use {{name}}"
   },
   "capture": {
     "accountPaid": "{{account}} paid",
