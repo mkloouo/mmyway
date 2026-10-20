@@ -6,7 +6,7 @@ import { router } from 'expo-router';
 import { Button, Card, ModalHeader, Screen } from './kit';
 import { useTheme } from './theme';
 import { relativeTime } from './relativeTime';
-import { formatMoney, type DisplayCurrency } from './money';
+import { formatMoney, type DisplayCurrency } from '../money/format';
 import { conflictFields } from '../transactions/conflictDiff';
 import { readPayload } from '../sync/payloadJson';
 import {

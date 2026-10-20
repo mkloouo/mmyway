@@ -6,7 +6,7 @@ import {
   currencySymbol,
   fxCaption,
   type NumberSeparators,
-} from './money';
+} from './format';
 
 // The phone's number format is passed explicitly so these don't depend on the test machine's.
 const PL: NumberSeparators = { group: '\u202F', decimal: ',' };

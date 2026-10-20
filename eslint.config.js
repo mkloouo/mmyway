@@ -222,4 +222,31 @@ module.exports = defineConfig([
       ],
     },
   },
+  {
+    // Domain code must not depend on the UI layer (MKL-120).
+    files: ['src/**/*.ts'],
+    ignores: [...TESTS, 'src/ui/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: [
+                '**/ui',
+                '**/ui/**',
+                '../ui',
+                '../ui/**',
+                '../../ui',
+                '../../ui/**',
+                'src/ui',
+                'src/ui/**',
+              ],
+              message: "Domain code doesn't depend on the UI kit",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ]);

@@ -3,7 +3,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import type { ReactElement } from 'react';
 import '../i18n';
 import { CashSweepPickers } from './CashSweepPickers';
-import type { AccountPickerAccount } from '../ui/AccountPickerSheet';
+import type { AccountPickerAccount } from '../accounts/useAssetAccounts';
 
 const metrics = {
   frame: { x: 0, y: 0, width: 390, height: 844 },

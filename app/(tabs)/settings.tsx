@@ -42,7 +42,7 @@ import { PickerSheet } from '../../src/ui/PickerSheet';
 import { AccountPickerSheet } from '../../src/ui/AccountPickerSheet';
 import { forgetPosition, startPositionRequest } from '../../src/capture/position';
 import { useAction } from '../../src/ui/useAction';
-import { pickableCurrencies, primaryCurrencyCode } from '../../src/ui/currencies';
+import { pickableCurrencies, primaryCurrencyCode } from '../../src/money/currencies';
 import { useFlags } from '../../src/flags/useFlag';
 
 const LANGUAGE_OPTIONS: { value: AppLocale; labelKey: string }[] = [

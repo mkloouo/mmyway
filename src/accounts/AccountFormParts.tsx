@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { ScrollView, Text, type KeyboardTypeOptions } from 'react-native';
 import { appLocale } from '../i18n';
 import { ChoiceCard, FieldRow, SCREEN_TOP_PADDING } from '../ui/kit';
-import { pickableCurrencies } from '../ui/currencies';
+import { pickableCurrencies } from '../money/currencies';
 import { pickDate } from '../ui/pickDate';
 import { PickerSheet } from '../ui/PickerSheet';
 import { TextField } from '../ui/TextField';

@@ -12,6 +12,13 @@ import { ACCOUNT_ORDER_KEY, parseAccountOrder } from '../settings/appSettings';
 
 export type ReferenceAccountRow = typeof referenceAccounts.$inferSelect;
 
+export interface AccountPickerAccount {
+  id: string;
+  name: string;
+  currencyCode: string;
+  currentBalance?: string | null;
+}
+
 /** Pure half of useAssetAccounts, for tests and non-hook callers. */
 /** Sorted by FF3's own account order (Settings → Accounts → Reorder), then by name. */
 export function selectAssetAccounts(

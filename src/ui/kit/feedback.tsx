@@ -12,7 +12,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTheme } from '../theme';
-import { formatMoney, signFor, type DisplayCurrency } from '../money';
+import { formatMoney, signFor, type DisplayCurrency } from '../../money/format';
 
 /**
  * Short confirmation floating over a screen. Anchored below the status bar inset — Android draws

@@ -8,7 +8,7 @@ import { AccountPickerSheet } from './AccountPickerSheet';
 import { Button, Sheet } from './kit';
 import { TextField } from './TextField';
 import { useTheme } from './theme';
-import { currencyOf, currencySymbol, formatMoney } from './money';
+import { currencyOf, currencySymbol, formatMoney } from '../money/format';
 import { useAction } from './useAction';
 import { useDb } from '../providers/DbProvider';
 import { parseDecimalInput, trimDecimal } from '../api/ff3/decimal';

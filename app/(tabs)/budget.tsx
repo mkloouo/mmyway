@@ -24,7 +24,7 @@ import { divideDecimal } from '../../src/api/ff3/decimal';
 import type { Envelope } from '../../src/bucket/envelopes';
 import { PendingDot } from '../../src/ui/PendingDot';
 import { useTheme } from '../../src/ui/theme';
-import { formatMoney } from '../../src/ui/money';
+import { formatMoney } from '../../src/money/format';
 import { navigateOnce } from '../../src/ui/navigateOnce';
 import { useAction } from '../../src/ui/useAction';
 import { confirmAction } from '../../src/ui/confirm';

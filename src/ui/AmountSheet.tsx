@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { applyDigit, applyFirstKey, type KeypadKey } from '../capture/amountInput';
 import { Keypad } from './Keypad';
 import { Money, Sheet } from './kit';
-import type { DisplayCurrency } from './money';
+import type { DisplayCurrency } from '../money/format';
 
 export function AmountSheet({
   visible,

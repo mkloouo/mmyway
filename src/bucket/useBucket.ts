@@ -6,7 +6,7 @@ import { bucketObjects, outboxOperations, plannedObjects, referenceAccounts } fr
 import { useLiveQuery } from '../db/useLiveQuery';
 import { useBudgetRows, useCurrencies } from '../db/useReferenceData';
 import { useDb } from '../providers/DbProvider';
-import { currencyOf, type DisplayCurrency } from '../ui/money';
+import { currencyOf, type DisplayCurrency } from '../money/format';
 import { billsDueIn, type BillDue } from '../sync/bucketData';
 import { tryReadPayload } from '../sync/payloadJson';
 import { envelopesFor, type Envelope } from './envelopes';

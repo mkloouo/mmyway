@@ -132,7 +132,7 @@ const dark: Palette = {
 const space = { xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, xxxl: 32 } as const;
 const radius = { xs: 8, sm: 10, button: 12, md: 14, lg: 22, pill: 999 } as const;
 /** Smallest comfortable touch target (design §3.3). */
-export const hitSize = 44;
+export { hitSize } from '../utils/layout';
 
 // Money always renders with tabular figures so columns line up down a list.
 const tabular = { fontVariant: ['tabular-nums' as const] };

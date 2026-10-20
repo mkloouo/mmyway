@@ -7,7 +7,7 @@ import { createTestDb } from '../db/testDb';
 import { bucketRow } from '../bucket/objects';
 import { periodOf } from '../bucket/period';
 import { bucketObjects, referenceBudgets, referenceCurrencies } from '../db/schema';
-import { formatMoney } from '../ui/money';
+import { formatMoney } from '../money/format';
 import { localDay } from '../utils/day';
 import EnvelopeScreen from '../../app/budget/[id]';
 import { flagsQuery } from '../flags/useFlag';

@@ -8,7 +8,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { usePopOnChange } from './feedback';
 import { useTheme } from './theme';
 import { Card, Money, PRESSED_OPACITY, SectionHeader } from './kit';
-import { currencyOf, formatMoney } from './money';
+import { currencyOf, formatMoney } from '../money/format';
 import { categoryColor } from './categoryColor';
 import { navigateOnce } from './navigateOnce';
 import { PendingDot } from './PendingDot';

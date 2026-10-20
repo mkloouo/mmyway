@@ -19,7 +19,7 @@ import { Button, Card, GroupFooter, ListRow, PushHeader, Screen, SectionHeader, 
 import { useAction } from '../../src/ui/useAction';
 import { useConfirmDiscard } from '../../src/ui/useConfirmDiscard';
 import { useToast } from '../../src/ui/useToast';
-import { currencyOf, formatMoney } from '../../src/ui/money';
+import { currencyOf, formatMoney } from '../../src/money/format';
 // eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
 import { referenceAccounts } from '../../src/db/schema';
 import { hasEnvelopeMarker, setEnvelopeMarker } from '../../src/accounts/envelopeMarker';

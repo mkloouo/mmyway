@@ -17,7 +17,7 @@ import { createTestDb } from '../db/testDb';
 import { outboxOperations } from '../db/schema';
 import { storePlanned } from '../planned/objects';
 import { occurrenceLabel, relativeDayLabel } from '../planned/labels';
-import { formatMoney } from '../ui/money';
+import { formatMoney } from '../money/format';
 import { localDay, dayDate } from '../utils/day';
 import PlannedScreen from '../../app/(tabs)/planned';
 

@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, Text, View } from 'react-native';
 import { Button, Chip, Money } from './kit';
 import { useTheme } from './theme';
-import type { DisplayCurrency } from './money';
+import type { DisplayCurrency } from '../money/format';
 
 export function SplitPage({
   amount,

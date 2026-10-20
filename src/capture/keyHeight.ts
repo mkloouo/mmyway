@@ -1,5 +1,5 @@
 // Capture's keypad sized to the window it's in. Pure.
-import { hitSize } from '../ui/theme';
+import { hitSize } from '../utils/layout';
 
 /**
  * The keypad's key height. Keys used to be sized from the width alone (1.4:1), so a window short

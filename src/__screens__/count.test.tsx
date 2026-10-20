@@ -6,7 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import '../i18n';
 import { createTestDb } from '../db/testDb';
 import { referenceAccounts, referenceCurrencies } from '../db/schema';
-import { formatMoney } from '../ui/money';
+import { formatMoney } from '../money/format';
 import CountScreen from '../../app/count';
 
 jest.setTimeout(15_000);

@@ -44,7 +44,7 @@ import { localDay } from '../utils/day';
 import { logLine } from '../utils/log';
 import { errorMessage } from '../utils/errorMessage';
 import i18n, { appLocale } from '../i18n';
-import { currencyOf, formatMoney } from '../ui/money';
+import { currencyOf, formatMoney } from '../money/format';
 import { addDecimal, compareDecimal, subtractDecimal } from '../api/ff3/decimal';
 
 type Currencies = (typeof referenceCurrencies.$inferSelect)[];

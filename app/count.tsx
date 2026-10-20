@@ -20,7 +20,7 @@ import { PickerSheet } from '../src/ui/PickerSheet';
 import { CashSweepPickers } from '../src/reconcile/CashSweepPickers';
 import { useCashSweepAccounts } from '../src/reconcile/useCashSweepAccounts';
 import type { AccountPickerAccount } from '../src/ui/AccountPickerSheet';
-import { currencyOf, formatMoney } from '../src/ui/money';
+import { currencyOf, formatMoney } from '../src/money/format';
 import { parseDecimalInput } from '../src/api/ff3/decimal';
 import { relativeTime } from '../src/ui/relativeTime';
 import { haptics } from '../src/ui/haptics';

@@ -1,4 +1,4 @@
-import type { AccountPickerAccount } from '../ui/AccountPickerSheet';
+import type { AccountPickerAccount } from '../accounts/useAssetAccounts';
 
 // The chip row shows a handful of choices, not a wall — the rest live behind the 🔍 button's
 // AccountPickerSheet. A selection outside that handful still needs to be visible, so it's pinned

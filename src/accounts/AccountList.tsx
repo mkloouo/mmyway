@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Text } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { IconButton, ListRow, Money, TabHeader, Tile, type TileTone } from '../ui/kit';
-import { currencyOf } from '../ui/money';
+import { currencyOf } from '../money/format';
 import { PendingDot } from '../ui/PendingDot';
 import { SearchField } from '../ui/SearchField';
 import { useTheme } from '../ui/theme';

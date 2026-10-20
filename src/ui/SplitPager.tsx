@@ -16,7 +16,7 @@ import {
 } from 'react-native';
 import { Dot, Money } from './kit';
 import { useTheme } from './theme';
-import type { DisplayCurrency } from './money';
+import type { DisplayCurrency } from '../money/format';
 
 export function SplitPager({
   total,

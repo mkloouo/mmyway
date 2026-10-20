@@ -30,7 +30,7 @@ import { Keypad } from '../src/ui/Keypad';
 import { PayeeSheet } from '../src/ui/PayeeSheet';
 import { AccountPickerSheet, type AccountPickerAccount } from '../src/ui/AccountPickerSheet';
 // prettier-ignore
-import { currencyOf, currencySymbol, formatAmountInput, formatMoney, fxCaption } from '../src/ui/money';
+import { currencyOf, currencySymbol, formatAmountInput, formatMoney, fxCaption } from '../src/money/format';
 import { categoryColor } from '../src/ui/categoryColor';
 import { haptics } from '../src/ui/haptics';
 
@@ -69,7 +69,7 @@ import { PickerSheet } from '../src/ui/PickerSheet';
 import { useAction } from '../src/ui/useAction';
 import { logLine } from '../src/utils/log';
 import { errorMessage } from '../src/utils/errorMessage';
-import { pickableCurrencies, primaryCurrencyCode } from '../src/ui/currencies';
+import { pickableCurrencies, primaryCurrencyCode } from '../src/money/currencies';
 import { TX_TYPES } from '../src/transactions/txTypes';
 
 // Below this window height the amount is drawn smaller: every line it saves is one the form

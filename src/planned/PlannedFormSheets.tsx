@@ -4,7 +4,7 @@ import { AmountSheet } from '../ui/AmountSheet';
 import { PickerSheet } from '../ui/PickerSheet';
 import { AccountPickerSheet } from '../ui/AccountPickerSheet';
 import { PayeeSheet } from '../ui/PayeeSheet';
-import { pickableCurrencies } from '../ui/currencies';
+import { pickableCurrencies } from '../money/currencies';
 import { REMIND_CHOICES } from './remind';
 import type { PlannedForm } from './usePlannedForm';
 import type { PlannedGroup } from './model';

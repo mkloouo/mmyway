@@ -27,7 +27,7 @@ import { SaveBar } from '../../src/ui/SaveBar';
 import { TextField } from '../../src/ui/TextField';
 import { useConfirmDiscard } from '../../src/ui/useConfirmDiscard';
 import { useTheme } from '../../src/ui/theme';
-import { formatMoney } from '../../src/ui/money';
+import { formatMoney } from '../../src/money/format';
 import { useAction } from '../../src/ui/useAction';
 import { confirmAction, confirmDestructive } from '../../src/ui/confirm';
 import { useDb } from '../../src/providers/DbProvider';

@@ -15,7 +15,7 @@ import { TimeRows } from '../ui/TimeRows';
 import { pickDate } from '../ui/pickDate';
 import { useTheme } from '../ui/theme';
 import { TX_TYPES } from '../transactions/txTypes';
-import { signFor, type DisplayCurrency } from '../ui/money';
+import { signFor, type DisplayCurrency } from '../money/format';
 import { dayLabel, weekdayName, weekendName } from './labels';
 import { movedOccurrenceLabel } from '../ui/ScheduleSummary';
 import { localDay } from '../utils/day';

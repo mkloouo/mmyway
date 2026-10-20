@@ -15,7 +15,7 @@ import {
   referenceBudgets,
   referenceCurrencies,
 } from '../db/schema';
-import { formatMoney } from '../ui/money';
+import { formatMoney } from '../money/format';
 import { localDay } from '../utils/day';
 import BudgetScreen from '../../app/(tabs)/budget';
 import { flagsQuery } from '../flags/useFlag';

@@ -13,7 +13,7 @@ import { useTheme } from '../../src/ui/theme';
 import { Card, MoreButton, PushHeader, ListRow, SCREEN_TOP_PADDING, Screen, SectionHeader, Segmented } from '../../src/ui/kit';
 import { TextField } from '../../src/ui/TextField';
 import { TagsField } from '../../src/ui/TagsField';
-import { formatMoney } from '../../src/ui/money';
+import { formatMoney } from '../../src/money/format';
 import { useAction } from '../../src/ui/useAction';
 import { useConfirmDiscard } from '../../src/ui/useConfirmDiscard';
 import { useRecentTags } from '../../src/lookup/recentTags';

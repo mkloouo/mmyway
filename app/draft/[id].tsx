@@ -28,8 +28,8 @@ import {
   type AllocationMode,
   type AllocationResult,
 } from '../../src/ui/AllocationSheet';
-import { currencyOf, currencySymbol, formatMoney, fxCaption } from '../../src/ui/money';
-import { pickableCurrencies } from '../../src/ui/currencies';
+import { currencyOf, currencySymbol, formatMoney, fxCaption } from '../../src/money/format';
+import { pickableCurrencies } from '../../src/money/currencies';
 import { PickerSheet } from '../../src/ui/PickerSheet';
 import { haptics } from '../../src/ui/haptics';
 // eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)

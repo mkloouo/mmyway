@@ -9,7 +9,7 @@ import { Button, Money, Sheet } from './kit';
 import { Keypad } from './Keypad';
 import { Slider } from './Slider';
 import { useTheme } from './theme';
-import { formatMoney, type DisplayCurrency } from './money';
+import { formatMoney, type DisplayCurrency } from '../money/format';
 import { applyDigit, type KeypadKey } from '../capture/amountInput';
 import {
   applyShares,

@@ -4,7 +4,7 @@ import { cachedTransactions, referenceAccounts } from '../db/schema';
 import { useDb } from '../providers/DbProvider';
 import { useLiveQuery } from '../db/useLiveQuery';
 import { getUsedAccountIdsThisYear, filterAccountsUsedThisYear } from './usedAccounts';
-import type { AccountPickerAccount } from '../ui/AccountPickerSheet';
+import type { AccountPickerAccount } from '../accounts/useAssetAccounts';
 
 export function useCashSweepAccounts() {
   const db = useDb();

@@ -10,7 +10,7 @@ import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
 import { Button, ModalWizard, Sheet, Toast } from '../../src/ui/kit';
 import { TagsField } from '../../src/ui/TagsField';
-import { formatMoney } from '../../src/ui/money';
+import { formatMoney } from '../../src/money/format';
 import { useAction } from '../../src/ui/useAction';
 import { useToast } from '../../src/ui/useToast';
 import { useConfirmDiscard } from '../../src/ui/useConfirmDiscard';

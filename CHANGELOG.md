@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Decoupled domain code from the UI layer, moving money formatting and currencies to domain packages with lint enforcement (MKL-120).
+
 ### Planned
 
 - New planned payment wizard updated to boards 23–25 with inline amount input and trailing currency, OptionTiles for frequency, "Then" schedule rows, and single-line note with tags sheet (MKL-104).

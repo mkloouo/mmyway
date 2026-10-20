@@ -32,7 +32,7 @@ import {
   type AllocationMode,
   type AllocationResult,
 } from '../../src/ui/AllocationSheet';
-import { currencyOf } from '../../src/ui/money';
+import { currencyOf } from '../../src/money/format';
 import { relativeTime } from '../../src/ui/relativeTime';
 import { applyDigit, applyFirstKey, type KeypadKey } from '../../src/capture/amountInput';
 // eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)

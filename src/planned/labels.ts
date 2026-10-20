@@ -1,6 +1,6 @@
 // Display text for the Planned tab, in the app's language.
 import i18n, { appLocale } from '../i18n';
-import { currencySymbol } from '../ui/money';
+import { currencySymbol } from '../money/format';
 import { dayDate, localDay } from '../utils/day';
 import type { PlannedFields, PlannedGroup } from './model';
 import type { PlannedObject } from './objects';

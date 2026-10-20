@@ -26,8 +26,8 @@ import {
   Segmented,
 } from '../../src/ui/kit';
 import { PendingDot } from '../../src/ui/PendingDot';
-import { currencyOf, formatMoney } from '../../src/ui/money';
-import { primaryCurrencyCode } from '../../src/ui/currencies';
+import { currencyOf, formatMoney } from '../../src/money/format';
+import { primaryCurrencyCode } from '../../src/money/currencies';
 import { OccurrenceSheet, type Occurrence } from '../../src/ui/OccurrenceSheet';
 import { usePlanned } from '../../src/planned/usePlanned';
 import { dayLabel, scheduleLabel } from '../../src/planned/labels';

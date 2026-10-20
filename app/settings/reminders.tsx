@@ -26,7 +26,7 @@ import {
 import { TextField } from '../../src/ui/TextField';
 import { useAction } from '../../src/ui/useAction';
 import { pickTime } from '../../src/ui/pickDate';
-import { currencyOf } from '../../src/ui/money';
+import { currencyOf } from '../../src/money/format';
 import { parseDecimalInput } from '../../src/api/ff3/decimal';
 import { syncPlannedNotifications } from '../../src/planned/notifications';
 import {

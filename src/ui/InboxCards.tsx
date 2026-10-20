@@ -11,7 +11,7 @@ import { useTheme } from './theme';
 import { Card, Chip, Button, Dot, Money, PRESSED_OPACITY, Pulse } from './kit';
 import { SwipeableCard } from './SwipeableCard';
 import { haptics } from './haptics';
-import { currencyOf } from './money';
+import { currencyOf } from '../money/format';
 import { categoryColor } from './categoryColor';
 import { needsLabel } from './readinessLabel';
 import { useAction } from './useAction';

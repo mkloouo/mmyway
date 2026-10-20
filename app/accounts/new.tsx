@@ -14,7 +14,7 @@ import { useTheme } from '../../src/ui/theme';
 import { Card, ListRow, ModalWizard, SectionHeader, SwitchRow, Toast } from '../../src/ui/kit';
 import { TextField } from '../../src/ui/TextField';
 import { PickerSheet } from '../../src/ui/PickerSheet';
-import { primaryCurrencyCode } from '../../src/ui/currencies';
+import { primaryCurrencyCode } from '../../src/money/currencies';
 import { confirmAction } from '../../src/ui/confirm';
 import { useAction } from '../../src/ui/useAction';
 import { withFlag } from '../../src/flags/RequireFlag';

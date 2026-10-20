@@ -7,14 +7,10 @@ import { Text, View } from 'react-native';
 import { SearchListSheet } from './SearchListSheet';
 import { useTheme } from './theme';
 import { filterAccounts } from '../accounts/filterAccounts';
-import { currencyOf, formatMoney } from './money';
+import { currencyOf, formatMoney } from '../money/format';
+import type { AccountPickerAccount } from '../accounts/useAssetAccounts';
 
-export interface AccountPickerAccount {
-  id: string;
-  name: string;
-  currencyCode: string;
-  currentBalance?: string | null;
-}
+export type { AccountPickerAccount };
 
 export function AccountPickerSheet({
   visible,

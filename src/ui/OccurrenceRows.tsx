@@ -14,7 +14,7 @@ import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { Card, ListRow, SectionHeader } from './kit';
 import { useTheme } from './theme';
-import { currencyOf, formatMoney } from './money';
+import { currencyOf, formatMoney } from '../money/format';
 import { occurrenceLabel } from '../planned/labels';
 import { upcomingOccurrences } from '../planned/occurrences';
 import { fetchRecurrenceTransactions } from '../planned/objects';

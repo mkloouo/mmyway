@@ -36,9 +36,7 @@ const knownCurrencySymbols = new Map<string, string>();
 /**
  * Registers custom currency symbols from Firefly III's synced reference data.
  */
-export function registerCurrencySymbols(
-  currencies: { code: string; symbol?: string | null }[],
-): void {
+function registerCurrencySymbols(currencies: { code: string; symbol?: string | null }[]): void {
   for (const c of currencies) {
     if (c.code && c.symbol) {
       knownCurrencySymbols.set(c.code.toUpperCase(), c.symbol);
