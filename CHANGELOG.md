@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Capture
+
+- Aligned Save & confirm blocked hint to "Add a payee first" when payee is missing, formatted currency exchange rate captions with locale decimal separators, and integrated standard tags and shared-with composers into Capture details (MKL-112).
+
 ### Changed
 
 - Unified FF3 transaction mapping under a shared fromFf3 domain helper, consolidated date formatters in utils/dates, and clarified split allocation precision comments (MKL-121).

@@ -26,6 +26,7 @@ export function Chip({
   dotColor,
   accessibilityLabel,
   accessibilityHint,
+  testID,
 }: {
   label: string;
   selected?: boolean;
@@ -37,6 +38,7 @@ export function Chip({
   /** Required when `label` is a bare glyph rather than real text. */
   accessibilityLabel?: string;
   accessibilityHint?: string;
+  testID?: string;
 }) {
   const t = useTheme();
   const border = tone === 'warn' ? t.color.warn : selected ? t.color.accent : t.color.border;
@@ -46,6 +48,7 @@ export function Chip({
   const handlePress = onRemove ?? onPress;
   return (
     <Pressable
+      testID={testID}
       onPress={handlePress}
       onLongPress={onLongPress}
       // A chip is drawn 36 dp tall; the touch area reaches the kit's 44 above and below it.

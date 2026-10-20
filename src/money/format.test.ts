@@ -110,4 +110,9 @@ describe('fxCaption', () => {
     expect(fxCaption('zł', '€', '0.22')).toBe('1 zł ≈ 0.22 €');
     expect(fxCaption('EUR', 'USD', '1.08')).toBe('1 EUR ≈ 1.08 USD');
   });
+
+  it('respects locale decimal separators', () => {
+    expect(fxCaption('€', 'zł', '4.31', PL)).toBe('1 € ≈ 4,31 zł');
+    expect(fxCaption('€', 'zł', '4.31', US)).toBe('1 € ≈ 4.31 zł');
+  });
 });

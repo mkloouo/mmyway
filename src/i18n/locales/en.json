@@ -908,15 +908,18 @@
     "valuePlaceholder": "Value"
   },
   "readiness": {
+    "addPayeeFirst": "Add a payee first",
     "amount": "amount",
     "convertedAmount": "the amount the account was charged",
     "currency": "currency",
     "destinationAccount": "destination account",
+    "enterAmountFirst": "Enter an amount first",
     "missing": "Missing: {{fields}}",
     "needs": "Needs {{fields}}",
     "needsToConfirm": "Needs {{fields}} to confirm",
     "payee": "payee",
     "payeeForHint": "a payee",
+    "pickAccountFirst": "Pick an account first",
     "sourceAccount": "source account",
     "splitAmount": "split amount",
     "splitPayee": "split payee",

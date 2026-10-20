@@ -36,3 +36,20 @@ export function needsToConfirmLabel(missing: string[]): string {
 export function missingLabel(missing: string[]): string {
   return i18n.t('readiness.missing', { fields: fieldList(missing) });
 }
+
+/**
+ * Short actionable hint when confirm/save is blocked (Board 13).
+ * Prioritizes payee first, then account, then amount.
+ */
+export function blockedConfirmHint(missing: string[]): string {
+  if (missing.includes('payee') || missing.includes('split payee')) {
+    return i18n.t('readiness.addPayeeFirst');
+  }
+  if (missing.includes('source account') || missing.includes('destination account')) {
+    return i18n.t('readiness.pickAccountFirst');
+  }
+  if (missing.includes('amount') || missing.includes('split amount')) {
+    return i18n.t('readiness.enterAmountFirst');
+  }
+  return needsToConfirmLabel(missing);
+}

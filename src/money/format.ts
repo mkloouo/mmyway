@@ -169,9 +169,15 @@ export function currencyOf(
 }
 
 /**
- * Single-line FX rate caption reading account currency first: "1 € ≈ 4.31 zł",
+ * Single-line FX rate caption reading account currency first: "1 € ≈ 4,31 zł",
  * where `accountCcy` is the account that paid and `entryCcy` is the entry currency.
  */
-export function fxCaption(accountCcy: string, entryCcy: string, rate: string | number): string {
-  return `1 ${accountCcy} ≈ ${rate} ${entryCcy}`;
+export function fxCaption(
+  accountCcy: string,
+  entryCcy: string,
+  rate: string | number,
+  separators: NumberSeparators = deviceSeparators(),
+): string {
+  const formattedRate = String(rate).replace('.', separators.decimal);
+  return `1 ${accountCcy} ≈ ${formattedRate} ${entryCcy}`;
 }

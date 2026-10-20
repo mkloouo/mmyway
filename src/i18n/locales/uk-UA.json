@@ -967,15 +967,18 @@
     "headerCount_many": ""
   },
   "readiness": {
+    "addPayeeFirst": "",
     "amount": "сума",
     "convertedAmount": "",
     "currency": "валюта",
     "destinationAccount": "цільовий обліковий запис",
+    "enterAmountFirst": "",
     "missing": "Відсутнє: {{fields}}",
     "needs": "Потребує {{fields}}",
     "needsToConfirm": "Потребує {{fields}}, щоб підтвердити",
     "payee": "отримувач платежу",
     "payeeForHint": "отримувача платежу",
+    "pickAccountFirst": "",
     "sourceAccount": "вихідний обліковий запис",
     "splitAmount": "розділена сума",
     "splitPayee": "розділений отримувач платежу",
