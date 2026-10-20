@@ -2,13 +2,11 @@
 // gallery shortcut, the gallery) opens on arrival, not after a form.
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-// eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
-import { ActivityIndicator, Alert, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import Ionicons from '@expo/vector-icons/Ionicons';
 import { useDb } from '../src/providers/DbProvider';
 import { useTheme } from '../src/ui/theme';
-import { Screen, ModalHeader, Button, Card, PRESSED_OPACITY, ListRow, Sheet } from '../src/ui/kit';
+import { ActionTile, Button, Card, ListRow, ModalHeader, Screen, Sheet } from '../src/ui/kit';
 import { captureReceipt, attachReceiptToJournal } from '../src/receipt/ingest';
 import { startPositionRequest } from '../src/capture/position';
 import { pickPhoto, type PhotoSource } from '../src/receipt/pickPhoto';
@@ -16,43 +14,6 @@ import { requestSync, SYNC_DELAY } from '../src/sync/syncTrigger';
 import { TextField } from '../src/ui/TextField';
 import { errorMessage } from '../src/utils/errorMessage';
 import { useAction } from '../src/ui/useAction';
-
-function SourceTile({
-  icon,
-  label,
-  onPress,
-  disabled,
-}: {
-  icon: 'camera' | 'images';
-  label: string;
-  onPress: () => void;
-  disabled: boolean;
-}) {
-  const t = useTheme();
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={disabled}
-      accessibilityRole="button"
-      accessibilityLabel={label}
-      style={({ pressed }) => ({
-        flex: 1,
-        aspectRatio: 1,
-        borderRadius: t.radius.md,
-        borderWidth: 1,
-        borderColor: t.color.border,
-        backgroundColor: t.color.surface,
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: t.space.md,
-        opacity: disabled ? 0.4 : pressed ? PRESSED_OPACITY : 1,
-      })}
-    >
-      <Ionicons name={icon} size={36} color={t.color.accent} />
-      <Text style={[t.type.heading, { color: t.color.text }]}>{label}</Text>
-    </Pressable>
-  );
-}
 
 export default function ReceiptScreen() {
   const db = useDb();
@@ -143,17 +104,19 @@ export default function ReceiptScreen() {
             {attachToJournalId ? tr('receipt.attachIntro') : tr('receipt.intro')}
           </Text>
           <View style={{ flexDirection: 'row', gap: t.space.md }}>
-            <SourceTile
+            <ActionTile
               icon="camera"
               label={tr('photo.camera')}
               onPress={() => void capture('camera')}
               disabled={busy}
+              style={{ paddingVertical: t.space.xl }}
             />
-            <SourceTile
+            <ActionTile
               icon="images"
               label={tr('photo.gallery')}
               onPress={() => void capture('gallery')}
               disabled={busy}
+              style={{ paddingVertical: t.space.xl }}
             />
           </View>
           {!attachToJournalId && (

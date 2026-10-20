@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Receipts
+
+- Receipt photo viewer updated to board 18 with "Receipt" title, kit close button, and photo-danger remove photo button (MKL-115).
+
 ### Budget
 
 - New envelope sheet updated to board 03 with "Assign now" amount, ready-to-assign subtitle, and circular add buttons for category suggestions (MKL-107).
