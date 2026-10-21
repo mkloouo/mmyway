@@ -1,6 +1,13 @@
 import type { Draft } from './draft';
 import { draftToTransactionPayload } from './draft';
-import { addSplit, draftAmounts, draftTotal, removeExtraSplit, withAmounts } from './draftSplits';
+import {
+  addSplit,
+  draftAmounts,
+  draftTotal,
+  removeExtraSplit,
+  removeSplitFromDraft,
+  withAmounts,
+} from './draftSplits';
 import { draftReadiness } from './readiness';
 
 const base: Draft = {
@@ -55,5 +62,21 @@ describe('draft splits', () => {
     expect(plain.amount).toBe('100.00');
     expect(draftTotal(plain)).toBe('100.00');
     expect(draftToTransactionPayload('c', plain).splits).toHaveLength(1);
+  });
+
+  it('removes split 0 by promoting split 1 to the draft fields', () => {
+    const split = {
+      ...base,
+      ...addSplit(base, ['70.00'], '30.00'),
+      description: 'First part',
+    };
+    const firstExtra = split.extraSplits![0]!;
+    split.extraSplits = [{ ...firstExtra, description: 'Second part' }];
+
+    const promoted = { ...split, ...removeSplitFromDraft(split, 0) };
+    expect(promoted.extraSplits).toBeUndefined();
+    expect(promoted.description).toBe('Second part');
+    expect(promoted.amount).toBe('100.00');
+    expect(draftTotal(promoted)).toBe('100.00');
   });
 });

@@ -26,7 +26,7 @@ export interface DetailRowsValue {
 }
 
 /** Rows the receipt reader wasn't sure about (src/inbox/unsure.ts): drawn amber, to be checked. */
-type UnsureRow = 'payee' | 'category' | 'date';
+export type UnsureRow = 'payee' | 'category' | 'date';
 
 interface DetailRowsProps {
   value: DetailRowsValue;

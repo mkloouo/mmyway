@@ -430,6 +430,8 @@
     "deleteBody": "This cannot be undone.",
     "deleteDraft": "Delete draft",
     "deleteTitle": "Delete this draft?",
+    "enterAccountPaid": "Enter what {{account}} paid",
+    "enterAmount": "Enter amount",
     "exchangeFee": "Exchange fee",
     "itemCount_one": "{{count, number}} item",
     "itemCount_other": "{{count, number}} items",

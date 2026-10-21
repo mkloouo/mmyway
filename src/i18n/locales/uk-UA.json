@@ -450,6 +450,8 @@
     "deleteBody": "Цього не можна скасувати.",
     "deleteDraft": "Видалити чернетку",
     "deleteTitle": "Видалити цю чернетку?",
+    "enterAccountPaid": "",
+    "enterAmount": "",
     "exchangeFee": "",
     "itemCount_one": "{{count, number}} елемент",
     "itemCount_other": "{{count, number}} елементів",

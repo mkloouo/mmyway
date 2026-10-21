@@ -3,7 +3,7 @@
 // it was disabled since, so a picker never hides the current value.
 import type { referenceCurrencies } from '../db/schema';
 
-type CurrencyRow = typeof referenceCurrencies.$inferSelect;
+export type CurrencyRow = typeof referenceCurrencies.$inferSelect;
 
 export function pickableCurrencies(
   rows: CurrencyRow[] | undefined,

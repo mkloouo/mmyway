@@ -101,23 +101,23 @@ describe('DraftScreen FX conversion (#105)', () => {
     const item = createItem({ currencyCode: 'EUR', sourceId: 'acc-pln' });
     await wrap(<DraftEditor row={item} />);
 
-    expect(screen.getByText('Account charged')).toBeTruthy();
-    expect(screen.getByText('Enter what the zł account paid')).toBeTruthy();
+    expect(screen.getByText('PLN Account paid')).toBeTruthy();
+    expect(screen.getByText('Enter amount')).toBeTruthy();
   });
 
   it('disappears when currencies match', async () => {
     const item = createItem({ currencyCode: 'EUR', sourceId: 'acc-eur' });
     await wrap(<DraftEditor row={item} />);
 
-    expect(screen.queryByText('Account charged')).toBeNull();
-    expect(screen.queryByText('Enter what the EUR account paid')).toBeNull();
+    expect(screen.queryByText('EUR Account paid')).toBeNull();
+    expect(screen.queryByText('Enter amount')).toBeNull();
   });
 
   it('saves the converted amount through updateDraft', async () => {
     const item = createItem({ currencyCode: 'EUR', sourceId: 'acc-pln' });
     await wrap(<DraftEditor row={item} />);
 
-    await fireEvent.press(screen.getByText('Account charged'));
+    await fireEvent.press(screen.getByText('PLN Account paid'));
     expect(screen.getByText(/Amount/i)).toBeTruthy();
 
     await fireEvent.press(screen.getByLabelText('9'));

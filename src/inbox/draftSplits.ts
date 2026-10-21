@@ -89,3 +89,51 @@ export function removeExtraSplit(draft: Draft, index: number): Partial<Draft> {
     amount: draftTotal(draft),
   };
 }
+
+/**
+ * Removes split `index` (0..N). When index is 0, the first extra split is promoted
+ * to become the main draft. When only 1 split remains, the draft turns back into a plain entry.
+ */
+export function removeSplitFromDraft(draft: Draft, index: number): Partial<Draft> {
+  if (index > 0) {
+    return removeExtraSplit(draft, index);
+  }
+  const extras = draft.extraSplits ?? [];
+  const first = extras[0];
+  if (!first) return {};
+  const remainingExtras = extras.slice(1);
+  const isDeposit = draft.type === 'deposit';
+  const baseFields: Partial<Draft> = {
+    amount: first.amount,
+    description: first.description,
+    categoryName: first.categoryName,
+    budgetId: first.budgetId,
+    notes: first.notes,
+    extraTags: first.extraTags,
+    sharedWith: first.sharedWith,
+    ...(isDeposit
+      ? {
+          sourceName: first.payeeName ?? draft.sourceName,
+          sourceId: first.payeeId,
+          isNewPayee: first.isNewPayee,
+        }
+      : {
+          destinationName: first.payeeName ?? draft.destinationName,
+          destinationId: first.payeeId,
+          isNewPayee: first.isNewPayee,
+        }),
+  };
+  if (remainingExtras.length > 0) {
+    return {
+      ...baseFields,
+      extraSplits: remainingExtras,
+    };
+  }
+  return {
+    ...baseFields,
+    extraSplits: undefined,
+    total: undefined,
+    groupTitle: undefined,
+    amount: draftTotal(draft),
+  };
+}

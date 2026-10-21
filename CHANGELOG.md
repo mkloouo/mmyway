@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Draft Review
+
+- Aligned FX row to warn-styled account payment with "Enter amount", updated confirmation hint to specify the account paid, enabled removing any split part, and split the draft review screen into modular components below the 400-line ceiling (MKL-113).
+
 ### Capture
 
 - Aligned Save & confirm blocked hint to "Add a payee first" when payee is missing, formatted currency exchange rate captions with locale decimal separators, and integrated standard tags and shared-with composers into Capture details (MKL-112).
