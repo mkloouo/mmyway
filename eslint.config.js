@@ -39,7 +39,6 @@ const MAX_LINES = 400;
 const OVERSIZED = {
   'app/transactions/[[]groupId].tsx': 942,
   'app/count.tsx': 682,
-  'app/(tabs)/activity.tsx': 680,
   'app/(tabs)/index.tsx': 571,
   'app/accounts/new.tsx': 499,
   'src/planned/notifications.ts': 469,

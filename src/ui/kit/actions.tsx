@@ -94,7 +94,7 @@ export function Button({
   /** A second line (12 px) saying what is missing when primary action is blocked (design §1). */
   hint?: string;
   onPress?: () => void;
-  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'text' | 'photoDanger';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'dangerSoft' | 'text' | 'photoDanger';
   /** `bar`: a text action in a top bar, the same height as an IconButton. */
   size?: 'bar' | 'md' | 'lg';
   disabled?: boolean;
@@ -110,7 +110,7 @@ export function Button({
       ? disabled
         ? t.color.accentDisabled
         : t.color.accent
-      : variant === 'danger'
+      : variant === 'danger' || variant === 'dangerSoft'
         ? t.color.dangerSoft
         : variant === 'photoDanger'
           ? t.color.photoControl
@@ -120,7 +120,7 @@ export function Button({
   const label =
     variant === 'primary'
       ? t.color.onAccent
-      : variant === 'danger'
+      : variant === 'danger' || variant === 'dangerSoft'
         ? t.color.danger
         : variant === 'photoDanger'
           ? t.color.onPhotoDanger

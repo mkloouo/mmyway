@@ -73,7 +73,7 @@ function RowHairline({ first, leading }: { first?: boolean; leading?: boolean })
 // prettier-ignore
 export interface ListRowProps {
   label: string; sub?: ReactNode; subtitle?: ReactNode; value?: string; leading?: ReactNode; trailing?: ReactNode;
-  chevron?: boolean; onPress?: () => void; onLongPress?: () => void; first?: boolean;
+  chevron?: boolean; onPress?: () => void; onLongPress?: () => void; delayLongPress?: number; first?: boolean;
   tone?: 'default' | 'warn' | 'danger' | 'accent'; check?: boolean; struck?: boolean; selected?: boolean;
   action?: { label: string; onPress: () => void; tone?: 'accent' | 'muted' | 'danger' };
   loading?: boolean; icon?: IconName; style?: StyleProp<ViewStyle>; hero?: boolean;
@@ -81,7 +81,7 @@ export interface ListRowProps {
 
 // prettier-ignore
 export function ListRow({
-  label, sub, subtitle, value, leading, trailing, chevron, onPress, onLongPress, first,
+  label, sub, subtitle, value, leading, trailing, chevron, onPress, onLongPress, delayLongPress, first,
   tone, check, struck, selected, action, loading, icon, style, hero,
 }: ListRowProps) {
   const t = useTheme();
@@ -108,6 +108,7 @@ export function ListRow({
     <Pressable
       onPress={onPress}
       onLongPress={onLongPress}
+      delayLongPress={delayLongPress}
       disabled={!interactive}
       accessibilityRole={interactive ? 'button' : undefined}
       pressRetentionOffset={interactive ? { top: 60, bottom: 60, left: 30, right: 30 } : undefined}

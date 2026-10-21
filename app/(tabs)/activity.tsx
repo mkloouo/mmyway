@@ -1,85 +1,52 @@
 // Activity (design §6.4) — balances, grouped-by-day history with totals, paging, search.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-// eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
-import { Pressable, SectionList, Text, View } from 'react-native';
+import { SectionList, View } from 'react-native';
 import { Collapsible, leaveThen } from '../../src/ui/Collapsible';
 import { useLocalSearchParams, useNavigation } from 'expo-router';
-import { useLiveQuery } from '../../src/db/useLiveQuery';
 import { useCurrencies } from '../../src/db/useReferenceData';
 import { useDb } from '../../src/providers/DbProvider';
-import { SearchField } from '../../src/ui/SearchField';
-import { useTheme } from '../../src/ui/theme';
-import {
-  TabHeader,
-  IconButton,
-  Button,
-  Card,
-  Chip,
-  EmptyState,
-  ListRow,
-  SCREEN_TOP_PADDING,
-  Screen,
-  SectionHeader,
-  Segmented,
-  Sheet,
-} from '../../src/ui/kit';
-import { PendingDot } from '../../src/ui/PendingDot';
+import { EmptyState, ListRow, Screen, Sheet } from '../../src/ui/kit';
 import { CaptureDock } from '../../src/ui/CaptureDock';
 import {
   useTransactionPage,
   type ActivityTypeFilter,
 } from '../../src/transactions/useTransactionPage';
 import { useLoadOlderHistory, usePullToRefresh } from '../../src/sync/useSync';
-// eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
-import { outboxOperations, cachedTransactions, inboxItems } from '../../src/db/schema';
 import { useAssetAccounts, type ReferenceAccountRow } from '../../src/accounts/useAssetAccounts';
-import type { CreateTransactionPayload } from '../../src/sync/outbox';
 import { navigateOnce } from '../../src/ui/navigateOnce';
 import { confirmDestructive } from '../../src/ui/confirm';
 import { cacheRemoteResult } from '../../src/transactions/remoteSearch';
 import { deleteCachedTransactions } from '../../src/sync/outbox';
-// eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
-import { and, desc, eq, inArray, isNotNull, max, ne } from 'drizzle-orm';
 import { haptics } from '../../src/ui/haptics';
-import { pendingEdits, applyPendingEdit } from '../../src/transactions/pendingEdits';
-import { payloadGroupId, readPayload } from '../../src/sync/payloadJson';
 import { useAction } from '../../src/ui/useAction';
 import { usePendingAccountIds } from '../../src/accounts/usePendingAccountIds';
-import { landingItems, matchesActivityFilter } from '../../src/transactions/pinnedRows';
 import {
   REMOTE_SECTION_KEY,
-  landingRow,
-  sumAmounts,
-  type ActivityCachedRow,
   type ActivityItem,
   type DisplaySection,
-  type QueuedRow,
   type RemoteResultRow,
 } from '../../src/transactions/activityRows';
 import { useRemoteSearch } from '../../src/transactions/useRemoteSearch';
-import { ActivityRow, BalanceStrip, DayHeader } from '../../src/ui/ActivityRows';
+import { ActivityRow, DayHeader } from '../../src/ui/ActivityRows';
 import { useSelection } from '../../src/ui/useSelection';
 import { useHasSyncedBefore } from '../../src/sync/useHasSyncedBefore';
-import { localDay } from '../../src/utils/day';
+import { FILTERS } from '../../src/transactions/activityFilters';
+import { useActivityRows } from '../../src/transactions/useActivityRows';
+import { buildDisplaySections, getSearchFooter } from '../../src/transactions/buildDisplaySections';
+import { ActivityListHeader } from '../../src/ui/ActivityListHeader';
+import { ActivityListFooter } from '../../src/ui/ActivityListFooter';
+import { ActivityFilterSheet } from '../../src/ui/ActivityFilterSheet';
+import { ActivityHeader } from '../../src/ui/ActivityHeader';
+import { ActivitySelectionBar } from '../../src/ui/ActivitySelectionBar';
 
 const EMPTY_ACCOUNTS: ReferenceAccountRow[] = [];
 
-const FILTERS: { labelKey: string; type: ActivityTypeFilter }[] = [
-  { labelKey: 'activity.filterAll', type: 'all' },
-  { labelKey: 'activity.filterSpending', type: 'withdrawal' },
-  { labelKey: 'activity.filterIncome', type: 'deposit' },
-  { labelKey: 'activity.filterMoves', type: 'transfer' },
-];
-
 export default function ActivityScreen() {
   const db = useDb();
-  const t = useTheme();
   const { t: tr } = useTranslation();
   const act = useAction();
   const pendingAccounts = usePendingAccountIds();
-  // `tabPress` is a bottom-tab event; expo-router doesn't export the tab navigation type from a
-  // public path, so the hook is told what this screen uses of it instead of casting afterwards.
   const navigation = useNavigation<{
     addListener: (event: 'tabPress', cb: () => void) => () => void;
     isFocused: () => boolean;
@@ -92,9 +59,7 @@ export default function ActivityScreen() {
   const [filterOpen, setFilterOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [accountFilter, setAccountFilter] = useState<string | null>(null);
-  // An account page's Transactions button opens this tab filtered to that account. A new param
-  // is applied once per tap (`at` tells two taps for the same account apart), so the user can
-  // clear it and the next tap sets it again.
+
   const { account: accountParam, at } = useLocalSearchParams<{ account?: string; at?: string }>();
   const paramTap = accountParam ? `${accountParam}@${at ?? ''}` : undefined;
   const [seenParamTap, setSeenParamTap] = useState<string | undefined>(undefined);
@@ -106,9 +71,6 @@ export default function ActivityScreen() {
   const rawAssetAccounts = useAssetAccounts();
   const assetAccounts = rawAssetAccounts ?? EMPTY_ACCOUNTS;
   const currencies = useCurrencies();
-  const { data: outbox } = useLiveQuery(
-    db.select().from(outboxOperations).where(ne(outboxOperations.kind, 'update_account')),
-  );
   const hasSyncedBefore = useHasSyncedBefore();
 
   const { sections, dataKey, loadMore, loadingMore, atEnd } = useTransactionPage({
@@ -117,8 +79,7 @@ export default function ActivityScreen() {
     accountId: accountFilter,
   });
   const { loadOlder, loadingOlder, exhausted, reset: resetExhausted } = useLoadOlderHistory();
-  // The local cache runs out before real history does — reaching the end of what's cached pulls
-  // a further chunk from FF3 instead of just stopping (see useLoadOlderHistory).
+
   function handleEndReached() {
     if (!atEnd) {
       loadMore();
@@ -127,11 +88,8 @@ export default function ActivityScreen() {
     if (!exhausted) void loadOlder();
   }
   const reachedRealEnd = atEnd && exhausted;
-  // A pull-to-refresh is the user asking "check again" — `exhausted` otherwise only ever latches
-  // forward for the lifetime of this screen.
   const pull = usePullToRefresh(resetExhausted);
 
-  // Multi-select (long-press a row): bulk delete, each as its own conflict-checked outbox delete.
   const { selectedIds, selecting, toggleSelected, clearSelection, leavingIds, setLeavingIds } =
     useSelection();
   const deleteSelected = act(tr('common.delete'), async () => {
@@ -145,12 +103,9 @@ export default function ActivityScreen() {
     )
       return;
     clearSelection();
-    // The rows fold away first, then the deletes are queued (which takes them out of the list).
     leaveThen(ids, setLeavingIds, () => deleteCachedTransactions(db, ids));
   });
 
-  // A FF3 search result isn't in the local cache; store the copy we already have, then open it.
-  // Memoized: onRowPress below depends on it, and the rows only stay memoized while that is stable.
   const openRemote = useMemo(
     () =>
       act(tr('activity.search'), async (item: RemoteResultRow) => {
@@ -160,209 +115,49 @@ export default function ActivityScreen() {
     [act, db, tr],
   );
 
-  // Once local search runs out of cached rows to page through, FF3's own search covers what
-  // hasn't been pulled into cachedTransactions yet — kept as a separate section rather than
-  // written into the cache, so local search stays a predictable, offline-first read.
   const remoteSearch = useRemoteSearch(reachedRealEnd ? search.trim() : '', {
     type,
     accountId: accountFilter,
   });
 
-  // Everything read from the outbox, parsed once per outbox change rather than on every render —
-  // a selection tap re-renders this screen, and re-parsing every queued payload each time was
-  // part of why multi-select lagged.
-  const { queuedRows, pendingDeletes, edits } = useMemo(() => {
-    const ops = outbox ?? [];
-    const queued: QueuedRow[] = ops
-      .filter(
-        (op) =>
-          op.kind === 'create_transaction' &&
-          (op.status === 'pending' || op.status === 'in_flight'),
-      )
-      .map((op): QueuedRow | null => {
-        // An unreadable payload fails its own operation (Inbox, Needs attention); it mustn't take
-        // the whole list down with it.
-        let payload: CreateTransactionPayload;
-        try {
-          payload = readPayload<CreateTransactionPayload>(op.kind, op.payloadJson);
-        } catch {
-          return null;
-        }
-        const split = payload.splits[0];
-        if (!split) return null;
-        const many = payload.splits.length > 1;
-        return {
-          queued: true,
-          groupId: op.id,
-          inboxItemId: op.inboxItemId,
-          description: many ? (payload.groupTitle ?? split.description) : split.description,
-          amount: many ? sumAmounts(payload.splits) : split.amount,
-          currencyCode: split.currency_code ?? '',
-          type: split.type,
-          sourceId: split.source_id != null ? String(split.source_id) : null,
-          destinationId: split.destination_id != null ? String(split.destination_id) : null,
-          sourceName: split.source_name ?? null,
-          destinationName: split.destination_name ?? null,
-          categoryName: many ? null : (split.category_name ?? null),
-          splits: many
-            ? payload.splits.map((s) => ({
-                label: s.category_name || s.description,
-                amount: s.amount,
-                categoryName: s.category_name ?? null,
-              }))
-            : [],
-        };
-      })
-      .filter((r): r is QueuedRow => !!r);
-    // A queued delete takes the row out right away — it used to sit there, unchanged, until a
-    // pull-to-refresh after the delete had gone through.
-    const deletes = new Set(
-      ops
-        .filter((op) => op.kind === 'delete_transaction' && op.status !== 'failed')
-        .map((op) => payloadGroupId(op.kind, op.payloadJson))
-        .filter((id): id is string => !!id),
-    );
-    return { queuedRows: queued, pendingDeletes: deletes, edits: pendingEdits(ops) };
-  }, [outbox]);
-
-  // Entries the Inbox sent to FF3 lately. A queued row and the synced row that replaces it are
-  // listed under one key (the inbox item's), and until the synced copy is in the list the sent
-  // entry stays on screen from its draft — it used to vanish between the two.
-  const { data: sentItems } = useLiveQuery(
-    db
-      .select({
-        id: inboxItems.id,
-        kind: inboxItems.kind,
-        draftJson: inboxItems.draftJson,
-        ff3GroupId: inboxItems.ff3GroupId,
-        updatedAt: inboxItems.updatedAt,
-      })
-      .from(inboxItems)
-      .where(and(eq(inboxItems.state, 'synced'), isNotNull(inboxItems.ff3GroupId)))
-      .orderBy(desc(inboxItems.updatedAt))
-      .limit(30),
-  );
-  const inboxByGroup = useMemo(
-    () => new Map((sentItems ?? []).map((i) => [i.ff3GroupId!, i.id])),
-    [sentItems],
-  );
-  // Whether a sent entry has reached the cache is asked of the whole cache, never of the filtered
-  // list (src/transactions/pinnedRows.ts has the bug this caused).
-  const sentGroupIds = (sentItems ?? []).map((i) => i.ff3GroupId!);
-  const { data: sentCached } = useLiveQuery(
-    db
-      .select({ id: cachedTransactions.groupId })
-      .from(cachedTransactions)
-      .where(inArray(cachedTransactions.groupId, sentGroupIds)),
-    [sentGroupIds.join(',')],
-  );
-  const { data: caughtUpRows } = useLiveQuery(
-    db.select({ at: max(cachedTransactions.syncedAt) }).from(cachedTransactions),
-  );
-  const cacheFacts = useMemo(
-    () =>
-      sentCached && caughtUpRows
-        ? {
-            groupIds: new Set(sentCached.map((r) => r.id)),
-            caughtUpAt: caughtUpRows[0]?.at ?? null,
-          }
-        : null,
-    [sentCached, caughtUpRows],
-  );
-  const rowKey = useCallback(
-    (row: ActivityItem) => {
-      if ('queued' in row) return row.inboxItemId ? `inbox:${row.inboxItemId}` : row.groupId;
-      const inboxId = inboxByGroup.get(row.groupId);
-      return inboxId ? `inbox:${inboxId}` : row.groupId;
-    },
-    [inboxByGroup],
-  );
+  const { queuedRows, pendingDeletes, edits, sentItems, cacheFacts, rowKey } = useActivityRows();
 
   const remoteRows = remoteSearch.status === 'done' ? remoteSearch.rows : null;
-  const displaySections = useMemo(() => {
-    const todayKey = localDay();
-    const queuedInbox = new Set(queuedRows.map((r) => r.inboxItemId));
-    const landingRows: QueuedRow[] = landingItems(sentItems ?? [], cacheFacts, queuedInbox)
-      .map((i) => landingRow(i.id, i.draftJson))
-      .filter((r): r is QueuedRow => !!r);
-    // Pinned rows follow the same filters as the cached ones: they used to show under every account.
-    const filter = { type, accountId: accountFilter, search };
-    // The live queries behind the pinned rows and the cached ones update on separate ticks, so
-    // for a moment after a send both can hold the same entry — two rows under one key. The cached
-    // row wins.
-    const cachedKeys = new Set(
-      sections
-        .flatMap((s) => s.data.map((row) => rowKey(row)))
-        .filter((k) => k.startsWith('inbox:')),
-    );
-    const pinned = [...queuedRows, ...landingRows].filter(
-      (row) => !cachedKeys.has(rowKey(row)) && matchesActivityFilter(row, filter),
-    );
-    const result: DisplaySection[] = sections
-      .map((s): DisplaySection => ({
-        key: s.key,
-        totals: s.totals,
-        data: s.data
-          .filter((row) => !pendingDeletes.has(row.groupId))
-          // An edit saved here shows its new values, marked queued until FF3 has it.
-          .map((row): ActivityCachedRow => {
-            const pending = applyPendingEdit(row, edits);
-            return pending ? { ...pending.row, pendingStatus: pending.status } : row;
-          }),
-      }))
-      .filter((s) => s.data.length > 0);
-    if (pinned.length > 0) {
-      const idx = result.findIndex((s) => s.key === todayKey);
-      if (idx >= 0) result[idx] = { ...result[idx]!, data: [...pinned, ...result[idx]!.data] };
-      else result.unshift({ key: todayKey, totals: [], data: pinned });
-    }
-    if (remoteRows && remoteRows.length > 0) {
-      const existingGroupIds = new Set(result.flatMap((s) => s.data.map((row) => row.groupId)));
-      const extraRemoteRows = remoteRows.filter(
-        (r) =>
-          !existingGroupIds.has(r.groupId) &&
-          (type === 'all' || r.type === type) &&
-          (!accountFilter || r.sourceId === accountFilter || r.destinationId === accountFilter),
-      );
-      if (extraRemoteRows.length > 0) {
-        result.push({ key: REMOTE_SECTION_KEY, totals: [], data: extraRemoteRows });
-      }
-    }
-    return result;
-  }, [
-    sections,
-    rowKey,
-    pendingDeletes,
-    edits,
-    queuedRows,
-    remoteRows,
-    sentItems,
-    cacheFacts,
-    type,
-    accountFilter,
-    search,
-  ]);
+  const displaySections = useMemo(
+    () =>
+      buildDisplaySections({
+        sections,
+        queuedRows,
+        sentItems,
+        cacheFacts,
+        pendingDeletes,
+        edits,
+        rowKey,
+        type,
+        accountFilter,
+        search,
+        remoteRows,
+      }),
+    [
+      sections,
+      queuedRows,
+      sentItems,
+      cacheFacts,
+      pendingDeletes,
+      edits,
+      rowKey,
+      type,
+      accountFilter,
+      search,
+      remoteRows,
+    ],
+  );
 
   const hasRemoteSection = displaySections.some((s) => s.key === REMOTE_SECTION_KEY);
-  /** What the list's footer says about the FF3-side search, if anything. */
-  const searchFooter: { key: string; warn?: boolean } | null =
-    remoteSearch.status === 'loading'
-      ? { key: 'activity.searching' }
-      : remoteSearch.status === 'offline'
-        ? { key: 'activity.searchOffline' }
-        : remoteSearch.status === 'error'
-          ? { key: 'activity.searchFailed', warn: true }
-          : remoteSearch.status === 'done' && !hasRemoteSection
-            ? { key: 'activity.nothingMore' }
-            : null;
+  const searchFooter = getSearchFooter(remoteSearch.status, hasRemoteSection);
 
-  // Rows get callbacks that only change when selection mode starts or ends (when every row
-  // re-renders anyway), so a memoized row re-renders only when its own selected state changes —
-  // not every row on every tap.
   const onRowPress = useCallback(
     (item: ActivityItem) => {
-      // A queued entry isn't in FF3 yet: open it as its Inbox draft, where a still-waiting one can
-      // be cancelled.
       if ('queued' in item) {
         if (item.inboxItemId) navigateOnce(`/draft/${item.inboxItemId}`);
         return;
@@ -379,6 +174,7 @@ export default function ActivityScreen() {
     },
     [selecting, toggleSelected, openRemote],
   );
+
   const onRowLongPress = useCallback(
     (item: ActivityItem) => {
       void haptics.tick();
@@ -386,6 +182,7 @@ export default function ActivityScreen() {
     },
     [toggleSelected],
   );
+
   const renderItem = useCallback(
     ({ item, index, section }: { item: ActivityItem; index: number; section: DisplaySection }) => (
       <Collapsible collapsed={leavingIds.has(item.groupId)}>
@@ -403,25 +200,24 @@ export default function ActivityScreen() {
     ),
     [selecting, selectedIds, currencies, onRowPress, onRowLongPress, leavingIds],
   );
-  // Stable, and the header memoized: an inline one re-rendered every header, each formatting its
-  // date again, on every tap on the screen (a filter chip, a balance card, a selection).
+
   const renderSectionHeader = useCallback(
     ({ section }: { section: DisplaySection }) => (
       <DayHeader sectionKey={section.key} totals={section.totals} currencies={currencies} />
     ),
     [currencies],
   );
+
   const toggleAccountFilter = useCallback(
     (id: string) => setAccountFilter((cur) => (cur === id ? null : id)),
     [],
   );
 
-  // The listener is added once but reads the current sections through a ref: it used to close
-  // over the first render's (empty) list and never scroll.
   const hasSectionsRef = useRef(false);
   useEffect(() => {
     hasSectionsRef.current = displaySections.length > 0;
   }, [displaySections]);
+
   useEffect(() => {
     const unsubscribe = navigation.addListener('tabPress', () => {
       if (navigation.isFocused() && hasSectionsRef.current) {
@@ -436,138 +232,70 @@ export default function ActivityScreen() {
     return unsubscribe;
   }, [navigation]);
 
-  // undefined until the first read lands, so a synced-but-empty Activity doesn't flash "Nothing
-  // cached yet" before flipping to "No results" once the probe resolves.
-
   const hasResults = displaySections.length > 0;
-
-  // Which list is scrolled, not just "is scrolled": a filter change remounts the list
-  // (key={dataKey}) and an emptied one unmounts it, both putting it back at the top without a
-  // scroll event following, and the strip would otherwise stay collapsed over an unscrolled list.
-  const isFiltered = accountFilter !== null || type !== 'all';
+  const activeFilterCount = (type !== 'all' ? 1 : 0) + (accountFilter !== null ? 1 : 0);
+  const isFiltered = activeFilterCount > 0;
   const selectedAccount = assetAccounts.find((a) => a.id === accountFilter);
   const activeType = FILTERS.find((f) => f.type === type);
   const typeSubtitle = type !== 'all' && activeType ? tr(activeType.labelKey) : null;
   const activeFilterSubtitle = [selectedAccount?.name, typeSubtitle].filter(Boolean).join(' · ');
 
+  const clearFilters = useCallback(() => {
+    setAccountFilter(null);
+    setType('all');
+  }, []);
+
+  const closeSearch = useCallback(() => {
+    setSearch('');
+    setSearchOpen(false);
+  }, []);
+
   const listHeader = useMemo(
     () => (
-      <View style={{ paddingTop: SCREEN_TOP_PADDING - t.space.xs, paddingBottom: t.space.xs }}>
-        {assetAccounts.length > 0 && (
-          <BalanceStrip
-            accounts={assetAccounts}
-            selectedId={accountFilter}
-            onToggle={toggleAccountFilter}
-            currencies={currencies}
-            pendingAccounts={pendingAccounts}
-          />
-        )}
-
-        <View
-          style={{
-            flexDirection: 'row',
-            paddingHorizontal: t.space.lg,
-            gap: t.space.sm,
-            paddingTop: t.space.xs,
-            paddingBottom: t.space.sm,
-          }}
-        >
-          {FILTERS.map((f) => (
-            <Chip
-              key={f.type}
-              label={tr(f.labelKey)}
-              selected={type === f.type}
-              onPress={() => setType(f.type)}
-            />
-          ))}
-        </View>
-      </View>
+      <ActivityListHeader
+        assetAccounts={assetAccounts}
+        accountFilter={accountFilter}
+        onToggleAccountFilter={toggleAccountFilter}
+        currencies={currencies}
+        pendingAccounts={pendingAccounts}
+        type={type}
+        onSelectType={setType}
+      />
     ),
-    [assetAccounts, accountFilter, toggleAccountFilter, currencies, pendingAccounts, type, t, tr],
+    [assetAccounts, accountFilter, toggleAccountFilter, currencies, pendingAccounts, type],
+  );
+
+  const listFooter = useMemo(
+    () => (
+      <ActivityListFooter
+        reachedRealEnd={reachedRealEnd}
+        loadingMore={loadingMore}
+        loadingOlder={loadingOlder}
+        searchFooter={searchFooter}
+      />
+    ),
+    [reachedRealEnd, loadingMore, loadingOlder, searchFooter],
   );
 
   return (
     <Screen>
       <View style={{ flex: 1 }}>
-        {/* Search takes the app bar's place rather than adding a row below it, so opening it
-            does not shove the balances and the list down the screen. */}
-        {selecting ? (
-          <TabHeader
-            title={tr('inbox.selected', { count: selectedIds.size })}
-            left={
-              <Pressable
-                onPress={clearSelection}
-                hitSlop={8}
-                // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
-                style={{ paddingHorizontal: 12, height: 44, justifyContent: 'center' }}
-              >
-                <Text style={[t.type.heading, { color: t.color.accent }]}>
-                  {tr('common.cancel')}
-                </Text>
-              </Pressable>
-            }
-          />
-        ) : searchOpen ? (
-          <TabHeader>
-            <SearchField
-              value={search}
-              onChangeText={setSearch}
-              placeholder={tr('activity.searchPlaceholder')}
-              autoFocus
-              onClear={() => {
-                setSearch('');
-                setAccountFilter(null);
-                setType('all');
-                setSearchOpen(false);
-              }}
-              style={{ flex: 1 }}
-            />
-          </TabHeader>
-        ) : (
-          <TabHeader
-            title={tr('activity.title')}
-            subtitle={
-              isFiltered ? (
-                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: t.space.sm }}>
-                  <Text style={[t.type.label, { color: t.color.textMuted }]} numberOfLines={1}>
-                    {activeFilterSubtitle}
-                  </Text>
-                  <Pressable
-                    onPress={() => {
-                      setAccountFilter(null);
-                      setType('all');
-                    }}
-                    hitSlop={6}
-                  >
-                    <Text style={[t.type.label, { color: t.color.accent, fontWeight: '600' }]}>
-                      {tr('common.clear')}
-                    </Text>
-                  </Pressable>
-                </View>
-              ) : undefined
-            }
-            right={
-              <>
-                <IconButton
-                  icon="search"
-                  label={tr('activity.search')}
-                  onPress={() => setSearchOpen(true)}
-                />
-                <IconButton
-                  icon="funnel"
-                  label={tr('activity.filter')}
-                  active={isFiltered}
-                  onPress={() => setFilterOpen(true)}
-                />
-                <IconButton
-                  icon="ellipsis-horizontal"
-                  label={tr('capture.more')}
-                  onPress={() => setMenuOpen(true)}
-                />
-              </>
-            }
-          />
-        )}
+        <ActivityHeader
+          selecting={selecting}
+          selectedCount={selectedIds.size}
+          onClearSelection={clearSelection}
+          searchOpen={searchOpen}
+          search={search}
+          onChangeSearch={setSearch}
+          onCloseSearch={closeSearch}
+          isFiltered={isFiltered}
+          activeFilterSubtitle={activeFilterSubtitle}
+          onClearFilters={clearFilters}
+          onOpenSearch={() => setSearchOpen(true)}
+          activeFilterCount={activeFilterCount}
+          onOpenFilter={() => setFilterOpen(true)}
+          onOpenMenu={() => setMenuOpen(true)}
+        />
 
         {!hasResults && listHeader}
 
@@ -588,11 +316,6 @@ export default function ActivityScreen() {
 
         {hasResults && (
           <SectionList<ActivityItem, DisplaySection>
-            // A new filter is a new list: without the remount a list scrolled deep into All kept
-            // its offset over the much shorter Income list, so onEndReached fired over and over
-            // and the list paged (and scrolled) by itself. Keyed by the filter the rows were read
-            // for, not the one just picked: that remounted the list over the old rows first, and
-            // then again when the new ones landed — twice the work on every account switch.
             key={dataKey}
             ref={listRef}
             style={{ flex: 1 }}
@@ -602,168 +325,37 @@ export default function ActivityScreen() {
             onRefresh={pull.onRefresh}
             onEndReached={handleEndReached}
             onEndReachedThreshold={0.4}
-            // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
+            // eslint-disable-next-line no-restricted-syntax -- kit-exception: dock clearance (MKL-81)
             contentContainerStyle={{ paddingBottom: 140 }}
             ListHeaderComponent={listHeader}
             renderSectionHeader={renderSectionHeader}
             renderItem={renderItem}
-            // A filter change remounts the list (key above), so what it mounts is what a tap costs.
-            // React Native's default window is 21 screens: every one of the 100 rows on a page
-            // mounted, in batches, and the switch stuttered through them. A few screens are enough
-            // to scroll into; the rest mount as the list moves.
             initialNumToRender={12}
             maxToRenderPerBatch={8}
             windowSize={7}
-            ListFooterComponent={
-              <>
-                {!reachedRealEnd && (
-                  <Text
-                    style={[
-                      t.type.label,
-                      {
-                        color: t.color.textFaint,
-                        textAlign: 'center',
-                        paddingVertical: t.space.lg,
-                      },
-                    ]}
-                  >
-                    {loadingMore || loadingOlder ? tr('activity.loadingMore') : ' '}
-                  </Text>
-                )}
-                {searchFooter && (
-                  <Text
-                    style={[
-                      t.type.label,
-                      {
-                        color: searchFooter.warn ? t.color.warn : t.color.textFaint,
-                        textAlign: 'center',
-                        paddingVertical: t.space.lg,
-                      },
-                    ]}
-                  >
-                    {tr(searchFooter.key)}
-                  </Text>
-                )}
-              </>
-            }
+            ListFooterComponent={listFooter}
           />
         )}
 
         {selecting ? (
-          <View
-            style={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              bottom: 0,
-              borderTopWidth: 1,
-              borderTopColor: t.color.border,
-              paddingHorizontal: t.space.lg,
-              // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
-              paddingTop: 12,
-              // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
-              paddingBottom: 34,
-              backgroundColor: t.color.surface,
-            }}
-          >
-            <Button
-              title={
-                selectedIds.size > 0
-                  ? tr('activity.deleteSelected', { count: selectedIds.size })
-                  : tr('common.delete')
-              }
-              variant="danger"
-              disabled={selectedIds.size === 0}
-              onPress={deleteSelected}
-              // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
-              style={{ height: 52, borderRadius: 14 }}
-            />
-          </View>
+          <ActivitySelectionBar selectedCount={selectedIds.size} onDelete={deleteSelected} />
         ) : (
           <CaptureDock />
         )}
       </View>
 
-      <Sheet
+      <ActivityFilterSheet
         visible={filterOpen}
         onClose={() => setFilterOpen(false)}
-        title={tr('activity.filters')}
-      >
-        <SectionHeader
-          title={tr('activity.filterType')}
-          first
-          // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
-          style={{ paddingHorizontal: 4, paddingBottom: 8 }}
-        />
-        <Segmented<ActivityTypeFilter>
-          value={type}
-          onChange={setType}
-          options={FILTERS.map((f) => ({ key: f.type, label: tr(f.labelKey) }))}
-        />
-
-        <SectionHeader
-          title={tr('activity.filterAccounts')}
-          // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
-          style={{ paddingHorizontal: 4, paddingTop: 20, paddingBottom: 8 }}
-        />
-        <Card flush>
-          <ListRow
-            first
-            label={tr('activity.allAccounts')}
-            icon={accountFilter === null ? 'checkmark' : undefined}
-            onPress={() => setAccountFilter(null)}
-          />
-          {assetAccounts.map((a) => (
-            <ListRow
-              key={a.id}
-              label={a.name}
-              leading={pendingAccounts.has(a.id) ? <PendingDot visible /> : undefined}
-              icon={accountFilter === a.id ? 'checkmark' : undefined}
-              onPress={() => toggleAccountFilter(a.id)}
-            />
-          ))}
-        </Card>
-        <Text
-          // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
-          style={[t.type.label, { color: t.color.textMuted, paddingHorizontal: 4, paddingTop: 6 }]}
-        >
-          {tr('activity.pendingDotHint')}
-        </Text>
-
-        <View
-          style={{
-            borderTopWidth: 1,
-            borderTopColor: t.color.border,
-            marginTop: t.space.md,
-            // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
-            paddingTop: 12,
-            // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
-            paddingBottom: 8,
-            flexDirection: 'row',
-            // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
-            gap: 10,
-            alignItems: 'center',
-          }}
-        >
-          <Button
-            title={tr('common.clear')}
-            variant="ghost"
-            onPress={() => {
-              setAccountFilter(null);
-              setType('all');
-            }}
-            style={{ height: 52 }}
-          />
-          <Button
-            title={tr('activity.showTransactions', {
-              count: displaySections.reduce((s, sec) => s + sec.data.length, 0),
-            })}
-            onPress={() => setFilterOpen(false)}
-            // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
-            style={{ flex: 1, height: 52, borderRadius: 14 }}
-          />
-        </View>
-      </Sheet>
+        type={type}
+        onChangeType={setType}
+        accountFilter={accountFilter}
+        onSelectAccount={setAccountFilter}
+        onClearFilters={clearFilters}
+        assetAccounts={assetAccounts}
+        pendingAccounts={pendingAccounts}
+        transactionCount={displaySections.reduce((s, sec) => s + sec.data.length, 0)}
+      />
 
       <Sheet visible={menuOpen} onClose={() => setMenuOpen(false)} title={tr('activity.title')}>
         <ListRow

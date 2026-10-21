@@ -7,7 +7,7 @@ import { Animated, Pressable, ScrollView, Text, View } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { usePopOnChange } from './feedback';
 import { useTheme } from './theme';
-import { Card, Money, PRESSED_OPACITY, SectionHeader } from './kit';
+import { Card, ListRow, Money, Pill, PRESSED_OPACITY, SectionHeader } from './kit';
 import { currencyOf, formatMoney } from '../money/format';
 import { categoryColor } from './categoryColor';
 import { navigateOnce } from './navigateOnce';
@@ -24,7 +24,7 @@ import {
 import { dayDate, localDay } from '../utils/day';
 
 const PENDING_LABEL_KEYS: Record<PendingEditStatus, string> = {
-  queued: 'draft.queued',
+  queued: 'activity.edited',
   failed: 'activity.notSent',
   conflict: 'inbox.conflict',
 };
@@ -92,13 +92,97 @@ export const ActivityRow = memo(function ActivityRow({
       (queued ? tr('draft.queued') : '—');
   }
 
+  const leading =
+    selecting && selectable ? (
+      <Animated.View style={markPop}>
+        {selected ? (
+          <View
+            style={{
+              width: 24,
+              height: 24,
+              borderRadius: 12,
+              backgroundColor: t.color.accent,
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Ionicons name="checkmark" size={16} color={t.color.onAccent} />
+          </View>
+        ) : (
+          <View
+            style={{
+              width: 22,
+              height: 22,
+              borderRadius: 11,
+              borderWidth: 1.5,
+              borderColor: t.dark ? t.color.border : t.color.borderStrong,
+            }}
+          />
+        )}
+      </Animated.View>
+    ) : (
+      <View
+        style={{
+          width: 28,
+          height: 28,
+          borderRadius: 8,
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0,
+          backgroundColor:
+            item.type === 'deposit'
+              ? t.color.incomeSoft
+              : item.type === 'transfer'
+                ? t.color.transferSoft
+                : item.categoryName
+                  ? categoryColor(item.categoryName, t.dark) + '22'
+                  : t.color.neutralSoft,
+        }}
+      >
+        {item.type === 'deposit' ? (
+          <Ionicons name="arrow-up" size={14} color={t.color.income} />
+        ) : item.type === 'transfer' ? (
+          <Ionicons name="swap-horizontal" size={14} color={t.color.transfer} />
+        ) : (
+          <View
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: 4,
+              backgroundColor: item.categoryName
+                ? categoryColor(item.categoryName, t.dark)
+                : t.color.textFaint,
+            }}
+          />
+        )}
+      </View>
+    );
+
+  const tone =
+    queued || pendingStatus === 'failed' || pendingStatus === 'conflict' ? 'warn' : 'accent';
+  const tagLabel = queued ? tr('draft.queued') : tr(PENDING_LABEL_KEYS[pendingStatus!]);
+
+  const trailing = (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
+      {((queued && !item.landing) || !!pendingStatus) && (
+        <Pill size="sm" tone={tone} label={tagLabel.toUpperCase()} />
+      )}
+      <Money amount={item.amount} currency={currency} type={item.type} />
+    </View>
+  );
+
   return (
-    <Pressable
+    <ListRow
+      label={description}
+      sub={subtitle}
+      leading={leading}
+      trailing={trailing}
       onPress={() => onPress(item)}
       onLongPress={selectable ? () => onLongPress(item) : undefined}
-      // 500ms by default, which felt like the long-press hadn't registered.
       delayLongPress={300}
-      style={({ pressed }) => ({
+      first={isFirst}
+      selected={selected}
+      style={{
         marginHorizontal: t.space.lg,
         backgroundColor: selected ? t.color.accentSoft : t.color.surface,
         ...(isFirst
@@ -110,128 +194,8 @@ export const ActivityRow = memo(function ActivityRow({
         borderLeftWidth: 1,
         borderRightWidth: 1,
         borderColor: t.color.border,
-        minHeight: 52,
-        paddingHorizontal: 16,
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 12,
-        position: 'relative',
-        opacity: pressed ? PRESSED_OPACITY : 1,
-      })}
-    >
-      {selecting && selectable ? (
-        <Animated.View style={markPop}>
-          {selected ? (
-            <View
-              style={{
-                width: 24,
-                height: 24,
-                borderRadius: 12,
-                backgroundColor: t.color.accent,
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Ionicons name="checkmark" size={16} color={t.color.onAccent} />
-            </View>
-          ) : (
-            <View
-              style={{
-                width: 22,
-                height: 22,
-                borderRadius: 11,
-                borderWidth: 1.5,
-                borderColor: t.dark ? t.color.border : t.color.borderStrong,
-              }}
-            />
-          )}
-        </Animated.View>
-      ) : (
-        <View
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: 8,
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0,
-            backgroundColor:
-              item.type === 'deposit'
-                ? t.color.incomeSoft
-                : item.type === 'transfer'
-                  ? t.color.transferSoft
-                  : item.categoryName
-                    ? categoryColor(item.categoryName, t.dark) + '22'
-                    : t.color.neutralSoft,
-          }}
-        >
-          {item.type === 'deposit' ? (
-            <Ionicons name="arrow-up" size={14} color={t.color.income} />
-          ) : item.type === 'transfer' ? (
-            <Ionicons name="swap-horizontal" size={14} color={t.color.transfer} />
-          ) : (
-            <View
-              style={{
-                width: 8,
-                height: 8,
-                borderRadius: 4,
-                backgroundColor: item.categoryName
-                  ? categoryColor(item.categoryName, t.dark)
-                  : t.color.textFaint,
-              }}
-            />
-          )}
-        </View>
-      )}
-
-      <View style={{ flex: 1, minWidth: 0, paddingVertical: 9 }}>
-        <Text style={[t.type.body, { color: t.color.text }]} numberOfLines={1}>
-          {description}
-        </Text>
-        <Text style={[t.type.label, { color: t.color.textMuted }]} numberOfLines={1}>
-          {subtitle}
-        </Text>
-      </View>
-
-      {((queued && !item.landing) || !!pendingStatus) && (
-        <View
-          style={{
-            flexShrink: 0,
-            paddingHorizontal: 8,
-            paddingVertical: 3,
-            borderRadius: 999,
-            backgroundColor: queued ? t.color.warnSoft : t.color.accentSoft,
-          }}
-        >
-          <Text
-            style={{
-              fontSize: 11,
-              fontWeight: '600',
-              letterSpacing: 0.4,
-              color: queued ? t.color.warnStrong : t.color.accentStrong,
-            }}
-          >
-            {(queued ? tr('draft.queued') : tr(PENDING_LABEL_KEYS[pendingStatus!])).toUpperCase()}
-          </Text>
-        </View>
-      )}
-
-      <Money amount={item.amount} currency={currency} type={item.type} />
-
-      {!isLast && (
-        <View
-          pointerEvents="none"
-          style={{
-            position: 'absolute',
-            bottom: 0,
-            left: 56,
-            right: 0,
-            height: 1,
-            backgroundColor: t.color.border,
-          }}
-        />
-      )}
-    </Pressable>
+      }}
+    />
   );
 });
 

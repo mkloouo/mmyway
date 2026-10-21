@@ -188,4 +188,69 @@ describe('ActivityRows', () => {
 
     expect(screen.getByText('−104.37 zł')).toBeTruthy();
   });
+
+  it('renders QUEUED pill for queued row', async () => {
+    const item = {
+      queued: true,
+      groupId: 'op-1',
+      description: 'Coffee',
+      amount: '20.00',
+      currencyCode: 'PLN',
+      type: 'withdrawal',
+      sourceId: 'acc-1',
+      destinationId: 'acc-2',
+      sourceName: 'Checking',
+      destinationName: 'Costa',
+      categoryName: 'Eating out',
+      splits: [],
+    } as unknown as ActivityCachedRow;
+
+    await render(
+      wrap(
+        <ActivityRow
+          item={item}
+          selecting={false}
+          selected={false}
+          currencies={mockCurrencies}
+          onPress={jest.fn()}
+          onLongPress={jest.fn()}
+        />,
+      ),
+    );
+
+    expect(screen.getByText('QUEUED')).toBeTruthy();
+  });
+
+  it('renders EDITED pill for pending edit row', async () => {
+    const item = {
+      groupId: 'grp-4',
+      description: 'Fuel',
+      amount: '250.00',
+      currencyCode: 'PLN',
+      type: 'withdrawal',
+      sourceId: 'acc-1',
+      destinationId: 'acc-2',
+      sourceName: 'Checking',
+      destinationName: 'Orlen',
+      categoryName: 'Car',
+      splitCount: 1,
+      splitsJson: null,
+      pendingStatus: 'queued',
+    } as unknown as ActivityCachedRow;
+
+    await render(
+      wrap(
+        <ActivityRow
+          item={item}
+          selecting={false}
+          selected={false}
+          currencies={mockCurrencies}
+          onPress={jest.fn()}
+          onLongPress={jest.fn()}
+        />,
+      ),
+    );
+
+    expect(screen.getByText('EDITED')).toBeTruthy();
+  });
 });

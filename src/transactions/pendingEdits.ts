@@ -38,7 +38,7 @@ function worse(a: PendingEditStatus, b: PendingEditStatus): PendingEditStatus {
   return RANK[b] > RANK[a] ? b : a;
 }
 
-interface PendingEdits {
+export interface PendingEdits {
   byGroup: Map<string, PendingEdit>;
   /** attach_receipt is keyed by journal, not group. */
   byJournal: Map<string, PendingEditStatus>;

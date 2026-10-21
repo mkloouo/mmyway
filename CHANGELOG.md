@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Activity
+
+- Split activity screen under 400 lines of code, added EDITED badge on rows with pending updates, filter button count accessibility label, separate search cancel button, soft danger delete button, and updated account section and sync hint copy (MKL-114).
+
 ### Draft Review
 
 - Aligned FX row to warn-styled account payment with "Enter amount", updated confirmation hint to specify the account paid, enabled removing any split part, and split the draft review screen into modular components below the 400-line ceiling (MKL-113).
