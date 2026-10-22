@@ -5,7 +5,10 @@ tags:
 ---
 # Picking an envelope on the capture screen shows what it has left this month, or how far over it is,
 # under the budget chip. Nothing is saved: the draft is discarded.
-- runFlow: ../../subflows/ready.yaml
+- runFlow:
+    file: ../../subflows/ready.yaml
+    env:
+      FLAGS: 'budget'
 - runFlow:
     file: ../../subflows/capture.yaml
     env:

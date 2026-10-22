@@ -7,8 +7,10 @@ import { ActivityIndicator, Text, View } from 'react-native';
 import Constants from 'expo-constants';
 import { Redirect, router, useLocalSearchParams } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
-import { e2eLinksEnabled, signInLinkParams } from '../src/e2e/signInLink';
+import { e2eLinksEnabled, parseFlagsParam, signInLinkParams } from '../src/e2e/signInLink';
+import { FLAGS_QUERY_KEY } from '../src/flags/useFlag';
 import { useDb } from '../src/providers/DbProvider';
+import { setFlagOverrides } from '../src/settings/appSettings';
 import { connectFailureText, connectToInstance } from '../src/settings/connectInstance';
 import { SETTINGS_QUERY_KEY } from '../src/settings/loadSettings';
 import { useSync } from '../src/sync/useSync';
@@ -41,7 +43,16 @@ function SignInFromLink() {
     started.current = true;
     void (async () => {
       try {
-        const { host, token } = signInLinkParams(params);
+        const { host, token, flags } = signInLinkParams(params);
+        if (flags !== undefined) {
+          const overrides = parseFlagsParam(flags);
+          await setFlagOverrides(db, overrides);
+          await queryClient.invalidateQueries({ queryKey: FLAGS_QUERY_KEY });
+        }
+        if (!host && !token && flags !== undefined) {
+          setState({ kind: 'connected' });
+          return;
+        }
         const result = await connectToInstance(db, host, token);
         if (result.status !== 'connected') {
           setState({ kind: 'failed', ...connectFailureText(result) });

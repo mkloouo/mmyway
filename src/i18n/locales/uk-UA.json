@@ -501,6 +501,15 @@
     "to": "До",
     "type": ""
   },
+  "flags": {
+    "clearOverrides": "",
+    "description": "",
+    "source": "",
+    "sourceDefault": "",
+    "sourceFlagsmith": "",
+    "sourceOverride": "",
+    "title": ""
+  },
   "inbox": {
     "alreadyLanded": "Вже у Firefly III",
     "alreadyLandedBody": "Воно досягло Firefly III, тому залишено як надіслане.",
@@ -1148,6 +1157,7 @@
     "defaultCurrency": "Валюта за замовчуванням",
     "envelopeCount_one": "Конверт {{count, number}}",
     "envelopeCount_other": "Конверти {{count, number}}",
+    "featureFlags": "",
     "ff3Addresses": "Адреси Firefly III",
     "ff3Version": "",
     "fireflyIii": "",

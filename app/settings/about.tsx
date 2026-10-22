@@ -6,6 +6,7 @@ import { Linking, ScrollView, Text } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import Constants from 'expo-constants';
+import { e2eLinksEnabled } from '../../src/e2e/signInLink';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
 import {
@@ -93,6 +94,13 @@ export default function AboutScreen() {
             chevron
             onPress={() => router.push('/settings/whats-new')}
           />
+          {e2eLinksEnabled(Constants.expoConfig?.extra?.appVariant) && (
+            <ListRow
+              label={tr('settings.featureFlags')}
+              chevron
+              onPress={() => router.push('/settings/flags')}
+            />
+          )}
         </Card>
 
         {/* When something goes wrong (board 31) */}

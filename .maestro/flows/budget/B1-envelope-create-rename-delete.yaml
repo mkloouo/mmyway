@@ -6,7 +6,10 @@ tags:
 # An envelope is a Firefly III budget. Created from the Budget tab's + (a sheet), renamed in the
 # name field on its own page, deleted from its ••• menu. Each change goes through the outbox, so
 # every step syncs and then checks Firefly III.
-- runFlow: ../../subflows/ready.yaml
+- runFlow:
+    file: ../../subflows/ready.yaml
+    env:
+      FLAGS: 'budget'
 
 # Create: the + opens the New envelope sheet; its name field has a placeholder.
 - tapOn: 'Budget, tab, 4 of 5'

@@ -1,4 +1,5 @@
-import { e2eLinksEnabled, signInLinkParams } from './signInLink';
+import { FLAG_NAMES } from '../flags/registry';
+import { e2eLinksEnabled, parseFlagsParam, signInLinkParams } from './signInLink';
 
 describe('e2eLinksEnabled', () => {
   it('answers in the Dev build only', () => {
@@ -38,5 +39,45 @@ describe('signInLinkParams', () => {
   it('gives an empty string for a missing one, which then fails to sign in', () => {
     expect(signInLinkParams({})).toEqual({ host: '', token: '' });
     expect(signInLinkParams({ host: undefined, token: [] })).toEqual({ host: '', token: '' });
+  });
+
+  it('reads flags when provided', () => {
+    expect(
+      signInLinkParams({
+        host: 'http://localhost',
+        token: 'tok',
+        flags: ' budget,demo_mode ',
+      }),
+    ).toEqual({
+      host: 'http://localhost',
+      token: 'tok',
+      flags: 'budget,demo_mode',
+    });
+  });
+});
+
+describe('parseFlagsParam', () => {
+  it('sets named flags to true and every other flag in FLAG_NAMES to false', () => {
+    const overrides = parseFlagsParam('budget,demo_mode');
+    expect(overrides.budget).toBe(true);
+    expect(overrides.demo_mode).toBe(true);
+
+    for (const name of FLAG_NAMES) {
+      if (name !== 'budget' && name !== 'demo_mode') {
+        expect(overrides[name]).toBe(false);
+      }
+    }
+  });
+
+  it('turns all flags off when empty string or unrecognized flag is passed', () => {
+    const emptyOverrides = parseFlagsParam('');
+    for (const name of FLAG_NAMES) {
+      expect(emptyOverrides[name]).toBe(false);
+    }
+
+    const unknownOverrides = parseFlagsParam('non_existent_flag');
+    for (const name of FLAG_NAMES) {
+      expect(unknownOverrides[name]).toBe(false);
+    }
   });
 });

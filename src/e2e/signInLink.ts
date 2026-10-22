@@ -8,6 +8,7 @@
 // point a real install at someone else's Firefly III, and any app or web page on the phone can open
 // a link. The Dev build also has a link scheme of its own (app.config.js), so the real app never
 // even receives these.
+import { FLAG_NAMES, type FlagValues } from '../flags/registry';
 
 /** The `extra.appVariant` values (app.config.js) that answer the link: the `.dev` package. */
 const ANSWERING_VARIANTS = ['development', 'preview'];
@@ -24,6 +25,34 @@ function first(value: string | string[] | undefined): string {
 }
 
 /** The address and token in the link's query. A missing one comes out empty and fails to sign in. */
-export function signInLinkParams(params: LinkParams): { host: string; token: string } {
-  return { host: first(params.host), token: first(params.token) };
+export function signInLinkParams(params: LinkParams): {
+  host: string;
+  token: string;
+  flags?: string;
+} {
+  const flagsRaw = params.flags;
+  const flags = flagsRaw !== undefined ? first(flagsRaw) : undefined;
+  return {
+    host: first(params.host),
+    token: first(params.token),
+    ...(flags !== undefined ? { flags } : {}),
+  };
+}
+
+/**
+ * Parses comma-separated flag names (e.g. `budget,demo_mode`) into FlagValues where named flags
+ * are true and all other known flags in FLAG_NAMES are false.
+ */
+export function parseFlagsParam(raw: string): FlagValues {
+  const enabled = new Set(
+    raw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+  );
+  const overrides: FlagValues = {};
+  for (const name of FLAG_NAMES) {
+    overrides[name] = enabled.has(name);
+  }
+  return overrides;
 }

@@ -22,10 +22,15 @@ jest.mock('expo-router', () => ({
   useFocusEffect: jest.fn(),
 }));
 
+let mockVariant: string | undefined = undefined;
+
 jest.mock('expo-constants', () => ({
-  expoConfig: {
-    version: '2.3.4',
-    android: { versionCode: 53 },
+  get expoConfig() {
+    return {
+      version: '2.3.4',
+      android: { versionCode: 53 },
+      extra: { appVariant: mockVariant },
+    };
   },
 }));
 
@@ -147,5 +152,20 @@ describe('AboutScreen (board 31)', () => {
     await waitFor(() => {
       expect(Linking.openURL).toHaveBeenCalledWith('https://my-firefly.test');
     });
+  });
+
+  it('hides Feature flags in production builds', async () => {
+    mockVariant = 'production';
+    await renderScreen();
+    expect(screen.queryByText('Feature flags')).toBeNull();
+  });
+
+  it('shows Feature flags in dev builds and navigates to flags screen', async () => {
+    mockVariant = 'development';
+    await renderScreen();
+    const row = screen.getByText('Feature flags');
+    expect(row).toBeTruthy();
+    fireEvent.press(row);
+    expect(router.push).toHaveBeenCalledWith('/settings/flags');
   });
 });

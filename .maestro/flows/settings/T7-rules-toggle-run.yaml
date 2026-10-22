@@ -6,7 +6,10 @@ tags:
 # Settings → Rules: the seeded "E2E marker rule" (group "E2E rules") is switched off and on, each
 # change synced and checked in Firefly III. Then Run now applies it to a transaction that has
 # no category, and a rule made from a transaction ("Create a rule") is saved and checked.
-- runFlow: ../../subflows/ready.yaml
+- runFlow:
+    file: ../../subflows/ready.yaml
+    env:
+      FLAGS: 'ff3_rules'
 
 # A withdrawal the marker rule should categorise. Created through the API with apply_rules off,
 # so nothing runs until the flow asks for it.

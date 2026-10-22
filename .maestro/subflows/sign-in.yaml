@@ -8,7 +8,7 @@ appId: ${APP_ID}
 # 120 s, with the keyboard still open. `pasteText` doesn't help, it types the text again.
 # The Dev build answers this link (app/e2e-sign-in.tsx, src/e2e/signInLink.ts) and no other build
 # does, so this flow needs the Dev build (`com.mkloouo.mmyway.dev`) rebuilt after that change.
-- openLink: 'mmyway-dev://e2e-sign-in?host=${encodeURIComponent(FF3_URL)}&token=${encodeURIComponent(FF3_TOKEN)}'
+- openLink: 'mmyway-dev://e2e-sign-in?host=${encodeURIComponent(FF3_URL)}&token=${encodeURIComponent(FF3_TOKEN)}${typeof FLAGS != "undefined" && FLAGS ? "&flags=" + encodeURIComponent(FLAGS) : ""}'
 - extendedWaitUntil:
     visible: 'Connected to Firefly III'
     timeout: 45000

@@ -14,7 +14,10 @@ tags:
 #                       total 100, far under Ready to Assign, which holds the 5000 PLN Checking)
 #   overspend:          a 80.00 withdrawal on Fun today: Fun available = 50 - 80 = -30 ("Cover 30,00 PLN")
 #   cover 30 from Food: Food 150-30 = 120, Fun 50+30 = 80 (Fun available 80 - 80 = 0)
-- runFlow: ../../subflows/ready.yaml
+- runFlow:
+    file: ../../subflows/ready.yaml
+    env:
+      FLAGS: 'budget'
 
 # Last month's limits, so auto-fill has targets. Written straight to Firefly III (the same POST the
 # app makes), then synced so the app's previous-period cache has them.

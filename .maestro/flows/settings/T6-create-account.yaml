@@ -6,7 +6,10 @@ tags:
 # Creates a liability in Settings → Accounts → New account: a loan, "I owe this", 4,5 % a
 # month. Two syncs later Firefly III has the account with those fields.
 # Then it is archived from Settings → Loans and debts, and Firefly III has it inactive.
-- runFlow: ../../subflows/ready.yaml
+- runFlow:
+    file: ../../subflows/ready.yaml
+    env:
+      FLAGS: 'account_create'
 - tapOn: 'Settings, tab, 5 of 5'
 - tapOn: 'Accounts'
 - tapOn: 'New account'

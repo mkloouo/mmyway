@@ -16,4 +16,17 @@ appId: ${APP_ID}
     when:
       visible: 'Connect Firefly III|Go to Settings'
     file: sign-in.yaml
+    env:
+      FLAGS: '${typeof FLAGS != "undefined" ? FLAGS : ""}'
+- runFlow:
+    when:
+      true: '${typeof FLAGS != "undefined" && FLAGS != ""}'
+      notVisible: 'Connect Firefly III|Go to Settings'
+    commands:
+      - openLink: 'mmyway-dev://e2e-sign-in?flags=${encodeURIComponent(FLAGS)}'
+      - extendedWaitUntil:
+          visible: 'Connected to Firefly III'
+          timeout: 15000
+      - tapOn: 'Done'
+      - tapOn: 'Inbox, tab, 1 of 5'
 - runFlow: sync.yaml

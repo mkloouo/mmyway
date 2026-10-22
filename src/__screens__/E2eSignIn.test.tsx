@@ -6,6 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import '../i18n';
 import E2eSignIn from '../../app/e2e-sign-in';
 import { connectToInstance } from '../settings/connectInstance';
+import { setFlagOverrides } from '../settings/appSettings';
 
 const mockConfig: { variant: string | undefined } = { variant: 'development' };
 const mockParams: { current: Record<string, string | string[]> } = { current: {} };
@@ -40,6 +41,10 @@ jest.mock('../sync/useSync', () => ({
 jest.mock('../settings/connectInstance', () => ({
   ...jest.requireActual('../settings/connectInstance'),
   connectToInstance: jest.fn(),
+}));
+jest.mock('../settings/appSettings', () => ({
+  ...jest.requireActual('../settings/appSettings'),
+  setFlagOverrides: jest.fn(),
 }));
 
 const metrics = {
@@ -78,6 +83,33 @@ describe('the e2e sign-in link', () => {
 
     fireEvent.press(screen.getByText('Done'));
     expect(mockRouter.back).toHaveBeenCalled();
+  });
+
+  it('sets flag overrides and connects when flags param is present with host and token', async () => {
+    (connectToInstance as jest.Mock).mockResolvedValue({ status: 'connected' });
+    mockParams.current = { host: 'http://localhost:8080', token: 'tok', flags: 'budget' };
+
+    await open();
+
+    expect(await screen.findByText('Connected to Firefly III')).toBeTruthy();
+    expect(setFlagOverrides).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ budget: true, demo_mode: false }),
+    );
+    expect(connectToInstance).toHaveBeenCalled();
+  });
+
+  it('sets flag overrides without calling connectToInstance when neither host nor token is provided', async () => {
+    mockParams.current = { flags: 'budget,demo_mode' };
+
+    await open();
+
+    expect(await screen.findByText('Connected to Firefly III')).toBeTruthy();
+    expect(setFlagOverrides).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ budget: true, demo_mode: true }),
+    );
+    expect(connectToInstance).not.toHaveBeenCalled();
   });
 
   it('says why it could not sign in, and signs in nothing else', async () => {

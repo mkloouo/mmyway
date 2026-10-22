@@ -479,6 +479,15 @@
     "to": "To",
     "type": "Type"
   },
+  "flags": {
+    "clearOverrides": "Clear overrides",
+    "description": "Dev and preview build overrides. Overrides take precedence over Flagsmith and code defaults.",
+    "source": "Source: {{source}}",
+    "sourceDefault": "Default",
+    "sourceFlagsmith": "Flagsmith",
+    "sourceOverride": "Override",
+    "title": "Feature flags"
+  },
   "inbox": {
     "alreadyLanded": "Already in Firefly III",
     "alreadyLandedBody": "It reached Firefly III, so it is kept as sent.",
@@ -1087,6 +1096,7 @@
     "defaultCurrency": "Default currency",
     "envelopeCount_one": "{{count, number}} envelope",
     "envelopeCount_other": "{{count, number}} envelopes",
+    "featureFlags": "Feature flags",
     "ff3Addresses": "Firefly III addresses",
     "ff3Version": "Firefly III version",
     "fireflyIii": "Firefly III",

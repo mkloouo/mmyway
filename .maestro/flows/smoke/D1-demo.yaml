@@ -18,6 +18,11 @@ tags:
 - extendedWaitUntil:
     visible: 'Settings, tab, 5 of 5'
     timeout: 30000
+- openLink: 'mmyway-dev://e2e-sign-in?flags=demo_mode,budget'
+- extendedWaitUntil:
+    visible: 'Connected to Firefly III'
+    timeout: 15000
+- tapOn: 'Done'
 - tapOn: 'Settings, tab, 5 of 5'
 - tapOn: 'Firefly III'
 - tapOn: 'Try the demo'
