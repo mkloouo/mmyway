@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [2.5.7] - 2026-10-22
+
 ### Activity
 
 - Split activity screen under 400 lines of code, added EDITED badge on rows with pending updates, filter button count accessibility label, separate search cancel button, soft danger delete button, and updated account section and sync hint copy (MKL-114).
