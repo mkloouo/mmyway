@@ -3,6 +3,7 @@
 ## [Unreleased]
 
 ## [2.5.7] - 2026-10-22
+
 ### Settings
 
 - Added feature flags overrides page for development and preview builds with link from Settings → About, enabled E2E sign-in link flags parameter, and updated Maestro test flows for flagged features (MKL-144).
