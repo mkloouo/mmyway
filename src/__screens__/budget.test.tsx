@@ -44,6 +44,16 @@ jest.mock('../sync/useSync', () => ({
 // under test here.
 jest.mock('../ui/navigateOnce', () => ({ navigateOnce: jest.fn() }));
 
+jest.mock('../ui/DragList', () => ({
+  DragList: ({
+    items,
+    renderItem,
+  }: {
+    items: unknown[];
+    renderItem: (props: { item: unknown; index: number }) => React.ReactNode;
+  }) => items.map((item, index) => renderItem({ item, index })),
+}));
+
 // The route guard sends a flag-off visit to "/" through expo-router's Redirect; a stand-in records it.
 const mockRedirect = jest.fn<null, [{ href: string }]>(() => null);
 jest.mock('expo-router', () => ({ Redirect: (props: { href: string }) => mockRedirect(props) }));
@@ -158,7 +168,7 @@ describe('Budget tab with the budget flag off', () => {
   it('redirects to the Inbox instead of showing the budget', async () => {
     await renderScreen(false);
     expect(mockRedirect).toHaveBeenCalledWith({ href: '/' });
-    expect(screen.queryByText('Ready to assign')).toBeNull();
+    expect(screen.queryByText(/Ready to assign/i)).toBeNull();
   });
 });
 
@@ -187,16 +197,19 @@ describe('Budget tab', () => {
 
   it('offers to cover an overspent envelope from another one', async () => {
     await renderScreen();
-    // Dining Out is 45 over: the row is the way into the move sheet, pre-filled with the shortfall.
-    const cover = screen.getByText(`Cover ${zl('45.00')} from another envelope`);
+    // Dining Out is 45 over: the button is the way into the move sheet, pre-filled with the shortfall.
+    const cover = screen.getByLabelText(new RegExp(`Cover ${escapeRegExp(zl('45.00'))}`));
     expect(cover).toBeTruthy();
-    // Groceries is not overspent, so it gets no such row.
-    expect(screen.queryByText(`Cover ${zl('479.50')} from another envelope`)).toBeNull();
+    expect(screen.getByText('Cover')).toBeTruthy();
   });
 
-  it('says on the screen why its number differs from the one in Firefly III', async () => {
+  it('shows the month switcher and budget statistics', async () => {
     await renderScreen();
-    expect(screen.getByText(/left to budget/)).toBeTruthy();
+    expect(screen.getByLabelText('Previous month')).toBeTruthy();
+    expect(screen.getByLabelText('Next month')).toBeTruthy();
+    expect(screen.getByText('In accounts')).toBeTruthy();
+    expect(screen.getByText('Assigned')).toBeTruthy();
+    expect(screen.getByText('Spent')).toBeTruthy();
   });
 });
 

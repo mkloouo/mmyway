@@ -1,4 +1,4 @@
-import { inPeriod, periodOf, previousPeriod } from './period';
+import { inPeriod, nextPeriod, periodOf, previousPeriod } from './period';
 
 describe('periodOf', () => {
   it('spans the whole calendar month', () => {
@@ -25,6 +25,21 @@ describe('previousPeriod', () => {
     expect(previousPeriod(periodOf('2026-01-20'))).toEqual({
       start: '2025-12-01',
       end: '2025-12-31',
+    });
+  });
+});
+
+describe('nextPeriod', () => {
+  it('steps forward one month', () => {
+    expect(nextPeriod(periodOf('2026-10-11'))).toEqual({
+      start: '2026-11-01',
+      end: '2026-11-30',
+    });
+  });
+  it('crosses the year boundary', () => {
+    expect(nextPeriod(periodOf('2026-12-20'))).toEqual({
+      start: '2027-01-01',
+      end: '2027-01-31',
     });
   });
 });

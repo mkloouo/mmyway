@@ -1,28 +1,35 @@
 // Budget — envelope budgeting over Firefly III's own primitives (docs/private/ynab-bucket-budgeting-plan.md).
 // The envelopes, the sinking funds, the obligations due, Ready to Assign, and the one-tap auto-fill.
-// Assigning to a single envelope happens on its own page (app/budget/[id].tsx).
-import { useState } from 'react';
+// V4 board 01.
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-// eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
-import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { RefreshControl, ScrollView } from 'react-native';
 import {
-  TabHeader,
-  IconButton,
   Button,
   Card,
   EmptyState,
-  GroupFooter,
-  ListRow,
-  Money,
+  IconButton,
   SCREEN_TOP_PADDING,
   Screen,
   SectionHeader,
+  TabHeader,
 } from '../../src/ui/kit';
 import { AmountSheet } from '../../src/ui/AmountSheet';
+import { PickerSheet } from '../../src/ui/PickerSheet';
 import { NewEnvelopeSheet } from '../../src/budget/NewEnvelopeSheet';
-import { divideDecimal } from '../../src/api/ff3/decimal';
+import { EnvelopeRow } from '../../src/budget/EnvelopeRow';
+import { RtaInfoSheet } from '../../src/budget/RtaInfoSheet';
+import { BudgetHero } from '../../src/budget/BudgetHero';
+import { BudgetFundsSection } from '../../src/budget/BudgetFundsSection';
+import { BudgetBillsSection } from '../../src/budget/BudgetBillsSection';
+import { BudgetMonthSwitcher } from '../../src/budget/BudgetMonthSwitcher';
+import {
+  setEnvelopeOrder,
+  sortEnvelopesByOrder,
+  useEnvelopeOrder,
+} from '../../src/budget/envelopeOrder';
+import { addDecimal } from '../../src/api/ff3/decimal';
 import type { Envelope } from '../../src/bucket/envelopes';
-import { PendingDot } from '../../src/ui/PendingDot';
 import { useTheme } from '../../src/ui/theme';
 import { formatMoney } from '../../src/money/format';
 import { navigateOnce } from '../../src/ui/navigateOnce';
@@ -31,19 +38,14 @@ import { confirmAction } from '../../src/ui/confirm';
 import { usePullToRefresh } from '../../src/sync/useSync';
 import { useDb } from '../../src/providers/DbProvider';
 import { useBucket } from '../../src/bucket/useBucket';
-import { autofill, autofillCount, autofillIsEmpty } from '../../src/bucket/autofill';
-import { assignMany, fundMany, setFundAmount } from '../../src/bucket/actions';
+import { autofill, autofillCount } from '../../src/bucket/autofill';
+import { assignMany, assignToEnvelope, fundMany, setFundAmount } from '../../src/bucket/actions';
 import type { Fund } from '../../src/bucket/funds';
 import { appLocale } from '../../src/i18n';
 import { dayDate, localDay } from '../../src/utils/day';
+import { nextPeriod, periodOf, previousPeriod, type Period } from '../../src/bucket/period';
 import { withFlag } from '../../src/flags/RequireFlag';
-
-/** Share of the assignment spent, 0–1, for the bar. Overspent is a full bar. Display only. */
-function spentFraction(envelope: Envelope): number {
-  if (envelope.overspent) return 1;
-  const spent = envelope.spent.replace(/^[-−]/, '');
-  return Math.min(1, Number(divideDecimal(spent, envelope.assigned, 4)));
-}
+import { DragList } from '../../src/ui/DragList';
 
 function BudgetScreen() {
   const t = useTheme();
@@ -51,16 +53,35 @@ function BudgetScreen() {
   const db = useDb();
   const act = useAction();
   const pull = usePullToRefresh();
-  const bucket = useBucket();
+
+  // Period / month switcher: default to current month, limited forward to current + 1.
+  const [selectedPeriod, setSelectedPeriod] = useState<Period>(() => periodOf(localDay()));
+  const currentPeriod = useMemo(() => periodOf(localDay()), []);
+  const maxPeriod = useMemo(() => nextPeriod(currentPeriod), [currentPeriod]);
+  const isFutureLimit = selectedPeriod.start >= maxPeriod.start;
+
+  const bucket = useBucket(selectedPeriod);
   const { period, envelopes, funds, bills, rta, currency, queued, queuedFunds, loaded } = bucket;
+
+  // Custom envelope display order
+  const envelopeOrder = useEnvelopeOrder(db);
+  const sortedEnvelopes = useMemo(
+    () => sortEnvelopesByOrder(envelopes, envelopeOrder),
+    [envelopes, envelopeOrder],
+  );
 
   const monthLabel = dayDate(period.start).toLocaleString(appLocale(), {
     month: 'long',
     year: 'numeric',
   });
-  const unsigned = (amount: string) => formatMoney(amount.replace(/^[-−]/, ''), currency);
 
-  // "Do what I did last month", worked out before the button is drawn: nothing planned, no button.
+  // Total spent across envelopes for the period
+  const totalSpent = useMemo(
+    () => envelopes.reduce((sum, e) => addDecimal(sum, e.spent.replace(/^[-−]/, '')), '0'),
+    [envelopes],
+  );
+
+  // Auto-fill plan
   const plan = autofill({
     readyToAssign: rta.readyToAssign,
     envelopes,
@@ -71,8 +92,6 @@ function BudgetScreen() {
   });
 
   const runAutofill = act(tr('budget.autofill'), async () => {
-    // It moves real money across several envelopes and funds at once; it gets a confirmation with
-    // the total and the count, not a bare tap.
     const ok = await confirmAction(
       tr('budget.autofillTitle'),
       tr('budget.autofillConfirm'),
@@ -86,17 +105,53 @@ function BudgetScreen() {
     await fundMany(db, plan.funds);
   });
 
+  // Sheets and interaction states
   const [creating, setCreating] = useState(false);
-  const [editing, setEditing] = useState<Fund | null>(null);
+  const [editingFund, setEditingFund] = useState<Fund | null>(null);
+  const [showRtaInfo, setShowRtaInfo] = useState(false);
+  const [reordering, setReordering] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+
+  // Assign money states
+  const [assignPickerOpen, setAssignPickerOpen] = useState(false);
+  const [assigningEnvelope, setAssigningEnvelope] = useState<Envelope | null>(null);
+
   const saveFund = act(tr('budget.fundSet'), async (fund: Fund, amount: string) => {
     await setFundAmount(db, fund, amount);
   });
+
+  const saveAssignment = act(tr('budget.assign'), async (envelope: Envelope, amount: string) => {
+    await assignToEnvelope(db, period, bucket.currencyCode, envelope, amount);
+  });
+
+  const onAssignMoney = () => {
+    if (sortedEnvelopes.length === 0) {
+      setCreating(true);
+      return;
+    }
+    if (sortedEnvelopes.length === 1) {
+      setAssigningEnvelope(sortedEnvelopes[0]!);
+      return;
+    }
+    setAssignPickerOpen(true);
+  };
+
+  const handleMoveEnvelope = async (from: number, to: number) => {
+    const next = [...sortedEnvelopes];
+    const [moved] = next.splice(from, 1);
+    if (!moved) return;
+    next.splice(to, 0, moved);
+    const newOrder: Record<string, number> = {};
+    next.forEach((e, idx) => {
+      newOrder[e.budgetId] = idx;
+    });
+    await setEnvelopeOrder(db, newOrder);
+  };
 
   return (
     <Screen>
       <TabHeader
         title={tr('budget.title')}
-        subtitle={monthLabel}
         right={
           <IconButton
             icon="add"
@@ -105,7 +160,17 @@ function BudgetScreen() {
           />
         }
       />
+
+      {/* Month switcher (Board 01) */}
+      <BudgetMonthSwitcher
+        monthLabel={monthLabel}
+        onPrevious={() => setSelectedPeriod(previousPeriod(selectedPeriod))}
+        onNext={() => setSelectedPeriod(nextPeriod(selectedPeriod))}
+        isFutureLimit={isFutureLimit}
+      />
+
       <ScrollView
+        scrollEnabled={!isDragging}
         refreshControl={<RefreshControl refreshing={pull.refreshing} onRefresh={pull.onRefresh} />}
         contentContainerStyle={{
           paddingTop: SCREEN_TOP_PADDING,
@@ -113,39 +178,34 @@ function BudgetScreen() {
           gap: t.space.sm,
         }}
       >
-        {/* The hero: the one number this tab is about, and its actions. */}
-        <Card style={{ marginHorizontal: t.space.lg, gap: t.space.sm }}>
-          <Text style={[t.type.caption, { color: t.color.textMuted, textTransform: 'uppercase' }]}>
-            {tr('budget.readyToAssign')}
-          </Text>
-          <Money
-            amount={rta.readyToAssign}
-            currency={currency}
-            size="display"
-            tone={rta.readyToAssign.startsWith('-') ? 'warn' : undefined}
-          />
-          <Text style={[t.type.label, { color: t.color.textMuted }]}>
-            {tr('budget.breakdown', {
-              cash: formatMoney(rta.cash, currency),
-              allocated: formatMoney(rta.allocated, currency),
-            })}
-          </Text>
-          {!autofillIsEmpty(plan) && (
-            <Button
-              title={tr('budget.autofillWith', { amount: formatMoney(plan.total, currency) })}
-              variant="secondary"
-              onPress={() => void runAutofill()}
-              disabled={act.pending(tr('budget.autofill'))}
-              style={{ marginTop: t.space.xs }}
-            />
-          )}
-        </Card>
-        {/* Said where the number is read, not in a FAQ: Firefly III's own "left to budget" is a
-            different figure, and nothing in the app can maintain the record it rests on. */}
-        <GroupFooter>{tr('budget.differsFromFireflyNote')}</GroupFooter>
+        {/* Hero: Ready to assign (Board 01) */}
+        <BudgetHero
+          rta={rta}
+          currency={currency}
+          totalSpent={totalSpent}
+          plan={plan}
+          onInfoPress={() => setShowRtaInfo(true)}
+          onAssignMoney={onAssignMoney}
+          onAutofill={() => void runAutofill()}
+          isAutofillPending={act.pending(tr('budget.autofill'))}
+        />
 
-        <SectionHeader title={tr('budget.envelopes')} />
-        {envelopes.length === 0 ? (
+        {/* Envelopes section (Board 01) */}
+        <SectionHeader
+          title={`${tr('budget.envelopes')} · ${sortedEnvelopes.length}`}
+          action={
+            sortedEnvelopes.length > 1 ? (
+              <Button
+                title={reordering ? tr('common.done') : tr('budget.reorder')}
+                variant="ghost"
+                size="bar"
+                onPress={() => setReordering(!reordering)}
+              />
+            ) : undefined
+          }
+        />
+
+        {sortedEnvelopes.length === 0 ? (
           loaded ? (
             <EmptyState
               glyph="◴"
@@ -153,157 +213,76 @@ function BudgetScreen() {
               hint={tr('budget.noEnvelopesHint')}
             />
           ) : null
+        ) : reordering ? (
+          <Card flush style={{ marginHorizontal: t.space.lg }}>
+            <DragList
+              items={sortedEnvelopes}
+              keyOf={(e) => e.budgetId}
+              renderItem={(envelope, index) => (
+                <EnvelopeRow
+                  envelope={envelope}
+                  currency={currency}
+                  pending={queued.has(envelope.budgetId)}
+                  first={index === 0}
+                  onPress={() => navigateOnce(`/budget/${encodeURIComponent(envelope.budgetId)}`)}
+                  onCover={() =>
+                    navigateOnce(`/budget/${encodeURIComponent(envelope.budgetId)}?cover=1`)
+                  }
+                />
+              )}
+              onMove={handleMoveEnvelope}
+              gap={0}
+              onDragChange={setIsDragging}
+              moveLabels={{ up: tr('budget.moveUp'), down: tr('budget.moveDown') }}
+            />
+          </Card>
         ) : (
           <Card flush style={{ marginHorizontal: t.space.lg }}>
-            {envelopes.map((envelope, index) => (
-              <View key={envelope.budgetId}>
-                <ListRow
-                  first={index === 0}
-                  label={envelope.name}
-                  sub={tr('budget.envelopeLine', {
-                    assigned: formatMoney(envelope.assigned, currency),
-                    spent: unsigned(envelope.spent),
-                  })}
-                  trailing={
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
-                      <PendingDot visible={queued.has(envelope.budgetId)} />
-                      <Money
-                        amount={envelope.available}
-                        currency={currency}
-                        size="heading"
-                        tone={envelope.overspent ? 'warn' : undefined}
-                      />
-                    </View>
-                  }
-                  onPress={() => navigateOnce(`/budget/${encodeURIComponent(envelope.budgetId)}`)}
-                />
-                <View
-                  style={{
-                    paddingHorizontal: t.space.lg,
-                    paddingBottom: t.space.md,
-                    gap: t.space.xs,
-                  }}
-                >
-                  <View
-                    style={{
-                      height: 6,
-                      // eslint-disable-next-line no-restricted-syntax -- kit-exception: pre-Kit-V2 literal (MKL-81)
-                      borderRadius: 3,
-                      overflow: 'hidden',
-                      backgroundColor: envelope.overspent ? t.color.warnSoft : t.color.accentSoft,
-                    }}
-                  >
-                    <View
-                      style={{
-                        width: `${Math.round(spentFraction(envelope) * 100)}%`,
-                        height: 6,
-                        backgroundColor: envelope.overspent ? t.color.warn : t.color.accent,
-                      }}
-                    />
-                  </View>
-                  {/* An overspent envelope says so and offers the way out: the move sheet, opened
-                      on this envelope with the shortfall already filled in. */}
-                  {envelope.overspent && (
-                    <Pressable
-                      onPress={() =>
-                        navigateOnce(`/budget/${encodeURIComponent(envelope.budgetId)}?cover=1`)
-                      }
-                      accessibilityRole="button"
-                      hitSlop={4}
-                    >
-                      <Text style={[t.type.label, { color: t.color.warn, fontWeight: '600' }]}>
-                        {tr('budget.coverRow', { amount: unsigned(envelope.available) })}
-                      </Text>
-                    </Pressable>
-                  )}
-                </View>
-              </View>
+            {sortedEnvelopes.map((envelope, index) => (
+              <EnvelopeRow
+                key={envelope.budgetId}
+                envelope={envelope}
+                currency={currency}
+                pending={queued.has(envelope.budgetId)}
+                first={index === 0}
+                onPress={() => navigateOnce(`/budget/${encodeURIComponent(envelope.budgetId)}`)}
+                onCover={() =>
+                  navigateOnce(`/budget/${encodeURIComponent(envelope.budgetId)}?cover=1`)
+                }
+              />
             ))}
           </Card>
         )}
 
-        {funds.length > 0 && (
-          <>
-            <SectionHeader title={tr('budget.funds')} />
-            {funds.map((fund) => (
-              <Card
-                key={fund.id}
-                style={{ marginHorizontal: t.space.lg }}
-                // No linked account means no field FF3 would let us write: read-only then.
-                onPress={fund.accountId ? () => setEditing(fund) : undefined}
-              >
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
-                  <PendingDot visible={queuedFunds.has(fund.id)} />
-                  <Text
-                    style={[t.type.heading, { color: t.color.text, flex: 1 }]}
-                    numberOfLines={1}
-                  >
-                    {fund.name}
-                  </Text>
-                  <Money amount={fund.saved} currency={currency} size="heading" />
-                </View>
-                <Text
-                  style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]}
-                  numberOfLines={1}
-                >
-                  {[
-                    fund.target
-                      ? tr('budget.fundOfTarget', { target: formatMoney(fund.target, currency) })
-                      : tr('budget.fundOpenEnded'),
-                    fund.targetDate &&
-                      tr('budget.fundBy', {
-                        date: dayDate(fund.targetDate).toLocaleDateString(appLocale()),
-                      }),
-                    fund.accountName,
-                  ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                </Text>
-              </Card>
-            ))}
-          </>
-        )}
+        {/* Sinking funds (Board 01: one Group with income ProgressBar) */}
+        <BudgetFundsSection
+          funds={funds}
+          queuedFunds={queuedFunds}
+          currency={currency}
+          onEditFund={(fund) => setEditingFund(fund)}
+        />
 
-        {bills.length > 0 && (
-          <>
-            <SectionHeader title={tr('budget.dueThisPeriod')} />
-            {bills.map((bill) => (
-              <Card key={bill.billId} style={{ marginHorizontal: t.space.lg }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: t.space.sm }}>
-                  <Text
-                    style={[t.type.heading, { color: t.color.text, flex: 1 }]}
-                    numberOfLines={1}
-                  >
-                    {bill.name}
-                  </Text>
-                  <Money amount={bill.amount} currency={currency} size="heading" />
-                </View>
-                <Text style={[t.type.label, { color: t.color.textMuted, marginTop: t.space.xs }]}>
-                  {dayDate(bill.date).toLocaleDateString(appLocale())}
-                </Text>
-              </Card>
-            ))}
-          </>
-        )}
+        {/* Due this month (Board 01: one Group with DateTile and "Planned" action) */}
+        <BudgetBillsSection bills={bills} currency={currency} />
       </ScrollView>
 
-      {/* Absolute: the keypad opens on what the fund already holds, and Done sets it to what is
-          typed. FF3 clamps an over-target amount silently, so actions.ts clamps it first. */}
-      {editing && (
+      {/* Sinking fund edit amount sheet */}
+      {editingFund && (
         <AmountSheet
           visible
-          title={tr('budget.fundSetTitle', { name: editing.name })}
-          initial={editing.saved}
+          title={tr('budget.fundSetTitle', { name: editingFund.name })}
+          initial={editingFund.saved}
           currency={currency}
           type="transfer"
           onDone={(typed) => {
-            const fund = editing;
-            setEditing(null);
+            const fund = editingFund;
+            setEditingFund(null);
             if (typed !== null) void saveFund(fund, typed);
           }}
         />
       )}
 
+      {/* New envelope modal */}
       <NewEnvelopeSheet
         visible={creating}
         onClose={() => setCreating(false)}
@@ -312,6 +291,46 @@ function BudgetScreen() {
         readyToAssign={rta.readyToAssign}
         period={period}
       />
+
+      {/* RTA explanation sheet */}
+      <RtaInfoSheet visible={showRtaInfo} onClose={() => setShowRtaInfo(false)} />
+
+      {/* Envelope picker for "Assign money" primary action */}
+      {assignPickerOpen && (
+        <PickerSheet
+          visible
+          title={tr('budget.selectEnvelope')}
+          options={sortedEnvelopes.map((e) => ({
+            key: e.budgetId,
+            label: e.name,
+            trailing: formatMoney(e.available, currency),
+          }))}
+          selected={null}
+          onSelect={(key) => {
+            setAssignPickerOpen(false);
+            if (!key) return;
+            const target = sortedEnvelopes.find((e) => e.budgetId === key);
+            if (target) setAssigningEnvelope(target);
+          }}
+          onClose={() => setAssignPickerOpen(false)}
+        />
+      )}
+
+      {/* AmountSheet for "Assign money" */}
+      {assigningEnvelope && (
+        <AmountSheet
+          visible
+          title={tr('budget.assignTitle', { name: assigningEnvelope.name })}
+          initial={assigningEnvelope.assigned}
+          currency={currency}
+          type="transfer"
+          onDone={(amount) => {
+            const target = assigningEnvelope;
+            setAssigningEnvelope(null);
+            if (amount !== null) void saveAssignment(target, amount);
+          }}
+        />
+      )}
     </Screen>
   );
 }

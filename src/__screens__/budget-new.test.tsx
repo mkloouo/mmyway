@@ -35,6 +35,15 @@ jest.mock('../sync/useSync', () => ({
   usePullToRefresh: () => ({ refreshing: false, onRefresh: jest.fn() }),
 }));
 jest.mock('../ui/navigateOnce', () => ({ navigateOnce: jest.fn() }));
+jest.mock('../ui/DragList', () => ({
+  DragList: ({
+    items,
+    renderItem,
+  }: {
+    items: unknown[];
+    renderItem: (props: { item: unknown; index: number }) => React.ReactNode;
+  }) => items.map((item, index) => renderItem({ item, index })),
+}));
 jest.mock('../ui/confirm', () => ({
   confirmAction: jest.fn(async () => true),
   confirmDestructive: jest.fn(async () => true),

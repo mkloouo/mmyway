@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Budget
+
+- Redesigned Budget tab to Unified Kit V2 board 01 with month switcher navigation, formula info sheet, hero stats and assign actions, bold envelope rows with spend progress bars and quick cover action, reorder mode, and unified cards for sinking funds and upcoming bills (MKL-105).
+
 ### Settings
 
 - Added feature flags overrides page for development and preview builds with link from Settings → About, enabled E2E sign-in link flags parameter, and updated Maestro test flows for flagged features (MKL-144).

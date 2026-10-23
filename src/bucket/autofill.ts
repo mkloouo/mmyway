@@ -37,7 +37,7 @@ export interface AutofillInput {
   decimalPlaces: number;
 }
 
-interface AutofillPlan {
+export interface AutofillPlan {
   /** Absolute amounts for the envelopes to change; one `set_budget_limits` operation. */
   envelopes: SetBudgetLimitsEntry[];
   /** Absolute saved amounts for the funds to top up; one `set_piggy_amount` operation each. */

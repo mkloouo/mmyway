@@ -28,6 +28,14 @@ export function previousPeriod(period: Period): Period {
   return periodOf(localDay(new Date(y, m - 2, 1)));
 }
 
+/** The month after `period` — for moving forward in the month switcher. */
+export function nextPeriod(period: Period): Period {
+  const [year, month] = period.start.split('-').map(Number);
+  const y = year ?? 1970;
+  const m = month ?? 1;
+  return periodOf(localDay(new Date(y, m, 1)));
+}
+
 /** Whether `day` (a YYYY-MM-DD, or a full ISO timestamp) falls inside the period. */
 export function inPeriod(period: Period, day: string | null | undefined): boolean {
   if (!day) return false;

@@ -35,7 +35,7 @@ interface BucketData {
   loaded: boolean;
 }
 
-export function useBucket(): BucketData {
+export function useBucket(selectedPeriod?: Period): BucketData {
   const db = useDb();
   const { data: rows } = useLiveQuery(db.select().from(bucketObjects));
   const { data: planned } = useLiveQuery(db.select().from(plannedObjects));
@@ -52,7 +52,7 @@ export function useBucket(): BucketData {
   const currencies = useCurrencies();
 
   return useMemo(() => {
-    const period = periodOf(localDay());
+    const period = selectedPeriod ?? periodOf(localDay());
     const previous = previousPeriod(period);
     const objects = (rows ?? []).map(readBucketRow).filter((o): o is BucketObject => !!o);
     const code = currencies.find((c) => c.isDefault)?.code ?? currencies[0]?.code ?? 'EUR';
@@ -94,5 +94,5 @@ export function useBucket(): BucketData {
       queuedFunds,
       loaded: rows !== undefined && budgets !== undefined,
     };
-  }, [rows, planned, accounts, ops, budgets, currencies]);
+  }, [rows, planned, accounts, ops, budgets, currencies, selectedPeriod]);
 }
