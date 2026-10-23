@@ -38,7 +38,6 @@ const MAX_LINES = 400;
 // Ceilings, in lines of code, for the files that were already too big (2026-10-13).
 const OVERSIZED = {
   'app/transactions/[[]groupId].tsx': 942,
-  'app/count.tsx': 682,
   'app/(tabs)/index.tsx': 571,
   'app/accounts/new.tsx': 499,
   'src/planned/notifications.ts': 469,

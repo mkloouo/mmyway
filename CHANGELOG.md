@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Count cash
+
+- Redesigned Count cash and Review adjustments to Unified Kit V2 boards 05–06 with header settings gear, large bold counted input with underline and shortfall/surplus pills, inline denomination steppers, and extracted modular components under 400 lines (MKL-109).
+
 ### Accounts
 
 - Redesigned account edit to Unified Kit V2 board 04 with PushHeader ••• more button, always-visible Count cash and Transactions buttons, single-line Note field, and split components under 400 lines (MKL-108).

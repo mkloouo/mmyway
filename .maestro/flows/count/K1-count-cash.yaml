@@ -39,22 +39,16 @@ tags:
 - tapOn: 'More'
 - tapOn: 'Count cash'
 - assertNotVisible: ".*hasn't reached Firefly III yet.*"
-- tapOn: 'Count Cash wallet by denomination'
-- assertVisible: 'Count denominations'
-- back
+- tapOn: 'Count notes & coins'
+- assertVisible: '.*notes and coins.*'
+- tapOn: 'Type the total'
 - tapOn:
     text: '—'
     index: 0
 - inputText: ${output.counted}
 - hideKeyboard
-- tapOn: 'Reconcile settings'
-- tapOn: 'Shortfall payee (expense account)'
-- tapOn: 'Cash shortfall'
-- tapOn: 'Surplus payee (revenue account)'
-- tapOn: 'Cash surplus'
-- back
 - tapOn: 'Review 1 adjustment'
-- tapOn: 'Confirm 1'
+- tapOn: 'Confirm 1 adjustment'
 - runFlow: ../../subflows/wait-sent.yaml
 - runScript:
     file: ../../scripts/ff3.js

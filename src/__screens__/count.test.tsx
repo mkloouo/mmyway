@@ -3,10 +3,10 @@
 // state appears only when no account carries the cash-envelope marker.
 import { fireEvent, render, screen } from '@testing-library/react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import '../i18n';
 import { createTestDb } from '../db/testDb';
 import { referenceAccounts, referenceCurrencies } from '../db/schema';
-import { formatMoney } from '../money/format';
 import CountScreen from '../../app/count';
 
 jest.setTimeout(15_000);
@@ -33,7 +33,6 @@ jest.mock('expo-router', () => ({
 }));
 
 const SYNCED = '2026-10-11T08:00:00Z';
-const PLN = { code: 'PLN', symbol: 'zł', decimalPlaces: 2 };
 
 const metrics = {
   frame: { x: 0, y: 0, width: 390, height: 844 },
@@ -89,14 +88,34 @@ describe('count cash', () => {
 
     // Only the two marked accounts are envelopes; Checking is not counted.
     expect(screen.queryByText('Checking')).toBeNull();
-    const fields = screen.getAllByPlaceholderText('—');
-    expect(fields).toHaveLength(2);
-    const [wallet] = fields;
-    if (!wallet) throw new Error('no count field for Cash wallet');
+    const wallet = screen.getByPlaceholderText('—');
 
     // 485,00 expected, 468,00 counted: 17,00 short, booked as a withdrawal.
     await fireEvent.changeText(wallet, '468.00');
-    expect(screen.getByText(formatMoney('-17.00', PLN))).toBeTruthy();
+    expect(screen.getByText(/17.*short/)).toBeTruthy();
+  });
+
+  it('navigates to settings from header gear button', async () => {
+    mockDb = seed([{ id: 'w1', name: 'Cash wallet', notes: 'mmyway-envelope', balance: '485.00' }]);
+    await renderCount();
+
+    const gearBtn = screen.getByLabelText('Cash count settings');
+    await fireEvent.press(gearBtn);
+    expect(router.push).toHaveBeenCalledWith('/settings/cash');
+  });
+
+  it('switches the active envelope when Count pill is pressed', async () => {
+    mockDb = seed([
+      { id: 'w1', name: 'Cash wallet', notes: 'mmyway-envelope', balance: '485.00' },
+      { id: 'j1', name: 'Jar at home', notes: 'mmyway-envelope', balance: '120.00' },
+    ]);
+    await renderCount();
+
+    const countJar = screen.getByRole('button', { name: 'Count' });
+    await fireEvent.press(countJar);
+
+    // Now Jar at home is active
+    expect(screen.getByText(/expected 120[.,]00 zł/)).toBeTruthy();
   });
 
   it('shows the empty state with a switch per account when no envelope is marked', async () => {
