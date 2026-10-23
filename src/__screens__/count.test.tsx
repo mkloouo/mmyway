@@ -6,7 +6,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import '../i18n';
 import { createTestDb } from '../db/testDb';
-import { referenceAccounts, referenceCurrencies } from '../db/schema';
+import { outboxOperations, referenceAccounts, referenceCurrencies } from '../db/schema';
 import CountScreen from '../../app/count';
 
 jest.setTimeout(15_000);
@@ -39,7 +39,15 @@ const metrics = {
   insets: { top: 0, left: 0, right: 0, bottom: 0 },
 };
 
-function seed(accounts: { id: string; name: string; notes?: string; balance: string }[]) {
+function seed(
+  accounts: {
+    id: string;
+    name: string;
+    notes?: string;
+    balance: string;
+    balanceDate?: string;
+  }[],
+) {
   const db = createTestDb();
   db.insert(referenceCurrencies)
     .values({
@@ -60,6 +68,7 @@ function seed(accounts: { id: string; name: string; notes?: string; balance: str
         currencyCode: 'PLN',
         active: true,
         currentBalance: a.balance,
+        currentBalanceDate: a.balanceDate ?? new Date().toISOString(),
         notes: a.notes ?? null,
         includeNetWorth: true,
         syncedAt: SYNCED,
@@ -118,18 +127,98 @@ describe('count cash', () => {
     expect(screen.getByText(/expected 120[.,]00 zł/)).toBeTruthy();
   });
 
-  it('shows the empty state with a switch per account when no envelope is marked', async () => {
+  it('shows the empty state with a switch per account and Start counting button when no envelope is marked', async () => {
     mockDb = seed([
       { id: 'c1', name: 'Checking', balance: '1000.00' },
       { id: 's1', name: 'Savings', balance: '5000.00' },
     ]);
     await renderCount();
 
-    expect(screen.getByText('No accounts are marked as cash envelopes')).toBeTruthy();
+    expect(screen.getByText('No cash envelopes yet')).toBeTruthy();
+    expect(screen.getByText('Nothing to count yet')).toBeTruthy();
     expect(screen.getByText('Checking')).toBeTruthy();
     expect(screen.getByText('Savings')).toBeTruthy();
     expect(screen.getByLabelText('Checking')).toBeTruthy();
     expect(screen.getByLabelText('Savings')).toBeTruthy();
     expect(screen.queryAllByPlaceholderText('—')).toHaveLength(0);
+
+    const startBtn = screen.getByRole('button', { name: 'Start counting' });
+    expect(startBtn.props.accessibilityState?.disabled).toBe(true);
+
+    const checkingSwitch = screen.getByLabelText('Checking');
+    await fireEvent(checkingSwitch, 'valueChange', true);
+
+    expect(startBtn.props.accessibilityState?.disabled).toBeFalsy();
+    await fireEvent.press(startBtn);
+
+    // Now Checking is an envelope
+    expect(await screen.findByPlaceholderText('—')).toBeTruthy();
+  });
+
+  it('shows the stale state when balances are older than 24 hours', async () => {
+    mockDb = seed([
+      {
+        id: 'w1',
+        name: 'Cash wallet',
+        notes: 'mmyway-envelope',
+        balance: '485.00',
+        balanceDate: '2026-10-01T00:00:00Z',
+      },
+      {
+        id: 'j1',
+        name: 'Jar at home',
+        notes: 'mmyway-envelope',
+        balance: '120.00',
+        balanceDate: '2026-10-01T00:00:00Z',
+      },
+    ]);
+    await renderCount();
+
+    expect(screen.getByText(/Balances are .* old/)).toBeTruthy();
+    expect(
+      screen.getByText('Counting against old numbers would book the wrong difference. Sync first.'),
+    ).toBeTruthy();
+    expect(screen.getByText('Waiting for a fresh sync')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Sync before counting' })).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Sync before counting' }).props.accessibilityState
+        ?.disabled,
+    ).toBe(true);
+
+    // No editable inputs shown
+    expect(screen.queryAllByPlaceholderText('—')).toHaveLength(0);
+  });
+
+  it('shows out of date notice when changes are queued in outbox', async () => {
+    mockDb = seed([
+      {
+        id: 'w1',
+        name: 'Cash wallet',
+        notes: 'mmyway-envelope',
+        balance: '485.00',
+      },
+    ]);
+    mockDb
+      .insert(outboxOperations)
+      .values({
+        id: 'op1',
+        sequence: 1,
+        kind: 'create_transaction',
+        payloadJson: '{}',
+        status: 'pending',
+        createdAt: SYNCED,
+      })
+      .run();
+
+    await renderCount();
+
+    expect(screen.getByText('Balances are out of date')).toBeTruthy();
+    expect(screen.getByText(/1 change hasn't reached Firefly III yet/)).toBeTruthy();
+    expect(screen.getByText('Waiting for a fresh sync')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Sync before counting' })).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: 'Sync before counting' }).props.accessibilityState
+        ?.disabled,
+    ).toBe(true);
   });
 });

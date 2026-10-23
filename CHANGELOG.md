@@ -4,6 +4,7 @@
 
 ### Count cash
 
+- Redesigned Count cash stale and empty states to Unified Kit V2 boards 07–08 with NoticeBlock alerts, disabled expected-only rows, fresh sync waiting indicator, and empty state with account envelope switches and Start counting action (MKL-110).
 - Redesigned Count cash and Review adjustments to Unified Kit V2 boards 05–06 with header settings gear, large bold counted input with underline and shortfall/surplus pills, inline denomination steppers, and extracted modular components under 400 lines (MKL-109).
 
 ### Accounts

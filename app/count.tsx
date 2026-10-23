@@ -1,8 +1,6 @@
 // The cash count — the envelope sweep (design §6.9, decision C of §11). Counts every marked
 // cash envelope in one pass; one confirm creates one adjustment per envelope that differs.
-import { logLine } from '../src/utils/log';
-import { errorMessage } from '../src/utils/errorMessage';
-import { useEffect, useState, type ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, ScrollView, Text, View } from 'react-native';
 import { router } from 'expo-router';
@@ -13,7 +11,6 @@ import {
   Button,
   IconButton,
   ModalHeader,
-  NoticeBlock,
   SCREEN_TOP_PADDING,
   Screen,
   StickyFooter,
@@ -37,11 +34,8 @@ import {
   useCountReadiness,
 } from '../src/reconcile/countReadiness';
 import {
-  getReconcileShortfallAccountId,
   setReconcileShortfallAccountId,
-  getReconcileSurplusAccountId,
   setReconcileSurplusAccountId,
-  getReconcileCategoryName,
   setReconcileCategoryName,
 } from '../src/settings/appSettings';
 import { useSync } from '../src/sync/useSync';
@@ -51,7 +45,9 @@ import { isBalanceStale } from '../src/utils/day';
 import { CountEmptyState } from '../src/reconcile/CountEmptyState';
 import { CountEnvelopeCard } from '../src/reconcile/CountEnvelopeCard';
 import { CountOtherEnvelopes } from '../src/reconcile/CountOtherEnvelopes';
+import { CountStaleView } from '../src/reconcile/CountStaleView';
 import { ReviewAdjustmentsSheet } from '../src/reconcile/ReviewAdjustmentsSheet';
+import { useReconcileSettings } from '../src/reconcile/useReconcileSettings';
 
 type PickerKind = 'shortfall' | 'surplus' | 'category';
 
@@ -66,6 +62,8 @@ export default function CountScreen() {
   const currencies = useCurrencies();
   const assetAccounts = useAssetAccounts() ?? [];
   const envelopeAccounts = assetAccounts.filter((a) => hasEnvelopeMarker(a.notes));
+  const showEmpty = envelopeAccounts.length === 0;
+
   const {
     expenseAccounts,
     usedExpenseAccounts,
@@ -85,28 +83,14 @@ export default function CountScreen() {
   const [reviewOpen, setReviewOpen] = useState(false);
   const [picker, setPicker] = useState<PickerKind | null>(null);
 
-  const [shortfallAccountId, setShortfallAccountIdState] = useState<string | null>(null);
-  const [surplusAccountId, setSurplusAccountIdState] = useState<string | null>(null);
-  const [reconcileCategory, setReconcileCategoryState] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([
-      getReconcileShortfallAccountId(db),
-      getReconcileSurplusAccountId(db),
-      getReconcileCategoryName(db),
-    ])
-      .then(([sf, sp, cat]) => {
-        if (cancelled) return;
-        setShortfallAccountIdState(sf);
-        setSurplusAccountIdState(sp);
-        setReconcileCategoryState(cat);
-      })
-      .catch((err) => logLine('warn', `reconcile settings failed: ${errorMessage(err)}`));
-    return () => {
-      cancelled = true;
-    };
-  }, [db]);
+  const {
+    shortfallAccountId,
+    setShortfallAccountId,
+    surplusAccountId,
+    setSurplusAccountId,
+    reconcileCategory,
+    setReconcileCategory,
+  } = useReconcileSettings();
 
   const invalidCounts = new Set(
     envelopeAccounts
@@ -174,26 +158,28 @@ export default function CountScreen() {
 
   const pickShortfall = act(tr('count.shortfallPayee'), async (a: AccountPickerAccount) => {
     await setReconcileShortfallAccountId(db, a.id);
-    setShortfallAccountIdState(a.id || null);
+    setShortfallAccountId(a.id || null);
     setPicker(null);
     setReviewOpen(true);
   });
   const pickSurplus = act(tr('count.surplusPayee'), async (a: AccountPickerAccount) => {
     await setReconcileSurplusAccountId(db, a.id);
-    setSurplusAccountIdState(a.id || null);
+    setSurplusAccountId(a.id || null);
     setPicker(null);
     setReviewOpen(true);
   });
   const pickCategory = act(tr('count.categoryOptional'), async (key: string | null) => {
     await setReconcileCategoryName(db, key ?? '');
-    setReconcileCategoryState(key);
+    setReconcileCategory(key);
     setPicker(null);
     setReviewOpen(true);
   });
 
-  function toggleEnvelope(accountId: string, name: string, on: boolean) {
-    void act(`${tr('count.envelopes')}: ${name}`, () => setAccountEnvelope(db, accountId, on))();
-  }
+  const commitEnvelopes = act(tr('count.envelopes'), async (selectedIds: string[]) => {
+    for (const id of selectedIds) {
+      await setAccountEnvelope(db, id, true);
+    }
+  });
 
   const effectiveActiveAccountId =
     activeAccountId && envelopeAccounts.some((a) => a.id === activeAccountId)
@@ -231,6 +217,27 @@ export default function CountScreen() {
   const countedCount = envelopeAccounts.filter((a) => (counts[a.id] ?? '').trim() !== '').length;
   const skippedCount = envelopeAccounts.length - countedCount;
 
+  if (showEmpty) {
+    return (
+      <Screen bottom modal>
+        <View style={{ flex: 1 }}>
+          <ModalHeader
+            title={tr('count.title')}
+            stepLabel={tr('count.nothingToCount')}
+            onClose={() => router.back()}
+          />
+          <CountEmptyState
+            assetAccounts={assetAccounts}
+            onCommitEnvelopes={(ids) => void commitEnvelopes(ids)}
+            keyboardHeight={keyboardHeight}
+          />
+        </View>
+      </Screen>
+    );
+  }
+
+  const isStaleOrBlocked = !canCount || stale;
+
   return (
     <Screen bottom modal>
       <View style={{ flex: 1 }}>
@@ -251,112 +258,96 @@ export default function CountScreen() {
           }
         />
 
-        {stale && envelopeAccounts.length > 0 && !blocker && (
-          <View style={{ marginHorizontal: t.space.lg, marginBottom: t.space.sm }}>
-            <NoticeBlock title={tr('count.staleBanner')} tone="warn" />
-          </View>
-        )}
-        {!!blocker && envelopeAccounts.length > 0 && (
-          <View style={{ marginHorizontal: t.space.lg, marginBottom: t.space.sm }}>
-            <NoticeBlock
-              title={tr('count.outOfDateTitle')}
-              body={describeCountBlocker(blocker)}
-              action={{
-                label: syncing ? tr('sync.syncing') : tr('sync.syncNow'),
-                onPress: () => {
-                  void syncNow();
-                },
-                disabled: syncing,
-              }}
-              tone="warn"
-            />
-          </View>
-        )}
-
-        {envelopeAccounts.length === 0 ? (
-          <CountEmptyState
-            assetAccounts={assetAccounts}
-            onToggleEnvelope={toggleEnvelope}
+        {isStaleOrBlocked ? (
+          <CountStaleView
+            accounts={envelopeAccounts}
+            currencies={currencies}
+            oldestBalanceDate={oldestBalanceDate}
+            blocker={blocker}
+            syncing={syncing}
+            onSync={() => {
+              void syncNow();
+            }}
             keyboardHeight={keyboardHeight}
           />
         ) : (
-          <ScrollView
-            style={{ flex: 1 }}
-            contentContainerStyle={{
-              paddingHorizontal: t.space.lg,
-              paddingTop: SCREEN_TOP_PADDING,
-              gap: t.space.md,
-              paddingBottom: t.space.lg + keyboardHeight,
-            }}
-            keyboardShouldPersistTaps="handled"
-          >
-            {activeAccount && (
-              <CountEnvelopeCard
-                account={activeAccount}
+          <>
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{
+                paddingHorizontal: t.space.lg,
+                paddingTop: SCREEN_TOP_PADDING,
+                gap: t.space.md,
+                paddingBottom: t.space.lg + keyboardHeight,
+              }}
+              keyboardShouldPersistTaps="handled"
+            >
+              {activeAccount && (
+                <CountEnvelopeCard
+                  account={activeAccount}
+                  currencies={currencies}
+                  counted={counts[activeAccount.id] ?? ''}
+                  onCountedChange={(v) => setCounts((c) => ({ ...c, [activeAccount.id]: v }))}
+                  denomCounts={denomCounts[activeAccount.id] ?? {}}
+                  onDenomCountsChange={(countsMap) =>
+                    setDenomCounts((all) => ({ ...all, [activeAccount.id]: countsMap }))
+                  }
+                  invalid={invalidCounts.has(activeAccount.id)}
+                  adjustment={adjustments.find((adj) => adj.accountId === activeAccount.id)}
+                  blocked={!canCount}
+                />
+              )}
+
+              <CountOtherEnvelopes
+                accounts={otherAccounts}
                 currencies={currencies}
-                counted={counts[activeAccount.id] ?? ''}
-                onCountedChange={(v) => setCounts((c) => ({ ...c, [activeAccount.id]: v }))}
-                denomCounts={denomCounts[activeAccount.id] ?? {}}
-                onDenomCountsChange={(countsMap) =>
-                  setDenomCounts((all) => ({ ...all, [activeAccount.id]: countsMap }))
-                }
-                invalid={invalidCounts.has(activeAccount.id)}
-                adjustment={adjustments.find((adj) => adj.accountId === activeAccount.id)}
-                blocked={!canCount}
+                counts={counts}
+                invalidCounts={invalidCounts}
+                adjustments={adjustments}
+                onSelectAccount={setActiveAccountId}
               />
-            )}
+            </ScrollView>
 
-            <CountOtherEnvelopes
-              accounts={otherAccounts}
-              currencies={currencies}
-              counts={counts}
-              invalidCounts={invalidCounts}
-              adjustments={adjustments}
-              onSelectAccount={setActiveAccountId}
-            />
-          </ScrollView>
-        )}
-
-        {envelopeAccounts.length > 0 && (
-          <StickyFooter>
-            <View style={{ flex: 1, gap: t.space.sm }}>
-              <View
-                style={{
-                  flexDirection: 'row',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                }}
-              >
-                <Text style={[t.type.label, { color: t.color.textMuted }]}>
-                  {tr('count.countedSummary', {
-                    counted: countedCount,
-                    total: envelopeAccounts.length,
-                    skipped: skippedCount,
-                  })}
-                </Text>
-                {drift.length > 0 && (
-                  <Text
-                    style={[
-                      t.type.label,
-                      {
-                        color: drift.some((d) => d.amount.startsWith('-'))
-                          ? t.color.warnStrong
-                          : t.color.income,
-                        fontWeight: '600',
-                      },
-                    ]}
-                  >
-                    {tr('count.drift', {
-                      amounts: drift
-                        .map((d) => formatMoney(d.amount, currencyOf(currencies, d.currencyCode)))
-                        .join(' · '),
+            <StickyFooter>
+              <View style={{ flex: 1, gap: t.space.sm }}>
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
+                  <Text style={[t.type.label, { color: t.color.textMuted }]}>
+                    {tr('count.countedSummary', {
+                      counted: countedCount,
+                      total: envelopeAccounts.length,
+                      skipped: skippedCount,
                     })}
                   </Text>
-                )}
+                  {drift.length > 0 && (
+                    <Text
+                      style={[
+                        t.type.label,
+                        {
+                          color: drift.some((d) => d.amount.startsWith('-'))
+                            ? t.color.warnStrong
+                            : t.color.income,
+                          fontWeight: '600',
+                        },
+                      ]}
+                    >
+                      {tr('count.drift', {
+                        amounts: drift
+                          .map((d) => formatMoney(d.amount, currencyOf(currencies, d.currencyCode)))
+                          .join(' · '),
+                      })}
+                    </Text>
+                  )}
+                </View>
+                {footerAction}
               </View>
-              {footerAction}
-            </View>
-          </StickyFooter>
+            </StickyFooter>
+          </>
         )}
       </View>
 
