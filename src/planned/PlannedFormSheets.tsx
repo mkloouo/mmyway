@@ -1,4 +1,8 @@
 import { useTranslation } from 'react-i18next';
+import { Button, Sheet } from '../ui/kit';
+import { TextField } from '../ui/TextField';
+import { TagsField } from '../ui/TagsField';
+import { useRecentTags } from '../lookup/recentTags';
 import { ScheduleSheet } from '../ui/ScheduleSheet';
 import { AmountSheet } from '../ui/AmountSheet';
 import { PickerSheet } from '../ui/PickerSheet';
@@ -26,6 +30,7 @@ export function PlannedFormSheets({
   onChooseRemind: (key: string) => void;
 }) {
   const { t: tr } = useTranslation();
+  const recentTags = useRecentTags();
   const {
     sheet,
     setSheet,
@@ -140,6 +145,29 @@ export function PlannedFormSheets({
           onChooseRemind(key);
         }}
       />
+      <Sheet
+        visible={sheet === 'note'}
+        onClose={() => setSheet(null)}
+        title={tr('fields.note')}
+        footer={<Button title={tr('common.done')} onPress={() => setSheet(null)} />}
+      >
+        <TextField
+          value={fields.notes ?? ''}
+          onChangeText={(notes) => set({ notes: notes || null })}
+          multiline
+          placeholder={tr('fields.note')}
+          style={{ minHeight: 120 }}
+          autoFocus
+        />
+      </Sheet>
+      <Sheet
+        visible={sheet === 'tags'}
+        onClose={() => setSheet(null)}
+        title={tr('fields.tags')}
+        footer={<Button title={tr('common.done')} onPress={() => setSheet(null)} />}
+      >
+        <TagsField tags={fields.tags} onChange={(tags) => set({ tags })} suggestions={recentTags} />
+      </Sheet>
     </>
   );
 }

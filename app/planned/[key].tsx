@@ -5,18 +5,16 @@
 // something differs from what FF3 holds. The schedule is a sheet of its own (ScheduleSheet).
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Alert, ScrollView, Text } from 'react-native';
+import { Alert, ScrollView, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
 // prettier-ignore
 import { Card, MoreButton, PushHeader, ListRow, SCREEN_TOP_PADDING, Screen, SectionHeader, Segmented } from '../../src/ui/kit';
 import { TextField } from '../../src/ui/TextField';
-import { TagsField } from '../../src/ui/TagsField';
 import { formatMoney } from '../../src/money/format';
 import { useAction } from '../../src/ui/useAction';
 import { useConfirmDiscard } from '../../src/ui/useConfirmDiscard';
-import { useRecentTags } from '../../src/lookup/recentTags';
 import {
   getReminderOverrides,
   getReminderWhen,
@@ -25,7 +23,13 @@ import {
 } from '../../src/settings/appSettings';
 import { usePlanned } from '../../src/planned/usePlanned';
 import { toggleSkipDay } from '../../src/planned/notes';
-import { dayLabel, endLabel, scheduleLabel } from '../../src/planned/labels';
+import {
+  dayLabel,
+  nextOccurrence,
+  occurrenceLabel,
+  scheduleLabel,
+  scheduleSince,
+} from '../../src/planned/labels';
 import { OccurrenceRows } from '../../src/ui/OccurrenceRows';
 import { deletePlanned, savePlanned, triggerPlanned } from '../../src/planned/actions';
 import { syncPlannedNotifications } from '../../src/planned/notifications';
@@ -68,7 +72,6 @@ function PlannedEditor({ item, skipDay }: { item: PlannedItem | null; skipDay: s
   const t = useTheme();
   const { t: tr } = useTranslation();
   const act = useAction();
-  const recentTags = useRecentTags();
 
   const form = usePlannedForm(item);
   const {
@@ -192,9 +195,34 @@ function PlannedEditor({ item, skipDay }: { item: PlannedItem | null; skipDay: s
     ]);
   }
 
-  const scheduleText = [scheduleLabel(fields, item?.group), endLabel(fields.end, fields.repeats)]
-    .filter(Boolean)
-    .join(' · ');
+  const fromName =
+    (ownFrom ? accountName(fields.sourceId, fields.sourceName) : fields.sourceName) || '—';
+  const toName =
+    (ownTo ? accountName(fields.destinationId, fields.destinationName) : fields.destinationName) ||
+    '—';
+  const fromToLabel = `${fromName} → ${toName}`;
+
+  function onEditFromTo() {
+    const isXfer = fields.type === 'transfer';
+    const isWth = fields.type === 'withdrawal';
+    Alert.alert(tr('planned.fromTo'), undefined, [
+      {
+        text: `${tr(isXfer || isWth ? 'fields.from' : 'fields.payer')}: ${fromName}`,
+        onPress: () => setSheet(isXfer || isWth ? 'own' : 'payee'),
+      },
+      {
+        text: `${tr(isXfer || !isWth ? 'fields.to' : 'fields.payee')}: ${toName}`,
+        onPress: () => setSheet(isXfer || !isWth ? 'ownTo' : 'payee'),
+      },
+      { text: tr('common.cancel'), style: 'cancel' },
+    ]);
+  }
+
+  const nextDay = nextOccurrence(fields);
+  const sched = scheduleLabel(fields, item?.group);
+  const scheduleNextLine = nextDay
+    ? `${sched ? `${sched}. ` : ''}${tr('planned.nextOn', { date: occurrenceLabel(nextDay) })}.`
+    : sched;
   const amountText = currencyRows ? formatMoney(fields.amount, currency) : '';
   const remindText = !remind
     ? '—'
@@ -205,10 +233,28 @@ function PlannedEditor({ item, skipDay }: { item: PlannedItem | null; skipDay: s
       <PushHeader
         backLabel={tr('planned.title')}
         onBack={close}
-        title={isNew ? tr('planned.newTitle') : fields.name || tr('planned.title')}
-        subtitle={isNew ? undefined : [amountText, scheduleText].filter(Boolean).join(' · ')}
-        right={item ? <MoreButton label={tr('planned.more')} onPress={onMore} /> : undefined}
+        right={item ? <MoreButton label={tr('planned.moreAria')} onPress={onMore} /> : undefined}
       />
+      <View
+        style={{
+          paddingHorizontal: t.space.xl,
+          paddingTop: t.space.xs,
+          paddingBottom: t.space.sm,
+          gap: t.space.xs,
+        }}
+      >
+        <Text style={[t.type.largeTitle, { color: t.color.text }]}>
+          {fields.name || tr('planned.title')}
+        </Text>
+        {!!amountText && (
+          <Text style={[t.type.amount, { color: t.color.text }]}>
+            {fields.type === 'withdrawal' ? `−${amountText}` : amountText}
+          </Text>
+        )}
+        {!!scheduleNextLine && (
+          <Text style={[t.type.body, { color: t.color.textMuted }]}>{scheduleNextLine}</Text>
+        )}
+      </View>
       <ScrollView
         contentContainerStyle={{ paddingTop: SCREEN_TOP_PADDING, paddingBottom: t.space.xxl }}
         keyboardShouldPersistTaps="handled"
@@ -226,25 +272,7 @@ function PlannedEditor({ item, skipDay }: { item: PlannedItem | null; skipDay: s
             onChangeText={(name) => set({ name })}
             placeholder={tr('planned.namePlaceholder')}
           />
-          <ListRow
-            label={tr(ownFrom ? 'fields.from' : 'fields.payee')}
-            value={
-              (ownFrom ? accountName(fields.sourceId, fields.sourceName) : fields.sourceName) ??
-              undefined
-            }
-            chevron
-            onPress={() => setSheet(ownFrom ? 'own' : 'payee')}
-          />
-          <ListRow
-            label={tr(ownTo ? 'fields.to' : 'fields.payer')}
-            value={
-              (ownTo
-                ? accountName(fields.destinationId, fields.destinationName)
-                : fields.destinationName) ?? undefined
-            }
-            chevron
-            onPress={() => setSheet(ownTo ? 'ownTo' : 'payee')}
-          />
+          <ListRow sub={tr('planned.fromTo')} label={fromToLabel} chevron onPress={onEditFromTo} />
           <ListRow
             label={tr('fields.amount')}
             value={amountText}
@@ -265,12 +293,12 @@ function PlannedEditor({ item, skipDay }: { item: PlannedItem | null; skipDay: s
           />
         </Card>
 
-        <SectionHeader title={tr('planned.sectionWhen')} />
+        <SectionHeader title={tr('planned.schedule')} />
         <Card style={{ marginHorizontal: t.space.lg, gap: t.space.sm }}>
           <ListRow
             first
-            label={tr('planned.repeats')}
-            value={scheduleText}
+            label={scheduleLabel(fields, item?.group)}
+            sub={scheduleSince(fields) || undefined}
             chevron
             onPress={() => setScheduleOpen(true)}
           />
@@ -293,11 +321,12 @@ function PlannedEditor({ item, skipDay }: { item: PlannedItem | null; skipDay: s
           date={fields.date}
           skipDays={fields.skipDays}
           recurrenceId={item?.group?.recurrence?.id ?? null}
+          sourceAccountId={fields.sourceId}
           onToggleSkip={onToggleSkip}
         />
 
         <SectionHeader title={tr('planned.sectionExtras')} />
-        <Card style={{ marginHorizontal: t.space.lg, gap: t.space.sm }}>
+        <Card flush style={{ marginHorizontal: t.space.lg }}>
           {!!item && (
             <ListRow
               first
@@ -307,19 +336,32 @@ function PlannedEditor({ item, skipDay }: { item: PlannedItem | null; skipDay: s
               onPress={() => setSheet('remind')}
             />
           )}
-          <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('fields.note')}</Text>
-          <TextField
-            value={fields.notes ?? ''}
-            onChangeText={(notes) => set({ notes: notes || null })}
-            multiline
-            style={{ minHeight: 60 }}
+          <ListRow
+            first={!item}
+            label={tr('fields.note')}
+            value={fields.notes || undefined}
+            chevron
+            onPress={() => setSheet('note')}
           />
-          <Text style={[t.type.label, { color: t.color.textMuted }]}>{tr('fields.tags')}</Text>
-          <TagsField
-            tags={fields.tags}
-            onChange={(tags) => set({ tags })}
-            suggestions={recentTags}
+          <ListRow
+            label={tr('fields.tags')}
+            value={fields.tags.length > 0 ? fields.tags.join(', ') : undefined}
+            chevron
+            onPress={() => setSheet('tags')}
           />
+          {!!item && (
+            <ListRow
+              label={tr('planned.howFf3StoresIt')}
+              sub={tr('planned.howFf3StoresItSub')}
+              chevron
+              onPress={() =>
+                router.push({
+                  pathname: '/planned/object/[key]',
+                  params: { key: encodeURIComponent(item.key) },
+                })
+              }
+            />
+          )}
         </Card>
       </ScrollView>
 

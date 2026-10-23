@@ -100,8 +100,8 @@ async function renderScreen() {
 describe('Planned item screen', () => {
   it('renders an existing item by its name', async () => {
     await renderScreen();
-    expect(screen.getByText('Rent')).toBeTruthy();
-    expect(screen.getByText('Checking')).toBeTruthy();
+    expect(screen.getAllByText('Rent').length).toBeGreaterThan(0);
+    expect(screen.getByText('Checking → Landlord')).toBeTruthy();
   });
 
   it('shows Save only once a field differs from the item, and Undo drops it again', async () => {
@@ -133,5 +133,22 @@ describe('Planned item screen', () => {
     mockParams = { key: 'k1', skip: '2026-10-15' };
     await renderScreen();
     expect(Alert.alert).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders Board 20 header next on, occurrence rows, and extras', async () => {
+    await renderScreen();
+    // Schedule and next line
+    expect(screen.getByText(/Next on/)).toBeTruthy();
+
+    // Occurrence row toggle
+    const show8Btn = screen.getByText(i18n.t('planned.showCount', { count: 8 }));
+    expect(show8Btn).toBeTruthy();
+    await fireEvent.press(show8Btn);
+    expect(screen.getByText(i18n.t('planned.showFewer'))).toBeTruthy();
+
+    // Extras section
+    expect(screen.getByText(i18n.t('fields.note'))).toBeTruthy();
+    expect(screen.getByText(i18n.t('fields.tags'))).toBeTruthy();
+    expect(screen.getByText(i18n.t('planned.howFf3StoresIt'))).toBeTruthy();
   });
 });

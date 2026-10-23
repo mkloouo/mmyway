@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Planned
+
+- Redesigned planned item screen to Unified Kit V2 board 20 with large title, next date header line, stacked From → to row, schedule summary with since and weekend details, expandable coming-up occurrences with skip and undo actions, all in activity link, and edit sheets for notes and tags (MKL-101).
+
 ### Count cash
 
 - Redesigned Count cash stale and empty states to Unified Kit V2 boards 07–08 with NoticeBlock alerts, disabled expected-only rows, fresh sync waiting indicator, and empty state with account envelope switches and Start counting action (MKL-110).

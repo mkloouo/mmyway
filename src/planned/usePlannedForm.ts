@@ -12,7 +12,16 @@ import { blankPlanned, plannedProblems, samePlannedFields, type PlannedFields } 
 import type { PlannedItem } from './items';
 
 export type OpenSheet =
-  'amount' | 'currency' | 'own' | 'ownTo' | 'payee' | 'category' | 'remind' | null;
+  | 'amount'
+  | 'currency'
+  | 'own'
+  | 'ownTo'
+  | 'payee'
+  | 'category'
+  | 'remind'
+  | 'note'
+  | 'tags'
+  | null;
 
 /**
  * Shared form state and derivations between New Planned Payment (`app/planned/new.tsx`)

@@ -12,6 +12,7 @@ import {
   type RepetitionType,
   type WeekendRule,
 } from './repetition';
+import { upcomingOccurrences } from './occurrences';
 
 export { weekdayName };
 
@@ -95,6 +96,46 @@ export function scheduleLabel(
 
 export function dayLabel(date: string): string {
   return fullDay(date);
+}
+
+/**
+ * One line under the schedule label: "Since Jan 15, 2026 · no end · weekends move to Friday".
+ */
+export function scheduleSince(
+  f: Pick<PlannedFields, 'date' | 'end' | 'repeats' | 'repetitions'>,
+): string {
+  if (!f.repeats) return '';
+  const parts: string[] = [];
+  if (f.date) {
+    parts.push(i18n.t('planned.sinceDate', { date: dayLabel(f.date) }));
+  }
+  const end = f.end.kind === 'forever' ? i18n.t('planned.noEnd') : endLabel(f.end, f.repeats);
+  if (end) parts.push(end);
+
+  const weekend = f.repetitions[0]?.weekend;
+  if (weekend && weekend !== 1) {
+    parts.push(i18n.t(`planned.weekendSub.${weekend}`));
+  }
+  return parts.join(' · ');
+}
+
+/**
+ * The next occurrence date (as YYYY-MM-DD), or null if none upcoming.
+ */
+export function nextOccurrence(
+  fields: Pick<PlannedFields, 'date' | 'repeats' | 'repetitions' | 'end' | 'skipDays'>,
+  today: string = localDay(),
+): string | null {
+  if (fields.repeats) {
+    const from = fields.date > today ? fields.date : today;
+    const [next] = upcomingOccurrences(fields.repetitions, from, {
+      count: 1,
+      skipDays: fields.skipDays,
+      until: fields.end.kind === 'until' ? fields.end.date : undefined,
+    });
+    return next ?? null;
+  }
+  return fields.date >= today ? fields.date : null;
 }
 
 /** A date as "Mon 5 Oct" — the occurrence list, where the weekday is the point. */

@@ -8,14 +8,15 @@
 //
 // "Already booked" is `GET /v1/recurrences/{id}/transactions`, which is the only way to see past
 // occurrences — `occurrences` is future-only.
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { router } from 'expo-router';
-import { Card, ListRow, SectionHeader } from './kit';
+import { Button, Card, ListRow, SectionHeader } from './kit';
 import { useTheme } from './theme';
 import { currencyOf, formatMoney } from '../money/format';
-import { occurrenceLabel } from '../planned/labels';
+import { occurrenceLabel, relativeDayLabel } from '../planned/labels';
 import { upcomingOccurrences } from '../planned/occurrences';
 import { fetchRecurrenceTransactions } from '../planned/objects';
 import type { Repetition } from '../planned/repetition';
@@ -33,6 +34,7 @@ export function OccurrenceRows({
   date,
   skipDays,
   recurrenceId,
+  sourceAccountId,
   onToggleSkip,
 }: {
   repetitions: Repetition[];
@@ -42,6 +44,7 @@ export function OccurrenceRows({
   skipDays: string[];
   /** FF3's recurrence id, or null when it does not hold one yet — then there is no past half. */
   recurrenceId: string | null;
+  sourceAccountId?: string | null;
   onToggleSkip: (day: string) => void;
 }) {
   const t = useTheme();
@@ -50,10 +53,13 @@ export function OccurrenceRows({
   const currencies = useCurrencies();
   const today = localDay();
   const from = date > today ? date : today;
+  const [showAll, setShowAll] = useState(false);
+
   // Skipped dates are kept in the list, marked, so one can be put back.
-  const ahead = repeats
+  const allUpcoming = repeats
     ? upcomingOccurrences(repetitions, from, { count: AHEAD })
     : [date].filter((d) => d >= today);
+  const ahead = repeats && !showAll ? allUpcoming.slice(0, 3) : allUpcoming;
 
   const booked = useQuery({
     queryKey: ['recurrence-transactions', recurrenceId],
@@ -65,13 +71,21 @@ export function OccurrenceRows({
     retry: false,
   });
 
-  const action = (text: string) => (
-    <Text style={{ fontSize: 15, fontWeight: '600', color: t.color.accent }}>{text}</Text>
-  );
-
   return (
     <>
-      <SectionHeader title={tr('planned.occurrencesAhead')} />
+      <SectionHeader
+        title={tr('planned.occurrencesAhead')}
+        action={
+          repeats && allUpcoming.length > 3 ? (
+            <Button
+              size="bar"
+              variant="ghost"
+              title={showAll ? tr('planned.showFewer') : tr('planned.showCount', { count: AHEAD })}
+              onPress={() => setShowAll((v) => !v)}
+            />
+          ) : undefined
+        }
+      />
       <Card flush style={{ marginHorizontal: t.space.lg }}>
         {ahead.length === 0 && (
           <Text style={[t.type.body, { color: t.color.textMuted, padding: t.space.lg }]}>
@@ -85,9 +99,13 @@ export function OccurrenceRows({
               key={day}
               first={i === 0}
               label={occurrenceLabel(day)}
-              sub={skipped ? tr('planned.skipped') : undefined}
-              trailing={action(skipped ? tr('common.undo') : tr('planned.skipShort'))}
-              onPress={() => onToggleSkip(day)}
+              sub={skipped ? tr('planned.skipped') : relativeDayLabel(day, today)}
+              struck={skipped}
+              action={{
+                label: skipped ? tr('common.undo') : tr('planned.skipShort'),
+                tone: skipped ? 'muted' : 'accent',
+                onPress: () => onToggleSkip(day),
+              }}
             />
           );
         })}
@@ -103,7 +121,22 @@ export function OccurrenceRows({
 
       {!!recurrenceId && (
         <>
-          <SectionHeader title={tr('planned.occurrencesBehind')} />
+          <SectionHeader
+            title={tr('planned.occurrencesBehind')}
+            action={
+              <Button
+                size="bar"
+                variant="ghost"
+                title={tr('planned.allInActivity')}
+                onPress={() =>
+                  router.push({
+                    pathname: '/(tabs)/activity',
+                    params: sourceAccountId ? { account: sourceAccountId } : {},
+                  })
+                }
+              />
+            }
+          />
           <Card flush style={{ marginHorizontal: t.space.lg }}>
             {(booked.data ?? []).length === 0 && (
               <Text style={[t.type.body, { color: t.color.textMuted, padding: t.space.lg }]}>
