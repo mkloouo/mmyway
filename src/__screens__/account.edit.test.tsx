@@ -6,6 +6,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import '../i18n';
 import { createTestDb } from '../db/testDb';
+import { eq } from 'drizzle-orm';
+import { setEnvelopeMarker } from '../accounts/envelopeMarker';
 import { referenceAccounts, referenceCurrencies } from '../db/schema';
 import AccountScreen from '../../app/accounts/[id]';
 
@@ -102,5 +104,30 @@ describe('Account page', () => {
 
     expect(screen.getAllByRole('switch')[0]!.props.accessibilityState.checked).toBe(false);
     expect(saveButton()).not.toBeNull();
+  });
+
+  it('shows "cash envelope" in the subtitle for an envelope account, not "In the cash count"', async () => {
+    mockDb
+      .update(referenceAccounts)
+      .set({ notes: setEnvelopeMarker('Home wallet', true), currentBalance: '485.00' })
+      .where(eq(referenceAccounts.id, 'a1'))
+      .run();
+
+    await renderScreen();
+    expect(screen.getByText('485.00 zł now · cash envelope')).toBeTruthy();
+    expect(screen.queryByText(/485\.00 zł now · In the cash count/)).toBeNull();
+  });
+
+  it('Count cash is always shown and navigates to /count', async () => {
+    await renderScreen();
+    const countBtn = screen.getByRole('button', { name: /^(Count cash|count\.title)$/ });
+    expect(countBtn).toBeTruthy();
+    await fireEvent.press(countBtn);
+    expect(router.push).toHaveBeenCalledWith('/count');
+  });
+
+  it('has MoreButton in header', async () => {
+    await renderScreen();
+    expect(screen.getByRole('button', { name: /^(More|account\.moreAria)$/ })).toBeTruthy();
   });
 });

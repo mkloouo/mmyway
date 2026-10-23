@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Accounts
+
+- Redesigned account edit to Unified Kit V2 board 04 with PushHeader ••• more button, always-visible Count cash and Transactions buttons, single-line Note field, and split components under 400 lines (MKL-108).
+
+### Fixed
+
+- Corrected account subtitle to display "cash envelope" instead of the toggle label "In the cash count" (MKL-108).
+
 ### Budget
 
 - Redesigned envelope detail to Unified Kit V2 board 02 with Hero available balance, Assign / Move in / Cover action tiles, This month stats with Use action, Spent from it recent transactions, and inline name editing (MKL-106).

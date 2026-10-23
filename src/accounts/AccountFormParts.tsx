@@ -2,9 +2,17 @@
 // amount field, the scroll, the currency and role sheets, and how a day is labelled and picked.
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ScrollView, Text, type KeyboardTypeOptions } from 'react-native';
+import { ScrollView, Text, View, type KeyboardTypeOptions } from 'react-native';
 import { fullDay } from '../utils/dates';
-import { ChoiceCard, FieldRow, SCREEN_TOP_PADDING } from '../ui/kit';
+import {
+  Button,
+  Card,
+  ChoiceCard,
+  FieldRow,
+  SCREEN_TOP_PADDING,
+  SectionHeader,
+  SwitchRow,
+} from '../ui/kit';
 import { pickableCurrencies } from '../money/currencies';
 import { pickDate } from '../ui/pickDate';
 import { PickerSheet } from '../ui/PickerSheet';
@@ -54,7 +62,6 @@ export function InlineField({
       placeholder={placeholder}
       multiline={multiline}
       first={first}
-      labelWidth={88}
     />
   );
 }
@@ -188,5 +195,94 @@ export function KindCard({
       selected={selected}
       onPress={onPress}
     />
+  );
+}
+
+export function AccountActionButtons({
+  liability,
+  onCountCash,
+  onTransactions,
+}: {
+  liability: boolean;
+  onCountCash: () => void;
+  onTransactions: () => void;
+}) {
+  const { t: tr } = useTranslation();
+  const t = useTheme();
+  return (
+    <View
+      style={{
+        flexDirection: 'row',
+        gap: t.space.sm,
+        paddingHorizontal: t.space.lg,
+        paddingBottom: t.space.sm,
+      }}
+    >
+      {!liability && (
+        <Button
+          title={tr('count.title')}
+          variant="secondary"
+          style={{ flex: 1 }}
+          onPress={onCountCash}
+        />
+      )}
+      <Button
+        title={tr('account.transactions')}
+        variant="secondary"
+        style={{ flex: 1 }}
+        onPress={onTransactions}
+      />
+    </View>
+  );
+}
+
+export function AccountWhereCard({
+  liability,
+  active,
+  onActiveChange,
+  envelope,
+  onEnvelopeChange,
+  includeNetWorth,
+  onIncludeNetWorthChange,
+}: {
+  liability: boolean;
+  active: boolean;
+  onActiveChange: (v: boolean) => void;
+  envelope: boolean;
+  onEnvelopeChange: (v: boolean) => void;
+  includeNetWorth: boolean;
+  onIncludeNetWorthChange: () => void;
+}) {
+  const { t: tr } = useTranslation();
+  const t = useTheme();
+  return (
+    <>
+      <SectionHeader title={tr('account.sectionWhere')} />
+      <Card flush style={{ marginHorizontal: t.space.lg }}>
+        <SwitchRow
+          first
+          value={active}
+          onValueChange={() => onActiveChange(!active)}
+          label={tr('accounts.active')}
+          hint={tr('accounts.activeHint')}
+        />
+        {!liability && (
+          <SwitchRow
+            value={envelope}
+            onValueChange={() => onEnvelopeChange(!envelope)}
+            label={tr('accounts.cashEnvelope')}
+            hint={tr('accounts.cashEnvelopeHint')}
+          />
+        )}
+        {!liability && (
+          <SwitchRow
+            value={includeNetWorth}
+            onValueChange={onIncludeNetWorthChange}
+            label={tr('account.includeNetWorth')}
+            hint={tr('account.includeNetWorthHint')}
+          />
+        )}
+      </Card>
+    </>
   );
 }

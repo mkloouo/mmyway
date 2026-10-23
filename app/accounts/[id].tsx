@@ -6,7 +6,7 @@
 // confused the two.
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Text, View } from 'react-native';
+import { Alert, Text, View } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 // eslint-disable-next-line no-restricted-imports -- kit-exception: pre-Kit-V2 (MKL-87)
 import { eq } from 'drizzle-orm';
@@ -15,7 +15,7 @@ import { useCurrencies } from '../../src/db/useReferenceData';
 import { useDb } from '../../src/providers/DbProvider';
 import { useTheme } from '../../src/ui/theme';
 // prettier-ignore
-import { Button, Card, GroupFooter, ListRow, PushHeader, Screen, SectionHeader, Sheet, SwitchRow, Tile, Toast } from '../../src/ui/kit';
+import { Button, Card, FieldRow, GroupFooter, ListRow, MoreButton, PushHeader, Screen, SectionHeader, Sheet, Tile, Toast } from '../../src/ui/kit';
 import { useAction } from '../../src/ui/useAction';
 import { useConfirmDiscard } from '../../src/ui/useConfirmDiscard';
 import { useToast } from '../../src/ui/useToast';
@@ -40,14 +40,15 @@ import { PendingDot } from '../../src/ui/PendingDot';
 import { usePendingAccountIds } from '../../src/accounts/usePendingAccountIds';
 import { accountKind } from '../../src/accounts/AccountList';
 import {
-  FormScroll,
+  AccountActionButtons,
+  AccountWhereCard,
   AmountField,
   CurrencySheet,
-  InlineField,
   RoleSheet,
   ROLE_LABEL_KEYS,
   dayLabel,
   pickDay,
+  FormScroll,
 } from '../../src/accounts/AccountFormParts';
 import { SaveBar } from '../../src/ui/SaveBar';
 
@@ -214,13 +215,21 @@ export default function AccountScreen() {
       ? null
       : formatMoney(account.currentBalance, currencyOf(currencies, account.currencyCode));
 
+  const onMore = () =>
+    Alert.alert(account.name, undefined, [{ text: tr('common.cancel'), style: 'cancel' }]);
+
   return (
     <Screen bottom avoidKeyboard>
       <View style={{ flex: 1 }}>
         <PushHeader
           backLabel={liability ? tr('liabilities.title') : tr('accounts.title')}
           onBack={close}
-          right={<PendingDot visible={pendingAccounts.has(account.id)} />}
+          right={
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <PendingDot visible={pendingAccounts.has(account.id)} />
+              <MoreButton label={tr('account.moreAria')} onPress={onMore} />
+            </View>
+          }
           title={account.name}
           subtitle={
             balanceNow
@@ -230,50 +239,36 @@ export default function AccountScreen() {
           leading={<Tile icon={kind.icon} tone={kind.tone} size={52} />}
         />
         <FormScroll>
-          <View
-            style={{
-              flexDirection: 'row',
-              gap: t.space.sm,
-              paddingHorizontal: t.space.lg,
-              paddingBottom: t.space.sm,
-            }}
-          >
-            {!liability && hasEnvelopeMarker(account.notes) && (
-              <Button
-                title={tr('count.title')}
-                variant="secondary"
-                style={{ flex: 1 }}
-                onPress={() => router.push('/count')}
-              />
-            )}
-            <Button
-              title={tr('account.transactions')}
-              variant="secondary"
-              style={{ flex: 1 }}
-              onPress={() =>
-                router.navigate({
-                  pathname: '/activity',
-                  params: { account: account.id, at: String(Date.now()) },
-                })
+          <AccountActionButtons
+            liability={liability}
+            onCountCash={() => {
+              if (!hasEnvelopeMarker(account.notes)) {
+                void setAccountEnvelope(db, account.id, true);
               }
-            />
-          </View>
+              router.push('/count');
+            }}
+            onTransactions={() =>
+              router.navigate({
+                pathname: '/activity',
+                params: { account: account.id, at: String(Date.now()) },
+              })
+            }
+          />
 
           <SectionHeader first title={tr('account.sectionDetails')} />
           <Card flush style={{ marginHorizontal: t.space.lg }}>
-            <InlineField
+            <FieldRow
               first
               label={tr('accounts.name')}
               value={form.name}
               placeholder={tr('accounts.name')}
               onChangeText={(name) => patch({ name })}
             />
-            <InlineField
+            <FieldRow
               label={tr('account.note')}
               value={description}
               placeholder={tr('account.optional')}
               onChangeText={setDescription}
-              multiline
             />
             {!liability && (
               <ListRow
@@ -309,32 +304,15 @@ export default function AccountScreen() {
             <GroupFooter>{tr('account.monthlyPaymentDateHint')}</GroupFooter>
           )}
 
-          <SectionHeader title={tr('account.sectionWhere')} />
-          <Card flush style={{ marginHorizontal: t.space.lg }}>
-            <SwitchRow
-              first
-              value={active}
-              onValueChange={() => setActive((v) => !v)}
-              label={tr('accounts.active')}
-              hint={tr('accounts.activeHint')}
-            />
-            {!liability && (
-              <SwitchRow
-                value={envelope}
-                onValueChange={() => setEnvelope((v) => !v)}
-                label={tr('accounts.cashEnvelope')}
-                hint={tr('accounts.cashEnvelopeHint')}
-              />
-            )}
-            {!liability && (
-              <SwitchRow
-                value={form.includeNetWorth}
-                onValueChange={() => patch({ includeNetWorth: !form.includeNetWorth })}
-                label={tr('account.includeNetWorth')}
-                hint={tr('account.includeNetWorthHint')}
-              />
-            )}
-          </Card>
+          <AccountWhereCard
+            liability={liability}
+            active={active}
+            onActiveChange={setActive}
+            envelope={envelope}
+            onEnvelopeChange={setEnvelope}
+            includeNetWorth={form.includeNetWorth}
+            onIncludeNetWorthChange={() => patch({ includeNetWorth: !form.includeNetWorth })}
+          />
 
           <SectionHeader title={tr('account.sectionStart')} />
           <Card flush style={{ marginHorizontal: t.space.lg }}>

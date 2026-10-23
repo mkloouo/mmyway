@@ -23,7 +23,7 @@ export function accountKind(account: ReferenceAccountRow): {
   if (account.type === 'liability')
     return { icon: 'trending-down-outline', tone: 'danger', labelKey: 'account.typeLiability' };
   if (hasEnvelopeMarker(account.notes))
-    return { icon: 'wallet-outline', tone: 'warn', labelKey: 'accounts.cashEnvelope' };
+    return { icon: 'wallet-outline', tone: 'warn', labelKey: 'accounts.kindCashEnvelope' };
   const role = formFromAccount(account).accountRole;
   if (role === 'savingAsset')
     return { icon: 'cash-outline', tone: 'income', labelKey: ROLE_LABEL_KEYS[role] };
