@@ -35,17 +35,10 @@ const TILE_TONES: Record<TileTone, [bg: string, fg: string]> = {
   purple: ['purpleSoft', 'purple'], ink: ['inkSoft', 'ink'],
 };
 
+// prettier-ignore
 export function Tile({
-  icon,
-  tone = 'accent',
-  size = 28,
-  iconSize,
-}: {
-  icon: IconName;
-  tone?: TileTone;
-  size?: number;
-  iconSize?: number;
-}) {
+  icon, tone = 'accent', size = 28, iconSize,
+}: { icon: IconName; tone?: TileTone; size?: number; iconSize?: number }) {
   const t = useTheme();
   const [bg, fg] = TILE_TONES[tone];
   const c = t.color as unknown as Record<string, string>;
@@ -75,7 +68,7 @@ export interface ListRowProps {
   label: string; sub?: ReactNode; subtitle?: ReactNode; value?: string; leading?: ReactNode; trailing?: ReactNode;
   chevron?: boolean; onPress?: () => void; onLongPress?: () => void; delayLongPress?: number; first?: boolean;
   tone?: 'default' | 'warn' | 'danger' | 'accent'; check?: boolean; struck?: boolean; selected?: boolean;
-  action?: { label: string; onPress: () => void; tone?: 'accent' | 'muted' | 'danger' };
+  action?: { label: string; onPress: () => void; tone?: 'accent' | 'muted' | 'danger'; pill?: boolean };
   loading?: boolean; icon?: IconName; style?: StyleProp<ViewStyle>; hero?: boolean;
 }
 
@@ -88,8 +81,8 @@ export function ListRow({
   const { t: tr } = useTranslation();
   const interactive = !!onPress || !!onLongPress;
   const subText = sub ?? subtitle;
-  const valCol =
-    tone === 'warn' ? t.color.warn : tone === 'danger' ? t.color.danger : t.color.textMuted;
+  // prettier-ignore
+  const valCol = tone === 'warn' ? t.color.warn : tone === 'danger' ? t.color.danger : t.color.textMuted;
   const lblCol = struck
     ? t.color.textFaint
     : tone === 'danger'
@@ -97,12 +90,8 @@ export function ListRow({
       : tone === 'accent'
         ? t.color.accent
         : t.color.text;
-  const actCol =
-    action?.tone === 'danger'
-      ? t.color.danger
-      : action?.tone === 'muted'
-        ? t.color.textMuted
-        : t.color.accent;
+  // prettier-ignore
+  const actCol = action?.tone === 'danger' ? t.color.danger : action?.tone === 'muted' ? t.color.textMuted : t.color.accent;
 
   return (
     <Pressable
@@ -150,49 +139,56 @@ export function ListRow({
             subText
           ))}
       </View>
-      {action ? (
+      {action && value === undefined ? (
         <Pressable
           onPress={action.onPress}
           hitSlop={8}
           accessibilityRole="button"
           accessibilityLabel={action.label}
-          style={({ pressed }) => [styles.actionBtn, { opacity: pressed ? PRESSED_OPACITY : 1 }]}
+          style={({ pressed }) => [
+            action.pill ? [styles.pillActionBtn, { backgroundColor: t.color.accentSoft }] : styles.actionBtn,
+            { opacity: pressed ? PRESSED_OPACITY : 1 },
+          ]}
         >
           <Text style={[t.type.label, { fontWeight: '600', color: actCol }]}>{action.label}</Text>
         </Pressable>
       ) : loading ? (
         <View style={styles.endBox}>
-          <ActivityIndicator
-            size="small"
-            color={t.color.accent}
-            accessibilityLabel={tr('common.loading')}
-          />
+          <ActivityIndicator size="small" color={t.color.accent} accessibilityLabel={tr('common.loading')} />
         </View>
       ) : (
         <>
           {trailing}
           {value !== undefined && (
-            <View style={[styles.valBox, { flex: trailing ? 0 : 1 }]}>
+            <View style={[styles.valBox, { flex: trailing || action ? 0 : 1 }]}>
               {check && (
                 <View style={[styles.checkTag, { backgroundColor: t.color.warnSoft }]}>
-                  <Text style={{ color: t.color.warn, fontSize: 11, fontWeight: '600' }}>
-                    {tr('common.check')}
-                  </Text>
+                  <Text style={{ color: t.color.warn, fontSize: 11, fontWeight: '600' }}>{tr('common.check')}</Text>
                 </View>
               )}
               <Text
                 style={[
                   t.type.body,
-                  {
-                    color: struck ? t.color.textFaint : valCol,
-                    textAlign: 'right',
-                    textDecorationLine: struck ? 'line-through' : undefined,
-                  },
+                  { color: struck ? t.color.textFaint : valCol, textAlign: 'right', textDecorationLine: struck ? 'line-through' : undefined },
                 ]}
                 numberOfLines={1}
               >
                 {value ? value.replace(/ /g, '\u00A0') : '—'}
               </Text>
+              {action && (
+                <Pressable
+                  onPress={action.onPress}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel={action.label}
+                  style={({ pressed }) => [
+                    action.pill ? [styles.pillActionBtn, { backgroundColor: t.color.accentSoft }] : styles.actionBtn,
+                    { opacity: pressed ? PRESSED_OPACITY : 1 },
+                  ]}
+                >
+                  <Text style={[t.type.label, { fontWeight: '600', color: actCol }]}>{action.label}</Text>
+                </Pressable>
+              )}
             </View>
           )}
           {icon && !trailing && value === undefined && (
@@ -392,6 +388,7 @@ const styles = StyleSheet.create({
   hairline: { position: 'absolute', top: 0, right: 0, height: 1 },
   checkBar: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 3 },
   actionBtn: { minHeight: 44, justifyContent: 'center' },
+  pillActionBtn: { borderRadius: 999, height: 30, paddingHorizontal: 12, justifyContent: 'center', alignItems: 'center' },
   endBox: { flex: 1, alignItems: 'flex-end' },
   valBox: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 6 },
   checkTag: { borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 },

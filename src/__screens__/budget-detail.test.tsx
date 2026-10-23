@@ -126,38 +126,46 @@ describe('Budget detail screen', () => {
     expect(await screen.findByDisplayValue('Groceries')).toBeTruthy();
   });
 
-  it('keeps delete out of the page: it is in the ••• menu', async () => {
+  it('keeps delete out of the page: it is in the ••• menu alongside rename', async () => {
     await renderScreen();
     expect(screen.queryByText('Delete')).toBeNull();
 
-    fireEvent.press(screen.getByLabelText(i18n.t('budget.moreLabel')));
+    fireEvent.press(screen.getByLabelText(i18n.t('budget.moreAria')));
     expect(Alert.alert).toHaveBeenCalledWith(
       'Groceries',
       undefined,
-      expect.arrayContaining([expect.objectContaining({ text: 'Delete', style: 'destructive' })]),
+      expect.arrayContaining([
+        expect.objectContaining({ text: 'Rename' }),
+        expect.objectContaining({ text: 'Delete', style: 'destructive' }),
+      ]),
     );
   });
 
-  it('has assign and move buttons', async () => {
+  it('has assign and move action tiles', async () => {
     await renderScreen();
-    expect(screen.getByText('Set the amount')).toBeTruthy();
-    expect(screen.getByText('Move money here')).toBeTruthy();
+    expect(screen.getByText('Assign')).toBeTruthy();
+    expect(screen.getByText('Move in')).toBeTruthy();
   });
 
-  it('warns about an overspent envelope, and not one that is within budget', async () => {
+  it('warns about an overspent envelope and shows the cover action tile', async () => {
     mockEnvelopeId = 'b2';
     await renderScreen();
     // Dining holds 100 and has spent 150: 50 over.
     expect(
-      screen.getByText(i18n.t('budget.overspentBy', { amount: formatMoney('50.00', EUR) })),
+      screen.getByText(i18n.t('budget.overspentCoverNote', { amount: formatMoney('50.00', EUR) })),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(i18n.t('budget.coverAction', { amount: formatMoney('50.00', EUR) })),
     ).toBeTruthy();
   });
 
   it('shows no overspend warning for an envelope within budget', async () => {
     await renderScreen();
     expect(
-      screen.queryByText(i18n.t('budget.overspentBy', { amount: formatMoney('479.50', EUR) })),
+      screen.queryByText(
+        i18n.t('budget.overspentCoverNote', { amount: formatMoney('479.50', EUR) }),
+      ),
     ).toBeNull();
-    expect(screen.queryByText(/over budget/)).toBeNull();
+    expect(screen.queryByText(/Overspent by/)).toBeNull();
   });
 });

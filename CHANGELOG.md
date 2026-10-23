@@ -4,6 +4,7 @@
 
 ### Budget
 
+- Redesigned envelope detail to Unified Kit V2 board 02 with Hero available balance, Assign / Move in / Cover action tiles, This month stats with Use action, Spent from it recent transactions, and inline name editing (MKL-106).
 - Redesigned Budget tab to Unified Kit V2 board 01 with month switcher navigation, formula info sheet, hero stats and assign actions, bold envelope rows with spend progress bars and quick cover action, reorder mode, and unified cards for sinking funds and upcoming bills (MKL-105).
 
 ### Settings

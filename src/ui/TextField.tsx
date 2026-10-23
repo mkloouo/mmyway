@@ -21,7 +21,10 @@ interface TextFieldProps extends TextInputProps {
   onCommit?: (text: string) => void;
 }
 
+export type TextFieldRef = TextInput;
+
 export function TextField({
+  ref,
   style,
   invalid,
   value,
@@ -30,7 +33,7 @@ export function TextField({
   onFocus,
   onBlur,
   ...props
-}: TextFieldProps) {
+}: TextFieldProps & { ref?: React.Ref<TextFieldRef> }) {
   const t = useTheme();
   const [text, setText] = useState(value ?? '');
   const focused = useRef(false);
