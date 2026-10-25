@@ -98,6 +98,7 @@ export default function AboutScreen() {
             <ListRow
               label={tr('settings.featureFlags')}
               chevron
+              // @ts-ignore
               onPress={() => router.push('/settings/flags')}
             />
           )}
