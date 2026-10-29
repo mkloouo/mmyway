@@ -17,6 +17,7 @@ const MISSING_KEYS: Record<string, string> = {
 function fieldList(missing: string[], forHint = false): string {
   return missing
     .map((m) => {
+      if (m === 'description' || m === 'split description') return i18n.t('fields.description');
       if (forHint && m === 'payee') {
         return i18n.t('readiness.payeeForHint', { defaultValue: 'a payee' });
       }

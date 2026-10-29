@@ -124,3 +124,40 @@ describe('draftReadiness', () => {
     });
   });
 });
+
+it('blocks descriptions that FF3 would reject', () => {
+  expect(
+    draftReadiness({
+      ...base,
+      type: 'withdrawal',
+      sourceId: 'a',
+      destinationName: 'Shop',
+      description: '  ',
+    }).missing,
+  ).toContain('description');
+  expect(
+    draftReadiness({
+      ...base,
+      type: 'withdrawal',
+      sourceId: 'a',
+      destinationName: 'Shop',
+      extraSplits: [{ amount: '1', description: '', payeeName: 'Shop', isNewPayee: false }],
+    }).missing,
+  ).toContain('split description');
+});
+it.each(['abc', '-1', '1,00'])(
+  'holds invalid amount %s without crashing split arithmetic',
+  (amount) => {
+    expect(
+      draftReadiness({
+        ...base,
+        type: 'withdrawal',
+        sourceId: 'a',
+        destinationName: 'Shop',
+        amount,
+        total: '25',
+        extraSplits: [{ amount: '1', description: 'Extra', payeeName: 'Shop', isNewPayee: false }],
+      }).missing,
+    ).toContain('amount');
+  },
+);

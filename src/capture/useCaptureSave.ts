@@ -4,7 +4,7 @@ import type { OutboxDb } from '../sync/outbox';
 import type { DisplayCurrency } from '../money/format';
 import { formatAmountInput } from '../money/format';
 import { createManualEntry, confirmInboxItem, undoConfirm } from '../inbox/createManualEntry';
-import { attachReceiptImage } from '../inbox/updateDraft';
+import { persistReceiptImage, deletePersistedReceiptImage } from '../receipt/imageFiles';
 import { draftReadiness, type DraftReadiness } from '../inbox/readiness';
 import { buildManualEntryInput, type CaptureFormState } from './buildManualEntryInput';
 import type { AccountPickerAccount } from '../accounts/useAssetAccounts';
@@ -120,7 +120,7 @@ export function useCaptureSave({
       amount,
       currencyCode: effectiveCurrencyCode,
       date: date.toISOString(),
-      description: description || merchantRawInput || type,
+      description: description.trim() || merchantRawInput.trim() || type,
       isNewPayee: forceNewPayee,
       sourceId: effectiveSourceId ?? undefined,
       sourceName: type === 'deposit' ? merchantRawInput : sourceAccount?.name,
@@ -205,15 +205,29 @@ export function useCaptureSave({
   const save = act(
     tr('common.save'),
     async (andConfirm: boolean) => {
-      const input = buildManualEntryInput(formState, assetAccounts);
-      const { inboxItemId } = await createManualEntry(db, input);
-      if (photoUri) await attachReceiptImage(db, inboxItemId, photoUri);
+      const input = buildManualEntryInput(
+        {
+          ...formState,
+          date: dateMode === 'today' ? new Date() : formState.date,
+          location: recentPosition(),
+        },
+        assetAccounts,
+      );
+      const receiptImagePath = photoUri ? persistReceiptImage(photoUri) : undefined;
+      // Saving and confirming are one local transaction: a failed confirmation must not leave
+      // another draft behind each time the user retries Capture's Save button.
+      const { inboxItemId, confirmed } = await createManualEntry(db, input, {
+        confirm: andConfirm,
+        receiptImagePath,
+      }).catch((err: unknown) => {
+        deletePersistedReceiptImage(receiptImagePath);
+        throw err;
+      });
       const label =
         formState.merchantRawInput || formState.description || tr(labelKeyForType(formState.type));
       onTick();
       fly(formatAmountInput(amount, currency));
-      if (andConfirm) {
-        const confirmed = await confirmInboxItem(db, inboxItemId);
+      if (confirmed) {
         setSnackbar({
           id: inboxItemId,
           message: tr('capture.confirmedLabel', { label }),

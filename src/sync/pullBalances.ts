@@ -3,7 +3,7 @@ import type { FF3Client } from '../api/ff3/client';
 import type { AccountRead } from '../api/ff3/types';
 import { referenceAccounts } from '../db/schema';
 import type { OutboxDb } from './outbox';
-import { fetchAll } from './referenceData';
+import { fetchAllPages as fetchAll } from '../api/ff3/paginate';
 
 /**
  * Re-reads the balances of asset accounts already cached — nothing else. The full pull runs

@@ -1,6 +1,7 @@
 import * as SecureStore from 'expo-secure-store';
 import { createFF3Client, classifyProbeError, type FF3Client } from './client';
 import { readHosts, writeHosts } from './hosts';
+import { currentProxyHeaders } from './proxyHeaders';
 import type { SystemInfo, CurrencyRead, AuthErrorReason } from './types';
 
 // 6.7.0 is where FF3 fixed `repetitions.*.moment` validation on a recurrence *update*
@@ -39,7 +40,11 @@ export async function probeAbout(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   const url = `${baseUrl.replace(/\/+$/, '')}/api/v1/about`;
-  const headers = { Authorization: `Bearer ${apiToken}`, Accept: 'application/json' };
+  const headers = {
+    Authorization: `Bearer ${apiToken}`,
+    Accept: 'application/json',
+    ...currentProxyHeaders(),
+  };
 
   try {
     try {
@@ -52,31 +57,34 @@ export async function probeAbout(
       if (controller.signal.aborted) return { ok: false, reason: 'invalid_host' };
       response = await fetch(url, { headers, signal: controller.signal });
     }
+    if (!response.ok) {
+      return {
+        ok: false,
+        reason: classifyProbeError(response.status, response.headers.get('content-type')),
+      };
+    }
+    const contentType = response.headers.get('content-type');
+    if (contentType?.startsWith('text/html')) {
+      return { ok: false, reason: 'invalid_api_key' };
+    }
+    let body: SystemInfo;
+    try {
+      body = (await response.json()) as SystemInfo;
+    } catch {
+      return {
+        ok: false,
+        reason: controller.signal.aborted ? 'invalid_host' : 'not_a_firefly_instance',
+      };
+    }
+    const version = parseVersion(body.data?.api_version ?? '');
+    if (!version) return { ok: false, reason: 'not_a_firefly_instance' };
+    if (isBelowMin(version)) return { ok: false, reason: 'api_version_too_low' };
+    return { ok: true, apiVersion: body.data.api_version };
   } catch {
     return { ok: false, reason: 'invalid_host' };
   } finally {
     clearTimeout(timer);
   }
-  if (!response.ok) {
-    return {
-      ok: false,
-      reason: classifyProbeError(response.status, response.headers.get('content-type')),
-    };
-  }
-  const contentType = response.headers.get('content-type');
-  if (contentType?.startsWith('text/html')) {
-    return { ok: false, reason: 'invalid_api_key' };
-  }
-  let body: SystemInfo;
-  try {
-    body = (await response.json()) as SystemInfo;
-  } catch {
-    return { ok: false, reason: 'not_a_firefly_instance' };
-  }
-  const version = parseVersion(body.data?.api_version ?? '');
-  if (!version) return { ok: false, reason: 'not_a_firefly_instance' };
-  if (isBelowMin(version)) return { ok: false, reason: 'api_version_too_low' };
-  return { ok: true, apiVersion: body.data.api_version };
 }
 
 // Signing in starts a fresh address list with the one the user entered — one token covers every

@@ -3,7 +3,7 @@
 2026-09-28 · review of `app/` and `src/ui/` at `1ea6375`
 
 Scope: the React Native components and screens, reviewed for code smells, YAGNI, KISS, memoization and readability. Data-layer modules (`src/sync/`, `src/inbox/`, …) were read only where a screen depends on them.
-**Historical record.** Open work is tracked in Linear (team MKL); the issue links below point at closed GitHub history; this file stays as the review's record and its memo guidance. Don't add new items here.
+**Historical record.** New review findings belong in pull requests; the issue links below point at closed GitHub history; this file stays as the review's record and its memo guidance. Don't add new items here.
 
 Line numbers point at `1ea6375` and will drift.
 

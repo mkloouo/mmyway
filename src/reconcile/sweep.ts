@@ -1,5 +1,5 @@
 // The envelope sweep's maths (design §6.9) — pure, decimal strings, never mixing currencies.
-import { addDecimal, isNegative } from '../api/ff3/decimal';
+import { addDecimal, isNegative, subtractDecimal } from '../api/ff3/decimal';
 
 export interface SweepRow {
   accountId: string;
@@ -27,7 +27,7 @@ export function computeSweep(rows: SweepRow[]): SweepAdjustment[] {
   const adjustments: SweepAdjustment[] = [];
   for (const row of rows) {
     if (!row.counted.trim()) continue;
-    const diff = addDecimal(row.counted, `-${row.expected}`); // counted - expected
+    const diff = subtractDecimal(row.counted, row.expected);
     if (isZero(diff)) continue;
     adjustments.push({
       accountId: row.accountId,
@@ -45,7 +45,7 @@ export function driftByCurrency(rows: SweepRow[]): { currencyCode: string; amoun
   const totals = new Map<string, string>();
   for (const row of rows) {
     if (!row.counted.trim()) continue;
-    const diff = addDecimal(row.counted, `-${row.expected}`);
+    const diff = subtractDecimal(row.counted, row.expected);
     totals.set(row.currencyCode, addDecimal(totals.get(row.currencyCode) ?? '0', diff));
   }
   return [...totals.entries()].map(([currencyCode, amount]) => ({ currencyCode, amount }));

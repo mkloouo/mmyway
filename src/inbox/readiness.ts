@@ -14,8 +14,8 @@ function isBlank(value: string | undefined | null): boolean {
   return !value || value.trim() === '';
 }
 
-function isZeroAmount(amount: string): boolean {
-  return /^-?0*\.?0*$/.test(amount.trim());
+function isInvalidAmount(amount: string): boolean {
+  return !/^\d+(\.\d*)?$/.test(amount) || /^0*\.?0*$/.test(amount);
 }
 
 /**
@@ -26,14 +26,15 @@ function isZeroAmount(amount: string): boolean {
 export function draftReadiness(draft: Draft, accountCurrencyCode?: string | null): DraftReadiness {
   const missing: string[] = [];
 
-  if (isZeroAmount(draft.amount)) missing.push('amount');
+  if (isInvalidAmount(draft.amount)) missing.push('amount');
+  if (isBlank(draft.description)) missing.push('description');
   if (isBlank(draft.currencyCode)) missing.push('currency');
   // FF3 books the transaction in the account's currency: without the converted figure the number
   // read off the receipt would be booked as if the account had been charged it (#105). A split
   // entry asks for the converted total, which is shared out per split when it is queued (#129).
   if (
     needsForeignAmount(accountCurrencyCode, draft.currencyCode) &&
-    (isBlank(draft.foreignAmount) || isZeroAmount(draft.foreignAmount ?? ''))
+    isInvalidAmount(draft.foreignAmount ?? '')
   ) {
     missing.push('converted amount');
   }
@@ -54,13 +55,17 @@ export function draftReadiness(draft: Draft, accountCurrencyCode?: string | null
 
   const extras = draft.extraSplits ?? [];
   if (extras.length > 0) {
-    if (extras.some((s) => isZeroAmount(s.amount))) missing.push('split amount');
+    if (extras.some((s) => isInvalidAmount(s.amount))) missing.push('split amount');
+    if (extras.some((s) => isBlank(s.description))) missing.push('split description');
     if (draft.type !== 'transfer' && extras.some((s) => isBlank(s.payeeName) && isBlank(s.payeeId)))
       missing.push('split payee');
     // The splits must add up to the total the user tracks (src/splits/allocate.ts's leftover).
     if (
       draft.total !== undefined &&
-      leftover(draft.total, [draft.amount, ...extras.map((s) => s.amount)], 12) !== 0n
+      (isInvalidAmount(draft.total) ||
+        (!missing.includes('amount') &&
+          !missing.includes('split amount') &&
+          leftover(draft.total, [draft.amount, ...extras.map((s) => s.amount)], 12) !== 0n))
     ) {
       missing.push('split total');
     }

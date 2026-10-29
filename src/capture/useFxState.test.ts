@@ -71,3 +71,18 @@ describe('useFxState', () => {
     expect(result.current.fxMissing).toBe(true);
   });
 });
+
+it.each(['0', '0.00'])('rejects a zero converted amount %s', async (foreignAmount) => {
+  const { result } = await renderHook(() =>
+    useFxState({
+      type: 'withdrawal',
+      effectiveCurrencyCode: 'EUR',
+      sourceAccount: checkingPLN,
+      destinationAccount: undefined,
+      amount: '15.00',
+      foreignAmount,
+      isDirty: true,
+    }),
+  );
+  expect(result.current.fxMissing).toBe(true);
+});

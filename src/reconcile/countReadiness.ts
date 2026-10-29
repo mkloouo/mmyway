@@ -9,6 +9,7 @@ import { useDb } from '../providers/DbProvider';
 import { useLiveQuery } from '../db/useLiveQuery';
 import { BALANCES_STALE_KEY, getBalancesStale } from '../settings/appSettings';
 import { LEDGER_KINDS, queuedLedgerOpCount, type OutboxDb } from '../sync/outbox';
+import { affectsBalances } from '../sync/outboxLedger';
 
 export type CountBlocker = { reason: 'queued'; count: number } | { reason: 'stale_balances' };
 
@@ -23,7 +24,7 @@ export function useCountReadiness() {
   const db = useDb();
   const { data: queuedLedgerOps } = useLiveQuery(
     db
-      .select({ id: outboxOperations.id })
+      .select({ kind: outboxOperations.kind, payloadJson: outboxOperations.payloadJson })
       .from(outboxOperations)
       .where(inArray(outboxOperations.kind, [...LEDGER_KINDS])),
   );
@@ -32,7 +33,7 @@ export function useCountReadiness() {
   );
   const readinessLoaded = queuedLedgerOps !== undefined && staleRows !== undefined;
   const blocker = readinessLoaded
-    ? countBlocker(queuedLedgerOps.length, staleRows[0]?.value === '1')
+    ? countBlocker(queuedLedgerOps.filter(affectsBalances).length, staleRows[0]?.value === '1')
     : null;
   const canCount = readinessLoaded && !blocker;
   return { readinessLoaded, blocker, canCount };

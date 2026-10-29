@@ -175,3 +175,7 @@ describe('buildManualEntryInput', () => {
     expect(buildManualEntryInput({ ...base, tags: [] }, accounts).tags).toBeUndefined();
   });
 });
+
+it('falls back to the payee when the optional description contains only spaces', () => {
+  expect(buildManualEntryInput({ ...base, description: '  ' }, accounts).description).toBe('Żabka');
+});

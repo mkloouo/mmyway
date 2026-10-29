@@ -2,7 +2,8 @@ import { and, eq } from 'drizzle-orm';
 import type { FF3Client } from '../api/ff3/client';
 import type { TransactionRead, TransactionSplit } from '../api/ff3/types';
 import { inboxItems, outboxOperations, plannedObjects } from '../db/schema';
-import { enqueueOperation, isUnsent } from './outbox';
+import { enqueueOperation, enqueueOperationSync, isUnsent } from './outbox';
+import { requestSync } from './syncTrigger';
 import type { NewOutboxOperation, OutboxDb } from './outbox';
 import { generateId } from '../utils/id';
 import { transition } from '../inbox/state';
@@ -148,24 +149,29 @@ async function decideRecurringReview(
   decide: (groupId: string, journal: ReviewJournal) => NewOutboxOperation['payload'] & object,
   kind: 'recurring_review' | 'delete_transaction',
 ): Promise<void> {
-  const [item] = await db.select().from(inboxItems).where(eq(inboxItems.id, inboxItemId));
-  if (!item?.ff3GroupId) throw new Error(`recurring review item ${inboxItemId} has no ff3GroupId`);
-  const journal = readReviewJournal(item.draftJson);
-  await enqueueOperation(db, {
-    id: generateId(),
-    inboxItemId,
-    kind,
-    payload: decide(item.ff3GroupId, journal),
+  db.transaction((tx) => {
+    const [item] = tx.select().from(inboxItems).where(eq(inboxItems.id, inboxItemId)).all();
+    if (!item?.ff3GroupId)
+      throw new Error(`recurring review item ${inboxItemId} has no ff3GroupId`);
+    const state = transition(transition(item.state, 'confirm'), 'synced');
+    const journal = readReviewJournal(item.draftJson);
+    enqueueOperationSync(tx, {
+      id: generateId(),
+      inboxItemId,
+      kind,
+      payload: decide(item.ff3GroupId, journal),
+    });
+    // Approving is the user's confirm; the card leaves the Inbox at once and the change waits in the
+    // outbox, so the item goes on to `synced` in the same write.
+    tx.update(inboxItems)
+      .set({
+        state,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(inboxItems.id, inboxItemId))
+      .run();
   });
-  // Approving is the user's confirm; the card leaves the Inbox at once and the change waits in the
-  // outbox, so the item goes on to `synced` in the same write.
-  await db
-    .update(inboxItems)
-    .set({
-      state: transition(transition(item.state, 'confirm'), 'synced'),
-      updatedAt: new Date().toISOString(),
-    })
-    .where(eq(inboxItems.id, inboxItemId));
+  requestSync();
 }
 
 export async function approveRecurringReview(db: OutboxDb, inboxItemId: string): Promise<void> {

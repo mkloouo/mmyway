@@ -117,11 +117,13 @@ export function removeSplitFromDraft(draft: Draft, index: number): Partial<Draft
           sourceId: first.payeeId,
           isNewPayee: first.isNewPayee,
         }
-      : {
-          destinationName: first.payeeName ?? draft.destinationName,
-          destinationId: first.payeeId,
-          isNewPayee: first.isNewPayee,
-        }),
+      : draft.type === 'withdrawal'
+        ? {
+            destinationName: first.payeeName ?? draft.destinationName,
+            destinationId: first.payeeId,
+            isNewPayee: first.isNewPayee,
+          }
+        : {}),
   };
   if (remainingExtras.length > 0) {
     return {

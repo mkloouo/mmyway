@@ -53,6 +53,32 @@ describe('requestSync', () => {
   });
   afterEach(() => jest.useRealTimers());
 
+  it('postpones an already armed write until a new confirmation can be undone', () => {
+    const sync = jest.fn();
+    const unregister = registerSyncHandler(sync);
+    requestSync(SYNC_DELAY.afterWrite);
+    jest.advanceTimersByTime(500);
+    requestSync(SYNC_DELAY.afterConfirm);
+    jest.advanceTimersByTime(5_999);
+    expect(sync).not.toHaveBeenCalled();
+    jest.advanceTimersByTime(1);
+    expect(sync).toHaveBeenCalledTimes(1);
+    unregister();
+  });
+
+  it('gives a second confirmation its full undo window', () => {
+    const sync = jest.fn();
+    const unregister = registerSyncHandler(sync);
+    requestSync(SYNC_DELAY.afterConfirm);
+    jest.advanceTimersByTime(4_000);
+    requestSync(SYNC_DELAY.afterConfirm);
+    jest.advanceTimersByTime(5_999);
+    expect(sync).not.toHaveBeenCalled();
+    jest.advanceTimersByTime(1);
+    expect(sync).toHaveBeenCalledTimes(1);
+    unregister();
+  });
+
   it('sends a confirm at +6 s even while a retry is armed for an hour', () => {
     const sync = jest.fn();
     const unregister = registerSyncHandler(sync);

@@ -44,7 +44,7 @@ function item(draft: Record<string, unknown>): InboxItemRow {
       amount: '12.50',
       currencyCode: 'PLN',
       date: '2026-09-28T10:00:00Z',
-      description: '',
+      description: 'Żabka',
       isNewPayee: false,
       sourceId: 'a1',
       sourceName: 'Revolut',
@@ -65,6 +65,22 @@ const currencies = [{ code: 'PLN', symbol: 'zł', decimalPlaces: 2 }];
 const selection = { active: false, selected: false, toggle: jest.fn() };
 
 describe('Inbox confirm card', () => {
+  it('requires a title before offering to submit a draft FF3 would reject', async () => {
+    await wrap(
+      <ConfirmCard
+        {...cardProps({ description: '' })}
+        currencies={currencies}
+        onOpen={jest.fn()}
+        onConfirm={jest.fn()}
+        onDelete={jest.fn()}
+        onRetryReading={jest.fn()}
+        selection={selection}
+      />,
+    );
+    expect(screen.getByText('Needs Title')).toBeTruthy();
+    expect(screen.queryByLabelText('Confirm')).toBeNull();
+  });
+
   it('shows the payee and confirms a ready draft with the ✓ button', async () => {
     const onConfirm = jest.fn();
     await wrap(

@@ -1,4 +1,4 @@
-import { Query, Mutation, notifyManager, timeoutManager } from '@tanstack/query-core';
+import { Query, Mutation, notifyManager, timeoutManager } from '@tanstack/react-query';
 
 // In Jest, unref timers so background tasks or open handles don't keep Jest worker processes hanging.
 const origSetTimeout = global.setTimeout;

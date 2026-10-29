@@ -37,7 +37,7 @@ export function requestSync(delayMs: number = SYNC_DELAY.afterWrite): void {
   const now = Date.now();
   if (delayMs === SYNC_DELAY.afterConfirm) undoFloor = Math.max(undoFloor, now + delayMs);
   const at = Math.max(now + delayMs, undoFloor);
-  if (timer && at >= fireAt) return;
+  if (timer && fireAt >= undoFloor && at >= fireAt) return;
   if (timer) clearTimeout(timer);
   fireAt = at;
   timer = setTimeout(() => {

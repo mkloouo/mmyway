@@ -13,11 +13,10 @@ is the full one.
 - These are static HTML generated from the design canvas export with
   `node scripts/design-boards.mjs <export.html> <out-dir>`. Icons are stripped. Open one in a browser,
   or read its markup: the inline styles are the spec (sizes, colours, copy).
-- **Not designed yet:** Inbox (the home tab) and Transaction detail (Linear MKL-70). Don't redesign
+- **Not designed yet:** Inbox (the home tab) and Transaction detail. Don't redesign
   them on your own. Until their boards exist, a change there only follows the kit rules below.
 
-Migration status is tracked in Linear under the **Unified Kit** projects (start with **Unified Kit — Foundation**, MKL-80…88). Capture, Draft review,
-Receipt and Activity are migrated. Every other screen still is not.
+Use the current components and changelog to check migration status before changing a screen.
 
 ## 1. The touch rule (the migration is gradual, the rule is not)
 
@@ -31,10 +30,10 @@ We do not rewrite whole files to reach Kit V2. But **whatever you write or chang
    and the sheet and tier archetypes below. A new screen, row, sheet or state is Kit V2 from its first
    line.
 3. **Untouched code may stay as it is.** A fix on line 300 doesn't oblige you to migrate line 900.
-   Leave unrelated legacy code alone, and leave the large refactors to their Linear issues.
+   Leave unrelated legacy code alone, and keep large refactors in separate pull requests.
 4. **The kit lacks something? Add it to the kit.** Put it in `src/ui/` as a reusable component, in
    the right family file (§5), and use it. Never inline a one-off look in a screen. If it is truly
-   too big for your change, file an issue and use the exception marker (below).
+   too big for your change, describe the follow-up in the PR and use the exception marker (below).
 5. **Legacy components (§3, ⛔) are never added to a place that doesn't already use them.**
 
 ### Exceptions need a real reason, in writing
@@ -42,14 +41,14 @@ We do not rewrite whole files to reach Kit V2. But **whatever you write or chang
 Keeping legacy UI in code you touched is allowed only with a marker on the line above it:
 
 ```tsx
-// kit-exception: <why the kit can't be used here> (<Linear issue, e.g. MKL-123>)
+// kit-exception: <why the kit can't be used here>
 ```
 
 **Valid reasons:**
 
-- The kit component doesn't exist yet. Its issue is open and is too big for this change.
+- The kit component doesn't exist yet and is too big for this change.
 - The board for this screen doesn't exist (Inbox, Transaction detail), so the target is unknown.
-- Migrating this element would change behaviour that a pending design decision covers (MKL-71, MKL-88).
+- Migrating this element would change behaviour that a pending design decision covers.
 
 **Not valid:** "the rest of the file does it this way", "it was already there", "it was faster",
 "consistency with the surrounding legacy code", "the kit component needs one more prop" (add the

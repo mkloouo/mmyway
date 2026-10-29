@@ -39,7 +39,8 @@ export interface ManualEntryInput {
 export async function createManualEntry(
   db: OutboxDb,
   input: ManualEntryInput,
-): Promise<{ inboxItemId: string; draft: Draft; isNewPayee: boolean }> {
+  options: { confirm?: boolean; receiptImagePath?: string } = {},
+): Promise<{ inboxItemId: string; draft: Draft; isNewPayee: boolean; confirmed?: ConfirmResult }> {
   const shared = {
     amount: input.amount,
     currencyCode: input.currencyCode,
@@ -97,16 +98,22 @@ export async function createManualEntry(
 
   const id = generateId();
   const now = new Date().toISOString();
-  await db.insert(inboxItems).values({
-    id,
-    kind: 'manual_entry',
-    state: 'captured',
-    draftJson: writeDraft(draft),
-    createdAt: now,
-    updatedAt: now,
+  const confirmed = db.transaction((tx) => {
+    tx.insert(inboxItems)
+      .values({
+        id,
+        kind: 'manual_entry',
+        state: 'captured',
+        draftJson: writeDraft(draft),
+        receiptImagePath: options.receiptImagePath,
+        createdAt: now,
+        updatedAt: now,
+      })
+      .run();
+    return options.confirm ? confirmInTransaction(tx, id) : undefined;
   });
-
-  return { inboxItemId: id, draft, isNewPayee };
+  if (confirmed) requestSync(SYNC_DELAY.afterConfirm);
+  return { inboxItemId: id, draft, isNewPayee, confirmed };
 }
 
 export interface ConfirmResult {
@@ -114,8 +121,9 @@ export interface ConfirmResult {
   previousState: InboxState;
 }
 
-export async function confirmInboxItem(db: OutboxDb, inboxItemId: string): Promise<ConfirmResult> {
-  const rows = await db.select().from(inboxItems).where(eq(inboxItems.id, inboxItemId));
+/** Both confirmation entry points call this inside their own synchronous transaction. */
+function confirmInTransaction(tx: OutboxDb, inboxItemId: string): ConfirmResult {
+  const rows = tx.select().from(inboxItems).where(eq(inboxItems.id, inboxItemId)).all();
   const item = rows[0];
   if (!item) throw new Error(`inbox item ${inboxItemId} not found`);
 
@@ -127,29 +135,33 @@ export async function confirmInboxItem(db: OutboxDb, inboxItemId: string): Promi
   // draft, from Capture or a receipt, is queued (src/inbox/fx.ts).
   const legId = bookingLegAccountId(draft);
   const [leg] = legId
-    ? await db
+    ? tx
         .select({ currencyCode: referenceAccounts.currencyCode })
         .from(referenceAccounts)
         .where(eq(referenceAccounts.id, legId))
+        .all()
     : [];
 
   const outboxOperationId = generateId();
   // One transaction: a failure between the two writes used to leave the item `confirmed` with no
   // operation behind it — out of the Inbox, never sent, and visible nowhere.
-  db.transaction((tx) => {
-    tx.update(inboxItems)
-      .set({ state: nextState, errorMessage: null, updatedAt: new Date().toISOString() })
-      .where(eq(inboxItems.id, inboxItemId))
-      .run();
-    enqueueOperationSync(tx, {
-      id: outboxOperationId,
-      inboxItemId,
-      kind: 'create_transaction',
-      payload: draftToTransactionPayload(inboxItemId, draft, leg?.currencyCode),
-    });
+  tx.update(inboxItems)
+    .set({ state: nextState, errorMessage: null, updatedAt: new Date().toISOString() })
+    .where(eq(inboxItems.id, inboxItemId))
+    .run();
+  enqueueOperationSync(tx, {
+    id: outboxOperationId,
+    inboxItemId,
+    kind: 'create_transaction',
+    payload: draftToTransactionPayload(inboxItemId, draft, leg?.currencyCode),
   });
-  requestSync(SYNC_DELAY.afterConfirm);
   return { outboxOperationId, previousState };
+}
+
+export async function confirmInboxItem(db: OutboxDb, inboxItemId: string): Promise<ConfirmResult> {
+  const result = db.transaction((tx) => confirmInTransaction(tx, inboxItemId));
+  requestSync(SYNC_DELAY.afterConfirm);
+  return result;
 }
 
 // Undo stays inside the same rule confirm itself follows (Global Constraints): it may delete a
@@ -163,18 +175,21 @@ export async function undoConfirm(
   inboxItemId: string,
   undo: ConfirmResult,
 ): Promise<'undone' | 'already_sent'> {
-  const removed = await db
-    .delete(outboxOperations)
-    .where(
-      // Only a create that never left the device: one that was attempted may already be in FF3
-      // (the answer lost), and Cancel — which asks FF3 first — is the way out of that.
-      and(eq(outboxOperations.id, undo.outboxOperationId), neverSent()),
-    )
-    .returning({ id: outboxOperations.id });
-  if (removed.length === 0) return 'already_sent';
-  await db
-    .update(inboxItems)
-    .set({ state: undo.previousState, updatedAt: new Date().toISOString() })
-    .where(eq(inboxItems.id, inboxItemId));
-  return 'undone';
+  return db.transaction((tx) => {
+    const removed = tx
+      .delete(outboxOperations)
+      .where(
+        // Only a create that never left the device: one that was attempted may already be in FF3
+        // (the answer lost), and Cancel — which asks FF3 first — is the way out of that.
+        and(eq(outboxOperations.id, undo.outboxOperationId), neverSent()),
+      )
+      .returning({ id: outboxOperations.id })
+      .all();
+    if (removed.length === 0) return 'already_sent';
+    tx.update(inboxItems)
+      .set({ state: undo.previousState, updatedAt: new Date().toISOString() })
+      .where(eq(inboxItems.id, inboxItemId))
+      .run();
+    return 'undone';
+  });
 }

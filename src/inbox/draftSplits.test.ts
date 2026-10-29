@@ -24,6 +24,18 @@ const base: Draft = {
 };
 
 describe('draft splits', () => {
+  it('keeps both asset accounts when the first split of a transfer is removed', () => {
+    const transfer: Draft = { ...base, type: 'transfer', destinationId: '2' };
+    const split = { ...transfer, ...addSplit(transfer, ['70.00'], '30.00') };
+    const promoted = { ...split, ...removeSplitFromDraft(split, 0) };
+    expect(draftToTransactionPayload('transfer', promoted).splits[0]).toMatchObject({
+      source_id: '1',
+      destination_id: '2',
+      amount: '100.00',
+    });
+    expect(draftReadiness(promoted).ready).toBe(true);
+  });
+
   it('adds a split that takes its amount from split 1 and tracks the old total', () => {
     const next = { ...base, ...addSplit(base, ['70.00'], '30.00') };
     expect(draftAmounts(next)).toEqual(['70.00', '30.00']);

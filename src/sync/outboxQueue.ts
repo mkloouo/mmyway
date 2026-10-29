@@ -17,6 +17,7 @@ import type {
   UpdateTransactionPayload,
 } from './outboxTypes';
 import { LEDGER_KINDS } from './outboxTypes';
+import { affectsBalances } from './outboxLedger';
 import { readPayload, tryReadPayload, writePayload } from './payloadJson';
 import { cachedRowFromGroup } from './referenceData';
 import { requestSync } from './syncTrigger';
@@ -75,11 +76,11 @@ export async function enqueueOperation(db: OutboxDb, op: NewOutboxOperation): Pr
 
 /** Queued operations (in any status) that will change a balance in FF3 when they land. */
 export async function queuedLedgerOpCount(db: OutboxDb): Promise<number> {
-  const [row] = await db
-    .select({ n: sql<number>`count(*)` })
+  const rows = await db
+    .select({ kind: outboxOperations.kind, payloadJson: outboxOperations.payloadJson })
     .from(outboxOperations)
     .where(inArray(outboxOperations.kind, [...LEDGER_KINDS]));
-  return Number(row?.n ?? 0);
+  return rows.filter(affectsBalances).length;
 }
 
 /**
@@ -91,7 +92,7 @@ export async function queuedLedgerOpCount(db: OutboxDb): Promise<number> {
 export async function recoverInFlight(db: OutboxDb): Promise<void> {
   await db
     .update(outboxOperations)
-    .set({ status: 'pending' })
+    .set({ status: 'pending', attempts: sql`${outboxOperations.attempts} + 1` })
     .where(eq(outboxOperations.status, 'in_flight'));
 }
 
@@ -100,7 +101,7 @@ export async function retryOperationNow(db: OutboxDb, opId: string): Promise<voi
   await db
     .update(outboxOperations)
     .set({ status: 'pending', lastError: null, nextAttemptAt: null })
-    .where(eq(outboxOperations.id, opId));
+    .where(and(eq(outboxOperations.id, opId), eq(outboxOperations.status, 'failed')));
 }
 
 /**

@@ -17,7 +17,20 @@
 
 ### Fixed
 
+- Receipt reading keeps the amount, currency and merchant when a model leaves optional item or currency-exchange lists empty. Interrupted response downloads remain retryable.
+- Quick draft edits are saved together without losing fields, and confirming immediately after an edit sends the latest values.
+- Correcting a receipt keeps its entered conversion, and later reader results cannot overwrite manual edits. Exchange receipts save their transfer and fee drafts together.
+- Capture requires a nonzero converted amount before confirming a foreign-currency transaction.
+- Failed Capture saves can be retried without leaving duplicate drafts, and Today uses the time you save. Drafts with missing descriptions or invalid amounts are held for correction before submission.
 - Corrected account subtitle to display "cash envelope" instead of the toggle label "In the cash count" (MKL-108).
+- Confirming an entry or deciding a recurring review now queues the change only once, and a failed local save cannot leave the Inbox and its queued change out of step.
+- New confirmations keep their full Undo window even when another change was already waiting to sync. Interrupted sends are checked with Firefly III before they can be cancelled after an app restart.
+- Firefly III sign-in and connection checks now send saved proxy headers and time out if the response body stalls.
+- A timed-out sync keeps its place until it finishes, preventing overlapping writes or old-instance data returning after sign-out. Credential-read failures appear as sync errors.
+- Ready to Assign no longer adds balances and allocations in different currencies together.
+- Loading transaction history preserves calendar days across timezone and daylight-saving boundaries and includes the correct end-of-month backfill.
+- Receipt cleanup keeps a photo while another draft or queued upload still needs it.
+- Count cash waits for account balance changes and manually triggered payments or rules to sync before allowing adjustments.
 
 ### Budget
 
@@ -34,7 +47,7 @@
 
 ### Draft Review
 
-- Aligned FX row to warn-styled account payment with "Enter amount", updated confirmation hint to specify the account paid, enabled removing any split part, and split the draft review screen into modular components below the 400-line ceiling (MKL-113).
+- Aligned FX row to warn-styled account payment with "Enter amount", updated confirmation hint to specify the account paid, enabled removing any split part while preserving both accounts on transfers, and split the draft review screen into modular components below the 400-line ceiling (MKL-113).
 
 ### Capture
 

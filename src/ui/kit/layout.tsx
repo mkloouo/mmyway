@@ -15,7 +15,7 @@ import { useTheme } from '../theme';
 import { usePop } from '../feedback';
 import { haptics } from '../haptics';
 import { PRESSED_OPACITY, pressedStyle } from './rows';
-import { useKeyboardHeight } from './sheet';
+import { useKeyboardHeight } from '../useKeyboardHeight';
 
 /**
  * A tab screen leaves the bottom edge to the tab bar. A modal screen (capture, count, a draft)

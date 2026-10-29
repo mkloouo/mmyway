@@ -80,10 +80,15 @@ export function createGeminiProvider(config: {
         let parsed: unknown;
         try {
           parsed = JSON.parse(answerText(await response.json()));
-        } catch {
+        } catch (err) {
+          if (controller.signal.aborted) throw err;
           throw new Error('gemini provider returned an unreadable response');
         }
         return normalizeExtraction(parsed);
+      } catch (err) {
+        if (controller.signal.aborted)
+          throw Object.assign(new Error('gemini provider timed out'), { name: 'AbortError' });
+        throw err;
       } finally {
         clearTimeout(timeout);
       }

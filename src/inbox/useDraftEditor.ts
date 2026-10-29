@@ -15,6 +15,7 @@ import { patchExtraSplit } from './draftSplits';
 import { generateId } from '../utils/id';
 import { errorMessage } from '../utils/errorMessage';
 import { logLine } from '../utils/log';
+import { draftAccountCurrency } from './fx';
 
 export interface DraftDetailChange {
   categoryName?: string | null;
@@ -74,16 +75,26 @@ export function useDraftEditor({
 
   const patch = useCallback(
     (fields: Partial<Draft>) => {
-      const next =
-        'sourceId' in fields || 'destinationId' in fields || 'currencyCode' in fields
-          ? { foreignAmount: undefined, foreignCurrencyCode: undefined, ...fields }
-          : fields;
+      const changed = { ...draft, ...fields };
+      const currencyOf = (accountId: string | undefined) =>
+        assetAccounts.find((account) => account.id === accountId)?.currencyCode;
+      const previousCurrency = draftAccountCurrency(draft, currencyOf);
+      const nextCurrency = draftAccountCurrency(changed, currencyOf);
+      // Choosing a payee or an account in the same currency does not invalidate an entered
+      // conversion. A receipt's extracted conversion also survives selecting its missing account.
+      const invalidatesFx =
+        changed.type !== draft.type ||
+        changed.currencyCode !== draft.currencyCode ||
+        (nextCurrency !== previousCurrency && nextCurrency !== draft.foreignCurrencyCode);
+      const next = invalidatesFx
+        ? { foreignAmount: undefined, foreignCurrencyCode: undefined, ...fields }
+        : fields;
       updateDraft(db, id, next).catch((err) => {
         logLine('warn', `save draft failed: ${errorMessage(err)}`);
         setSnackbar({ id: generateId(), message: tr('common.saveFailed') });
       });
     },
-    [db, id, setSnackbar, tr],
+    [db, id, draft, assetAccounts, setSnackbar, tr],
   );
 
   const choosePayee = act(tr('capture.payee'), async (d: Draft, name: string, isNew: boolean) => {

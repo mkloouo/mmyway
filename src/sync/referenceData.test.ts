@@ -143,6 +143,7 @@ describe('pullRecentTransactions', () => {
   });
 
   it('backfills three months when nothing is cached, then only a short catch-up window', async () => {
+    jest.useFakeTimers({ now: new Date('2026-10-28T12:00:00Z') });
     const db = createTestDb();
     const today = new Date();
     const threeMonthsBack = new Date();
@@ -161,6 +162,7 @@ describe('pullRecentTransactions', () => {
     expect(second.request.mock.calls[0]![0]).toContain(
       `start=${catchUp.toISOString().slice(0, 10)}`,
     );
+    jest.useRealTimers();
   });
 
   it('pages past 20 pages when the history window has more than 2000 transactions', async () => {

@@ -73,10 +73,15 @@ export function createLocalProvider(config: {
             throw new Error('local provider returned an unreadable response');
           }
           parsed = JSON.parse(body.data.choices[0].message.content);
-        } catch {
+        } catch (err) {
+          if (controller.signal.aborted) throw err;
           throw new Error('local provider returned an unreadable response');
         }
         return normalizeExtraction(parsed);
+      } catch (err) {
+        if (controller.signal.aborted)
+          throw Object.assign(new Error('local provider timed out'), { name: 'AbortError' });
+        throw err;
       } finally {
         clearTimeout(timeout);
       }
@@ -150,9 +155,9 @@ const RawExtractionSchema = z.object({
   confidence: z.unknown().optional(),
   payment_method: z.unknown().optional(),
   card_network: z.unknown().optional(),
-  items: z.array(z.unknown()).optional(),
-  currency_exchanges: z.array(z.unknown()).optional(),
-  currencyExchanges: z.array(z.unknown()).optional(),
+  items: z.array(z.unknown()).nullish().catch(null),
+  currency_exchanges: z.array(z.unknown()).nullish().catch(null),
+  currencyExchanges: z.array(z.unknown()).nullish().catch(null),
 });
 
 // Everything a provider returns is untrusted: the local model's json_schema is advisory for some

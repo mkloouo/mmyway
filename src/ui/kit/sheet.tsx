@@ -3,9 +3,7 @@ import { useTranslation } from 'react-i18next';
 import {
   Animated,
   Easing,
-  Keyboard,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,27 +15,9 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTheme, hitSize } from '../theme';
 import { IconButton } from './headers';
 import { PRESSED_OPACITY } from './rows';
+import { useKeyboardHeight } from '../useKeyboardHeight';
 
-/** The on-screen keyboard's height while it is shown, 0 otherwise (always 0 when not `enabled`). */
-export function useKeyboardHeight(enabled = true): number {
-  const [height, setHeight] = useState(0);
-  useEffect(() => {
-    if (!enabled) return;
-    const show = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      (e) => setHeight(e.endCoordinates.height),
-    );
-    const hide = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      () => setHeight(0),
-    );
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, [enabled]);
-  return enabled ? height : 0;
-}
+export { useKeyboardHeight } from '../useKeyboardHeight';
 
 /**
  * One bottom sheet serves every picker in the app (design §4, kit board 2). The frame is the page

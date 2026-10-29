@@ -15,7 +15,7 @@ import {
 } from '../db/schema';
 import type { OutboxDb } from './outbox';
 import { setAccountOrder, setFf3Version } from '../settings/appSettings';
-import { fetchAll } from './referenceData';
+import { fetchAllPages as fetchAll } from '../api/ff3/paginate';
 import { pullRecentTransactions } from './pullTransactions';
 
 // AccountRead (src/api/ff3/types.ts, pinned) doesn't declare these — narrowed with a local

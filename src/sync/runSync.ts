@@ -90,14 +90,15 @@ function anyOk(report: ServerReachability): boolean {
 
 type SyncMode = 'full' | 'push';
 
-let inFlight: { mode: SyncMode; promise: Promise<SyncSummary> } | null = null;
+let inFlight: { mode: SyncMode; promise: Promise<SyncSummary>; work: Promise<SyncSummary> } | null =
+  null;
 let recovered = false;
 let paused = false;
 /** A sync was asked for while paused: one is requested again when the pause ends. */
 let missed = false;
 /**
- * Every doSync that has started and not ended. One the watchdog gave up on (SYNC_WATCHDOG_MS)
- * drops out too: pausing must not wait forever for a sync nobody is waiting on any more.
+ * Every doSync that has started and not ended. A timeout only stops the caller waiting; the
+ * underlying work still owns the database until it settles, including during an instance switch.
  */
 const running = new Set<Promise<unknown>>();
 
@@ -106,11 +107,14 @@ function startSync(db: OutboxDb, mode: SyncMode): Promise<SyncSummary> {
     missed = true;
     return Promise.resolve({ ...NOT_SIGNED_IN });
   }
-  const promise = doSync(db, mode);
+  const promise = doSync(db, mode).catch((err: unknown) => {
+    // Credential/settings reads happen before doSync builds its normal summary.
+    const error = errorMessage(err);
+    logLine('error', `sync failed: ${error}`);
+    return { ...NOT_SIGNED_IN, error };
+  });
   running.add(promise);
-  const giveUp = setTimeout(() => running.delete(promise), SYNC_WATCHDOG_MS);
   const done = () => {
-    clearTimeout(giveUp);
     running.delete(promise);
   };
   promise.then(done, done);
@@ -151,22 +155,21 @@ export async function withSyncPaused<T>(work: () => Promise<T>): Promise<T> {
  */
 export function runSync(db: OutboxDb, mode: SyncMode = 'full'): Promise<SyncSummary> {
   if (inFlight && (inFlight.mode === 'full' || mode === 'push')) return inFlight.promise;
-  const previous = inFlight?.promise;
-  const promise = withWatchdog(
-    previous
-      ? previous.catch(() => undefined).then(() => startSync(db, mode))
-      : startSync(db, mode),
+  const previous = inFlight?.work;
+  const work = (
+    previous ? previous.catch(() => undefined).then(() => startSync(db, mode)) : startSync(db, mode)
   ).finally(() => {
     if (inFlight?.promise === promise) inFlight = null;
   });
-  inFlight = { mode, promise };
+  const promise = withWatchdog(work);
+  inFlight = { mode, promise, work };
   return promise;
 }
 
 /**
  * Belt and braces behind the per-request timeouts (src/api/ff3/client.ts): whatever else hangs, a
- * sync that hasn't ended by now is given up on, so the next trigger starts a fresh one instead of
- * joining a promise that never settles.
+ * sync that hasn't ended by now reports a timeout. Keep its exclusive claim until it actually
+ * ends: Promise timeouts do not cancel requests or prevent late responses writing to SQLite.
  */
 export const SYNC_WATCHDOG_MS = 3 * 60 * 1000;
 
@@ -176,7 +179,16 @@ function withWatchdog(sync: Promise<SyncSummary>): Promise<SyncSummary> {
       logLine('error', 'sync timed out');
       resolve({ ...NOT_SIGNED_IN, signedIn: true, error: 'timed out' });
     }, SYNC_WATCHDOG_MS);
-    sync.then(resolve, reject).finally(() => clearTimeout(timer));
+    void sync.then(
+      (summary) => {
+        clearTimeout(timer);
+        resolve(summary);
+      },
+      (err: unknown) => {
+        clearTimeout(timer);
+        reject(err);
+      },
+    );
   });
 }
 

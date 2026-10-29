@@ -5,6 +5,14 @@ function row(overrides: Partial<SweepRow> & Pick<SweepRow, 'accountId'>): SweepR
 }
 
 describe('computeSweep', () => {
+  it('counts against a negative cached balance', () => {
+    const rows = [row({ accountId: 'cash', expected: '-12.50', counted: '5.00' })];
+    expect(computeSweep(rows)).toEqual([
+      { accountId: 'cash', currencyCode: 'PLN', type: 'deposit', amount: '17.50' },
+    ]);
+    expect(driftByCurrency(rows)).toEqual([{ currencyCode: 'PLN', amount: '17.50' }]);
+  });
+
   it('a short envelope produces a withdrawal for the difference', () => {
     const adjustments = computeSweep([
       row({ accountId: 'acc-1', expected: '340.00', counted: '328.00' }),

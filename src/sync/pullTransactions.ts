@@ -6,6 +6,7 @@ import type { OutboxDb } from './outbox';
 import { payloadGroupId } from './payloadJson';
 import { logLine } from '../utils/log';
 import { cachedRowFromGroup } from './cachedRow';
+import { localDay } from '../utils/day';
 
 /** How far back the very first sync reaches, in months. */
 const BACKFILL_MONTHS = 3;
@@ -14,6 +15,23 @@ const CATCHUP_DAYS = 14;
 
 function dateOnly(d: Date): string {
   return d.toISOString().slice(0, 10);
+}
+
+// FF3 filters calendar days, not instants. Do arithmetic in UTC on the date component so a
+// timezone offset or a DST change cannot move a history boundary onto the previous day.
+function calendarDate(value: string): Date {
+  return new Date(`${value.slice(0, 10)}T00:00:00Z`);
+}
+
+function monthsBefore(date: Date, months: number): Date {
+  const result = new Date(date);
+  result.setUTCDate(1);
+  result.setUTCMonth(result.getUTCMonth() - months);
+  const lastDay = new Date(
+    Date.UTC(result.getUTCFullYear(), result.getUTCMonth() + 1, 0),
+  ).getUTCDate();
+  result.setUTCDate(Math.min(date.getUTCDate(), lastDay));
+  return result;
 }
 
 // The history window this sync asks FF3 for. Empty cache: the full backfill. Otherwise a short
@@ -28,14 +46,12 @@ async function windowStart(db: OutboxDb): Promise<string> {
     .orderBy(desc(cachedTransactions.date))
     .limit(1);
   if (!newest) {
-    const backfill = new Date();
-    backfill.setMonth(backfill.getMonth() - BACKFILL_MONTHS);
-    return dateOnly(backfill);
+    return dateOnly(monthsBefore(calendarDate(localDay()), BACKFILL_MONTHS));
   }
   // A future-dated cached row must not push the window past today, or the pull would stop
   // seeing anything new.
-  const start = new Date(Math.min(new Date(newest.date).getTime(), Date.now()));
-  start.setDate(start.getDate() - CATCHUP_DAYS);
+  const start = calendarDate(newest.date.slice(0, 10) < localDay() ? newest.date : localDay());
+  start.setUTCDate(start.getUTCDate() - CATCHUP_DAYS);
   return dateOnly(start);
 }
 
@@ -50,7 +66,8 @@ async function pullTransactionsInRange(
   syncedAt: string,
   endDate?: string,
 ): Promise<void> {
-  const endParam = endDate ? `&end=${endDate}` : '';
+  const through = endDate ?? localDay();
+  const endParam = `&end=${through}`;
   const seen = new Set<string>();
   // Pages until the requested history window is covered — no upper page bound, so a long real
   // history is never silently truncated.
@@ -76,7 +93,7 @@ async function pullTransactionsInRange(
     if (response.data.length < 100) break;
   }
 
-  await pruneDeletedInWindow(db, seen, startDate, endDate ?? dateOnly(new Date()));
+  await pruneDeletedInWindow(db, seen, startDate, through);
 }
 
 /**
@@ -179,15 +196,14 @@ export async function pullOlderTransactions(
   syncedAt: string,
 ): Promise<boolean> {
   const before = await oldestCachedDate(db);
-  let anchor = before ? new Date(before) : new Date();
+  let anchor = calendarDate(before ?? localDay());
 
   for (let attempt = 0; attempt < MAX_CHUNK_ATTEMPTS; attempt++) {
     // end and start are each computed from `anchor` directly (not chained off one another), so a
     // short month can't roll the day-of-month over and throw the window off by a few days.
     const end = new Date(anchor);
-    end.setDate(end.getDate() - 1); // strictly older than what's already cached
-    const start = new Date(anchor);
-    start.setMonth(start.getMonth() - chunkMonthsFor(anchor));
+    end.setUTCDate(end.getUTCDate() - 1); // strictly older than what's already cached
+    const start = monthsBefore(anchor, chunkMonthsFor(anchor));
     await pullTransactionsInRange(db, client, dateOnly(start), syncedAt, dateOnly(end));
 
     const after = await oldestCachedDate(db);

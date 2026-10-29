@@ -92,9 +92,38 @@ async function runReplayAndDelete(
   return 'done';
 }
 
+const describeAttachment: KindSpec['describe'] = (p, op, lookups) => {
+  const cached = lookups.transaction({ journalId: p.transactionJournalId });
+  return {
+    subject: cached?.description ?? null,
+    route: (cached ? `/transactions/${cached.groupId}` : null) as Href | null,
+    changed: [],
+  };
+};
+
+const TRANSACTION_UPDATE: KindSpec = {
+  subjects: (p, add) => {
+    add('group', p.groupId);
+    add('journal', p.transactionJournalId);
+    addAccounts([p.changes, ...(Array.isArray(p.splits) ? p.splits : [])], add);
+  },
+  describe: (p, op, lookups) => {
+    const cached = lookups.transaction({ groupId: p.groupId });
+    const changes = (p.changes as Record<string, unknown> | undefined) ?? {};
+    return {
+      subject: str(changes.description) ?? cached?.description ?? null,
+      route: `/transactions/${p.groupId}` as Href,
+      changed: [
+        ...labelsOf(Object.keys(changes), TRANSACTION_FIELD_LABELS),
+        ...(p.splits ? ['splits.split'] : []),
+      ],
+    };
+  },
+  replay: replayUpdateTransaction,
+};
+
 export const OUTBOX_KINDS = {
   create_transaction: {
-    ledger: true,
     subjects: (p, add) => addAccounts(p.splits, add),
     describe: (p, op) => ({
       subject: str(p.groupTitle) ?? str(p.splits?.[0]?.description),
@@ -103,29 +132,8 @@ export const OUTBOX_KINDS = {
     }),
     replay: replayCreateTransaction,
   },
-  update_transaction: {
-    ledger: true,
-    subjects: (p, add) => {
-      add('group', p.groupId);
-      add('journal', p.transactionJournalId);
-      addAccounts([p.changes, ...(Array.isArray(p.splits) ? p.splits : [])], add);
-    },
-    describe: (p, op, lookups) => {
-      const cached = lookups.transaction({ groupId: p.groupId });
-      const changes = (p.changes as Record<string, unknown> | undefined) ?? {};
-      return {
-        subject: str(changes.description) ?? cached?.description ?? null,
-        route: `/transactions/${p.groupId}` as Href,
-        changed: [
-          ...labelsOf(Object.keys(changes), TRANSACTION_FIELD_LABELS),
-          ...(p.splits ? ['splits.split'] : []),
-        ],
-      };
-    },
-    replay: replayUpdateTransaction,
-  },
+  update_transaction: TRANSACTION_UPDATE,
   delete_transaction: {
-    ledger: true,
     subjects: (p, add) => add('group', p.groupId),
     describe: (p, op, lookups) => ({
       subject: lookups.transaction({ groupId: p.groupId })?.description ?? null,
@@ -136,49 +144,15 @@ export const OUTBOX_KINDS = {
   },
   attach_receipt: {
     subjects: (p, add) => add('journal', p.transactionJournalId),
-    describe: (p, op, lookups) => {
-      const cached = lookups.transaction({ journalId: p.transactionJournalId });
-      return {
-        subject: cached?.description ?? null,
-        route: (cached ? `/transactions/${cached.groupId}` : null) as Href | null,
-        changed: [],
-      };
-    },
+    describe: describeAttachment,
     replay: replayAttachReceipt,
   },
   delete_attachment: {
     subjects: (p, add) => add('journal', p.transactionJournalId),
-    describe: (p, op, lookups) => {
-      const cached = lookups.transaction({ journalId: p.transactionJournalId });
-      return {
-        subject: cached?.description ?? null,
-        route: (cached ? `/transactions/${cached.groupId}` : null) as Href | null,
-        changed: [],
-      };
-    },
+    describe: describeAttachment,
     replay: replayDeleteAttachment,
   },
-  recurring_review: {
-    ledger: true,
-    subjects: (p, add) => {
-      add('group', p.groupId);
-      add('journal', p.transactionJournalId);
-      addAccounts([p.changes, ...(Array.isArray(p.splits) ? p.splits : [])], add);
-    },
-    describe: (p, op, lookups) => {
-      const cached = lookups.transaction({ groupId: p.groupId });
-      const changes = (p.changes as Record<string, unknown> | undefined) ?? {};
-      return {
-        subject: str(changes.description) ?? cached?.description ?? null,
-        route: `/transactions/${p.groupId}` as Href,
-        changed: [
-          ...labelsOf(Object.keys(changes), TRANSACTION_FIELD_LABELS),
-          ...(p.splits ? ['splits.split'] : []),
-        ],
-      };
-    },
-    replay: replayUpdateTransaction,
-  },
+  recurring_review: TRANSACTION_UPDATE,
   update_account: {
     subjects: (p, add) => add('account', p.accountId),
     describe: (p, op, lookups) => {

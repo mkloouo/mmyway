@@ -73,7 +73,8 @@ function setParsedDraft(db: OutboxDb, itemId: string, draft: Draft, expectedUpda
         eq(inboxItems.updatedAt, expectedUpdatedAt),
       ),
     )
-    .returning({ id: inboxItems.id });
+    .returning({ id: inboxItems.id })
+    .all();
 }
 
 // Shared by the immediate-parse path (app/receipt.tsx, already holding the base64 from the
@@ -108,7 +109,7 @@ export async function parseReceiptItem(
         isNewPayee: true,
         location: capturedLocation(before),
       };
-      const moved = await setParsedDraft(db, itemId, blank, before.updatedAt);
+      const moved = setParsedDraft(db, itemId, blank, before.updatedAt);
       return moved.length > 0 ? 'parsed' : 'waiting';
     }
     await markReceiptError(
@@ -170,29 +171,36 @@ export async function parseReceiptItem(
   const draft = await resolvePayeeAlias(db, rawDraft);
   // Only if nothing touched the item while the provider was working (a parse takes seconds; the
   // user may already have opened the card and typed an amount) — their edits win.
-  const updated = await setParsedDraft(db, itemId, draft, before.updatedAt);
-
-  if (updated.length === 0) return 'waiting';
-
-  for (const extraRaw of extraRaws) {
-    const extraDraft = await resolvePayeeAlias(db, {
-      ...extraRaw,
-      location: capturedLocation(before),
-      readBy: readByMeta,
-    });
-    await db.insert(inboxItems).values({
-      id: generateId(),
-      kind: 'receipt',
-      state: 'parsed',
-      draftJson: writeDraft(extraDraft),
-      receiptImagePath: before.receiptImagePath,
-      receiptContentHash: null,
-      createdAt: before.createdAt,
-      updatedAt: new Date().toISOString(),
-    });
-  }
-
-  return 'parsed';
+  const extras = await Promise.all(
+    extraRaws.map((extraRaw) =>
+      resolvePayeeAlias(db, {
+        ...extraRaw,
+        location: capturedLocation(before),
+        readBy: readByMeta,
+      }),
+    ),
+  );
+  // The main exchange and its fees are one parse result. A failed extra insert must not leave
+  // a partially parsed receipt that will never retry its missing transactions.
+  return db.transaction((tx) => {
+    const updated = setParsedDraft(tx, itemId, draft, before.updatedAt);
+    if (updated.length === 0) return 'waiting';
+    for (const extraDraft of extras) {
+      tx.insert(inboxItems)
+        .values({
+          id: generateId(),
+          kind: 'receipt',
+          state: 'parsed',
+          draftJson: writeDraft(extraDraft),
+          receiptImagePath: before.receiptImagePath,
+          receiptContentHash: null,
+          createdAt: before.createdAt,
+          updatedAt: new Date().toISOString(),
+        })
+        .run();
+    }
+    return 'parsed';
+  });
 }
 
 // Lazy require, not a module-scope import — same reasoning as outbox.ts's attach_receipt

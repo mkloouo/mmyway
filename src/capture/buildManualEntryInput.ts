@@ -72,8 +72,8 @@ export function buildManualEntryInput(
     currencyCode: fx ? fx.currencyCode : state.currencyCode,
     date: state.date.toISOString(),
     description:
-      state.description ||
-      state.merchantRawInput ||
+      state.description.trim() ||
+      state.merchantRawInput.trim() ||
       (state.type === 'transfer' && sourceAccount && destinationAccount
         ? // A transfer has no payee: "transfer" on every one of them said nothing in a list.
           `${sourceAccount.name} → ${destinationAccount.name}`

@@ -53,20 +53,44 @@ describe('runSync', () => {
     expect(probeAbout).not.toHaveBeenCalled();
   });
 
-  it('gives up on a sync that never ends, so the next one starts fresh instead of joining it', async () => {
+  it('reports a timeout without releasing work that can still write to the database', async () => {
     jest.useFakeTimers();
+    let finish!: (value: null) => void;
+    const credentials = new Promise<null>((resolve) => {
+      finish = resolve;
+    });
+    (readStoredCredentials as jest.Mock).mockReturnValueOnce(credentials);
+    (readHosts as jest.Mock).mockResolvedValue([]);
     try {
-      (readStoredCredentials as jest.Mock).mockReturnValueOnce(new Promise(() => undefined));
-      (readHosts as jest.Mock).mockResolvedValue([]);
-      const hung = runSync(createTestDb() as any);
+      const db = createTestDb();
+      const hung = runSync(db);
       await jest.advanceTimersByTimeAsync(SYNC_WATCHDOG_MS);
       await expect(hung).resolves.toMatchObject({ error: 'timed out' });
-
+      await expect(runSync(db)).resolves.toMatchObject({ error: 'timed out' });
+      expect(readStoredCredentials).toHaveBeenCalledTimes(1);
+      const clearData = jest.fn(async () => undefined);
+      const paused = withSyncPaused(clearData);
+      await Promise.resolve();
+      expect(clearData).not.toHaveBeenCalled();
+      finish(null);
+      await paused;
+      expect(clearData).toHaveBeenCalledTimes(1);
       (readStoredCredentials as jest.Mock).mockResolvedValue(null);
-      await expect(runSync(createTestDb() as any)).resolves.toMatchObject({ signedIn: false });
+      await expect(runSync(db)).resolves.toMatchObject({ signedIn: false, error: null });
     } finally {
+      finish(null);
       jest.useRealTimers();
     }
+  });
+
+  it('reports credential-read failures as sync errors rather than rejecting', async () => {
+    (readStoredCredentials as jest.Mock).mockRejectedValueOnce(
+      new Error('SecureStore unavailable'),
+    );
+    (readHosts as jest.Mock).mockResolvedValue([]);
+    await expect(runSync(createTestDb())).resolves.toMatchObject({
+      error: 'SecureStore unavailable',
+    });
   });
 
   it('withSyncPaused waits for a running sync, and a sync asked for meanwhile writes nothing', async () => {
@@ -129,11 +153,10 @@ describe('runSync', () => {
 
     expect(summary.replaySucceeded).toBe(0);
     const transactionGets = client.request.mock.calls.filter(
-      ([path, init]) =>
-        path.startsWith('/v1/transactions') && !path.includes('&end=') && init?.method !== 'POST',
+      ([path, init]) => path.startsWith('/v1/transactions') && init?.method !== 'POST',
     );
     // one from pullReferenceData's own pullRecentTransactions call — no second, conditional re-pull.
-    expect(transactionGets).toHaveLength(1);
+    expect(transactionGets).toHaveLength(2); // catch-up plus recurring-review pull
   });
 
   it('surfaces a mid-queue replay failure in the summary instead of throwing', async () => {

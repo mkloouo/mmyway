@@ -47,12 +47,16 @@ export type OutboxKind =
   | 'trigger_rule'
   | 'create_rule';
 
-/** The kinds that change an account balance in FF3 once they land; receipts and account edits don't. */
+/** Kinds that may change balances: account saves include opening balances, and triggers book/edit transactions. */
 export const LEDGER_KINDS = [
   'create_transaction',
   'update_transaction',
   'delete_transaction',
   'recurring_review',
+  'create_account',
+  'update_account',
+  'trigger_planned',
+  'trigger_rule',
 ] as const satisfies readonly OutboxKind[];
 
 export interface CreateTransactionPayload {
@@ -166,7 +170,6 @@ export interface QueuedChangeLookups {
 }
 
 export interface KindSpec<P = any> {
-  ledger?: boolean;
   subjects: (payload: P, add: (prefix: string, value: unknown) => void) => void;
   describe: (
     payload: P,

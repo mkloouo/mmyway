@@ -82,10 +82,12 @@ export function useBucket(selectedPeriod?: Period): BucketData {
       funds,
       bills,
       rta: readyToAssign({
-        cash: (accounts ?? []).filter((a) => a.active).map((a) => a.currentBalance ?? '0'),
-        envelopeAvailable: envelopes.map((e) => e.available),
-        fundsSaved: funds.map((f) => f.saved),
-        billsDue: bills.map((b) => b.amount),
+        cash: (accounts ?? [])
+          .filter((a) => a.active && a.currencyCode === code)
+          .map((a) => a.currentBalance ?? '0'),
+        envelopeAvailable: envelopes.filter((e) => e.currencyCode === code).map((e) => e.available),
+        fundsSaved: funds.filter((f) => f.currencyCode === code).map((f) => f.saved),
+        billsDue: bills.filter((b) => b.currencyCode === code).map((b) => b.amount),
         decimalPlaces: currency.decimalPlaces,
       }),
       currency,

@@ -58,7 +58,8 @@ export function useFxState({
     showFx && foreignAmount.trim() ? parseDecimalInput(foreignAmount) : null;
   const foreignAmountInvalid = !!foreignAmountResult && !foreignAmountResult.ok;
   const parsedForeignAmount = foreignAmountResult?.ok ? foreignAmountResult.value : '';
-  const fxMissing = showFx && isDirty && !parsedForeignAmount;
+  const fxMissing =
+    showFx && isDirty && (!parsedForeignAmount || /^0*\.?0*$/.test(parsedForeignAmount));
   const impliedRate =
     showFx && parsedForeignAmount && amount !== '0'
       ? divideDecimal(amount, parsedForeignAmount, 2)

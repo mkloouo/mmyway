@@ -18,7 +18,7 @@ export async function retryErroredItem(db: OutboxDb, inboxItemId: string): Promi
       errorMessage: null,
       updatedAt: new Date().toISOString(),
     })
-    .where(eq(inboxItems.id, inboxItemId));
+    .where(and(eq(inboxItems.id, inboxItemId), eq(inboxItems.state, 'error')));
 }
 
 /** Gives an entry a receipt photo (copied out of the cache); it is uploaded once the transaction exists. */
@@ -66,20 +66,29 @@ export async function updateDraft(
   inboxItemId: string,
   patch: Partial<Draft>,
 ): Promise<void> {
-  const rows = await db.select().from(inboxItems).where(eq(inboxItems.id, inboxItemId));
-  const item = rows[0];
-  if (!item) throw new Error(`inbox item ${inboxItemId} not found`);
-  if (NOT_EDITABLE.has(item.state))
-    throw new Error(`cannot update inbox item ${inboxItemId}: already ${item.state}`);
+  // Keep the read/merge/write synchronous: rapid field edits and Confirm must see the latest
+  // saved draft, rather than overwriting one another after an awaited read.
+  db.transaction((tx) => {
+    const [item] = tx.select().from(inboxItems).where(eq(inboxItems.id, inboxItemId)).all();
+    if (!item) throw new Error(`inbox item ${inboxItemId} not found`);
+    if (NOT_EDITABLE.has(item.state))
+      throw new Error(`cannot update inbox item ${inboxItemId}: already ${item.state}`);
 
-  const draft = readDraft(item.draftJson);
-  const merged: Draft = { ...draft, ...patch };
-  // A field the reader wasn't sure about stops being marked once the user sets it.
-  if (!('lowConfidenceFields' in patch)) merged.lowConfidenceFields = unsureAfter(draft, patch);
-  await db
-    .update(inboxItems)
-    .set({ draftJson: writeDraft(merged), updatedAt: new Date().toISOString() })
-    .where(eq(inboxItems.id, inboxItemId));
+    const draft = readDraft(item.draftJson);
+    const merged: Draft = { ...draft, ...patch };
+    // A field the reader wasn't sure about stops being marked once the user sets it.
+    if (!('lowConfidenceFields' in patch)) merged.lowConfidenceFields = unsureAfter(draft, patch);
+    tx.update(inboxItems)
+      .set({
+        draftJson: writeDraft(merged),
+        // Once the user starts correcting a receipt, a later model result or retry must not
+        // overwrite it. Manual captures keep their original state.
+        state: item.kind === 'receipt' && item.state === 'captured' ? 'parsed' : item.state,
+        updatedAt: new Date().toISOString(),
+      })
+      .where(eq(inboxItems.id, inboxItemId))
+      .run();
+  });
 }
 
 // Local-only removal: deletes the inbox row and any outbox ops still pointing at it, so a

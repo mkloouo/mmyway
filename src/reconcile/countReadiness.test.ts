@@ -23,13 +23,14 @@ describe('countBlocker', () => {
 });
 
 describe('readCountBlocker', () => {
-  it('counts queued transaction writes but not receipt uploads or account edits', async () => {
+  it('counts queued transactions but not receipt uploads or account metadata edits', async () => {
     const db = createTestDb() as any;
     await enqueueOperation(db, {
       id: 'r',
       kind: 'attach_receipt',
       payload: { transactionJournalId: 'j', receiptImagePath: 'file:///x.jpg' },
     });
+    expect(await readCountBlocker(db)).toBeNull();
     await enqueueOperation(db, {
       id: 'a',
       kind: 'update_account',
@@ -45,6 +46,31 @@ describe('readCountBlocker', () => {
     await enqueueOperation(db, { id: 'd', kind: 'delete_transaction', payload: { groupId: 'g' } });
     expect(await readCountBlocker(db)).toEqual({ reason: 'queued', count: 2 });
   });
+
+  it.each([
+    { openingBalance: '25.00' },
+    { openingBalance: null },
+    { openingBalanceDate: '2026-10-01' },
+    { virtualBalance: '10.00' },
+    { currencyCode: 'EUR' },
+  ])('waits for account balance edit %j', async (edit) => {
+    const db = createTestDb();
+    await enqueueOperation(db, {
+      id: 'op',
+      kind: 'update_account',
+      payload: { accountId: 'a', edit },
+    });
+    expect(await readCountBlocker(db)).toEqual({ reason: 'queued', count: 1 });
+  });
+
+  it.each(['create_account', 'trigger_planned', 'trigger_rule'] as const)(
+    'waits for %s before treating cached balances as current',
+    async (kind) => {
+      const db = createTestDb();
+      await enqueueOperation(db, { id: 'op', kind, payload: {} });
+      expect(await readCountBlocker(db)).toEqual({ reason: 'queued', count: 1 });
+    },
+  );
 
   it('reads the stale-balances mark', async () => {
     const db = createTestDb() as any;
