@@ -8,7 +8,7 @@ module.exports = {
   expo: {
     name: IS_DEV ? `${BASE_NAME} (Dev)` : BASE_NAME,
     slug: 'mmyway',
-    version: '2.5.7',
+    version: '2.6.0',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'automatic',
@@ -82,7 +82,7 @@ module.exports = {
       },
     },
     android: {
-      versionCode: 56,
+      versionCode: 57,
       adaptiveIcon: {
         foregroundImage: './assets/android/adaptive-foreground.png',
         monochromeImage: './assets/android/adaptive-foreground.png',

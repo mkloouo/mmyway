@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [2.6.0] - 2026-10-29
+
 ### Planned
 
 - Redesigned planned item screen to Unified Kit V2 board 20 with large title, next date header line, stacked From → to row, schedule summary with since and weekend details, expandable coming-up occurrences with skip and undo actions, all in activity link, and edit sheets for notes and tags (MKL-101).
